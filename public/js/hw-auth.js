@@ -12,10 +12,12 @@
     japaneselanguagementor: {
       password: "demo",
       displayName: "japaneselanguagementor",
+      role: "teacher",
     },
     benm: {
       password: "demo",
       displayName: "Ben M",
+      role: "student",
     },
   };
 
@@ -33,6 +35,7 @@
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (!data?.username || !ACCOUNTS[data.username]) return null;
+      if (!data.role) data.role = ACCOUNTS[data.username].role || "student";
       return data;
     } catch {
       return null;
@@ -52,6 +55,7 @@
     const session = {
       username: key,
       displayName: account.displayName,
+      role: account.role || "student",
       loggedInAt: Date.now(),
     };
     const payload = JSON.stringify(session);

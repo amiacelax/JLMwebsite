@@ -1,12 +1,14 @@
 /**
- * Student platform — load catalog, render worksheet, save answers, lesson links.
+ * Homework platform — student hub (assignments + submit) or teacher hub (worksheet library).
  */
 (function () {
   const session = HwAuth.getSession();
   if (!session) return;
 
+  const isTeacher = session.role === "teacher";
+
   const greet = document.getElementById("hw-platform-greet");
-  if (greet) greet.textContent = session.displayName;
+  if (greet) greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
 
   document.getElementById("hw-platform-logout")?.addEventListener("click", () => {
     HwAuth.logout();
@@ -34,8 +36,41 @@
     return url && !String(url).startsWith("REPLACE_");
   }
 
-  function bindWorksheetSave(form, assignmentMeta) {
-    if (!form || !session.username) return;
+  function assignmentFileUrl(id) {
+    return new URL("/homework/assignments/" + id + ".json", window.location.origin).href;
+  }
+
+  function studentWorksheetUrl(id) {
+    return window.location.origin + "/homework/platform.html#hw-" + id;
+  }
+
+  function librarySearchText(entry) {
+    return [
+      entry.id,
+      entry.title,
+      entry.date,
+      entry.level,
+      entry.lessonName,
+      entry.studentLabel,
+      entry.summary,
+      (entry.tags || []).join(" "),
+      (entry.students || []).join(" "),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  async function fetchCatalog() {
+    const res = await fetch("/homework/catalog.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("catalog");
+    return res.json();
+  }
+
+  function bindWorksheetSave(form, assignmentMeta, options) {
+    options = options || {};
+    if (!form || !session.username || options.preview) return;
+
     const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll(".hw-blank");
@@ -109,6 +144,33 @@
     });
   }
 
+  async function loadWorksheetPreview(catalogEntry) {
+    const mount = document.getElementById("hw-worksheet-mount");
+    const heading = document.getElementById("hw-worksheet-heading");
+    const intro = document.getElementById("hw-worksheet-intro");
+    if (!mount || !catalogEntry) return;
+
+    let assignment;
+    try {
+      const res = await fetch("/homework/assignments/" + catalogEntry.id + ".json", { cache: "no-store" });
+      if (!res.ok) throw new Error("assignment");
+      assignment = await res.json();
+    } catch {
+      if (intro) intro.textContent = "Could not load this worksheet.";
+      mount.innerHTML = "";
+      return;
+    }
+
+    if (heading) heading.textContent = "Preview — " + (catalogEntry.title || catalogEntry.id);
+    if (intro) {
+      intro.textContent =
+        "Teacher preview (blank template). Download JSON or copy the student link — add the student username to catalog “students” so they can open it.";
+    }
+
+    const form = HwWorksheet.render(mount, assignment, { preview: true });
+    bindWorksheetSave(form, assignment, { preview: true });
+  }
+
   function renderAssignmentList(assignments, currentId) {
     const list = document.getElementById("hw-assignment-list");
     if (!list) return;
@@ -132,7 +194,7 @@
       } else {
         btn.addEventListener("click", () => {
           window.location.hash = "hw-" + a.id;
-          loadHub();
+          loadStudentHub();
         });
       }
       li.append(label, btn);
@@ -176,16 +238,200 @@
     }
   }
 
-  async function loadHub() {
+  function renderLibraryList(entries, query, activeId) {
+    const list = document.getElementById("hw-library-list");
+    const meta = document.getElementById("hw-library-meta");
+    if (!list) return;
+
+    const q = String(query || "")
+      .trim()
+      .toLowerCase();
+    const filtered = entries.filter((e) => !q || librarySearchText(e).includes(q));
+    filtered.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+    list.innerHTML = "";
+    if (meta) {
+      meta.textContent =
+        filtered.length +
+        " worksheet" +
+        (filtered.length === 1 ? "" : "s") +
+        (q ? ' matching “' + query.trim() + "”" : "") +
+        (entries.length !== filtered.length ? " of " + entries.length : "");
+    }
+
+    if (!filtered.length) {
+      list.innerHTML =
+        '<li class="hw-library-item hw-library-item--empty"><p>No worksheets match. Try tags like <em>たい</em>, <em>negative</em>, or a lesson title.</p></li>';
+      return;
+    }
+
+    filtered.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "hw-library-item" + (entry.id === activeId ? " hw-library-item--active" : "");
+
+      const main = document.createElement("div");
+      main.className = "hw-library-item__main";
+
+      const title = document.createElement("h3");
+      title.className = "hw-library-item__title";
+      title.textContent = entry.title || entry.id;
+
+      const sub = document.createElement("p");
+      sub.className = "hw-library-item__sub";
+      sub.textContent = [entry.date, entry.level, entry.lessonName || entry.studentLabel]
+        .filter(Boolean)
+        .join(" · ");
+
+      if (entry.summary) {
+        const sum = document.createElement("p");
+        sum.className = "hw-library-item__summary";
+        sum.textContent = entry.summary;
+        main.append(title, sub, sum);
+      } else {
+        main.append(title, sub);
+      }
+
+      if (entry.tags && entry.tags.length) {
+        const tags = document.createElement("div");
+        tags.className = "hw-library-tags";
+        entry.tags.forEach((tag) => {
+          const pill = document.createElement("span");
+          pill.className = "hw-library-tag";
+          pill.textContent = tag;
+          tags.appendChild(pill);
+        });
+        main.appendChild(tags);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "hw-library-item__actions";
+
+      const previewBtn = document.createElement("button");
+      previewBtn.type = "button";
+      previewBtn.className = "btn btn--primary btn--sm";
+      previewBtn.textContent = entry.id === activeId ? "Previewing" : "Preview";
+      if (entry.id === activeId) previewBtn.disabled = true;
+      previewBtn.addEventListener("click", () => {
+        window.location.hash = "hw-" + entry.id;
+        loadTeacherHub();
+      });
+
+      const dl = document.createElement("a");
+      dl.className = "btn btn--ghost btn--sm";
+      dl.href = assignmentFileUrl(entry.id);
+      dl.download = entry.id + ".json";
+      dl.textContent = "Download";
+
+      const copyJson = document.createElement("button");
+      copyJson.type = "button";
+      copyJson.className = "btn btn--ghost btn--sm";
+      copyJson.textContent = "Copy JSON URL";
+      copyJson.addEventListener("click", () => {
+        copyText(assignmentFileUrl(entry.id), "JSON file URL copied");
+      });
+
+      const copyStudent = document.createElement("button");
+      copyStudent.type = "button";
+      copyStudent.className = "btn btn--ghost btn--sm";
+      copyStudent.textContent = "Copy student link";
+      copyStudent.addEventListener("click", () => {
+        const students = (entry.students || []).join(", ") || "(add students in catalog)";
+        copyText(
+          studentWorksheetUrl(entry.id),
+          "Student link copied — allowed: " + students
+        );
+      });
+
+      actions.append(previewBtn, dl, copyJson, copyStudent);
+      li.append(main, actions);
+      list.appendChild(li);
+    });
+  }
+
+  function copyText(text, toastMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => showToast(toastMsg),
+        () => fallbackCopy(text, toastMsg)
+      );
+    } else {
+      fallbackCopy(text, toastMsg);
+    }
+  }
+
+  function fallbackCopy(text, toastMsg) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast(toastMsg);
+    } catch {
+      showToast("Could not copy — select and copy manually.");
+    }
+    document.body.removeChild(ta);
+  }
+
+  let catalogCache = null;
+  let librarySearchBound = false;
+
+  async function loadTeacherHub() {
+    document.body.classList.add("hw-role-teacher");
+
+    const hubTitle = document.getElementById("hw-hub-title");
+    const hubDesc = document.getElementById("hw-hub-desc");
+    const teacherLib = document.getElementById("hw-teacher-library");
+    const studentGrid = document.getElementById("hw-student-grid");
+
+    if (hubTitle) hubTitle.textContent = "Teacher's hub";
+    if (hubDesc) {
+      hubDesc.textContent =
+        "Search and manage fillable homework templates. Preview blanks, download JSON, or copy links for students (benm demo = student test site).";
+    }
+    if (teacherLib) teacherLib.hidden = false;
+    if (studentGrid) studentGrid.hidden = true;
+
+    const searchInput = document.getElementById("hw-library-search");
+    if (!catalogCache) {
+      try {
+        catalogCache = await fetchCatalog();
+      } catch {
+        const meta = document.getElementById("hw-library-meta");
+        if (meta) meta.textContent = "Could not load worksheet catalog.";
+        return;
+      }
+    }
+
+    const entries = catalogCache.assignments || [];
+    const hashId = window.location.hash.replace(/^#hw-/, "");
+    const active = entries.find((e) => e.id === hashId) || entries[0] || null;
+
+    if (searchInput && !librarySearchBound) {
+      librarySearchBound = true;
+      searchInput.addEventListener("input", () => {
+        const id = window.location.hash.replace(/^#hw-/, "");
+        renderLibraryList(entries, searchInput.value, id);
+      });
+    }
+
+    renderLibraryList(entries, searchInput ? searchInput.value : "", active?.id);
+    await loadWorksheetPreview(active);
+  }
+
+  async function loadStudentHub() {
+    document.body.classList.add("hw-role-student");
+
     const mount = document.getElementById("hw-worksheet-mount");
     const heading = document.getElementById("hw-worksheet-heading");
     const intro = document.getElementById("hw-worksheet-intro");
 
     let catalog;
     try {
-      const res = await fetch("/homework/catalog.json", { cache: "no-store" });
-      if (!res.ok) throw new Error("catalog");
-      catalog = await res.json();
+      catalog = await fetchCatalog();
     } catch {
       if (intro) intro.textContent = "Could not load homework catalog.";
       return;
@@ -196,8 +442,7 @@
     mine.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
     const hashId = window.location.hash.replace(/^#hw-/, "");
-    const active =
-      mine.find((a) => a.id === hashId) || mine[0] || null;
+    const active = mine.find((a) => a.id === hashId) || mine[0] || null;
 
     renderAssignmentList(mine, active?.id);
     setLessonLinks(active, catalog.playlistUrl);
@@ -233,6 +478,15 @@
     bindWorksheetSave(form, assignment);
   }
 
-  loadHub();
-  window.addEventListener("hashchange", loadHub);
+  function init() {
+    if (isTeacher) {
+      loadTeacherHub();
+      window.addEventListener("hashchange", loadTeacherHub);
+    } else {
+      loadStudentHub();
+      window.addEventListener("hashchange", loadStudentHub);
+    }
+  }
+
+  init();
 })();

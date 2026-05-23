@@ -2003,6 +2003,122 @@ body.subpage--platform .hw-platform-bar {
   opacity: 1;
 }
 
+.hw-teacher-library {
+  margin-bottom: 1.75rem;
+}
+
+.hw-library-search-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-library-search {
+  width: 100%;
+  max-width: 28rem;
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.hw-library-search:focus {
+  outline: 2px solid var(--color-green);
+  outline-offset: 2px;
+}
+
+.hw-library-meta {
+  margin: 0 0 0.85rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-library-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hw-library-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-library-item--active {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 1px var(--color-green-soft);
+}
+
+.hw-library-item--empty p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.hw-library-item__title {
+  margin: 0 0 0.25rem;
+  font-family: Inter, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-library-item__sub,
+.hw-library-item__summary {
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.hw-library-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.hw-library-tag {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-green);
+  background: var(--color-green-soft);
+  border-radius: 999px;
+}
+
+.hw-library-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+body.hw-role-teacher .hw-worksheet-section {
+  margin-top: 0.5rem;
+}
+
 .hw-about h2 {
   font-size: 1.125rem;
   font-weight: 700;

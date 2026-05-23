@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#1a2744">
-  <title>My hub — Homework Hub</title>
+  <title>Homework Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
@@ -69,11 +69,20 @@
       <div class="container container--wide">
         <div class="section__header">
           <p class="section__eyebrow">Homework Hub</p>
-          <h1 class="section__title">Your hub</h1>
-          <p class="section__desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
+          <h1 class="section__title" id="hw-hub-title">Your hub</h1>
+          <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
         </div>
 
-        <div class="hw-platform-grid">
+        <section class="hw-teacher-library hw-platform-card hw-platform-card--wide" id="hw-teacher-library" hidden>
+          <h2 class="hw-platform-card__title">Worksheet library</h2>
+          <p class="hw-platform-card__desc">All fillable homework templates — search, preview, download JSON, or copy a link for students.</p>
+          <label class="hw-library-search-label" for="hw-library-search">Search</label>
+          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="e.g. たい, negative, verb conjugation, Ben M…" autocomplete="off">
+          <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
+          <ul class="hw-library-list" id="hw-library-list"></ul>
+        </section>
+
+        <div class="hw-platform-grid" id="hw-student-grid">
           <section class="hw-platform-card">
             <h2 class="hw-platform-card__title">Assignments</h2>
             <p class="hw-platform-card__desc">Homework from your lessons, after JD review.</p>
@@ -133,7 +142,7 @@
   </footer>
 
   <script src="/js/subpage.js" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260528" defer></script>
-  <script src="/js/hw-platform.js?v=20260524" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260529" defer></script>
+  <script src="/js/hw-platform.js?v=20260529" defer></script>
 </body>
 </html>

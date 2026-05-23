@@ -26,7 +26,14 @@ Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`,
 ### Negative items (optional)
 
 - `"negative": true` on an item — red `NEGATIVE` pill after the sentence; answer should be negative (e.g. `ほしくない`)
-- Hints omit conjugation when it is `たい` or `plain` — show `（いく）` not `（いく・たい）`; other tags like `ない` still show `（ほしい・ない）`
+- Hints omit conjugation when it is `たい`, `plain`, or `ない` — show `（ほしい）` not `（ほしい・ない）`
+
+## Teacher hub (`japaneselanguagementor` demo)
+
+- Account role `teacher` in `hw-auth.js` — **Teacher's hub** with worksheet library (all catalog entries)
+- `benm` demo = student test site (assignments filtered by `students` in catalog)
+- Catalog: optional `tags`, `summary` for library search; `students` array controls who sees the sheet
+- Teacher actions: Preview, Download JSON, Copy JSON URL, Copy student link (`platform.html#hw-{id}`)
 
 ## Part types in `items[].parts`
 

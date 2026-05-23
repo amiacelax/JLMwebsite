@@ -134,14 +134,22 @@
         },
         {
           "id": "s2-2",
+          "negative": true,
           "parts": [
             {
               "type": "blank",
               "name": "s2-2",
-              "wide": true,
-              "hint": { "dictionary": "ほしい", "conjugation": "plain" }
+              "wide": true
             },
-            { "type": "text", "value": "がほしい。" }
+            { "type": "text", "value": "が" },
+            {
+              "type": "blank",
+              "name": "s2-2g",
+              "wide": true,
+              "answer": "ほしくない",
+              "hint": { "dictionary": "ほしい", "conjugation": "ない" }
+            },
+            { "type": "text", "value": "。" }
           ]
         },
         {
@@ -165,6 +173,7 @@
         },
         {
           "id": "s2-4",
+          "negative": true,
           "parts": [
             {
               "type": "blank",
@@ -177,7 +186,7 @@
               "ruby": [
                 { "text": "を" },
                 { "text": "食", "rt": "た" },
-                { "text": "べたい。" }
+                { "text": "べたくない。" }
               ]
             }
           ]

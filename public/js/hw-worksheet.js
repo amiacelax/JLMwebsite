@@ -8,7 +8,7 @@
     if (!hint) return "";
     const d = hint.dictionary || "—";
     const c = hint.conjugation;
-    if (!c || c === "たい" || c === "plain") return "（" + d + "）";
+    if (!c || c === "たい" || c === "plain" || c === "ない") return "（" + d + "）";
     return "（" + d + "・" + c + "）";
   }
 
@@ -180,7 +180,8 @@
    * @param {object} assignment
    * @returns {HTMLFormElement}
    */
-  function render(mount, assignment) {
+  function render(mount, assignment, options) {
+    options = options || {};
     mount.innerHTML = "";
 
     const form = document.createElement("form");
@@ -222,7 +223,9 @@
     actions.className = "hw-worksheet__actions";
     actions.innerHTML =
       '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>' +
-      '<button type="submit" class="btn btn--primary">Submit homework</button>';
+      (options.preview
+        ? ""
+        : '<button type="submit" class="btn btn--primary">Submit homework</button>');
     form.appendChild(actions);
 
     const status = document.createElement("p");
