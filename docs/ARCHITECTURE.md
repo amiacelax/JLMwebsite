@@ -19,7 +19,7 @@
 | Local secrets | `.dev.vars` (gitignored) — copy from `.dev.vars.example` |
 
 ```bash
-npm run dev      # wrangler dev → http://localhost:8787
+npm run dev      # wrangler dev --live-reload → http://localhost:8787
 npm run deploy   # wrangler deploy
 ```
 
