@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1a2744">
+  <title>My hub — Homework Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="/js/hw-auth.js"></script>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+      HwAuth.requireAuth('/homework.html');
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework subpage--platform">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="nav__brand" href="/">
+        <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
+        <span class="nav__brand-text">Japanese Language Mentor</span>
+      </a>
+      <div class="nav__toolbar">
+        <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+        </button>
+      </div>
+      <div class="nav__menu" id="nav-menu">
+        <div class="nav__links-wrap">
+          <ul class="nav__links">
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/#contact">Contact</a></li>
+          </ul>
+          <ul class="nav__links nav__links--secondary">
+            <li><a href="/games.html">Games</a></li>
+            <li><a href="/homework.html">Homework Hub</a></li>
+            <li><a href="/courses.html">Courses</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <div class="hw-platform-bar">
+    <div class="container hw-platform-bar__inner">
+      <p class="hw-platform-bar__user">Logged in as <strong id="hw-platform-greet">—</strong></p>
+      <button type="button" class="btn btn--ghost btn--sm" id="hw-platform-logout">Log out</button>
+    </div>
+  </div>
+
+  <main id="main" class="subpage__main">
+    <section class="section">
+      <div class="container container--wide">
+        <div class="section__header">
+          <p class="section__eyebrow">Homework Hub</p>
+          <h1 class="section__title">Your hub</h1>
+          <p class="section__desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
+        </div>
+
+        <div class="hw-platform-grid">
+          <section class="hw-platform-card">
+            <h2 class="hw-platform-card__title">Assignments</h2>
+            <p class="hw-platform-card__desc">Homework from your lessons, after JD review.</p>
+            <ul class="hw-platform-card__list">
+              <li class="hw-platform-card__row hw-platform-card__row--empty">
+                <span>No assignments yet</span>
+                <button type="button" class="btn btn--ghost btn--sm" disabled>Open</button>
+              </li>
+              <li class="hw-platform-card__row hw-platform-card__row--empty">
+                <span>—</span>
+                <button type="button" class="btn btn--ghost btn--sm" disabled>Open</button>
+              </li>
+            </ul>
+          </section>
+
+          <section class="hw-platform-card">
+            <h2 class="hw-platform-card__title">Latest lesson</h2>
+            <p class="hw-platform-card__desc">YouTube link when your recording is uploaded.</p>
+            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="Lesson videos will link here after upload.">Watch lesson (coming soon)</button>
+          </section>
+
+          <section class="hw-platform-card">
+            <h2 class="hw-platform-card__title">Upload your work</h2>
+            <p class="hw-platform-card__desc">Send completed homework for feedback (blackboard-style).</p>
+            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="File uploads coming in a later phase.">Upload homework (coming soon)</button>
+          </section>
+
+          <section class="hw-platform-card">
+            <h2 class="hw-platform-card__title">Extra homework</h2>
+            <p class="hw-platform-card__desc">$2 — AI draft, JD review, same fillable format.</p>
+            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="PayPal extra-HW button coming soon.">Request extra HW — $2 (coming soon)</button>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide">
+            <h2 class="hw-platform-card__title">Notifications</h2>
+            <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready (wired in Phase 5).</p>
+            <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
+          </section>
+        </div>
+
+        <div class="hw-worksheet-section">
+          <h2 class="hw-worksheet-heading">Current homework (preview)</h2>
+          <p class="hw-worksheet-intro">Fill in the blanks below. Use <strong>Print</strong> for a paper copy. Answers save automatically in this browser.</p>
+          <form id="hw-demo-worksheet" class="hw-worksheet" lang="ja">
+            <p class="hw-worksheet__line">
+              <span class="hw-worksheet__label">①</span>
+              昨日は何を<input class="hw-blank" type="text" name="q1" aria-label="answer 1" autocomplete="off">しましたか。
+            </p>
+            <p class="hw-worksheet__line">
+              <span class="hw-worksheet__label">②</span>
+              マクドナルドで<input class="hw-blank hw-blank--wide" type="text" name="q2" aria-label="answer 2" autocomplete="off">を食べました。
+            </p>
+            <p class="hw-worksheet__line">
+              <span class="hw-worksheet__label">③</span>
+              私は<input class="hw-blank" type="text" name="q3" aria-label="answer 3" autocomplete="off">が好きです。
+            </p>
+            <p class="hw-worksheet__line">
+              <span class="hw-worksheet__label">④</span>
+              <input class="hw-blank hw-blank--wide" type="text" name="q4" aria-label="answer 4" autocomplete="off">に帰りたいです。
+            </p>
+            <div class="hw-worksheet__actions">
+              <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
+              <button type="submit" class="btn btn--primary">Submit (demo)</button>
+            </div>
+            <p id="hw-save-status" class="hw-worksheet__status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+        <p class="subpage-back">
+          <a class="btn btn--ghost" href="/homework.html">← Homework info &amp; plans</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <div id="hw-platform-toast" class="hw-platform-toast" role="status" aria-live="polite"></div>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
+    </div>
+  </footer>
+
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-platform.js" defer></script>
+</body>
+</html>

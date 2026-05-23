@@ -1,0 +1,16 @@
+{
+  "name": "japanese-language-mentor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Japanese Language Mentor — professional Japanese teaching website",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250508.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.93.0"
+  }
+}

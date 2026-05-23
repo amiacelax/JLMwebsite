@@ -1,0 +1,4 @@
+# Large source files — host on R2 / YouTube, not Workers assets (25 MiB max)
+videos/
+*.mov
+*.mp4

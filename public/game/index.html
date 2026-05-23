@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Village prototype — learn Japanese through play">
+  <title>Village prototype — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/game/game.css">
+</head>
+<body class="game-body">
+  <header class="game-header">
+    <h1>Village — <span id="level-label">Level 0 — どうぞ</span></h1>
+    <a href="/games.html">← Games / design notes</a>
+  </header>
+
+  <div class="game-wrap">
+    <div id="toast" aria-live="polite"></div>
+    <canvas id="game-canvas" width="640" height="448" aria-label="Game world"></canvas>
+
+    <div id="level-clear-overlay" class="level-clear-overlay" hidden>
+      <div class="level-clear-box" role="dialog" aria-labelledby="level-clear-title">
+        <p id="level-clear-title" class="level-clear-box__title">Level <span id="level-clear-num">1</span> clear</p>
+        <p class="level-clear-box__jp">おめでとう！</p>
+        <button type="button" class="level-clear-box__btn" id="level-clear-ok">OK</button>
+      </div>
+    </div>
+
+    <div id="dialogue-overlay" hidden>
+      <div class="dialogue-box" role="dialog" aria-labelledby="dialogue-speaker">
+        <p id="dialogue-speaker"></p>
+        <div id="dialogue-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="game-hud">
+    <div class="hud-row">
+      <span id="map-label">Village</span>
+      <span>·</span>
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
+      <span><kbd>E</kbd> talk / gather</span>
+      <span id="hud-forest-hint">→ forest · ← village</span>
+    </div>
+    <div id="held-label">Holding: nothing</div>
+    <div id="inventory" aria-label="Inventory"></div>
+    <p class="game-help">Tap or <kbd>E</kbd> to continue dialogue · Tap underlined words for home base notes</p>
+  </div>
+
+  <section class="level-select" aria-label="Levels">
+    <h2 class="level-select__heading">Levels</h2>
+    <div id="level-grid" class="level-grid"></div>
+  </section>
+
+  <div id="home-base" hidden>
+    <div class="home-base-panel" role="dialog" aria-labelledby="hb-word">
+      <h3 id="hb-word"></h3>
+      <h4>Meaning</h4>
+      <p id="hb-meaning"></p>
+      <h4>Patterns</h4>
+      <ul id="hb-patterns"></ul>
+      <h4>Examples</h4>
+      <ul id="hb-examples"></ul>
+      <button type="button" id="hb-close">Close</button>
+    </div>
+  </div>
+
+  <script src="/game/data.js"></script>
+  <script src="/game/dialogue.js"></script>
+  <script src="/game/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Copy to .dev.vars (gitignored) for local wrangler dev:
+#   copy .dev.vars.example .dev.vars
+#
+# Create a webhook in #website-inquiries (channel ID 1507209734095241266):
+#   Edit Channel → Integrations → Webhooks → New Webhook
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
+DISCORD_CHANNEL_ID=1507209734095241266

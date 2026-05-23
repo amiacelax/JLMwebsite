@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Homework Hub — custom Japanese homework, lesson follow-ups, and subscriber hub">
+  <meta name="theme-color" content="#1a2744">
+  <title>Homework Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework" data-promo-page="Homework">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="nav__brand" href="/">
+        <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
+        <span class="nav__brand-text">Japanese Language Mentor</span>
+      </a>
+      <div class="nav__toolbar">
+        <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+        </button>
+      </div>
+      <div class="nav__menu" id="nav-menu">
+        <div class="nav__links-wrap">
+          <ul class="nav__links">
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/#contact">Contact</a></li>
+          </ul>
+          <ul class="nav__links nav__links--secondary">
+            <li><a href="/games.html">Games</a></li>
+            <li><a href="/homework.html" aria-current="page">Homework Hub</a></li>
+            <li><a href="/courses.html">Courses</a></li>
+          </ul>
+        </div>
+        <a class="btn btn--primary btn--sm nav__cta" href="/#contact">Book a Lesson</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="subpage__main">
+    <section class="section subpage-hero">
+      <div class="container container--wide">
+        <div class="section__header section__header--center">
+          <p class="section__eyebrow">Homework Hub</p>
+          <h1 class="section__title">Homework hub</h1>
+          <p class="section__desc">Custom assignments tied to <em>your</em> lessons — fillable in the browser or printable. Built from what we actually covered, not generic worksheets.</p>
+          <p class="section__desc">Pitch accent checker coming soon.</p>
+        </div>
+
+        <div class="hw-login-inlay-wrap">
+          <div class="hw-login-inlay" aria-label="Student login">
+            <h2 class="hw-login-inlay__title">Log in</h2>
+
+            <div id="hw-login-fields">
+              <form id="hw-login-form" class="hw-login-inlay__form" autocomplete="username">
+                <div class="hw-login-inlay__field">
+                  <label for="hw-username">Discord username</label>
+                  <input type="text" id="hw-username" name="username" required autocomplete="username" placeholder="e.g. japaneselanguagementor">
+                </div>
+                <div class="hw-login-inlay__field">
+                  <label for="hw-password">Password</label>
+                  <input type="password" id="hw-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                </div>
+                <div class="hw-login-inlay__extras">
+                  <label class="hw-login-inlay__remember">
+                    <input type="checkbox" id="hw-remember" name="remember">
+                    <span>Remember me</span>
+                  </label>
+                </div>
+                <button type="submit" class="hw-login-inlay__submit">Log in</button>
+                <p id="hw-login-error" class="hw-login-inlay__error" hidden role="alert"></p>
+                <p class="hw-login-inlay__note">Subscriber accounts only.</p>
+              </form>
+            </div>
+
+            <div id="hw-logged-in-bar" class="hw-login-inlay__logged-in" hidden>
+              <p class="hw-login-inlay__signed-in">Signed in as <strong id="hw-logged-in-name"></strong></p>
+              <button type="button" class="hw-login-inlay__submit" id="hw-go-platform">Go to your hub</button>
+              <button type="button" class="btn btn--ghost btn--full" id="hw-landing-logout">Log out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paywall / marketing (visible when logged out) -->
+        <div id="hw-gate" class="hw-gate">
+          <div class="hw-about subpage-notes subpage-notes--wide">
+            <h2>What is Homework Hub?</h2>
+            <p>A subscription for learners who want expert-made homework and language advice without booking a full private lesson every week. After each lesson recording, you get short practice that matches what we did — plus access to your lesson video when it’s ready.</p>
+            <ul>
+              <li>Homework drafted from your lesson (AI-assisted, <strong>always reviewed by JD</strong> before you see it)</li>
+              <li>Fill-in-the-blank style sheets in the browser — type answers like a PDF form</li>
+              <li>Discord ping when homework and YouTube lesson links are ready</li>
+              <li>Optional: request extra homework ($2, reviewed the same way)</li>
+            </ul>
+          </div>
+
+          <h2 class="hw-plans-heading">Choose your pace</h2>
+          <div class="hw-plans">
+            <article class="hw-plan">
+              <p class="hw-plan__price"><span class="hw-plan__amount">$5</span><span class="hw-plan__period">/mo</span></p>
+              <h3 class="hw-plan__title">Monthly</h3>
+              <p class="hw-plan__desc">Homework + language advice <strong>once a month</strong>.</p>
+              <ul class="hw-plan__features">
+                <li>1 assignment cycle / month</li>
+                <li>Browser + print-friendly sheets</li>
+              </ul>
+              <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub">Subscribe — $5/mo</a>
+            </article>
+            <article class="hw-plan hw-plan--featured">
+              <p class="hw-plan__badge">Popular</p>
+              <p class="hw-plan__price"><span class="hw-plan__amount">$15</span><span class="hw-plan__period">/mo</span></p>
+              <h3 class="hw-plan__title">Weekly</h3>
+              <p class="hw-plan__desc">Homework + advice <strong>every week</strong>.</p>
+              <ul class="hw-plan__features">
+                <li>~4 assignment cycles / month</li>
+                <li>Best for steady progress</li>
+              </ul>
+              <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub">Subscribe — $15/mo</a>
+            </article>
+            <article class="hw-plan">
+              <p class="hw-plan__price"><span class="hw-plan__amount">$99</span><span class="hw-plan__period">/mo</span></p>
+              <h3 class="hw-plan__title">Daily (weekdays)</h3>
+              <p class="hw-plan__desc">Homework + advice <strong>every weekday</strong> for one month.</p>
+              <ul class="hw-plan__features">
+                <li>High-intensity month</li>
+                <li>For exam prep or immersion sprints</li>
+              </ul>
+              <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub">Subscribe — $99/mo</a>
+            </article>
+          </div>
+
+          <aside class="hw-extra">
+            <h2>Extra homework</h2>
+            <p>Need more practice between cycles? <strong>$2</strong> per extra sheet — AI draft, JD review, same fillable format. PayPal “buy” button coming; for now <a href="/#contact">message me</a>.</p>
+          </aside>
+
+          <details class="hw-pipeline">
+            <summary>How the backend will work (for subscribers)</summary>
+            <ol>
+              <li>Lesson recorded (OBS) → AI transcribes &amp; drafts short HW</li>
+              <li>Draft sent to JD on Discord for corrections</li>
+              <li>Approved HW + lesson posted to your account</li>
+              <li>Discord DM: homework ready + YouTube lesson link</li>
+            </ol>
+            <p class="hw-pipeline__note">Clips for social and full YouTube uploads use the same recording with separate rules — that automation comes in a later phase.</p>
+          </details>
+        </div>
+
+        <p class="subpage-back">
+          <a class="btn btn--ghost" href="/">← Back to home</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
+    </div>
+  </footer>
+
+  <div id="promo-modal" class="promo-modal" hidden>
+    <div class="promo-modal__backdrop" data-promo-close aria-hidden="true"></div>
+    <div class="promo-modal__dialog" role="dialog" aria-labelledby="promo-title" aria-modal="true">
+      <button class="promo-modal__close" type="button" data-promo-close aria-label="Close">×</button>
+      <h2 id="promo-title" class="promo-modal__title">Limited promotions &amp; discounts</h2>
+      <p class="promo-modal__desc">Enter your email to hear about deals and new features first.</p>
+      <form id="promo-form" class="promo-modal__form" novalidate>
+        <label class="visually-hidden" for="promo-email">Email</label>
+        <input type="email" id="promo-email" name="email" required placeholder="you@example.com" autocomplete="email">
+        <button class="btn btn--primary btn--full" type="submit" id="promo-submit">Get updates</button>
+      </form>
+      <p id="promo-status" class="promo-modal__status" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <script src="/js/hw-auth.js"></script>
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/promo-email.js" defer></script>
+  <script src="/js/hw-login.js" defer></script>
+</body>
+</html>

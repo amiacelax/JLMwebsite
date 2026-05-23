@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Japanese Language Mentor — Games (coming soon)">
+  <meta name="theme-color" content="#1a2744">
+  <title>Games — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
+</head>
+<body class="subpage" data-promo-page="Games">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="nav__brand" href="/">
+        <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
+        <span class="nav__brand-text">Japanese Language Mentor</span>
+      </a>
+      <div class="nav__toolbar">
+        <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+        </button>
+      </div>
+      <div class="nav__menu" id="nav-menu">
+        <div class="nav__links-wrap">
+          <ul class="nav__links">
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/#contact">Contact</a></li>
+          </ul>
+          <ul class="nav__links nav__links--secondary">
+            <li><a href="/games.html" aria-current="page">Games</a></li>
+            <li><a href="/homework.html">Homework Hub</a></li>
+            <li><a href="/courses.html">Courses</a></li>
+          </ul>
+        </div>
+        <a class="btn btn--primary btn--sm nav__cta" href="/#contact">Book a Lesson</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main" class="subpage__main">
+    <section class="section subpage-hero">
+      <div class="container subpage-hero__inner">
+        <p class="section__eyebrow">Games</p>
+        <h1 class="section__title">Browser game</h1>
+        <div class="subpage-notes subpage-notes--wide">
+          <p><strong>Status:</strong> Playable prototype — <a href="/game/">Open village prototype</a></p>
+
+          <h2>Core idea</h2>
+          <p>Japanese hidden inside a <em>game loop</em>, not quizzes with graphics. Playing = using the language. Wrong answers give feedback (“惜しい！”), not hard fails. Optional clickable words show <strong>your</strong> home-base notes (patterns + examples), not a dictionary wall.</p>
+        </div>
+        <a class="btn btn--primary" href="/game/">Play prototype</a>
+        <a class="btn btn--ghost" href="/">← Back to home</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
+    </div>
+  </footer>
+
+  <div id="promo-modal" class="promo-modal" hidden>
+    <div class="promo-modal__backdrop" data-promo-close aria-hidden="true"></div>
+    <div class="promo-modal__dialog" role="dialog" aria-labelledby="promo-title" aria-modal="true">
+      <button class="promo-modal__close" type="button" data-promo-close aria-label="Close">×</button>
+      <h2 id="promo-title" class="promo-modal__title">Limited promotions &amp; discounts</h2>
+      <p class="promo-modal__desc">Enter your email to hear about deals and new features first.</p>
+      <form id="promo-form" class="promo-modal__form" novalidate>
+        <label class="visually-hidden" for="promo-email">Email</label>
+        <input type="email" id="promo-email" name="email" required placeholder="you@example.com" autocomplete="email">
+        <button class="btn btn--primary btn--full" type="submit" id="promo-submit">Get updates</button>
+      </form>
+      <p id="promo-status" class="promo-modal__status" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/promo-email.js" defer></script>
+</body>
+</html>

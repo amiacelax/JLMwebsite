@@ -1,0 +1,15 @@
+name = "japanese-language-mentor"
+main = "src/index.ts"
+compatibility_date = "2026-05-20"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
+
+[vars]
+# #website-inquiries — contact + promo webhooks must post here
+DISCORD_CHANNEL_ID = "1507209734095241266"
