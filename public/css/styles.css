@@ -2203,6 +2203,70 @@ body.subpage--platform .hw-platform-bar {
   line-height: 2.2;
 }
 
+.hw-worksheet__meta {
+  margin-bottom: 1.25rem;
+  font-family: Inter, sans-serif;
+}
+
+.hw-worksheet__meta-date {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-worksheet__meta-title {
+  margin: 0.25rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-worksheet__section {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hw-worksheet__section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.hw-worksheet__section-title {
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-green);
+}
+
+.hw-worksheet__section-intro {
+  margin: 0 0 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.hw-conj-hint {
+  display: inline;
+  margin: 0 0.2rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.hw-worksheet__content {
+  display: inline;
+}
+
+.hw-lesson-playlist {
+  margin-top: 0.5rem;
+}
+
 .hw-worksheet__line {
   margin: 0 0 1rem;
 }
@@ -2259,12 +2323,16 @@ body.subpage--platform .hw-platform-bar {
 
 @media print {
   .site-header,
+  .hw-platform-bar,
+  .hw-platform-grid,
   .hw-login-inlay-wrap,
   .hw-gate,
   .hw-dashboard,
   .hw-worksheet__actions,
   .hw-worksheet-intro,
   .hw-worksheet-heading,
+  .hw-worksheet__meta,
+  .hw-worksheet__section-intro,
   .site-footer,
   .promo-modal,
   .subpage-back,
@@ -2492,9 +2560,15 @@ a.course-card {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .courses-locked-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .courses-locked-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

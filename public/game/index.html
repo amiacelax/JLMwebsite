@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Village prototype — learn Japanese through play">
   <title>Village prototype — Japanese Language Mentor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,13 +12,16 @@
 </head>
 <body class="game-body">
   <header class="game-header">
-    <h1>Village — <span id="level-label">Level 0 — どうぞ</span></h1>
-    <a href="/games.html">← Games / design notes</a>
+    <h1 class="game-header__title">Village — <span id="level-label">Level 0 — どうぞ</span></h1>
+    <a class="game-header__back" href="/games.html">← Games</a>
   </header>
 
+  <main class="game-main">
   <div class="game-wrap">
     <div id="toast" aria-live="polite"></div>
-    <canvas id="game-canvas" width="640" height="448" aria-label="Game world"></canvas>
+    <div class="game-canvas-wrap">
+      <canvas id="game-canvas" width="640" height="448" aria-label="Game world"></canvas>
+    </div>
 
     <div id="level-clear-overlay" class="level-clear-overlay" hidden>
       <div class="level-clear-box" role="dialog" aria-labelledby="level-clear-title">
@@ -36,23 +39,35 @@
     </div>
   </div>
 
+  <div id="touch-controller" class="touch-controller" hidden aria-label="Touch controls">
+    <div class="touch-dpad" role="group" aria-label="Move">
+      <button type="button" class="touch-btn touch-btn--up" data-dir="up" aria-label="Up">▲</button>
+      <button type="button" class="touch-btn touch-btn--left" data-dir="left" aria-label="Left">◀</button>
+      <button type="button" class="touch-btn touch-btn--right" data-dir="right" aria-label="Right">▶</button>
+      <button type="button" class="touch-btn touch-btn--down" data-dir="down" aria-label="Down">▼</button>
+    </div>
+    <button type="button" class="touch-btn touch-btn--action" id="touch-action" aria-label="Talk or gather">E</button>
+  </div>
+
   <div class="game-hud">
     <div class="hud-row">
       <span id="map-label">Village</span>
       <span>·</span>
-      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
-      <span><kbd>E</kbd> talk / gather</span>
+      <span class="hud-keys-desktop"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
+      <span class="hud-keys-desktop"><kbd>E</kbd> talk / gather</span>
+      <span class="hud-keys-touch">On-screen pad + E</span>
       <span id="hud-forest-hint">→ forest · ← village</span>
     </div>
     <div id="held-label">Holding: nothing</div>
     <div id="inventory" aria-label="Inventory"></div>
-    <p class="game-help">Tap or <kbd>E</kbd> to continue dialogue · Tap underlined words for home base notes</p>
+    <p class="game-help">Use on-screen controls or <kbd>WASD</kbd> · <kbd>E</kbd> / Action to talk · Tap dialogue to continue</p>
   </div>
 
   <section class="level-select" aria-label="Levels">
     <h2 class="level-select__heading">Levels</h2>
     <div id="level-grid" class="level-grid"></div>
   </section>
+  </main>
 
   <div id="home-base" hidden>
     <div class="home-base-panel" role="dialog" aria-labelledby="hb-word">

@@ -13,6 +13,10 @@
       password: "demo",
       displayName: "japaneselanguagementor",
     },
+    benm: {
+      password: "demo",
+      displayName: "Ben M",
+    },
   };
 
   function normalizeUsername(raw) {

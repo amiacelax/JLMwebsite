@@ -596,8 +596,9 @@
     if (!npc && !node) return;
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.font = "11px sans-serif";
+    const actionLabel = shouldUseTouchControls() ? "Action" : "E";
     const msg =
-      npc ? "[E] Talk" : state.currentLevel >= 1 ? "[E] Gather" : "";
+      npc ? "[" + actionLabel + "] Talk" : state.currentLevel >= 1 ? "[" + actionLabel + "] Gather" : "";
     if (!msg) return;
     const px = state.player.x + state.player.w / 2;
     ctx.fillText(msg, px - 22, state.player.y - 8);
@@ -620,6 +621,82 @@
     requestAnimationFrame(loop);
   }
 
+  const MOVE_KEY_ALIASES = {
+    up: ["w", "ArrowUp"],
+    down: ["s", "ArrowDown"],
+    left: ["a", "ArrowLeft"],
+    right: ["d", "ArrowRight"],
+  };
+
+  function setMoveDir(dir, active) {
+    const aliases = MOVE_KEY_ALIASES[dir];
+    if (!aliases) return;
+    for (const k of aliases) {
+      keys[k] = active;
+      keys[k.toLowerCase()] = active;
+    }
+  }
+
+  function shouldUseTouchControls() {
+    if (window.matchMedia("(pointer: coarse)").matches) return true;
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function setupTouchControls() {
+    const panel = document.getElementById("touch-controller");
+    if (!panel) return;
+
+    function refreshVisibility() {
+      const show = shouldUseTouchControls();
+      panel.hidden = !show;
+      panel.setAttribute("aria-hidden", show ? "false" : "true");
+    }
+
+    refreshVisibility();
+    window.matchMedia("(max-width: 768px)").addEventListener("change", refreshVisibility);
+    window.matchMedia("(pointer: coarse)").addEventListener("change", refreshVisibility);
+
+    function bindDirectionButton(btn) {
+      const dir = btn.dataset.dir;
+      if (!dir) return;
+
+      const press = (e) => {
+        e.preventDefault();
+        btn.setPointerCapture(e.pointerId);
+        setMoveDir(dir, true);
+        btn.classList.add("touch-btn--active");
+      };
+
+      const release = () => {
+        setMoveDir(dir, false);
+        btn.classList.remove("touch-btn--active");
+      };
+
+      btn.addEventListener("pointerdown", press);
+      btn.addEventListener("pointerup", release);
+      btn.addEventListener("pointercancel", release);
+      btn.addEventListener("lostpointercapture", release);
+    }
+
+    panel.querySelectorAll("[data-dir]").forEach(bindDirectionButton);
+
+    const actionBtn = document.getElementById("touch-action");
+    if (actionBtn) {
+      actionBtn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        actionBtn.classList.add("touch-btn--active");
+      });
+      actionBtn.addEventListener("pointerup", (e) => {
+        e.preventDefault();
+        actionBtn.classList.remove("touch-btn--active");
+        interact();
+      });
+      actionBtn.addEventListener("pointercancel", () => {
+        actionBtn.classList.remove("touch-btn--active");
+      });
+    }
+  }
+
   function setupInput() {
     window.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
@@ -638,6 +715,7 @@
       keys[e.key] = false;
       keys[e.key.toLowerCase()] = false;
     });
+    setupTouchControls();
   }
 
   function init() {

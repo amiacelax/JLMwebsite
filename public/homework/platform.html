@@ -31,8 +31,8 @@
       </a>
       <div class="nav__toolbar">
         <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
-          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg>
-          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
           <span class="nav__toggle-bar"></span>
@@ -77,22 +77,19 @@
           <section class="hw-platform-card">
             <h2 class="hw-platform-card__title">Assignments</h2>
             <p class="hw-platform-card__desc">Homework from your lessons, after JD review.</p>
-            <ul class="hw-platform-card__list">
+            <ul class="hw-platform-card__list" id="hw-assignment-list">
               <li class="hw-platform-card__row hw-platform-card__row--empty">
-                <span>No assignments yet</span>
-                <button type="button" class="btn btn--ghost btn--sm" disabled>Open</button>
-              </li>
-              <li class="hw-platform-card__row hw-platform-card__row--empty">
-                <span>—</span>
+                <span>Loading…</span>
                 <button type="button" class="btn btn--ghost btn--sm" disabled>Open</button>
               </li>
             </ul>
           </section>
 
           <section class="hw-platform-card">
-            <h2 class="hw-platform-card__title">Latest lesson</h2>
-            <p class="hw-platform-card__desc">YouTube link when your recording is uploaded.</p>
-            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="Lesson videos will link here after upload.">Watch lesson (coming soon)</button>
+            <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+            <p class="hw-platform-card__desc" id="hw-lesson-meta">YouTube — full lesson recording.</p>
+            <a class="btn btn--ghost btn--full" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+            <a class="hw-lesson-playlist btn btn--ghost btn--sm btn--full" id="hw-playlist-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
           </section>
 
           <section class="hw-platform-card">
@@ -114,32 +111,10 @@
           </section>
         </div>
 
-        <div class="hw-worksheet-section">
-          <h2 class="hw-worksheet-heading">Current homework (preview)</h2>
-          <p class="hw-worksheet-intro">Fill in the blanks below. Use <strong>Print</strong> for a paper copy. Answers save automatically in this browser.</p>
-          <form id="hw-demo-worksheet" class="hw-worksheet" lang="ja">
-            <p class="hw-worksheet__line">
-              <span class="hw-worksheet__label">①</span>
-              昨日は何を<input class="hw-blank" type="text" name="q1" aria-label="answer 1" autocomplete="off">しましたか。
-            </p>
-            <p class="hw-worksheet__line">
-              <span class="hw-worksheet__label">②</span>
-              マクドナルドで<input class="hw-blank hw-blank--wide" type="text" name="q2" aria-label="answer 2" autocomplete="off">を食べました。
-            </p>
-            <p class="hw-worksheet__line">
-              <span class="hw-worksheet__label">③</span>
-              私は<input class="hw-blank" type="text" name="q3" aria-label="answer 3" autocomplete="off">が好きです。
-            </p>
-            <p class="hw-worksheet__line">
-              <span class="hw-worksheet__label">④</span>
-              <input class="hw-blank hw-blank--wide" type="text" name="q4" aria-label="answer 4" autocomplete="off">に帰りたいです。
-            </p>
-            <div class="hw-worksheet__actions">
-              <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
-              <button type="submit" class="btn btn--primary">Submit (demo)</button>
-            </div>
-            <p id="hw-save-status" class="hw-worksheet__status" role="status" aria-live="polite"></p>
-          </form>
+        <div class="hw-worksheet-section" id="hw-worksheet-section">
+          <h2 class="hw-worksheet-heading" id="hw-worksheet-heading">Current homework</h2>
+          <p class="hw-worksheet-intro" id="hw-worksheet-intro">Loading worksheet…</p>
+          <div id="hw-worksheet-mount"></div>
         </div>
 
         <p class="subpage-back">
@@ -158,6 +133,7 @@
   </footer>
 
   <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-worksheet.js" defer></script>
   <script src="/js/hw-platform.js" defer></script>
 </body>
 </html>
