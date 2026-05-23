@@ -1496,9 +1496,16 @@ body.is-nav-open {
     width: 100%;
   }
 
+  .meet__cta-row,
+  .services__cta-row {
+    justify-items: center;
+  }
+
   .meet__cta-row .service-cta,
   .services__cta-row .service-cta {
-    width: 100%;
+    width: min(100%, 20rem);
+    padding: 0.9rem 1rem;
+    gap: 0.15rem;
   }
 
   .pricing-banner {
