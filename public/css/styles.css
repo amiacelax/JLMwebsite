@@ -1487,6 +1487,18 @@ body.is-nav-open {
     gap: 0.5rem;
   }
 
+  .hero__cta-card {
+    align-items: center;
+    justify-content: center;
+    min-height: 4.25rem;
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
+
+  .hero__cta-label {
+    line-height: 1.25;
+  }
+
   .meet__body-head {
     flex-direction: column;
     align-items: stretch;
