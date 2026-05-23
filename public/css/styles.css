@@ -2512,6 +2512,12 @@ a.course-card {
   }
 }
 
+@media (min-width: 1024px) {
+  .courses-locked-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .courses-bundle-banner {
   margin-bottom: 2rem;
 }
