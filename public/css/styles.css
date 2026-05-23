@@ -1484,7 +1484,12 @@ body.is-nav-open {
 
   .hero__cta-grid {
     grid-template-columns: 1fr;
+    justify-items: center;
     gap: 0.5rem;
+  }
+
+  .hero__cta-card {
+    width: min(100%, 20rem);
   }
 
   .meet__body-head {
