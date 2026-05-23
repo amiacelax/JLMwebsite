@@ -1490,7 +1490,9 @@ body.is-nav-open {
   .hero__cta-card {
     align-items: center;
     justify-content: center;
-    min-height: 4.25rem;
+    justify-self: center;
+    width: min(100%, 18rem);
+    min-height: 4rem;
     padding: 1rem 1.25rem;
     text-align: center;
   }
