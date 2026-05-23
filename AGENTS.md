@@ -12,7 +12,7 @@
 ## Commands
 
 ```bash
-npm run dev      # local :8787
+npm run dev      # local :8787 with Wrangler live reload
 npm run deploy   # production
 ```
 

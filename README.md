@@ -10,6 +10,7 @@ npm run dev
 ```
 
 Open [http://localhost:8787](http://localhost:8787) to preview locally.
+The dev server uses Wrangler live reload, so HTML pages refresh automatically when local files change.
 
 ## Deploy
 
