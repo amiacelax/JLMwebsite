@@ -1652,7 +1652,7 @@ body.is-modal-open {
   }
 
   .hero__cta-card {
-    width: min(100%, 20rem);
+    width: min(100%, 16.5rem);
   }
 
   .meet__body-head {
@@ -1711,7 +1711,6 @@ body.subpage--platform .hw-platform-bar {
 /* Responsive */
 @media (min-width: 640px) {
   .nav__brand-text { display: inline; }
-  .hero__cta-grid { grid-template-columns: repeat(3, 1fr); }
   .portfolio__highlights { grid-template-columns: repeat(4, 1fr); }
   .hw-breakdown-grid { grid-template-columns: repeat(3, 1fr); }
   .pricing-banner {
@@ -1784,6 +1783,8 @@ body.subpage--platform .hw-platform-bar {
   }
 
   .hero__content { align-self: center; }
+
+  .hero__cta-grid { grid-template-columns: repeat(3, 1fr); }
 
   .hero__visual {
     min-height: clamp(28rem, calc(100vh - var(--header-height) - 4.5rem), 44rem);
