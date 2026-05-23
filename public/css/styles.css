@@ -1487,6 +1487,20 @@ body.is-nav-open {
     gap: 0.5rem;
   }
 
+  .hero__cta-card {
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+    width: min(100%, 18rem);
+    min-height: 4rem;
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
+
+  .hero__cta-label {
+    line-height: 1.25;
+  }
+
   .meet__body-head {
     flex-direction: column;
     align-items: stretch;
@@ -2495,6 +2509,12 @@ a.course-card {
 @media (min-width: 768px) {
   .courses-locked-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .courses-locked-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
