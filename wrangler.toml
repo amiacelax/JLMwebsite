@@ -13,3 +13,5 @@ enabled = true
 [vars]
 # #website-inquiries — contact + promo webhooks must post here
 DISCORD_CHANNEL_ID = "1507209734095241266"
+# #homework-submissions (or your HW channel) — homework submit webhook must post here
+DISCORD_HOMEWORK_CHANNEL_ID = "1507650471836258404"

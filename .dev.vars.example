@@ -5,3 +5,7 @@
 #   Edit Channel → Integrations → Webhooks → New Webhook
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
 DISCORD_CHANNEL_ID=1507209734095241266
+
+# Homework submissions — create webhook in channel 1507650471836258404
+DISCORD_HOMEWORK_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_HW_ID/YOUR_HW_TOKEN
+DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404

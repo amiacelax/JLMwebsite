@@ -3,8 +3,10 @@
   "title": "～がほしい vs ～に～たい・～がたい",
   "date": "2026-05-22",
   "level": "Low-Intermediate",
+  "register": "casual",
   "studentLabel": "Ben M",
-  "sourceVideo": "Ben M Test.mp4",
+  "lessonName": "2026-05-22 Ben M 24",
+  "sourceVideo": "2026-05-22 Ben M 24.mp4",
   "youtubeUrl": "https://youtu.be/0LaGZZttAK0",
   "status": "published",
   "forSale": false,
@@ -13,52 +15,101 @@
     {
       "id": "grammar",
       "title": "Section 1 — Grammar point",
-      "instructions": "Fill in the blank with the correct grammar form. Use the hint in parentheses (dictionary form · conjugation).",
+      "instructions": "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
       "mode": "grammar-blank",
+      "tenseBubbles": ["Now-Later", "Past"],
+      "activeTense": "Now-Later",
       "items": [
         {
           "id": "s1-1",
           "parts": [
             { "type": "text", "value": "トイレに" },
-            { "type": "blank", "name": "s1-1", "wide": true, "answer": "行きたい" },
-            { "type": "text", "value": "。" },
-            { "type": "hint", "dictionary": "いく", "conjugation": "たい" }
+            {
+              "type": "blank",
+              "name": "s1-1",
+              "wide": true,
+              "answer": "行きたい",
+              "hint": { "dictionary": "いく", "conjugation": "たい" }
+            },
+            { "type": "text", "value": "。" }
           ]
         },
         {
           "id": "s1-2",
           "parts": [
             { "type": "text", "value": "コーヒーが" },
-            { "type": "blank", "name": "s1-2", "wide": true, "answer": "飲みたい" },
-            { "type": "text", "value": "。" },
-            { "type": "hint", "dictionary": "のむ", "conjugation": "たい" }
+            {
+              "type": "blank",
+              "name": "s1-2",
+              "wide": true,
+              "answer": "飲みたい",
+              "hint": { "dictionary": "のむ", "conjugation": "たい" }
+            },
+            { "type": "text", "value": "。" }
           ]
         },
         {
           "id": "s1-3",
           "parts": [
-            { "type": "text", "value": "新しい車が" },
-            { "type": "blank", "name": "s1-3", "wide": true, "answer": "ほしい" },
-            { "type": "text", "value": "。" },
-            { "type": "hint", "dictionary": "ほしい", "conjugation": "plain" }
+            {
+              "type": "text",
+              "ruby": [
+                { "text": "新", "rt": "あたら" },
+                { "text": "しい" },
+                { "text": "車", "rt": "くるま" },
+                { "text": "が" }
+              ]
+            },
+            {
+              "type": "blank",
+              "name": "s1-3",
+              "wide": true,
+              "answer": "ほしい",
+              "hint": { "dictionary": "ほしい", "conjugation": "plain" }
+            },
+            { "type": "text", "value": "。" }
           ]
         },
         {
           "id": "s1-4",
           "parts": [
-            { "type": "text", "value": "もう家に" },
-            { "type": "blank", "name": "s1-4", "wide": true, "answer": "帰りたい" },
-            { "type": "text", "value": "。" },
-            { "type": "hint", "dictionary": "かえる", "conjugation": "たい" }
+            {
+              "type": "text",
+              "ruby": [
+                { "text": "もう" },
+                { "text": "家", "rt": "うち" },
+                { "text": "に" }
+              ]
+            },
+            {
+              "type": "blank",
+              "name": "s1-4",
+              "wide": true,
+              "answer": "帰りたい",
+              "hint": { "dictionary": "かえる", "conjugation": "たい" }
+            },
+            { "type": "text", "value": "。" }
           ]
         },
         {
           "id": "s1-5",
+          "negative": true,
           "parts": [
-            { "type": "text", "value": "彼女が" },
-            { "type": "blank", "name": "s1-5", "wide": true, "answer": "ほしい" },
-            { "type": "text", "value": "。" },
-            { "type": "hint", "dictionary": "ほしい", "conjugation": "plain" }
+            {
+              "type": "text",
+              "ruby": [
+                { "text": "彼女", "rt": "かのじょ" },
+                { "text": "が" }
+              ]
+            },
+            {
+              "type": "blank",
+              "name": "s1-5",
+              "wide": true,
+              "answer": "ほしくない",
+              "hint": { "dictionary": "ほしい", "conjugation": "ない" }
+            },
+            { "type": "text", "value": "。" }
           ]
         }
       ]
@@ -72,42 +123,75 @@
         {
           "id": "s2-1",
           "parts": [
-            { "type": "blank", "name": "s2-1", "wide": true },
-            { "type": "text", "value": "やめたい。" },
-            { "type": "hint", "dictionary": "やめる", "conjugation": "たい" }
+            {
+              "type": "blank",
+              "name": "s2-1",
+              "wide": true,
+              "hint": { "dictionary": "やめる", "conjugation": "たい" }
+            },
+            { "type": "text", "value": "やめたい。" }
           ]
         },
         {
           "id": "s2-2",
           "parts": [
-            { "type": "blank", "name": "s2-2", "wide": true },
-            { "type": "text", "value": "がほしい。" },
-            { "type": "hint", "dictionary": "ほしい", "conjugation": "plain" }
+            {
+              "type": "blank",
+              "name": "s2-2",
+              "wide": true,
+              "hint": { "dictionary": "ほしい", "conjugation": "plain" }
+            },
+            { "type": "text", "value": "がほしい。" }
           ]
         },
         {
           "id": "s2-3",
           "parts": [
             { "type": "text", "value": "また" },
-            { "type": "blank", "name": "s2-3", "wide": true },
-            { "type": "text", "value": "行きたい。" },
-            { "type": "hint", "dictionary": "いく", "conjugation": "たい" }
+            {
+              "type": "blank",
+              "name": "s2-3",
+              "wide": true,
+              "hint": { "dictionary": "いく", "conjugation": "たい" }
+            },
+            {
+              "type": "text",
+              "ruby": [
+                { "text": "行", "rt": "い" },
+                { "text": "きたい。" }
+              ]
+            }
           ]
         },
         {
           "id": "s2-4",
           "parts": [
-            { "type": "blank", "name": "s2-4", "wide": true },
-            { "type": "text", "value": "を食べたい。" },
-            { "type": "hint", "dictionary": "たべる", "conjugation": "たい" }
+            {
+              "type": "blank",
+              "name": "s2-4",
+              "wide": true,
+              "hint": { "dictionary": "たべる", "conjugation": "たい" }
+            },
+            {
+              "type": "text",
+              "ruby": [
+                { "text": "を" },
+                { "text": "食", "rt": "た" },
+                { "text": "べたい。" }
+              ]
+            }
           ]
         },
         {
           "id": "s2-5",
           "parts": [
-            { "type": "blank", "name": "s2-5", "wide": true },
-            { "type": "text", "value": "がほしい。" },
-            { "type": "hint", "dictionary": "ほしい", "conjugation": "plain" }
+            {
+              "type": "blank",
+              "name": "s2-5",
+              "wide": true,
+              "hint": { "dictionary": "ほしい", "conjugation": "plain" }
+            },
+            { "type": "text", "value": "がほしい。" }
           ]
         }
       ]

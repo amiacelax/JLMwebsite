@@ -13,16 +13,31 @@ YouTube: unlisted full lesson (link only on site, not hosted in repo)
 
 | Section | `mode` | Student fills | Hint shows |
 |---------|--------|---------------|------------|
-| **1** | `grammar-blank` | The grammar point only (e.g. 行きたい) | `(dictionary・conjugation)` e.g. `（いく・たい）` |
-| **2** | `context-blank` | Everything except the grammar (open-ended) | Same hint on the fixed grammar visible in the sentence |
+| **1** | `grammar-blank` | The grammar point only (e.g. 行きたい) | Under the blank: `（いく・たい）` |
+| **2** | `context-blank` | Everything except the grammar (open-ended) | Same — hint nested on the blank |
 
-Section 1 items may include `"answer"` on blanks for future auto-check (not shown to students yet).
+Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`, not shown to students).
+
+### Section 1 header (optional)
+
+- `"tenseBubbles": ["Now-Later", "Past"]` — two tense guides beside the section title (non-past vs past)
+- `"activeTense": "Now-Later"` — which pill is highlighted (guide only for now)
+
+### Negative items (optional)
+
+- `"negative": true` on an item — red `NEGATIVE` pill after the sentence; answer should be negative (e.g. `ほしくない`)
+- Hints omit conjugation when it is `たい` or `plain` — show `（いく）` not `（いく・たい）`; other tags like `ない` still show `（ほしい・ない）`
 
 ## Part types in `items[].parts`
 
 - `{ "type": "text", "value": "トイレに" }`
-- `{ "type": "blank", "name": "s1-1", "wide": true, "answer": "行きたい" }` — optional `answer` for Section 1
-- `{ "type": "hint", "dictionary": "いく", "conjugation": "たい" }`
+- `{ "type": "text", "ruby": [{ "text": "新", "rt": "あたら" }, { "text": "しい車が" }] }` — furigana above kanji
+- `{ "type": "blank", "name": "s1-1", "wide": true, "answer": "行きたい", "hint": { "dictionary": "いく", "conjugation": "たい" } }`
+- Legacy: `{ "type": "hint", "dictionary": "いく", "conjugation": "たい" }` after a blank still works (moved under the blank)
+
+## Speech register (optional)
+
+- `"register": "casual"` or `"polite"` — shows **Casual** / **Polite** pills on the worksheet; the lesson’s register is highlighted, the other is greyed out.
 
 ## Catalog fields
 
@@ -34,6 +49,18 @@ Section 1 items may include `"answer"` on blanks for future auto-check (not show
 ## Pilot
 
 - `2026-05-22-ben-m.json` — Ben M, ～がほしい vs ～に～たい・～がたい
-- Source: `E:\OBS Recording New\Ben M Test.mp4` (local only)
+- Lesson: `2026-05-22 Ben M 24` · source `E:\OBS Recording New\2026-05-22 Ben M 24.mp4` (local only)
 
 Replace `REPLACE_YOUTUBE_*` in JSON when the unlisted video is up.
+
+## Submit → Discord
+
+Students click **Submit homework**. The Worker posts to `#homework` channel (`DISCORD_HOMEWORK_CHANNEL_ID`).
+
+Secrets (production + `.dev.vars`):
+
+```bash
+wrangler secret put DISCORD_HOMEWORK_WEBHOOK_URL
+```
+
+Create the webhook in Discord for channel `1507650471836258404`.

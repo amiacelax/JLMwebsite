@@ -1,5 +1,5 @@
 {
-  "playlistUrl": "REPLACE_YOUTUBE_PLAYLIST",
+  "playlistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
   "assignments": [
     {
       "id": "2026-05-22-ben-m",
@@ -7,6 +7,7 @@
       "date": "2026-05-22",
       "level": "Low-Intermediate",
       "studentLabel": "Ben M",
+      "lessonName": "2026-05-22 Ben M 24",
       "students": ["benm", "japaneselanguagementor"],
       "youtubeUrl": "https://youtu.be/0LaGZZttAK0",
       "forSale": false,

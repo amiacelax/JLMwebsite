@@ -34,8 +34,9 @@
     return url && !String(url).startsWith("REPLACE_");
   }
 
-  function bindWorksheetSave(form, assignmentId) {
+  function bindWorksheetSave(form, assignmentMeta) {
     if (!form || !session.username) return;
+    const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll(".hw-blank");
     try {
@@ -55,10 +56,55 @@
       if (saveStatus) saveStatus.textContent = "Saved in your browser.";
     });
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (saveStatus) {
-        saveStatus.textContent = "Submitted — demo only (not sent to JD yet).";
+      const report = HwWorksheet.checkHomework(form);
+      HwWorksheet.renderCheckResults(form, report);
+      const { correct, total } = report.score;
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      const payload = HwWorksheet.buildSubmitPayload(
+        form,
+        {
+          username: session.username,
+          displayName: session.displayName,
+          assignmentId,
+          lessonName: assignmentMeta.lessonName,
+          title: assignmentMeta.title,
+          register: assignmentMeta.register,
+        },
+        report
+      );
+
+      try {
+        const res = await fetch("/api/homework-submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Submit failed.");
+        }
+        if (saveStatus) {
+          saveStatus.textContent =
+            data.message ||
+            (total > 0
+              ? "Submitted! Section 1: " + correct + "/" + total + ". JD received your answers."
+              : "Submitted! JD received your answers.");
+        }
+        showToast("Sent to JD");
+      } catch (err) {
+        if (saveStatus) {
+          saveStatus.textContent =
+            (err && err.message) ||
+            "Could not submit. Answers are still saved in this browser.";
+        }
+        showToast("Submit failed");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
       }
     });
   }
@@ -76,7 +122,7 @@
       const li = document.createElement("li");
       li.className = "hw-platform-card__row";
       const label = document.createElement("span");
-      label.textContent = (a.date || "") + " — " + (a.title || a.id);
+      label.textContent = a.lessonName || (a.date || "") + " — " + (a.title || a.id);
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn btn--ghost btn--sm";
@@ -115,7 +161,9 @@
     }
 
     if (lessonMeta && assignment) {
-      lessonMeta.textContent = assignment.date + " · " + (assignment.title || "");
+      lessonMeta.textContent =
+        assignment.lessonName ||
+        (assignment.date ? assignment.date + " · " : "") + (assignment.title || "");
     }
 
     if (playlistLink) {
@@ -178,11 +226,11 @@
     }
     if (intro) {
       intro.textContent =
-        "Fill in the blanks below. Use Print for a paper copy. Answers save automatically in this browser.";
+        "Fill in the blanks, then Submit homework. Section 1 is auto-checked; Section 2 is sent to JD on Discord.";
     }
 
     const form = HwWorksheet.render(mount, assignment);
-    bindWorksheetSave(form, assignment.id);
+    bindWorksheetSave(form, assignment);
   }
 
   loadHub();
