@@ -1489,7 +1489,10 @@ body.is-nav-open {
   }
 
   .hero__cta-card {
-    width: min(100%, 16.5rem);
+    justify-self: center;
+    width: 16.5rem;
+    max-width: calc(100vw - 2.5rem);
+    margin-inline: auto;
   }
 
   .meet__body-head {
