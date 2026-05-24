@@ -105,7 +105,7 @@ c:\JLM Website\
 
 ## Courses & PayPal (placeholders)
 
-Each `course-card` is an `<a>` to PayPal hosted-button URLs with `REPLACE_*` IDs in `hosted_button_id` (including `REPLACE_STRATEGY` for Language Learning Strategy). Bundle: `pricing-banner--link` → `REPLACE_BUNDLE`.
+Each course card has a `.course-card__status-link` PayPal unlock pill with `REPLACE_*` IDs in `hosted_button_id` (including `REPLACE_STRATEGY` and `REPLACE_JOB_INTERVIEWS`). The full card is not a link. Bundle: `pricing-banner--link` → `REPLACE_BUNDLE`.
 
 Replace IDs when real PayPal buttons exist; no Worker involvement yet.
 
