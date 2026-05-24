@@ -370,7 +370,7 @@
   function useSelectedSchedule() {
     if (!selectedScheduleSlot) return;
     const line =
-      "Preferred lesson time: " +
+      "Preferred time: " +
       selectedScheduleSlot.localDateLabel +
       " at " +
       selectedScheduleSlot.localTimeLabel +
@@ -384,7 +384,6 @@
         ? messageField.value.trim() + "\n\n" + line
         : line;
     }
-    preselectService("Private Lessons");
     closeSchedule();
     const contact = document.getElementById("contact");
     if (contact) scrollToSection(contact);

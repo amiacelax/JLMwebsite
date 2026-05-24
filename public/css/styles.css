@@ -1781,8 +1781,8 @@ body.is-modal-open {
 .form-status.is-error { color: var(--color-accent-hover); }
 
 .contact-schedule-link {
-  margin: 0.85rem 0 0;
-  text-align: center;
+  margin: 0.45rem 0 0;
+  text-align: left;
 }
 
 .contact-schedule-link__button {
