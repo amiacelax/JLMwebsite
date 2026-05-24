@@ -1245,6 +1245,141 @@ body.is-modal-open {
   margin-top: 1.25rem;
 }
 
+.lesson-scheduler-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.lesson-scheduler-modal[hidden] {
+  display: none;
+}
+
+.lesson-scheduler-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.lesson-scheduler-modal__dialog {
+  position: relative;
+  width: min(100%, 36rem);
+  max-height: min(86vh, 44rem);
+  overflow: auto;
+  padding: 1.5rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.lesson-scheduler-modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lesson-scheduler-modal__title {
+  margin: 0 2.25rem 0.65rem 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.lesson-scheduler-modal__desc,
+.lesson-scheduler-modal__timezone,
+.lesson-scheduler-modal__selected {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.lesson-scheduler-modal__desc {
+  margin: 0 0 0.75rem;
+}
+
+.lesson-scheduler-modal__timezone {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+}
+
+.lesson-scheduler-modal__group {
+  margin-bottom: 1.15rem;
+}
+
+.lesson-scheduler-modal__label {
+  margin: 0 0 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lesson-scheduler-date-grid,
+.lesson-scheduler-slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lesson-scheduler-date,
+.lesson-scheduler-slot {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition), transform var(--transition);
+}
+
+.lesson-scheduler-date:hover,
+.lesson-scheduler-slot:hover:not(:disabled) {
+  border-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+}
+
+.lesson-scheduler-date[aria-pressed="true"],
+.lesson-scheduler-slot[aria-pressed="true"] {
+  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent-hover);
+}
+
+.lesson-scheduler-slot--unavailable {
+  color: var(--color-text-faint);
+  background: transparent;
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.lesson-scheduler-modal__selected {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.lesson-scheduler-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
 .pricing-banner {
   display: flex;
   flex-direction: column;
@@ -1527,6 +1662,28 @@ body.is-modal-open {
 
 .form-status.is-success { color: #22c55e; }
 .form-status.is-error { color: var(--color-accent-hover); }
+
+.contact-schedule-link {
+  margin: 0.85rem 0 0;
+  text-align: center;
+}
+
+.contact-schedule-link__button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-hover);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.contact-schedule-link__button:hover {
+  color: #ff9a8e;
+}
 
 /* Footer */
 .site-footer {

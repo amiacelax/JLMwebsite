@@ -74,7 +74,7 @@ c:\JLM Website\
 
 | Page | Key UI | JS | Backend |
 |------|--------|-----|---------|
-| `index.html` | Contact form, services grid, **Watch a lesson** collapsible MP4 on Private Lessons card | `main.js` | `POST /api/contact` |
+| `index.html` | Contact form, services grid, lesson availability modal, **Watch a lesson** collapsible MP4 on Private Lessons card | `main.js` | `POST /api/contact` |
 | `games.html` | Links to `/game/`, promo modal | `subpage.js`, `promo-email.js` | `POST /api/promo-signup` |
 | `homework.html` | Tier plans, login inlay, paywall copy | `subpage.js`, `promo-email.js`, `hw-login.js`, `hw-auth.js` | promo API; login is **client-only** |
 | `homework/platform.html` | Worksheet demo, placeholder cards | `hw-auth.js`, `hw-platform.js`, `subpage.js` | None yet |

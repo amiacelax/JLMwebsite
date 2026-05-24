@@ -13,7 +13,26 @@
   const hwBreakdownModal = document.getElementById("hw-breakdown-modal");
   const hwBreakdownOpenBtns = document.querySelectorAll("[data-hw-breakdown-open]");
   const hwBreakdownCloseBtns = document.querySelectorAll("[data-hw-breakdown-close]");
+  const scheduleModal = document.getElementById("lesson-scheduler-modal");
+  const scheduleOpenBtns = document.querySelectorAll("[data-schedule-open]");
+  const scheduleCloseBtns = document.querySelectorAll("[data-schedule-close]");
+  const scheduleDateOptions = document.getElementById("lesson-scheduler-dates");
+  const scheduleSlotOptions = document.getElementById("lesson-scheduler-slots");
+  const scheduleTimezone = document.getElementById("lesson-scheduler-timezone");
+  const scheduleSelected = document.getElementById("lesson-scheduler-selected");
+  const scheduleUseBtn = document.getElementById("lesson-scheduler-use");
+  const messageField = document.getElementById("message");
   let lastFocusedBeforeModal = null;
+  let selectedScheduleDateIndex = 0;
+  let selectedScheduleSlot = null;
+
+  const scheduleAvailability = [
+    { offsetDays: 1, slots: [[9, 0, true], [10, 30, true], [18, 0, false], [20, 0, true]] },
+    { offsetDays: 2, slots: [[8, 30, false], [11, 0, true], [19, 30, true]] },
+    { offsetDays: 4, slots: [[9, 0, true], [13, 0, false], [18, 30, true]] },
+    { offsetDays: 5, slots: [[10, 0, true], [14, 0, true], [20, 30, false]] },
+    { offsetDays: 7, slots: [[8, 0, true], [12, 30, false], [19, 0, true]] },
+  ];
 
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -47,10 +66,17 @@
     navToggle?.setAttribute("aria-label", "Close menu");
   }
 
+  function updateModalBodyState() {
+    const modalOpen =
+      (hwBreakdownModal && !hwBreakdownModal.hidden) ||
+      (scheduleModal && !scheduleModal.hidden);
+    document.body.classList.toggle("is-modal-open", !!modalOpen);
+  }
+
   function closeHwBreakdown() {
     if (!hwBreakdownModal || hwBreakdownModal.hidden) return;
     hwBreakdownModal.hidden = true;
-    document.body.classList.remove("is-modal-open");
+    updateModalBodyState();
     if (lastFocusedBeforeModal instanceof HTMLElement) {
       lastFocusedBeforeModal.focus();
     }
@@ -61,8 +87,162 @@
     if (!hwBreakdownModal) return;
     lastFocusedBeforeModal = document.activeElement;
     hwBreakdownModal.hidden = false;
-    document.body.classList.add("is-modal-open");
+    updateModalBodyState();
     hwBreakdownModal.querySelector("[data-hw-breakdown-close]")?.focus();
+  }
+
+  function scheduleDateForOffset(offsetDays) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offsetDays);
+    return date;
+  }
+
+  function scheduleSlotDate(date, slot) {
+    const next = new Date(date);
+    next.setHours(slot[0], slot[1], 0, 0);
+    return next;
+  }
+
+  function formatScheduleDate(date) {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    }).format(date);
+  }
+
+  function formatScheduleTime(date) {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  function timezoneLabel() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "your local timezone";
+  }
+
+  function updateScheduleSelected() {
+    if (!scheduleSelected || !scheduleUseBtn) return;
+    if (!selectedScheduleSlot) {
+      scheduleSelected.textContent = "Select a date and time to add it to your message.";
+      scheduleUseBtn.disabled = true;
+      return;
+    }
+    scheduleSelected.textContent =
+      "Selected: " +
+      selectedScheduleSlot.dateLabel +
+      " at " +
+      selectedScheduleSlot.timeLabel +
+      " (" +
+      timezoneLabel() +
+      ")";
+    scheduleUseBtn.disabled = false;
+  }
+
+  function renderScheduleSlots() {
+    if (!scheduleSlotOptions) return;
+    scheduleSlotOptions.innerHTML = "";
+    selectedScheduleSlot = null;
+
+    const day = scheduleAvailability[selectedScheduleDateIndex] || scheduleAvailability[0];
+    const date = scheduleDateForOffset(day.offsetDays);
+    const dateLabel = formatScheduleDate(date);
+
+    day.slots.forEach((slot) => {
+      const slotDate = scheduleSlotDate(date, slot);
+      const timeLabel = formatScheduleTime(slotDate);
+      const available = !!slot[2];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "lesson-scheduler-slot" + (available ? "" : " lesson-scheduler-slot--unavailable");
+      btn.textContent = timeLabel + (available ? "" : " unavailable");
+      btn.disabled = !available;
+      btn.setAttribute("aria-pressed", "false");
+      if (available) {
+        btn.addEventListener("click", () => {
+          scheduleSlotOptions.querySelectorAll(".lesson-scheduler-slot").forEach((slotBtn) => {
+            slotBtn.setAttribute("aria-pressed", "false");
+          });
+          btn.setAttribute("aria-pressed", "true");
+          selectedScheduleSlot = { dateLabel, timeLabel };
+          updateScheduleSelected();
+        });
+      }
+      scheduleSlotOptions.appendChild(btn);
+    });
+
+    updateScheduleSelected();
+  }
+
+  function renderScheduleDates() {
+    if (!scheduleDateOptions) return;
+    scheduleDateOptions.innerHTML = "";
+    scheduleAvailability.forEach((day, index) => {
+      const date = scheduleDateForOffset(day.offsetDays);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lesson-scheduler-date";
+      btn.textContent = formatScheduleDate(date);
+      btn.setAttribute("aria-pressed", index === selectedScheduleDateIndex ? "true" : "false");
+      btn.addEventListener("click", () => {
+        selectedScheduleDateIndex = index;
+        scheduleDateOptions.querySelectorAll(".lesson-scheduler-date").forEach((dateBtn) => {
+          dateBtn.setAttribute("aria-pressed", "false");
+        });
+        btn.setAttribute("aria-pressed", "true");
+        renderScheduleSlots();
+      });
+      scheduleDateOptions.appendChild(btn);
+    });
+    renderScheduleSlots();
+  }
+
+  function closeSchedule() {
+    if (!scheduleModal || scheduleModal.hidden) return;
+    scheduleModal.hidden = true;
+    updateModalBodyState();
+    if (lastFocusedBeforeModal instanceof HTMLElement) {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
+  }
+
+  function openSchedule() {
+    if (!scheduleModal) return;
+    lastFocusedBeforeModal = document.activeElement;
+    selectedScheduleSlot = null;
+    scheduleModal.hidden = false;
+    updateModalBodyState();
+    if (scheduleTimezone) {
+      scheduleTimezone.textContent = "Timezone: " + timezoneLabel();
+    }
+    renderScheduleDates();
+    scheduleModal.querySelector("[data-schedule-close]")?.focus();
+  }
+
+  function useSelectedSchedule() {
+    if (!selectedScheduleSlot) return;
+    const line =
+      "Preferred lesson time: " +
+      selectedScheduleSlot.dateLabel +
+      " at " +
+      selectedScheduleSlot.timeLabel +
+      " (" +
+      timezoneLabel() +
+      ").";
+    if (messageField) {
+      messageField.value = messageField.value.trim()
+        ? messageField.value.trim() + "\n\n" + line
+        : line;
+    }
+    preselectService("Private Lessons");
+    closeSchedule();
+    const contact = document.getElementById("contact");
+    if (contact) scrollToSection(contact);
+    messageField?.focus();
   }
 
   navToggle?.addEventListener("click", () => {
@@ -78,6 +258,7 @@
     if (e.key !== "Escape") return;
     closeMenu();
     closeHwBreakdown();
+    closeSchedule();
   });
 
   function headerScrollOffset() {
@@ -110,6 +291,16 @@
   hwBreakdownCloseBtns.forEach((btn) => {
     btn.addEventListener("click", closeHwBreakdown);
   });
+
+  scheduleOpenBtns.forEach((btn) => {
+    btn.addEventListener("click", openSchedule);
+  });
+
+  scheduleCloseBtns.forEach((btn) => {
+    btn.addEventListener("click", closeSchedule);
+  });
+
+  scheduleUseBtn?.addEventListener("click", useSelectedSchedule);
 
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (e) => {
