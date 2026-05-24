@@ -29,13 +29,57 @@
   let selectedScheduleDateIndex = 0;
   let selectedScheduleSlot = null;
 
-  const scheduleAvailability = [
-    { offsetDays: 1, slots: [[9, 0, true], [10, 30, true], [18, 0, false], [20, 0, true]] },
-    { offsetDays: 2, slots: [[8, 30, false], [11, 0, true], [19, 30, true]] },
-    { offsetDays: 4, slots: [[9, 0, true], [13, 0, false], [18, 30, true]] },
-    { offsetDays: 5, slots: [[10, 0, true], [14, 0, true], [20, 30, false]] },
-    { offsetDays: 7, slots: [[8, 0, true], [12, 30, false], [19, 0, true]] },
-  ];
+  const JAPAN_TIMEZONE = "Asia/Tokyo";
+  const JAPAN_WEEKLY_AVAILABILITY = {
+    0: { label: "Sunday", note: "Japanese Sundays are unavailable.", slots: [] },
+    1: {
+      label: "Monday",
+      slots: [
+        [[10, 0], [11, 0]],
+        [[11, 15], [12, 15]],
+        [[12, 30], [13, 30]],
+        [[13, 45], [14, 45]],
+        [[22, 0], [23, 0]],
+      ],
+    },
+    2: {
+      label: "Tuesday",
+      slots: [
+        [[12, 15], [13, 15]],
+        [[13, 30], [14, 30]],
+        [[21, 15], [22, 15]],
+      ],
+    },
+    3: {
+      label: "Wednesday",
+      slots: [
+        [[11, 15], [12, 15]],
+        [[12, 30], [13, 30]],
+        [[13, 45], [14, 45]],
+        [[15, 0], [16, 0]],
+        [[21, 15], [22, 15]],
+      ],
+    },
+    4: { label: "Thursday", note: "Thursday sometimes opens up — ask me directly.", slots: [] },
+    5: {
+      label: "Friday",
+      slots: [
+        [[11, 15], [12, 15]],
+        [[12, 30], [13, 30]],
+        [[13, 45], [14, 45]],
+      ],
+    },
+    6: {
+      label: "Saturday",
+      note: "Makeup day for missed lessons.",
+      slots: [
+        [[10, 0], [11, 15]],
+        [[11, 30], [12, 30]],
+        [[12, 45], [13, 45]],
+        [[21, 15], [22, 15]],
+      ],
+    },
+  };
 
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -113,24 +157,20 @@
     jumpstartModal.querySelector("[data-jumpstart-close]")?.focus();
   }
 
-  function scheduleDateForOffset(offsetDays) {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + offsetDays);
-    return date;
-  }
-
-  function scheduleSlotDate(date, slot) {
-    const next = new Date(date);
-    next.setHours(slot[0], slot[1], 0, 0);
-    return next;
-  }
-
   function formatScheduleDate(date) {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "short",
       month: "short",
       day: "numeric",
+    }).format(date);
+  }
+
+  function formatJapanScheduleDate(date) {
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: JAPAN_TIMEZONE,
     }).format(date);
   }
 
@@ -145,6 +185,78 @@
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "your local timezone";
   }
 
+  function japanDateParts(date) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: JAPAN_TIMEZONE,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(date);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return {
+      year: Number(byType.year),
+      month: Number(byType.month),
+      day: Number(byType.day),
+    };
+  }
+
+  function addJapanDays(parts, days) {
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+    return {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+      day: date.getUTCDate(),
+    };
+  }
+
+  function dateFromJapanTime(parts, hour, minute) {
+    return new Date(Date.UTC(parts.year, parts.month - 1, parts.day, hour - 9, minute));
+  }
+
+  function japanWeekday(parts) {
+    return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+  }
+
+  function buildScheduleDays() {
+    const todayJapan = japanDateParts(new Date());
+    return Array.from({ length: 14 }, (_, offset) => {
+      const parts = addJapanDays(todayJapan, offset);
+      const weekday = japanWeekday(parts);
+      const availability = JAPAN_WEEKLY_AVAILABILITY[weekday] || JAPAN_WEEKLY_AVAILABILITY[0];
+      const slots = availability.slots.map(([start, end]) => {
+        const startDate = dateFromJapanTime(parts, start[0], start[1]);
+        const endDate = dateFromJapanTime(parts, end[0], end[1]);
+        return {
+          available: true,
+          localDateLabel: formatScheduleDate(startDate),
+          localTimeLabel: formatScheduleTime(startDate) + "–" + formatScheduleTime(endDate),
+          japanTimeLabel:
+            availability.label +
+            " " +
+            String(start[0]).padStart(2, "0") +
+            ":" +
+            String(start[1]).padStart(2, "0") +
+            "–" +
+            String(end[0]).padStart(2, "0") +
+            ":" +
+            String(end[1]).padStart(2, "0") +
+            " JST",
+        };
+      });
+      const representativeDate =
+        slots[0]?.localDateLabel ||
+        formatScheduleDate(dateFromJapanTime(parts, 12, 0));
+
+      return {
+        localDateLabel: representativeDate,
+        japanDateLabel: formatJapanScheduleDate(dateFromJapanTime(parts, 12, 0)),
+        japanDayLabel: availability.label,
+        note: availability.note || "",
+        slots,
+      };
+    });
+  }
+
   function updateScheduleSelected() {
     if (!scheduleSelected || !scheduleUseBtn) return;
     if (!selectedScheduleSlot) {
@@ -154,12 +266,14 @@
     }
     scheduleSelected.textContent =
       "Selected: " +
-      selectedScheduleSlot.dateLabel +
+      selectedScheduleSlot.localDateLabel +
       " at " +
-      selectedScheduleSlot.timeLabel +
+      selectedScheduleSlot.localTimeLabel +
       " (" +
       timezoneLabel() +
-      ")";
+      "). Japan time: " +
+      selectedScheduleSlot.japanTimeLabel +
+      ".";
     scheduleUseBtn.disabled = false;
   }
 
@@ -168,31 +282,41 @@
     scheduleSlotOptions.innerHTML = "";
     selectedScheduleSlot = null;
 
-    const day = scheduleAvailability[selectedScheduleDateIndex] || scheduleAvailability[0];
-    const date = scheduleDateForOffset(day.offsetDays);
-    const dateLabel = formatScheduleDate(date);
+    const day = buildScheduleDays()[selectedScheduleDateIndex] || buildScheduleDays()[0];
 
-    day.slots.forEach((slot) => {
-      const slotDate = scheduleSlotDate(date, slot);
-      const timeLabel = formatScheduleTime(slotDate);
-      const available = !!slot[2];
+    if (!day.slots.length) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className =
-        "lesson-scheduler-slot" + (available ? "" : " lesson-scheduler-slot--unavailable");
-      btn.textContent = timeLabel + (available ? "" : " unavailable");
-      btn.disabled = !available;
+      btn.className = "lesson-scheduler-slot lesson-scheduler-slot--unavailable";
+      btn.textContent = day.note || "No preset availability";
+      btn.disabled = true;
       btn.setAttribute("aria-pressed", "false");
-      if (available) {
-        btn.addEventListener("click", () => {
-          scheduleSlotOptions.querySelectorAll(".lesson-scheduler-slot").forEach((slotBtn) => {
-            slotBtn.setAttribute("aria-pressed", "false");
-          });
-          btn.setAttribute("aria-pressed", "true");
-          selectedScheduleSlot = { dateLabel, timeLabel };
-          updateScheduleSelected();
+      scheduleSlotOptions.appendChild(btn);
+      updateScheduleSelected();
+      return;
+    }
+
+    if (day.note) {
+      const note = document.createElement("p");
+      note.className = "lesson-scheduler-note";
+      note.textContent = day.note;
+      scheduleSlotOptions.appendChild(note);
+    }
+
+    day.slots.forEach((slot) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lesson-scheduler-slot";
+      btn.textContent = slot.localTimeLabel;
+      btn.setAttribute("aria-pressed", "false");
+      btn.addEventListener("click", () => {
+        scheduleSlotOptions.querySelectorAll(".lesson-scheduler-slot").forEach((slotBtn) => {
+          slotBtn.setAttribute("aria-pressed", "false");
         });
-      }
+        btn.setAttribute("aria-pressed", "true");
+        selectedScheduleSlot = slot;
+        updateScheduleSelected();
+      });
       scheduleSlotOptions.appendChild(btn);
     });
 
@@ -202,12 +326,13 @@
   function renderScheduleDates() {
     if (!scheduleDateOptions) return;
     scheduleDateOptions.innerHTML = "";
-    scheduleAvailability.forEach((day, index) => {
-      const date = scheduleDateForOffset(day.offsetDays);
+    const scheduleDays = buildScheduleDays();
+    scheduleDays.forEach((day, index) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "lesson-scheduler-date";
-      btn.textContent = formatScheduleDate(date);
+      btn.className =
+        "lesson-scheduler-date" + (day.slots.length ? "" : " lesson-scheduler-date--unavailable");
+      btn.textContent = day.localDateLabel + " · " + day.japanDayLabel + " JST";
       btn.setAttribute("aria-pressed", index === selectedScheduleDateIndex ? "true" : "false");
       btn.addEventListener("click", () => {
         selectedScheduleDateIndex = index;
@@ -249,12 +374,14 @@
     if (!selectedScheduleSlot) return;
     const line =
       "Preferred lesson time: " +
-      selectedScheduleSlot.dateLabel +
+      selectedScheduleSlot.localDateLabel +
       " at " +
-      selectedScheduleSlot.timeLabel +
+      selectedScheduleSlot.localTimeLabel +
       " (" +
       timezoneLabel() +
-      ").";
+      "). Japan time: " +
+      selectedScheduleSlot.japanTimeLabel +
+      ".";
     if (messageField) {
       messageField.value = messageField.value.trim()
         ? messageField.value.trim() + "\n\n" + line

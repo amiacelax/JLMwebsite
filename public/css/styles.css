@@ -1465,12 +1465,25 @@ body.is-modal-open {
   border-color: var(--color-accent-hover);
 }
 
+.lesson-scheduler-date--unavailable {
+  color: var(--color-text-faint);
+  border-style: dashed;
+}
+
 .lesson-scheduler-slot--unavailable {
   color: var(--color-text-faint);
   background: transparent;
   border-style: dashed;
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.lesson-scheduler-note {
+  flex-basis: 100%;
+  margin: 0 0 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .lesson-scheduler-modal__selected {
