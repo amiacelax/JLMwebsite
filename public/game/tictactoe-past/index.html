@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Tic Tac Toe — conjugate past, て-form, and い/な-adjectives to place each mark">
+  <title>Tic Tac Toe — conjugation — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/game/tictactoe-past/tictactoe.css">
+</head>
+<body class="ttt-body">
+  <header class="ttt-header">
+    <div>
+      <h1 class="ttt-header__title">Tic Tac Toe — conjugation</h1>
+      <p class="ttt-header__sub">You are X · Computer is O</p>
+    </div>
+    <a class="ttt-header__back" href="/games.html">← Games</a>
+  </header>
+
+  <main class="ttt-main">
+    <div class="ttt-board-wrap" id="ttt-board-wrap">
+    <div class="ttt-board" id="ttt-board" role="grid" aria-label="Tic tac toe board">
+      <button type="button" class="ttt-cell" data-i="0" role="gridcell" aria-label="Empty cell 1"></button>
+      <button type="button" class="ttt-cell" data-i="1" role="gridcell" aria-label="Empty cell 2"></button>
+      <button type="button" class="ttt-cell" data-i="2" role="gridcell" aria-label="Empty cell 3"></button>
+      <button type="button" class="ttt-cell" data-i="3" role="gridcell" aria-label="Empty cell 4"></button>
+      <button type="button" class="ttt-cell" data-i="4" role="gridcell" aria-label="Empty cell 5"></button>
+      <button type="button" class="ttt-cell" data-i="5" role="gridcell" aria-label="Empty cell 6"></button>
+      <button type="button" class="ttt-cell" data-i="6" role="gridcell" aria-label="Empty cell 7"></button>
+      <button type="button" class="ttt-cell" data-i="7" role="gridcell" aria-label="Empty cell 8"></button>
+      <button type="button" class="ttt-cell" data-i="8" role="gridcell" aria-label="Empty cell 9"></button>
+    </div>
+    </div>
+
+    <div class="ttt-conj" id="ttt-conj-panel">
+      <div class="ttt-conj__head">
+        <span class="ttt-form-pill" id="ttt-form-pill">て-form</span>
+        <span class="ttt-kind-badge" id="ttt-kind-badge">Verb</span>
+      </div>
+      <p class="ttt-verb" id="ttt-verb" lang="ja">—</p>
+      <p class="ttt-hint" id="ttt-hint">Type your answer, then choose a square.</p>
+      <div class="ttt-reveal" id="ttt-reveal" hidden>
+        <p class="ttt-reveal__label">Answer</p>
+        <p class="ttt-reveal__answer" id="ttt-reveal-answer" lang="ja"></p>
+      </div>
+      <div class="ttt-input-row">
+        <input type="text" class="ttt-input" id="ttt-input" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. のんだ">
+        <button type="button" class="ttt-btn" id="ttt-check">Check</button>
+      </div>
+    </div>
+
+    <p class="ttt-cpu-line" id="ttt-cpu-line" hidden></p>
+
+    <div class="ttt-actions">
+      <button type="button" class="ttt-btn ttt-btn--ghost" id="ttt-reset">New game</button>
+    </div>
+
+    <ul class="ttt-legend">
+      <li>Random prompts: <strong>verb past</strong>, <strong>て-form</strong>, <strong>い-adjectives</strong>, <strong>な-adjectives</strong>.</li>
+      <li>Prompts use kanji with furigana where natural; hiragana or kanji OK for your answer.</li>
+      <li>After 2 misses: <strong>One more try and I’ll show you the answer.</strong></li>
+      <li>On the 3rd miss the answer appears — press <strong>Continue</strong> to place your mark.</li>
+    </ul>
+  </main>
+
+  <div id="ttt-toast" class="ttt-toast" role="status" aria-live="assertive"></div>
+
+  <script src="/game/tictactoe-past/tictactoe.js" defer></script>
+</body>
+</html>

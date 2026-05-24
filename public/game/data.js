@@ -42,7 +42,6 @@ window.GAME_DATA = {
       grammar: "好き",
       subtitle: "好き / 好きじゃない",
       playable: true,
-      requiresLevel: 0,
     },
     {
       id: 2,

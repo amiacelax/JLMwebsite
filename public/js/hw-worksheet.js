@@ -40,15 +40,25 @@
   }
 
   function renderRubySegment(seg) {
-    if (seg.rt) {
+    const text = seg.text || "";
+    const hasKanji = /[\u4e00-\u9fff々]/.test(text);
+    const rtDiffers =
+      seg.rt &&
+      normalizeAnswer(seg.rt) !== normalizeAnswer(text) &&
+      !/^[\u3041-\u309fー]+$/.test(text);
+    if (seg.rt && hasKanji && rtDiffers) {
       const ruby = document.createElement("ruby");
-      ruby.appendChild(document.createTextNode(seg.text));
+      ruby.className = "ja-ruby";
+      ruby.appendChild(document.createTextNode(text));
       const rt = document.createElement("rt");
       rt.textContent = seg.rt;
       ruby.appendChild(rt);
       return ruby;
     }
-    return document.createTextNode(seg.text);
+    const plain = document.createElement("span");
+    plain.className = "ja-okuri";
+    plain.textContent = text;
+    return plain;
   }
 
   function renderTextPart(part) {
