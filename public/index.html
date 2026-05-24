@@ -228,7 +228,10 @@
               <li>Detailed corrections</li>
               <li>Self-learner friendly</li>
             </ul>
-            <a class="service-card__link" href="#contact" data-service="Homework Hub">Join Homework Hub →</a>
+            <div class="service-card__actions">
+              <button class="service-card__link service-card__link-button" type="button" data-hw-breakdown-open>See tier breakdown</button>
+              <a class="service-card__link" href="#contact" data-service="Homework Hub">Join Homework Hub →</a>
+            </div>
           </article>
           <article class="service-card">
             <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$299</span></p>
@@ -316,6 +319,50 @@
     </section>
 
   </main>
+
+  <div class="hw-breakdown-modal" id="hw-breakdown-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-breakdown-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-breakdown-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-breakdown-close aria-label="Close Homework Hub breakdown">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-breakdown-title">Choose your homework pace</h2>
+      <p class="hw-breakdown-modal__desc">A quick visual breakdown of the subscription tiers — no page hopping needed.</p>
+      <div class="hw-breakdown-grid">
+        <article class="hw-breakdown-card">
+          <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+          <h3>Monthly</h3>
+          <ul>
+            <li>1 assignment cycle / month</li>
+            <li>1 extra homework request / month</li>
+            <li>Extra HW after that: $0.99 each</li>
+          </ul>
+        </article>
+        <article class="hw-breakdown-card hw-breakdown-card--featured">
+          <p class="hw-breakdown-card__badge">Popular</p>
+          <p class="hw-breakdown-card__price">$15<span>/mo</span></p>
+          <h3>Weekly</h3>
+          <ul>
+            <li>~4 assignment cycles / month</li>
+            <li>Immersion Now prompts</li>
+            <li>Video response on each assignment</li>
+          </ul>
+        </article>
+        <article class="hw-breakdown-card">
+          <p class="hw-breakdown-card__price">$99<span>/mo</span></p>
+          <h3>Daily weekdays</h3>
+          <ul>
+            <li>High-intensity assignment pace</li>
+            <li>Immersion Now daily strategy prompts</li>
+            <li>Unlimited extra homework requests</li>
+          </ul>
+        </article>
+      </div>
+      <div class="hw-breakdown-modal__actions">
+        <a class="btn btn--primary" href="#contact" data-service="Homework Hub" data-hw-breakdown-close>Ask about Homework Hub</a>
+        <button class="btn btn--ghost" type="button" data-hw-breakdown-close>Close</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container site-footer__inner">

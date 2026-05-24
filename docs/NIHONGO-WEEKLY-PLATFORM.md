@@ -77,9 +77,24 @@ OBS lesson recording
 - **Student DMs** — Discord Bot (not webhook) with OAuth bot token; map `discordUserId` in D1.
 - Message template: “Homework ready” + link to `/homework/assignments/{id}` + YouTube lesson link.
 
-## Phase 5 — Extra homework ($2)
+## Phase 5 — Extra homework allowances / $0.99 overage
 
 - PayPal “Buy Now” or Subscription button → webhook (PayPal IPN or newer webhooks) → Worker creates `extra_hw_request` row → same AI draft → your review → deliver.
+- Current product notes: Monthly includes 1 extra HW request/month, Daily includes unlimited extra HW, and overage requests are $0.99 each or an upgrade prompt.
+- Higher tiers should support "Immersion Now" prompts: small, immediate immersion/input tasks attached to the assignment so students can use the grammar in real context right away.
+- Higher tiers should support personalized video responses for each submitted assignment; JD explains mistakes and grammar points so students get visual/audio reinforcement in addition to written corrections.
+
+## Course idea notes — Language Learning Strategy
+
+- Course promise: explain the strategies JD used to become a native-level Japanese speaker.
+- Angle: many of the same strategies are also used naturally by children, even if adult learners usually do not think to copy them.
+- Potential modules:
+  - Immersion setup that works immediately instead of waiting until "advanced" level.
+  - Pattern noticing: collect repeated grammar, pronunciation, and phrasing from real input.
+  - High-repetition listening and shadowing before full analytical understanding.
+  - Output loops: speak/write, notice the gap, get correction, repeat.
+  - Memory through multiple senses: reading, listening, speaking, handwriting/typing, and video explanations.
+  - Build a personal environment where Japanese becomes the default for small daily tasks.
 
 ## Phase 6 — Video automation (clips + YouTube)
 
