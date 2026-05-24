@@ -62,6 +62,58 @@ body.ttt-body {
   padding: 0 1rem 2rem;
 }
 
+.ttt-mode {
+  margin: 0 0 1rem;
+  padding: 0.8rem;
+  border: 1px solid #3d4a6b;
+  border-radius: 12px;
+  background: rgba(37, 42, 69, 0.78);
+}
+
+.ttt-mode__heading {
+  margin: 0 0 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9aa3b8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ttt-mode__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.ttt-mode__btn {
+  padding: 0.55rem 0.6rem;
+  border: 1px solid #3d4a6b;
+  border-radius: 999px;
+  background: #1a1a2e;
+  color: #c5cad6;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.ttt-mode__btn:hover {
+  border-color: #e85d5d;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.ttt-mode__btn[aria-pressed="true"] {
+  background: rgba(232, 93, 93, 0.18);
+  border-color: #e85d5d;
+  color: #fff;
+}
+
 .ttt-board-wrap {
   width: 100%;
   max-width: 320px;
