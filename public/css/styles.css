@@ -3190,14 +3190,9 @@ body.hw-role-teacher .hw-worksheet-section {
   text-align: center;
 }
 
-a.course-card {
-  text-decoration: none;
-  color: inherit;
-}
-
 .course-card--locked {
   opacity: 0.92;
-  cursor: pointer;
+  cursor: default;
   transition:
     opacity 0.25s ease,
     border-color 0.25s ease,
@@ -3206,7 +3201,7 @@ a.course-card {
 }
 
 .course-card--locked:hover,
-.course-card--locked:focus-visible {
+.course-card--locked:focus-within {
   opacity: 1;
   border-color: var(--color-green);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -3226,7 +3221,7 @@ a.course-card {
 }
 
 .course-card--locked:hover .course-card__lock,
-.course-card--locked:focus-visible .course-card__lock {
+.course-card--locked:focus-within .course-card__lock {
   color: var(--color-green);
 }
 
@@ -3250,19 +3245,19 @@ a.course-card {
 }
 
 .course-card--locked:hover .course-card__lock-svg--locked,
-.course-card--locked:focus-visible .course-card__lock-svg--locked {
+.course-card--locked:focus-within .course-card__lock-svg--locked {
   opacity: 0;
   transform: scale(0.9) rotate(6deg);
 }
 
 .course-card--locked:hover .course-card__lock-svg--unlocked,
-.course-card--locked:focus-visible .course-card__lock-svg--unlocked {
+.course-card--locked:focus-within .course-card__lock-svg--unlocked {
   opacity: 1;
   transform: scale(1) rotate(0deg);
 }
 
 .course-card--locked:hover .course-card__lock-shackle,
-.course-card--locked:focus-visible .course-card__lock-shackle {
+.course-card--locked:focus-within .course-card__lock-shackle {
   animation: course-lock-open 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
   transform-origin: 12px 11px;
 }
@@ -3334,6 +3329,16 @@ a.course-card {
     background 0.25s ease;
 }
 
+.course-card__status-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.course-card__status-link:focus-visible {
+  outline: 2px solid var(--color-green);
+  outline-offset: 3px;
+}
+
 .course-card__status-text {
   grid-area: 1 / 1;
   transition: opacity 0.2s ease, transform 0.25s ease;
@@ -3352,20 +3357,20 @@ a.course-card {
 }
 
 .course-card--locked:hover .course-card__status,
-.course-card--locked:focus-visible .course-card__status {
+.course-card--locked:focus-within .course-card__status {
   color: var(--color-green);
   border-color: var(--color-green);
   background: var(--color-green-soft);
 }
 
 .course-card--locked:hover .course-card__status-text--locked,
-.course-card--locked:focus-visible .course-card__status-text--locked {
+.course-card--locked:focus-within .course-card__status-text--locked {
   opacity: 0;
   transform: translateY(-4px);
 }
 
 .course-card--locked:hover .course-card__status-text--unlock,
-.course-card--locked:focus-visible .course-card__status-text--unlock {
+.course-card--locked:focus-within .course-card__status-text--unlock {
   opacity: 1;
   transform: translateY(0);
 }
@@ -3378,7 +3383,7 @@ a.course-card {
   }
 
   .course-card--locked:hover .course-card__lock-shackle,
-  .course-card--locked:focus-visible .course-card__lock-shackle {
+  .course-card--locked:focus-within .course-card__lock-shackle {
     animation: none;
     transform: rotate(-22deg) translateY(-1px);
   }
