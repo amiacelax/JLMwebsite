@@ -13,6 +13,9 @@
   const hwBreakdownModal = document.getElementById("hw-breakdown-modal");
   const hwBreakdownOpenBtns = document.querySelectorAll("[data-hw-breakdown-open]");
   const hwBreakdownCloseBtns = document.querySelectorAll("[data-hw-breakdown-close]");
+  const jumpstartModal = document.getElementById("jumpstart-modal");
+  const jumpstartOpenBtns = document.querySelectorAll("[data-jumpstart-open]");
+  const jumpstartCloseBtns = document.querySelectorAll("[data-jumpstart-close]");
   const scheduleModal = document.getElementById("lesson-scheduler-modal");
   const scheduleOpenBtns = document.querySelectorAll("[data-schedule-open]");
   const scheduleCloseBtns = document.querySelectorAll("[data-schedule-close]");
@@ -69,6 +72,7 @@
   function updateModalBodyState() {
     const modalOpen =
       (hwBreakdownModal && !hwBreakdownModal.hidden) ||
+      (jumpstartModal && !jumpstartModal.hidden) ||
       (scheduleModal && !scheduleModal.hidden);
     document.body.classList.toggle("is-modal-open", !!modalOpen);
   }
@@ -89,6 +93,24 @@
     hwBreakdownModal.hidden = false;
     updateModalBodyState();
     hwBreakdownModal.querySelector("[data-hw-breakdown-close]")?.focus();
+  }
+
+  function closeJumpstart() {
+    if (!jumpstartModal || jumpstartModal.hidden) return;
+    jumpstartModal.hidden = true;
+    updateModalBodyState();
+    if (lastFocusedBeforeModal instanceof HTMLElement) {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
+  }
+
+  function openJumpstart() {
+    if (!jumpstartModal) return;
+    lastFocusedBeforeModal = document.activeElement;
+    jumpstartModal.hidden = false;
+    updateModalBodyState();
+    jumpstartModal.querySelector("[data-jumpstart-close]")?.focus();
   }
 
   function scheduleDateForOffset(offsetDays) {
@@ -258,6 +280,7 @@
     if (e.key !== "Escape") return;
     closeMenu();
     closeHwBreakdown();
+    closeJumpstart();
     closeSchedule();
   });
 
@@ -290,6 +313,14 @@
 
   hwBreakdownCloseBtns.forEach((btn) => {
     btn.addEventListener("click", closeHwBreakdown);
+  });
+
+  jumpstartOpenBtns.forEach((btn) => {
+    btn.addEventListener("click", openJumpstart);
+  });
+
+  jumpstartCloseBtns.forEach((btn) => {
+    btn.addEventListener("click", closeJumpstart);
   });
 
   scheduleOpenBtns.forEach((btn) => {

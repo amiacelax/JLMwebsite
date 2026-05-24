@@ -242,7 +242,10 @@
               <li>Structured progression</li>
               <li>Quick wins</li>
             </ul>
-            <a class="service-card__link" href="#contact" data-service="Japanese Jumpstart">Get in touch →</a>
+            <div class="service-card__actions">
+              <button class="service-card__link service-card__link-button" type="button" data-jumpstart-open>See 5-day plan</button>
+              <a class="service-card__link" href="#contact" data-service="Japanese Jumpstart">Get in touch →</a>
+            </div>
           </article>
         </div>
         <div class="pricing-banner">
@@ -363,6 +366,47 @@
       <div class="hw-breakdown-modal__actions">
         <a class="btn btn--primary" href="#contact" data-service="Homework Hub" data-hw-breakdown-close>Ask about Homework Hub</a>
         <button class="btn btn--ghost" type="button" data-hw-breakdown-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="jumpstart-modal" id="jumpstart-modal" hidden>
+    <div class="jumpstart-modal__backdrop" data-jumpstart-close aria-hidden="true"></div>
+    <div class="jumpstart-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="jumpstart-title">
+      <button class="jumpstart-modal__close" type="button" data-jumpstart-close aria-label="Close Japanese Jumpstart plan">×</button>
+      <p class="section__eyebrow">Japanese Jumpstart</p>
+      <h2 class="jumpstart-modal__title" id="jumpstart-title">5-day conversation roadmap</h2>
+      <p class="jumpstart-modal__desc">A focused sprint for getting useful Japanese into your mouth quickly, with each day building toward a real conversation.</p>
+      <div class="jumpstart-day-grid">
+        <article class="jumpstart-day-card">
+          <span class="jumpstart-day-card__num">Day 1</span>
+          <h3>Introduce yourself thoroughly</h3>
+          <p>Name, background, why you are learning, what you like, and how to sound natural instead of textbook-stiff.</p>
+        </article>
+        <article class="jumpstart-day-card">
+          <span class="jumpstart-day-card__num">Day 2</span>
+          <h3>Who, what, when, where, why, how</h3>
+          <p>Build question patterns so you can ask for information, keep a conversation moving, and understand what people ask you.</p>
+        </article>
+        <article class="jumpstart-day-card">
+          <span class="jumpstart-day-card__num">Day 3</span>
+          <h3>Actions and daily routines</h3>
+          <p>Use core verbs to explain what you do, what you did, what you want to do, and what you are planning next.</p>
+        </article>
+        <article class="jumpstart-day-card">
+          <span class="jumpstart-day-card__num">Day 4</span>
+          <h3>Needs, preferences, and opinions</h3>
+          <p>Say what you like, want, need, think, and feel so your Japanese starts expressing your actual personality.</p>
+        </article>
+        <article class="jumpstart-day-card">
+          <span class="jumpstart-day-card__num">Day 5</span>
+          <h3>Put it all together</h3>
+          <p>Guided conversation practice using the whole week: introductions, questions, answers, follow-ups, and repair phrases.</p>
+        </article>
+      </div>
+      <div class="jumpstart-modal__actions">
+        <a class="btn btn--primary" href="#contact" data-service="Japanese Jumpstart" data-jumpstart-close>Ask about Jumpstart</a>
+        <button class="btn btn--ghost" type="button" data-jumpstart-close>Close</button>
       </div>
     </div>
   </div>
