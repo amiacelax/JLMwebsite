@@ -168,7 +168,7 @@
   function formatJapanScheduleDate(date) {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "short",
-      month: "short",
+      month: "numeric",
       day: "numeric",
       timeZone: JAPAN_TIMEZONE,
     }).format(date);
@@ -219,7 +219,7 @@
 
   function buildScheduleDays() {
     const todayJapan = japanDateParts(new Date());
-    return Array.from({ length: 14 }, (_, offset) => {
+    return Array.from({ length: 7 }, (_, offset) => {
       const parts = addJapanDays(todayJapan, offset);
       const weekday = japanWeekday(parts);
       const availability = JAPAN_WEEKLY_AVAILABILITY[weekday] || JAPAN_WEEKLY_AVAILABILITY[0];
@@ -243,12 +243,9 @@
             " JST",
         };
       });
-      const representativeDate =
-        slots[0]?.localDateLabel ||
-        formatScheduleDate(dateFromJapanTime(parts, 12, 0));
 
       return {
-        localDateLabel: representativeDate,
+        dateBubbleLabel: formatJapanScheduleDate(dateFromJapanTime(parts, 12, 0)),
         japanDateLabel: formatJapanScheduleDate(dateFromJapanTime(parts, 12, 0)),
         japanDayLabel: availability.label,
         note: availability.note || "",
@@ -332,7 +329,7 @@
       btn.type = "button";
       btn.className =
         "lesson-scheduler-date" + (day.slots.length ? "" : " lesson-scheduler-date--unavailable");
-      btn.textContent = day.localDateLabel + " · " + day.japanDayLabel + " JST";
+      btn.textContent = day.dateBubbleLabel;
       btn.setAttribute("aria-pressed", index === selectedScheduleDateIndex ? "true" : "false");
       btn.addEventListener("click", () => {
         selectedScheduleDateIndex = index;
