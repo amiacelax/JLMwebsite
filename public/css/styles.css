@@ -1016,6 +1016,22 @@ body.is-nav-open {
   transition: color var(--transition);
 }
 
+.service-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.service-card__link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .service-card__link:hover {
   color: #ff9a8e;
 }
@@ -1096,6 +1112,137 @@ body.is-nav-open {
 
 [data-theme="light"] .service-card__lesson-summary:hover {
   color: #ff9a8e;
+}
+
+body.is-modal-open {
+  overflow: hidden;
+}
+
+.hw-breakdown-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.hw-breakdown-modal[hidden] {
+  display: none;
+}
+
+.hw-breakdown-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.hw-breakdown-modal__dialog {
+  position: relative;
+  width: min(100%, 56rem);
+  max-height: min(86vh, 48rem);
+  overflow: auto;
+  padding: 1.5rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.hw-breakdown-modal__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-breakdown-modal__title {
+  margin: 0 2.25rem 0.65rem 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+
+.hw-breakdown-modal__desc {
+  margin: 0 0 1.25rem;
+  color: var(--color-text-muted);
+}
+
+.hw-breakdown-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.hw-breakdown-card {
+  position: relative;
+  padding: 1.1rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.hw-breakdown-card--featured {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 1px var(--color-green-soft);
+}
+
+.hw-breakdown-card__badge {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  margin: 0;
+  padding: 0.18rem 0.5rem;
+  color: var(--color-green);
+  background: var(--color-green-soft);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hw-breakdown-card__price {
+  margin: 0 0 0.25rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-green);
+  line-height: 1;
+}
+
+.hw-breakdown-card__price span {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.hw-breakdown-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.hw-breakdown-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.hw-breakdown-card li {
+  margin-bottom: 0.3rem;
+}
+
+.hw-breakdown-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
 }
 
 .pricing-banner {
@@ -1554,6 +1701,7 @@ body.subpage--platform .hw-platform-bar {
   .nav__brand-text { display: inline; }
   .hero__cta-grid { grid-template-columns: repeat(3, 1fr); }
   .portfolio__highlights { grid-template-columns: repeat(4, 1fr); }
+  .hw-breakdown-grid { grid-template-columns: repeat(3, 1fr); }
   .pricing-banner {
     flex-direction: row;
     align-items: center;

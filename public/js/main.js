@@ -10,6 +10,10 @@
   const formStatus = document.getElementById("form-status");
   const submitBtn = document.getElementById("submit-btn");
   const yearEl = document.getElementById("year");
+  const hwBreakdownModal = document.getElementById("hw-breakdown-modal");
+  const hwBreakdownOpenBtns = document.querySelectorAll("[data-hw-breakdown-open]");
+  const hwBreakdownCloseBtns = document.querySelectorAll("[data-hw-breakdown-close]");
+  let lastFocusedBeforeModal = null;
 
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -43,6 +47,24 @@
     navToggle?.setAttribute("aria-label", "Close menu");
   }
 
+  function closeHwBreakdown() {
+    if (!hwBreakdownModal || hwBreakdownModal.hidden) return;
+    hwBreakdownModal.hidden = true;
+    document.body.classList.remove("is-modal-open");
+    if (lastFocusedBeforeModal instanceof HTMLElement) {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
+  }
+
+  function openHwBreakdown() {
+    if (!hwBreakdownModal) return;
+    lastFocusedBeforeModal = document.activeElement;
+    hwBreakdownModal.hidden = false;
+    document.body.classList.add("is-modal-open");
+    hwBreakdownModal.querySelector("[data-hw-breakdown-close]")?.focus();
+  }
+
   navToggle?.addEventListener("click", () => {
     if (navMenu?.classList.contains("is-open")) closeMenu();
     else openMenu();
@@ -53,7 +75,9 @@
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeMenu();
+    if (e.key !== "Escape") return;
+    closeMenu();
+    closeHwBreakdown();
   });
 
   function headerScrollOffset() {
@@ -78,6 +102,14 @@
   }
 
   window.jlmPreselectService = preselectService;
+
+  hwBreakdownOpenBtns.forEach((btn) => {
+    btn.addEventListener("click", openHwBreakdown);
+  });
+
+  hwBreakdownCloseBtns.forEach((btn) => {
+    btn.addEventListener("click", closeHwBreakdown);
+  });
 
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (e) => {
