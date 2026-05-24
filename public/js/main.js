@@ -279,6 +279,18 @@
     scheduleSlotOptions.innerHTML = "";
     selectedScheduleSlot = null;
 
+    if (selectedScheduleDateIndex == null) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lesson-scheduler-slot lesson-scheduler-slot--unavailable";
+      btn.textContent = "Select a date to see available times.";
+      btn.disabled = true;
+      btn.setAttribute("aria-pressed", "false");
+      scheduleSlotOptions.appendChild(btn);
+      updateScheduleSelected();
+      return;
+    }
+
     const day = buildScheduleDays()[selectedScheduleDateIndex] || buildScheduleDays()[0];
 
     if (!day.slots.length) {
@@ -307,6 +319,13 @@
       btn.textContent = slot.localTimeLabel;
       btn.setAttribute("aria-pressed", "false");
       btn.addEventListener("click", () => {
+        if (selectedScheduleSlot === slot) {
+          btn.setAttribute("aria-pressed", "false");
+          selectedScheduleSlot = null;
+          updateScheduleSelected();
+          return;
+        }
+
         scheduleSlotOptions.querySelectorAll(".lesson-scheduler-slot").forEach((slotBtn) => {
           slotBtn.setAttribute("aria-pressed", "false");
         });
@@ -332,11 +351,12 @@
       btn.textContent = day.dateBubbleLabel;
       btn.setAttribute("aria-pressed", index === selectedScheduleDateIndex ? "true" : "false");
       btn.addEventListener("click", () => {
-        selectedScheduleDateIndex = index;
+        const isSelected = selectedScheduleDateIndex === index;
+        selectedScheduleDateIndex = isSelected ? null : index;
         scheduleDateOptions.querySelectorAll(".lesson-scheduler-date").forEach((dateBtn) => {
           dateBtn.setAttribute("aria-pressed", "false");
         });
-        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-pressed", isSelected ? "false" : "true");
         renderScheduleSlots();
       });
       scheduleDateOptions.appendChild(btn);
