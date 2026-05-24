@@ -105,7 +105,7 @@ c:\JLM Website\
 
 ## Courses & PayPal (placeholders)
 
-Each `course-card` is an `<a>` to PayPal hosted-button URLs with `REPLACE_*` IDs in `hosted_button_id`. Bundle: `pricing-banner--link` → `REPLACE_BUNDLE`, copy “Save $100 on a bundle!”.
+Each `course-card` is an `<a>` to PayPal hosted-button URLs with `REPLACE_*` IDs in `hosted_button_id` (including `REPLACE_STRATEGY` for Language Learning Strategy). Bundle: `pricing-banner--link` → `REPLACE_BUNDLE`.
 
 Replace IDs when real PayPal buttons exist; no Worker involvement yet.
 
