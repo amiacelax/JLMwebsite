@@ -136,6 +136,29 @@
     "na-adj": "な-adjective",
   };
 
+  const MODE_META = {
+    random: {
+      label: "Random",
+      toast: "Random mode — all conjugation prompts.",
+      filter: () => true,
+    },
+    verb: {
+      label: "Verb past",
+      toast: "Verb past mode.",
+      filter: (prompt) => prompt.kind === "verb" && prompt.category === "past",
+    },
+    adjective: {
+      label: "Adjective past",
+      toast: "Adjective past mode.",
+      filter: (prompt) => prompt.kind !== "verb" && prompt.category === "past",
+    },
+    te: {
+      label: "て-form",
+      toast: "て-form mode.",
+      filter: (prompt) => prompt.category === "te",
+    },
+  };
+
   const WINS = [
     [0, 1, 2],
     [3, 4, 5],
@@ -162,9 +185,11 @@
   const resetBtn = document.getElementById("ttt-reset");
   const conjPanel = document.getElementById("ttt-conj-panel");
   const cpuLine = document.getElementById("ttt-cpu-line");
+  const modeButtons = [...document.querySelectorAll("[data-ttt-mode]")];
 
   let board = Array(9).fill("");
   let phase = "conjugate";
+  let currentMode = "random";
   let currentPrompt = null;
   let lastPromptId = "";
   let wrongCount = 0;
@@ -188,10 +213,16 @@
     return prompt.answers[0];
   }
 
+  function promptsForMode(mode) {
+    const meta = MODE_META[mode] || MODE_META.random;
+    const prompts = PROMPTS.filter(meta.filter);
+    return prompts.length ? prompts : PROMPTS;
+  }
+
   function pickPrompt() {
-    let pool = PROMPTS;
-    if (PROMPTS.length > 1 && lastPromptId) {
-      pool = PROMPTS.filter((p) => p.id !== lastPromptId);
+    let pool = promptsForMode(currentMode);
+    if (pool.length > 1 && lastPromptId) {
+      pool = pool.filter((p) => p.id !== lastPromptId);
     }
     const item = pool[Math.floor(Math.random() * pool.length)];
     lastPromptId = item.id;
@@ -255,6 +286,21 @@
       hintEl.textContent = "Answer shown above — press Continue to place your mark.";
     }
     showToast("Answer: " + answer, "reveal");
+  }
+
+  function updateModeButtons() {
+    modeButtons.forEach((btn) => {
+      const pressed = btn.getAttribute("data-ttt-mode") === currentMode;
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+    });
+  }
+
+  function setMode(mode) {
+    if (!MODE_META[mode] || mode === currentMode) return;
+    currentMode = mode;
+    updateModeButtons();
+    resetGame();
+    showToast(MODE_META[mode].toast, "ok");
   }
 
   function unlockPlacePhase() {
@@ -494,6 +540,10 @@
   });
   cells.forEach((btn, i) => btn.addEventListener("click", () => onCellClick(i)));
   resetBtn?.addEventListener("click", resetGame);
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setMode(btn.getAttribute("data-ttt-mode") || "random"));
+  });
 
+  updateModeButtons();
   resetGame();
 })();
