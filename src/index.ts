@@ -133,6 +133,7 @@ function validateContact(data: ContactPayload): string | null {
   if (!data.name?.trim()) return "Name is required.";
   if (!data.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
     return "A valid email is required.";
+  if (!data.service?.trim()) return "Service is required.";
   if (!data.message?.trim() || data.message.trim().length < 10)
     return "Message must be at least 10 characters.";
   return null;
