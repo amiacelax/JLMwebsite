@@ -145,6 +145,9 @@ ffmpeg -y -i "c:\External HD Copy\YouTube Edits\Da Vinci Export\Kash Lesson Comm
 |------|--------|---------|
 | `DISCORD_WEBHOOK_URL` | Secret / `.dev.vars` | Outbound Discord posts |
 | `DISCORD_CHANNEL_ID` | `wrangler.toml` [vars] | Validate webhook channel |
+| `DISCORD_HOMEWORK_WEBHOOK_URL` | Secret / `.dev.vars` | Homework submissions + photo upload notifications |
+| `DISCORD_HOMEWORK_CHANNEL_ID` | `wrangler.toml` [vars] | Validate homework webhook channel |
+| `HW_UPLOADS` | R2 binding (`jlm-homework-uploads`) | Stored typed submissions + printed-HW photo uploads |
 | `ASSETS` | Worker binding | Static files from `public/` |
 
 ---

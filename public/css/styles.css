@@ -2445,6 +2445,81 @@ body.subpage--platform .hw-platform-bar {
   font-style: italic;
 }
 
+.hw-photo-upload {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.hw-photo-upload__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-photo-upload__input {
+  width: 100%;
+  padding: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.hw-photo-upload__status {
+  min-height: 1.2rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-teacher-submissions {
+  margin-bottom: 1.75rem;
+}
+
+.hw-submission-list {
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.hw-submission-item {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-submission-item--empty p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.hw-submission-item__title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.hw-submission-item__meta,
+.hw-submission-item__summary,
+.hw-submission-item__key {
+  margin: 0 0 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.hw-submission-item__key {
+  margin-bottom: 0;
+  color: var(--color-text-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .hw-platform-toast {
   position: fixed;
   bottom: 1.5rem;
@@ -2774,6 +2849,8 @@ body.hw-role-teacher .hw-worksheet-section {
 }
 
 .hw-worksheet {
+  max-width: 100%;
+  overflow-x: auto;
   padding: 1.75rem 1.5rem;
   background: var(--color-bg-card);
   border: 2px solid var(--color-border);
@@ -3016,7 +3093,7 @@ body.hw-role-teacher .hw-worksheet-section {
   margin: 0 0.15rem;
   min-width: 6em;
   max-width: 100%;
-  border-radius: 2px 2px 0 0;
+  border-radius: 0.4rem 0.4rem 0.2rem 0.2rem;
   vertical-align: baseline;
 }
 
@@ -3061,6 +3138,35 @@ body.hw-role-teacher .hw-worksheet-section {
   color: #9e3a3a;
   border-bottom-color: #d48989;
   background: rgba(231, 120, 120, 0.12);
+}
+
+@media (max-width: 767px) {
+  .hw-worksheet {
+    padding: 1rem 0.85rem;
+    font-size: 1rem;
+    line-height: 2;
+  }
+
+  .hw-worksheet__meta-top {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .hw-worksheet__line {
+    display: block;
+  }
+
+  .hw-worksheet__label {
+    margin-right: 0.35rem;
+  }
+
+  .hw-blank {
+    min-width: min(6em, 58vw);
+  }
+
+  .hw-blank--wide {
+    min-width: min(10em, 72vw);
+  }
 }
 
 .hw-check-results {

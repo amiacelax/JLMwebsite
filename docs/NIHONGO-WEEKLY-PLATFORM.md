@@ -112,9 +112,12 @@ Separate worker/cron job; do **not** block HW on this.
 ## Fillable homework in browser
 
 - Implemented as HTML: Japanese text + `<input class="hw-blank">` / contenteditable spans.
-- Student answers: `localStorage` or POST to API when auth exists.
+- Student answers: `localStorage` while typing, then `POST /api/homework-submit` for Discord + R2 submission records when `HW_UPLOADS` is configured.
+- Printed-paper upload path: `POST /api/homework-photo-upload` stores the image in R2 and posts the image to Discord; teacher hub reads stored records with `GET /api/homework-submissions`.
 - **Print:** `@media print` hides nav/login; blanks show underline.
 - **PDF export (later):** print-to-PDF from browser, or server-side Puppeteer from same HTML.
+
+**Storage prerequisite:** Cloudflare R2 must be enabled and bucket `jlm-homework-uploads` must exist before deploying the R2-backed upload/submission branch.
 
 ## What not to do yet
 

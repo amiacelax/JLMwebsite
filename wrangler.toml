@@ -7,6 +7,10 @@ directory = "./public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
+[[r2_buckets]]
+binding = "HW_UPLOADS"
+bucket_name = "jlm-homework-uploads"
+
 [observability]
 enabled = true
 
