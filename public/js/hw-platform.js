@@ -360,19 +360,37 @@
         }
       };
     }
-    if (pillPrint && pillPrint.dataset.bound !== "true") {
-      pillPrint.dataset.bound = "true";
-      pillPrint.addEventListener("click", () => {
-        const form = document.getElementById("hw-worksheet-form");
-        if (!form) {
-          showToast("Homework is still loading — try again in a moment.");
-          return;
-        }
-        if (!global.HwWorksheet?.printBlank(form)) {
-          showToast("Could not open print view.");
-        }
-      });
+    if (pillPrint) {
+      pillPrint.onclick = () => requestPrintHomework(active);
     }
+  }
+
+  function requestPrintHomework(active) {
+    const tryPrint = () => {
+      const form = document.getElementById("hw-worksheet-form");
+      if (!form || typeof window.HwWorksheet?.printBlank !== "function") return false;
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+      return window.HwWorksheet.printBlank(form);
+    };
+
+    if (tryPrint()) return;
+
+    if (active?.id) {
+      const targetHash = "hw-" + active.id;
+      if (window.location.hash !== "#" + targetHash) {
+        window.location.hash = targetHash;
+      }
+    }
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      if (tryPrint() || ++attempts > 50) {
+        window.clearInterval(timer);
+        if (attempts > 50) {
+          showToast("Homework is still loading — try again in a moment.");
+        }
+      }
+    }, 150);
   }
 
   function renderCurrentAssignmentCard(assignments, currentId) {

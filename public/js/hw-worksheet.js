@@ -283,7 +283,9 @@
     }
 
     window.addEventListener("afterprint", restore);
-    window.print();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
     return true;
   }
 
