@@ -2474,52 +2474,6 @@ body.subpage--platform .hw-platform-bar {
   color: var(--color-text-muted);
 }
 
-.hw-teacher-submissions {
-  margin-bottom: 1.75rem;
-}
-
-.hw-submission-list {
-  list-style: none;
-  margin: 0.85rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.hw-submission-item {
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-}
-
-.hw-submission-item--empty p {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
-
-.hw-submission-item__title {
-  margin: 0 0 0.25rem;
-  font-size: 1rem;
-}
-
-.hw-submission-item__meta,
-.hw-submission-item__summary,
-.hw-submission-item__key {
-  margin: 0 0 0.35rem;
-  color: var(--color-text-muted);
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-.hw-submission-item__key {
-  margin-bottom: 0;
-  color: var(--color-text-faint);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
 .hw-platform-toast {
   position: fixed;
   bottom: 1.5rem;

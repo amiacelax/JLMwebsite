@@ -1,6 +1,5 @@
 interface Env {
   ASSETS: Fetcher;
-  HW_UPLOADS?: R2Bucket;
   DISCORD_WEBHOOK_URL?: string;
   /** website-inquiries — used to verify the webhook posts to the right channel */
   DISCORD_CHANNEL_ID?: string;
@@ -29,25 +28,6 @@ interface HomeworkSubmitPayload {
   scoreTotal?: number;
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
-}
-
-interface HomeworkStoredSubmission {
-  id: string;
-  type: "typed" | "photo";
-  submittedAt: string;
-  username: string;
-  displayName: string;
-  assignmentId: string;
-  lessonName?: string;
-  title?: string;
-  score?: string;
-  summary: string;
-  fileName?: string;
-  fileType?: string;
-  fileSize?: number;
-  fileKey?: string;
-  jsonKey: string;
-  payload?: HomeworkSubmitPayload;
 }
 
 interface ContactPayload {
@@ -360,15 +340,6 @@ function safeKeyPart(value: string | undefined, fallback: string): string {
   return cleaned || fallback;
 }
 
-function submissionId(prefix: string): string {
-  const rand = crypto.randomUUID().slice(0, 8);
-  return `${prefix}-${Date.now()}-${rand}`;
-}
-
-function homeworkStorageRequired(env: Env): R2Bucket | null {
-  return env.HW_UPLOADS || null;
-}
-
 function isUploadedFile(value: unknown): value is File {
   return (
     typeof value === "object" &&
@@ -378,47 +349,6 @@ function isUploadedFile(value: unknown): value is File {
     "type" in value &&
     "size" in value
   );
-}
-
-async function saveHomeworkSubmission(
-  env: Env,
-  record: Omit<HomeworkStoredSubmission, "jsonKey">
-): Promise<HomeworkStoredSubmission | null> {
-  const bucket = homeworkStorageRequired(env);
-  if (!bucket) return null;
-
-  const jsonKey = `submissions/${record.submittedAt.slice(0, 10)}/${record.id}.json`;
-  const stored: HomeworkStoredSubmission = { ...record, jsonKey };
-  await bucket.put(jsonKey, JSON.stringify(stored, null, 2), {
-    httpMetadata: { contentType: "application/json; charset=utf-8" },
-  });
-  return stored;
-}
-
-async function readStoredSubmission(
-  bucket: R2Bucket,
-  key: string
-): Promise<HomeworkStoredSubmission | null> {
-  const obj = await bucket.get(key);
-  if (!obj) return null;
-  try {
-    return (await obj.json()) as HomeworkStoredSubmission;
-  } catch {
-    return null;
-  }
-}
-
-async function listHomeworkSubmissions(env: Env): Promise<HomeworkStoredSubmission[]> {
-  const bucket = homeworkStorageRequired(env);
-  if (!bucket) return [];
-
-  const listed = await bucket.list({ prefix: "submissions/", limit: 100 });
-  const records = await Promise.all(
-    listed.objects.map((obj) => readStoredSubmission(bucket, obj.key))
-  );
-  return records
-    .filter((record): record is HomeworkStoredSubmission => record !== null)
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 }
 
 async function postDiscordWebhook(
@@ -538,24 +468,7 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
     buildHomeworkDiscordDescription(data, student, lesson, score),
   ].join("\n");
 
-  const stored = await saveHomeworkSubmission(env, {
-    id: submissionId("typed"),
-    type: "typed",
-    submittedAt: new Date().toISOString(),
-    username: data.username!.trim(),
-    displayName: student,
-    assignmentId: data.assignmentId!.trim(),
-    lessonName: data.lessonName?.trim(),
-    title: data.title?.trim(),
-    score,
-    summary: `${lesson}${score !== "—" ? ` · ${score}` : ""}`,
-    payload: data,
-  });
-
-  const result = await notifyHomeworkDiscord(
-    webhookUrl,
-    stored ? `${bodyText}\n\nStored: ${stored.jsonKey}` : bodyText
-  );
+  const result = await notifyHomeworkDiscord(webhookUrl, bodyText);
 
   if (!result.ok) {
     console.error("Homework Discord error", result.status, result.detail);
@@ -567,9 +480,7 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
   return jsonResponse({
     success: true,
-    message: stored
-      ? "Submitted! JD can see your answers in Discord and Teacher Hub."
-      : "Submitted! JD can see your answers in Discord.",
+    message: "Submitted! JD can see your answers in Discord.",
   });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -600,106 +511,57 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({ error: "Image must be under 8 MB." }, 400);
     }
 
-    const bucket = homeworkStorageRequired(env);
-    if (!bucket) {
+    const webhookUrl = getHomeworkWebhook(env);
+    if (!webhookUrl) {
       return jsonResponse(
-        { error: "Homework upload storage is not configured yet." },
+        {
+          error:
+            "Homework photo upload is not configured yet. Ask JD to set DISCORD_HOMEWORK_WEBHOOK_URL.",
+        },
         503
       );
     }
 
-    const id = submissionId("photo");
-    const submittedAt = new Date().toISOString();
-    const safeStudent = safeKeyPart(username, "student");
     const safeName = safeKeyPart(file.name, "homework-photo.jpg");
-    const fileKey = `uploads/${safeStudent}/${submittedAt.slice(0, 10)}/${id}-${safeName}`;
-    await bucket.put(fileKey, file.stream(), {
-      httpMetadata: { contentType: file.type },
-      customMetadata: {
-        username,
-        displayName,
-        assignmentId,
-        submittedAt,
-      },
-    });
 
-    const stored = await saveHomeworkSubmission(env, {
-      id,
-      type: "photo",
-      submittedAt,
-      username,
-      displayName,
-      assignmentId,
-      lessonName,
-      summary: `Photo upload · ${lessonName}`,
-      fileName: file.name || safeName,
-      fileType: file.type,
-      fileSize: file.size,
-      fileKey,
-    });
+    const channelError = await getWebhookChannelMismatch(
+      webhookUrl,
+      env.DISCORD_HOMEWORK_CHANNEL_ID,
+      "homework submissions"
+    );
+    if (channelError) {
+      console.error(channelError);
+      return jsonResponse(
+        { error: "Homework photo upload is misconfigured. Please try again later." },
+        503
+      );
+    }
 
-    const webhookUrl = getHomeworkWebhook(env);
-    if (webhookUrl) {
-      const text = [
-        `Printed homework photo — ${displayName}`,
-        "",
-        `Student: ${displayName} (${username})`,
-        `Assignment: ${lessonName}`,
-        `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
-        stored ? `Stored: ${stored.jsonKey}` : null,
-        `R2 object: ${fileKey}`,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const result = await notifyHomeworkDiscordWithFile(webhookUrl, text, file);
-      if (!result.ok) {
-        console.error("Homework photo Discord error", result.status, result.detail);
-      }
+    const text = [
+      `Printed homework photo — ${displayName}`,
+      "",
+      `Student: ${displayName} (${username})`,
+      `Assignment: ${lessonName}`,
+      `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+    ].join("\n");
+    const result = await notifyHomeworkDiscordWithFile(webhookUrl, text, file);
+    if (!result.ok) {
+      console.error("Homework photo Discord error", result.status, result.detail);
+      return jsonResponse(
+        { error: "Could not send photo. Please try again in a few minutes." },
+        502
+      );
     }
 
     return jsonResponse({
       success: true,
-      message: "Photo uploaded! JD can see it in Teacher Hub.",
-      submission: stored,
+      message: "Photo sent! JD can see it in Discord.",
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("homework-photo-upload failed:", detail);
     return jsonResponse({ error: "Photo upload failed. Please try again later." }, 500);
   }
-}
-
-async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (request.method !== "GET") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
-  }
-  if (request.headers.get("X-HW-Role") !== "teacher") {
-    return jsonResponse({ error: "Teacher access required." }, 403);
-  }
-
-  const submissions = await listHomeworkSubmissions(env);
-  return jsonResponse({
-    submissions: submissions.map((record) => ({
-      id: record.id,
-      type: record.type,
-      submittedAt: record.submittedAt,
-      username: record.username,
-      displayName: record.displayName,
-      assignmentId: record.assignmentId,
-      lessonName: record.lessonName,
-      title: record.title,
-      score: record.score,
-      summary: record.summary,
-      fileName: record.fileName,
-      fileType: record.fileType,
-      fileSize: record.fileSize,
-      fileKey: record.fileKey,
-      jsonKey: record.jsonKey,
-    })),
-  });
 }
 
 export default {
@@ -720,10 +582,6 @@ export default {
 
     if (url.pathname === "/api/homework-photo-upload") {
       return handleHomeworkPhotoUpload(request, env);
-    }
-
-    if (url.pathname === "/api/homework-submissions") {
-      return handleHomeworkSubmissions(request, env);
     }
 
     return env.ASSETS.fetch(request);
