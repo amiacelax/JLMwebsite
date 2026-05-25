@@ -7,8 +7,169 @@
 
   const isTeacher = session.role === "teacher";
 
+  const VIDEO_RESPONSE_DESC =
+    "Receive detailed, enriching video feedback from JD on each homework assignment.";
+
   const greet = document.getElementById("hw-platform-greet");
-  if (greet) greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
+  if (greet) {
+    greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
+  }
+
+  function renderAccountBar() {
+    const badges = document.getElementById("hw-platform-badges");
+    if (!badges || isTeacher) return;
+    badges.hidden = false;
+    badges.replaceChildren();
+
+    const labelPill = document.createElement("span");
+    labelPill.className = "hw-account-badge hw-account-badge--label";
+    labelPill.textContent = session.accountLabelDisplay || "Homework Only";
+
+    const tierPill = document.createElement("span");
+    tierPill.className = "hw-account-badge hw-account-badge--tier";
+    tierPill.textContent = session.tierDisplay || HwAuth.getTierMeta(session)?.name || "—";
+
+    badges.append(labelPill, tierPill);
+  }
+
+  function bindWeeklyUpgradeCard() {
+    const card = document.getElementById("hw-weekly-upgrade-card");
+    const btn = document.getElementById("hw-weekly-upgrade-btn");
+    if (!card || !btn || btn.dataset.bound === "true") return;
+    btn.dataset.bound = "true";
+    card.hidden = !HwAuth.canShowWeeklyHomeworkUpgrade(session);
+    btn.addEventListener("click", () => {
+      showToast(
+        "Weekly homework add-on ($" +
+          HwAuth.WEEKLY_HOMEWORK_UPGRADE_PRICE +
+          "/mo) — PayPal coming soon. Message JD to sign up."
+      );
+    });
+  }
+
+  /** Student-safe labels — never show another learner's name from catalog/JSON. */
+  function studentViewMeta(catalogEntry, assignment) {
+    const date = assignment?.date || catalogEntry?.date || "";
+    const title =
+      assignment?.title || catalogEntry?.title || catalogEntry?.id || "Homework";
+    const line = date ? date + " · " + title : title;
+    const lessonName = date ? date + " — " + title : title;
+    return {
+      listLabel: line,
+      lessonMeta: line,
+      heading: "Your homework",
+      lessonName,
+      title,
+      date,
+    };
+  }
+
+  function getStudentMedia(catalog) {
+    const profile = catalog?.studentProfiles?.[session.username] || {};
+    return {
+      latestLessonUrl: profile.latestLessonUrl || profile.youtubeUrl || null,
+      lessonPlaylistUrl:
+        profile.lessonPlaylistUrl ||
+        profile.reviewPlaylistUrl ||
+        catalog?.playlistUrl ||
+        null,
+      reviewPlaylistUrl:
+        profile.reviewPlaylistUrl || catalog?.reviewPlaylistUrl || catalog?.playlistUrl || null,
+    };
+  }
+
+  function courseStatusButton(labelLocked, labelUnlock, onClick, ariaLabel) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "course-card__status";
+    if (ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+    btn.innerHTML =
+      '<span class="course-card__status-text course-card__status-text--locked">' +
+      labelLocked +
+      '</span><span class="course-card__status-text course-card__status-text--unlock">' +
+      labelUnlock +
+      "</span>";
+    if (onClick) btn.addEventListener("click", onClick);
+    return btn;
+  }
+
+  function courseStatusLink(labelLocked, labelUnlock, href, ariaLabel) {
+    const link = document.createElement("a");
+    link.className = "course-card__status course-card__status-link";
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    if (ariaLabel) link.setAttribute("aria-label", ariaLabel);
+    link.innerHTML =
+      '<span class="course-card__status-text course-card__status-text--locked">' +
+      labelLocked +
+      '</span><span class="course-card__status-text course-card__status-text--unlock">' +
+      labelUnlock +
+      "</span>";
+    return link;
+  }
+
+  function renderVideoResponseCard(catalog) {
+    const card = document.getElementById("hw-video-response-card");
+    const desc = document.getElementById("hw-video-response-desc");
+    const footer = document.getElementById("hw-video-response-footer");
+    if (!footer) return;
+    footer.replaceChildren();
+
+    const media = getStudentMedia(catalog);
+    const price = document.createElement("span");
+    price.className = "course-card__price";
+    price.setAttribute("aria-label", "Price: " + HwAuth.VIDEO_RESPONSE_ADDON_PRICE + " dollars per month");
+
+    if (HwAuth.hasVideoResponseAccess(session)) {
+      card?.classList.add("hw-addon-card--active");
+      if (desc) desc.textContent = VIDEO_RESPONSE_DESC + " Open your review playlist below.";
+      price.textContent = "✓";
+      price.setAttribute("aria-label", "Video responses included");
+
+      const playlistUrl = media.reviewPlaylistUrl;
+      if (isYoutubeReady(playlistUrl)) {
+        footer.append(
+          courseStatusLink("Playlist", "Open", playlistUrl, "Open HW Review Playlist on YouTube"),
+          price
+        );
+      } else {
+        footer.append(
+          courseStatusButton("Soon", "Soon", null, "HW Review Playlist coming soon"),
+          price
+        );
+        footer.querySelector("button")?.setAttribute("disabled", "true");
+      }
+      return;
+    }
+
+    card?.classList.remove("hw-addon-card--active");
+    price.textContent = "$" + HwAuth.VIDEO_RESPONSE_ADDON_PRICE;
+
+    if (HwAuth.canOfferVideoUnlock(session)) {
+      if (desc) desc.textContent = VIDEO_RESPONSE_DESC;
+      const videoPaypal = HwAuth.PAYPAL?.videoFeedback;
+      footer.append(
+        videoPaypal
+          ? courseStatusLink(
+              "Locked",
+              "Subscribe",
+              videoPaypal,
+              "Subscribe to Video Feedback HW — fifteen dollars per four weeks"
+            )
+          : courseStatusButton("Locked", "Soon", null, "Video feedback subscription link coming soon"),
+        price
+      );
+      return;
+    }
+
+    if (desc) desc.textContent = VIDEO_RESPONSE_DESC + " Included on Unlimited (Tier 3).";
+    footer.append(
+      courseStatusButton("Tier 3", "Tier 3", null, "Video responses require Unlimited tier"),
+      price
+    );
+    footer.querySelector("button")?.setAttribute("disabled", "true");
+  }
 
   document.getElementById("hw-platform-logout")?.addEventListener("click", () => {
     HwAuth.logout();
@@ -71,6 +232,13 @@
     options = options || {};
     if (!form || !session.username || options.preview) return;
 
+    const submitMeta = isTeacher
+      ? assignmentMeta
+      : {
+          ...assignmentMeta,
+          ...studentViewMeta(null, assignmentMeta),
+        };
+
     const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll(".hw-blank");
@@ -106,8 +274,8 @@
           username: session.username,
           displayName: session.displayName,
           assignmentId,
-          lessonName: assignmentMeta.lessonName,
-          title: assignmentMeta.title,
+          lessonName: submitMeta.lessonName,
+          title: submitMeta.title || assignmentMeta.title,
           register: assignmentMeta.register,
         },
         report
@@ -171,45 +339,69 @@
     bindWorksheetSave(form, assignment, { preview: true });
   }
 
-  function renderAssignmentList(assignments, currentId) {
-    const list = document.getElementById("hw-assignment-list");
-    if (!list) return;
-    list.innerHTML = "";
-    if (!assignments.length) {
-      list.innerHTML =
-        '<li class="hw-platform-card__row hw-platform-card__row--empty"><span>No assignments yet</span><button type="button" class="btn btn--ghost btn--sm" disabled>Open</button></li>';
+  function bindCurrentAssignmentPills(active) {
+    const pillOnline = document.getElementById("hw-pill-online");
+    const pillPrint = document.getElementById("hw-pill-print");
+    const pillsWrap = pillOnline?.closest(".hw-current-assignment__pills");
+
+    if (!active) {
+      if (pillsWrap) pillsWrap.hidden = true;
       return;
     }
-    assignments.forEach((a) => {
-      const li = document.createElement("li");
-      li.className = "hw-platform-card__row";
-      const label = document.createElement("span");
-      label.textContent = a.lessonName || (a.date || "") + " — " + (a.title || a.id);
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn btn--ghost btn--sm";
-      btn.textContent = a.id === currentId ? "Open" : "View";
-      if (a.id === currentId) {
-        btn.disabled = true;
-      } else {
-        btn.addEventListener("click", () => {
-          window.location.hash = "hw-" + a.id;
-          loadStudentHub();
-        });
-      }
-      li.append(label, btn);
-      list.appendChild(li);
-    });
+
+    if (pillsWrap) pillsWrap.hidden = false;
+    if (pillOnline) {
+      pillOnline.hidden = false;
+      pillOnline.href = "#hw-worksheet-section";
+      pillOnline.onclick = () => {
+        const targetHash = "hw-" + active.id;
+        if (window.location.hash !== "#" + targetHash) {
+          window.location.hash = targetHash;
+        }
+      };
+    }
+    if (pillPrint && pillPrint.dataset.bound !== "true") {
+      pillPrint.dataset.bound = "true";
+      pillPrint.addEventListener("click", () => {
+        const form = document.getElementById("hw-worksheet-form");
+        if (!form) {
+          showToast("Homework is still loading — try again in a moment.");
+          return;
+        }
+        if (!global.HwWorksheet?.printBlank(form)) {
+          showToast("Could not open print view.");
+        }
+      });
+    }
   }
 
-  function setLessonLinks(assignment, playlistUrl) {
+  function renderCurrentAssignmentCard(assignments, currentId) {
+    const titleEl = document.getElementById("hw-current-assignment-title");
+    const pillOnline = document.getElementById("hw-pill-online");
+    if (!titleEl) return;
+
+    const active = assignments.find((a) => a.id === currentId) || assignments[0] || null;
+    if (!active) {
+      titleEl.textContent = "No assignment linked to your account yet.";
+      if (pillOnline) pillOnline.hidden = true;
+      bindCurrentAssignmentPills(null);
+      return;
+    }
+
+    titleEl.textContent = studentViewMeta(active, null).listLabel;
+    bindCurrentAssignmentPills(active);
+  }
+
+  function setLessonLinks(assignment, catalog) {
     const lessonBtn = document.getElementById("hw-latest-lesson");
-    const playlistLink = document.getElementById("hw-playlist-link");
+    const lessonPlaylist = document.getElementById("hw-lesson-playlist");
     const lessonMeta = document.getElementById("hw-lesson-meta");
+    const media = getStudentMedia(catalog);
+    const lessonUrl = media.latestLessonUrl || assignment?.youtubeUrl;
 
     if (lessonBtn) {
-      if (assignment && isYoutubeReady(assignment.youtubeUrl)) {
-        lessonBtn.href = assignment.youtubeUrl;
+      if (isYoutubeReady(lessonUrl)) {
+        lessonBtn.href = lessonUrl;
         lessonBtn.textContent = "Watch your latest lesson";
         lessonBtn.removeAttribute("data-placeholder");
         lessonBtn.classList.remove("btn--ghost");
@@ -222,19 +414,19 @@
       }
     }
 
-    if (lessonMeta && assignment) {
-      lessonMeta.textContent =
-        assignment.lessonName ||
-        (assignment.date ? assignment.date + " · " : "") + (assignment.title || "");
+    if (lessonPlaylist) {
+      const playlistUrl = media.lessonPlaylistUrl;
+      if (isYoutubeReady(playlistUrl)) {
+        lessonPlaylist.href = playlistUrl;
+        lessonPlaylist.hidden = false;
+      } else {
+        lessonPlaylist.hidden = true;
+      }
     }
 
-    if (playlistLink) {
-      if (isYoutubeReady(playlistUrl)) {
-        playlistLink.href = playlistUrl;
-        playlistLink.hidden = false;
-      } else {
-        playlistLink.hidden = true;
-      }
+    if (lessonMeta) {
+      const catalogEntry = assignment || {};
+      lessonMeta.textContent = studentViewMeta(catalogEntry, assignment).lessonMeta;
     }
   }
 
@@ -354,8 +546,10 @@
     const status = document.getElementById("hw-photo-upload-status");
     if (!form) return;
     form.dataset.assignmentId = activeAssignment?.id || "printed-homework";
-    form.dataset.lessonName =
-      activeAssignment?.lessonName || activeAssignment?.title || "Printed homework";
+    const photoMeta = activeAssignment
+      ? studentViewMeta(null, activeAssignment)
+      : { lessonName: "Printed homework" };
+    form.dataset.lessonName = photoMeta.lessonName;
     if (form.dataset.bound === "true") return;
     form.dataset.bound = "true";
 
@@ -494,8 +688,9 @@
     const hashId = window.location.hash.replace(/^#hw-/, "");
     const active = mine.find((a) => a.id === hashId) || mine[0] || null;
 
-    renderAssignmentList(mine, active?.id);
-    setLessonLinks(active, catalog.playlistUrl);
+    renderCurrentAssignmentCard(mine, active?.id);
+    setLessonLinks(active, catalog);
+    renderVideoResponseCard(catalog);
     bindPhotoUpload(active);
 
     if (!active || !mount) {
@@ -515,11 +710,9 @@
       return;
     }
 
-    if (heading) {
-      heading.textContent = active.studentLabel
-        ? "Homework — " + active.studentLabel
-        : "Current homework";
-    }
+    const view = studentViewMeta(active, assignment);
+
+    if (heading) heading.textContent = view.heading;
     if (intro) {
       intro.textContent =
         "Fill in the blanks, then Submit homework. Section 1 is auto-checked; Section 2 is sent to JD on Discord.";
@@ -534,6 +727,8 @@
       loadTeacherHub();
       window.addEventListener("hashchange", loadTeacherHub);
     } else {
+      renderAccountBar();
+      bindWeeklyUpgradeCard();
       loadStudentHub();
       window.addEventListener("hashchange", loadStudentHub);
     }

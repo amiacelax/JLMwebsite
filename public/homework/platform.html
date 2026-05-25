@@ -59,7 +59,10 @@
 
   <div class="hw-platform-bar">
     <div class="container hw-platform-bar__inner">
-      <p class="hw-platform-bar__user">Logged in as <strong id="hw-platform-greet">—</strong></p>
+      <div class="hw-platform-bar__identity">
+        <p class="hw-platform-bar__user">Logged in as <strong id="hw-platform-greet">—</strong></p>
+        <p class="hw-platform-bar__badges" id="hw-platform-badges" hidden></p>
+      </div>
       <button type="button" class="btn btn--ghost btn--sm" id="hw-platform-logout">Log out</button>
     </div>
   </div>
@@ -77,7 +80,7 @@
           <h2 class="hw-platform-card__title">Worksheet library</h2>
           <p class="hw-platform-card__desc">All fillable homework templates — search, preview, download JSON, or copy a link for students.</p>
           <label class="hw-library-search-label" for="hw-library-search">Search</label>
-          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="e.g. たい, negative, verb conjugation, Ben M…" autocomplete="off">
+          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="e.g. たい, negative, verb conjugation…" autocomplete="off">
           <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
           <ul class="hw-library-list" id="hw-library-list"></ul>
         </section>
@@ -87,26 +90,15 @@
           <p class="hw-platform-card__desc">Typed homework and printed-paper photo uploads are sent directly to the homework Discord channel for now.</p>
         </section>
 
-        <div class="hw-platform-grid" id="hw-student-grid">
-          <section class="hw-platform-card">
-            <h2 class="hw-platform-card__title">Assignments</h2>
-            <p class="hw-platform-card__desc">Homework from your lessons, after JD review.</p>
-            <ul class="hw-platform-card__list" id="hw-assignment-list">
-              <li class="hw-platform-card__row hw-platform-card__row--empty">
-                <span>Loading…</span>
-                <button type="button" class="btn btn--ghost btn--sm" disabled>Open</button>
-              </li>
-            </ul>
-          </section>
-
-          <section class="hw-platform-card">
+        <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
+          <section class="hw-platform-card hw-grid-lesson">
             <h2 class="hw-platform-card__title">Your most recent lesson</h2>
             <p class="hw-platform-card__desc" id="hw-lesson-meta">YouTube — full lesson recording.</p>
             <a class="btn btn--ghost btn--full" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
-            <a class="hw-lesson-playlist btn btn--ghost btn--sm btn--full" id="hw-playlist-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
+            <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
           </section>
 
-          <section class="hw-platform-card">
+          <section class="hw-platform-card hw-grid-upload">
             <h2 class="hw-platform-card__title">Upload your work</h2>
             <p class="hw-platform-card__desc">Finished on printed paper? Take a picture and send it to JD in Discord for feedback.</p>
             <form class="hw-photo-upload" id="hw-photo-upload-form">
@@ -117,19 +109,43 @@
             </form>
           </section>
 
-          <section class="hw-platform-card">
-            <h2 class="hw-platform-card__title">Extra homework</h2>
-            <p class="hw-platform-card__desc">Use your included extra request first. After that, request another assignment for $0.99 or upgrade for more.</p>
-            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="PayPal extra-HW button coming soon. Daily tier will have unlimited requests.">Get extra HW — $0.99 (coming soon)</button>
+          <article class="course-card course-card--locked hw-addon-card hw-grid-video" id="hw-video-response-card" tabindex="0">
+            <span class="course-card__lock" aria-hidden="true">
+              <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+            </span>
+            <h2 class="course-card__title">Video response</h2>
+            <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
+            <div class="course-card__footer" id="hw-video-response-footer"></div>
+          </article>
+
+          <section class="hw-platform-card hw-grid-assignments" id="hw-current-assignment-card">
+            <h2 class="hw-platform-card__title">Current assignment</h2>
+            <p class="hw-platform-card__desc">Your latest homework from JD, ready to fill in below.</p>
+            <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
+            <div class="hw-current-assignment__pills">
+              <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Homework Online</a>
+              <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
+            </div>
           </section>
 
-          <section class="hw-platform-card">
-            <h2 class="hw-platform-card__title">Video response</h2>
-            <p class="hw-platform-card__desc">Higher tiers receive a personalized video response for each assignment, explaining mistakes and grammar points.</p>
-            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="Video responses will appear here when the review workflow is connected.">Video feedback (coming soon)</button>
-          </section>
+          <article class="course-card course-card--locked hw-addon-card hw-grid-upgrade" id="hw-weekly-upgrade-card" hidden tabindex="0">
+            <span class="course-card__lock" aria-hidden="true">
+              <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+            </span>
+            <h2 class="course-card__title">Weekly homework</h2>
+            <p class="course-card__desc">Student Special add-on for current students.</p>
+            <div class="course-card__footer">
+              <button type="button" class="course-card__status" id="hw-weekly-upgrade-btn" aria-label="Upgrade to weekly homework for five dollars per month">
+                <span class="course-card__status-text course-card__status-text--locked">Add-on</span>
+                <span class="course-card__status-text course-card__status-text--unlock">Upgrade?</span>
+              </button>
+              <span class="course-card__price" aria-label="Price: five dollars per month">$5</span>
+            </div>
+          </article>
 
-          <section class="hw-platform-card hw-platform-card--wide">
+          <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
             <h2 class="hw-platform-card__title">Notifications</h2>
             <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready (wired in Phase 5).</p>
             <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
@@ -159,6 +175,6 @@
 
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-worksheet.js?v=20260530" defer></script>
-  <script src="/js/hw-platform.js?v=20260529" defer></script>
+  <script src="/js/hw-platform.js?v=20260525g" defer></script>
 </body>
 </html>

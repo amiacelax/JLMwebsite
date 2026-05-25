@@ -1,13 +1,60 @@
 /**
  * Phase 1 auth — client-side session (replace with server auth in Phase 2).
- * Usernames match Discord handles (case-insensitive). Password is "demo" for all test accounts.
+ * Account labels, subscription tiers, and demo unlock flags live here until D1.
  */
 (function (global) {
   const SESSION_KEY = "jlm-hw-session";
+  const VIDEO_UNLOCK_PREFIX = "jlm-hw-video-unlock-";
   const PLATFORM_PATH = "/homework/platform.html";
   const LOGIN_PATH = "/homework.html";
 
-  /** @type {Record<string, { password: string, displayName: string }>} */
+  const ACCOUNT_LABELS = {
+    current_student: "Current Student",
+    homework_only: "Homework Only",
+  };
+
+  /** @type {Record<string, { name: string, price: number|null, hwPerMonth: number|null, videoIncluded: boolean }>} */
+  const TIERS = {
+    tier1: {
+      id: "tier1",
+      name: "Basic",
+      price: 5,
+      hwPerMonth: 2,
+      videoIncluded: false,
+    },
+    tier2: {
+      id: "tier2",
+      name: "Premium",
+      price: 15,
+      hwPerMonth: 4,
+      videoIncluded: false,
+    },
+    tier3: {
+      id: "tier3",
+      name: "Unlimited",
+      price: 99,
+      hwPerMonth: null,
+      videoIncluded: true,
+    },
+    student_special: {
+      id: "student_special",
+      name: "Student Special Tier",
+      price: null,
+      hwPerMonth: null,
+      videoIncluded: false,
+    },
+  };
+
+  const VIDEO_RESPONSE_ADDON_PRICE = 15;
+  const WEEKLY_HOMEWORK_UPGRADE_PRICE = 5;
+
+  /** PayPal subscription checkout (ncp payment links). */
+  const PAYPAL = {
+    premium: "https://www.paypal.com/ncp/payment/ZWH5U8AEY6CVC",
+    videoFeedback: "https://www.paypal.com/ncp/payment/BNW7WYWSND25J",
+  };
+
+  /** @type {Record<string, object>} */
   const ACCOUNTS = {
     japaneselanguagementor: {
       password: "demo",
@@ -18,6 +65,17 @@
       password: "demo",
       displayName: "Ben M",
       role: "student",
+      accountLabel: "current_student",
+      tier: "student_special",
+      videoResponseUnlock: false,
+    },
+    deme: {
+      password: "jelly",
+      displayName: "Deme",
+      role: "student",
+      accountLabel: "homework_only",
+      tier: "tier2",
+      videoResponseUnlock: false,
     },
   };
 
@@ -29,21 +87,90 @@
     return sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
   }
 
+  function isVideoUnlockStored(username) {
+    return localStorage.getItem(VIDEO_UNLOCK_PREFIX + username) === "1";
+  }
+
+  function setVideoUnlockStored(username, enabled) {
+    const key = VIDEO_UNLOCK_PREFIX + username;
+    if (enabled) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
+  }
+
+  function enrichSession(data) {
+    if (!data?.username) return null;
+    const account = ACCOUNTS[data.username];
+    if (!account) return null;
+
+    const tier = data.tier || account.tier || "tier1";
+    const tierMeta = TIERS[tier] || TIERS.tier1;
+    const accountLabel = data.accountLabel || account.accountLabel || "homework_only";
+    const storedUnlock = isVideoUnlockStored(data.username);
+    const videoResponseUnlock =
+      tier === "tier3" ||
+      Boolean(data.videoResponseUnlock || account.videoResponseUnlock || storedUnlock);
+
+    return {
+      username: data.username,
+      displayName: data.displayName || account.displayName || data.username,
+      role: data.role || account.role || "student",
+      accountLabel,
+      accountLabelDisplay: ACCOUNT_LABELS[accountLabel] || accountLabel,
+      tier,
+      tierDisplay: tierMeta.name,
+      videoResponseUnlock,
+      loggedInAt: data.loggedInAt || Date.now(),
+    };
+  }
+
   function getSession() {
     try {
       const raw = readStoredSession();
       if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (!data?.username || !ACCOUNTS[data.username]) return null;
-      if (!data.role) data.role = ACCOUNTS[data.username].role || "student";
-      return data;
+      return enrichSession(JSON.parse(raw));
     } catch {
       return null;
     }
   }
 
+  function persistSession(session, remember) {
+    const payload = JSON.stringify(session);
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    if (remember) localStorage.setItem(SESSION_KEY, payload);
+    else sessionStorage.setItem(SESSION_KEY, payload);
+  }
+
   function isAuthenticated() {
     return getSession() !== null;
+  }
+
+  function hasVideoResponseAccess(session) {
+    const s = session || getSession();
+    return Boolean(s && s.videoResponseUnlock);
+  }
+
+  function canOfferVideoUnlock(session) {
+    const s = session || getSession();
+    if (!s || s.role === "teacher") return false;
+    if (hasVideoResponseAccess(s)) return false;
+    return s.tier === "tier1" || s.tier === "tier2" || s.tier === "student_special";
+  }
+
+  function canShowWeeklyHomeworkUpgrade(session) {
+    const s = session || getSession();
+    return Boolean(
+      s &&
+        s.role === "student" &&
+        s.accountLabel === "current_student" &&
+        s.tier === "student_special"
+    );
+  }
+
+  function getTierMeta(session) {
+    const s = session || getSession();
+    if (!s) return null;
+    return TIERS[s.tier] || TIERS.tier1;
   }
 
   function login(username, password, remember) {
@@ -52,26 +179,40 @@
     if (!account || password !== account.password) {
       return { ok: false, error: "Invalid username or password." };
     }
-    const session = {
+
+    const session = enrichSession({
       username: key,
       displayName: account.displayName,
       role: account.role || "student",
+      accountLabel: account.accountLabel,
+      tier: account.tier,
+      videoResponseUnlock:
+        account.tier === "tier3" ||
+        account.videoResponseUnlock ||
+        isVideoUnlockStored(key),
       loggedInAt: Date.now(),
-    };
-    const payload = JSON.stringify(session);
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
-    if (remember) {
-      localStorage.setItem(SESSION_KEY, payload);
-    } else {
-      sessionStorage.setItem(SESSION_KEY, payload);
-    }
+    });
+
+    persistSession(session, remember);
     return { ok: true, session };
   }
 
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
+  }
+
+  function enableVideoResponseUnlock(username) {
+    const key = normalizeUsername(username);
+    if (!ACCOUNTS[key]) return null;
+    setVideoUnlockStored(key, true);
+    const session = getSession();
+    if (session && session.username === key) {
+      session.videoResponseUnlock = true;
+      const remember = Boolean(localStorage.getItem(SESSION_KEY));
+      persistSession(session, remember);
+    }
+    return getSession();
   }
 
   function requireAuth(loginPath) {
@@ -94,8 +235,14 @@
 
   global.HwAuth = {
     SESSION_KEY,
+    VIDEO_UNLOCK_PREFIX,
     PLATFORM_PATH,
     LOGIN_PATH,
+    ACCOUNT_LABELS,
+    TIERS,
+    VIDEO_RESPONSE_ADDON_PRICE,
+    WEEKLY_HOMEWORK_UPGRADE_PRICE,
+    PAYPAL,
     ACCOUNTS,
     getSession,
     isAuthenticated,
@@ -104,5 +251,10 @@
     requireAuth,
     redirectIfAuthenticated,
     normalizeUsername,
+    hasVideoResponseAccess,
+    canOfferVideoUnlock,
+    canShowWeeklyHomeworkUpgrade,
+    getTierMeta,
+    enableVideoResponseUnlock,
   };
 })(window);

@@ -2377,10 +2377,98 @@ body.subpage--platform .hw-platform-bar {
   gap: 0.5rem;
 }
 
+.hw-platform-bar__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .hw-platform-bar__user {
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-text-muted);
+}
+
+.hw-platform-bar__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.hw-account-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.hw-account-badge--label {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+  color: var(--color-text);
+}
+
+.hw-account-badge--tier {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-accent);
+}
+
+.hw-platform-card__note {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-platform-grid .hw-addon-card {
+  padding: 1.35rem 1.1rem 1.25rem;
+  margin: 0;
+  text-align: center;
+}
+
+.hw-platform-grid .hw-addon-card .course-card__lock {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.hw-platform-grid .hw-addon-card .course-card__title {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.hw-platform-grid .hw-addon-card .course-card__desc {
+  font-size: 0.8125rem;
+  margin: 0 0 0.65rem;
+  line-height: 1.45;
+}
+
+.hw-platform-grid .hw-addon-card .course-card__footer {
+  gap: 0.55rem;
+}
+
+.hw-platform-grid .hw-addon-card .course-card__price {
+  font-size: 1.125rem;
+}
+
+.hw-platform-grid .hw-addon-card.hw-addon-card--active {
+  border-color: color-mix(in srgb, var(--color-green) 45%, var(--color-border));
+}
+
+button.course-card__status {
+  font-family: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+button.course-card__status:disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
 .hw-platform-grid {
@@ -2389,14 +2477,120 @@ body.subpage--platform .hw-platform-bar {
   margin-bottom: 2.5rem;
 }
 
+.hw-platform-grid--student {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "lesson"
+    "upload"
+    "video"
+    "assignments"
+    "upgrade"
+    "notifs";
+}
+
+.hw-grid-lesson {
+  grid-area: lesson;
+}
+
+.hw-grid-upload {
+  grid-area: upload;
+}
+
+.hw-grid-video {
+  grid-area: video;
+}
+
+.hw-grid-assignments {
+  grid-area: assignments;
+}
+
+.hw-grid-upgrade {
+  grid-area: upgrade;
+}
+
+.hw-grid-notifs {
+  grid-area: notifs;
+}
+
+#hw-weekly-upgrade-card[hidden] {
+  display: none;
+}
+
+.hw-grid-lesson .hw-lesson-playlist {
+  margin-top: 0.65rem;
+}
+
+.hw-current-assignment__title {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.hw-current-assignment__pills {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.hw-current-assignment__pill {
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.hw-grid-assignments {
+  display: flex;
+  flex-direction: column;
+}
+
+.hw-platform-card--notifs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  padding: 0.85rem 1.15rem;
+}
+
+.hw-platform-card--notifs .hw-platform-card__title {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.hw-platform-card--notifs .hw-platform-card__desc {
+  margin: 0;
+  flex: 1 1 12rem;
+  font-size: 0.8125rem;
+}
+
+.hw-platform-card--notifs .btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 @media (min-width: 640px) {
-  .hw-platform-grid {
+  .hw-platform-grid:not(.hw-platform-grid--student) {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hw-platform-grid--student {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "lesson upload"
+      "video assignments"
+      "upgrade upgrade"
+      "notifs notifs";
   }
 }
 
 @media (min-width: 960px) {
-  .hw-platform-grid {
+  .hw-platform-grid:not(.hw-platform-grid--student) {
     grid-template-columns: repeat(3, 1fr);
   }
 
@@ -2706,6 +2900,10 @@ body.hw-role-teacher .hw-worksheet-section {
   margin-bottom: 0.25rem;
 }
 
+.hw-plan__addon {
+  margin-top: 0.5rem;
+}
+
 .hw-extra {
   padding: 1.25rem 1.5rem;
   background: var(--color-bg-card);
@@ -2789,6 +2987,7 @@ body.hw-role-teacher .hw-worksheet-section {
   margin-top: 2.5rem;
   padding-top: 2rem;
   border-top: 1px solid var(--color-border);
+  scroll-margin-top: 5.5rem;
 }
 
 .hw-worksheet-heading {
@@ -3204,6 +3403,17 @@ body.hw-role-teacher .hw-worksheet-section {
 }
 
 @media print {
+  @page {
+    size: letter portrait;
+    margin: 0.4in 0.45in;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
   .site-header,
   .hw-platform-bar,
   .hw-platform-grid,
@@ -3217,21 +3427,126 @@ body.hw-role-teacher .hw-worksheet-section {
   .hw-worksheet__meta,
   .hw-register,
   .hw-worksheet__section-intro,
+  .hw-worksheet__status,
   .site-footer,
   .promo-modal,
   .subpage-back,
-  .section__header {
+  .section__header,
+  .skip-link,
+  .hw-platform-toast {
     display: none !important;
   }
 
+  .section,
+  .subpage__main,
+  .container,
+  .container--wide {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .hw-worksheet-section {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  #hw-worksheet-mount {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .hw-worksheet {
-    border: none;
-    padding: 0;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    font-size: 9.5pt !important;
+    line-height: 1.32 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .hw-worksheet__section {
+    margin: 0 0 0.28rem !important;
+    padding: 0 0 0.18rem !important;
+    border-bottom: none !important;
+    page-break-inside: avoid;
+  }
+
+  .hw-worksheet__section-head {
+    margin: 0 0 0.08rem !important;
+    gap: 0.25rem 0.4rem !important;
+  }
+
+  .hw-worksheet__section-title {
+    font-size: 9pt !important;
+    color: #000 !important;
+  }
+
+  .hw-tense-pill {
+    font-size: 6.5pt !important;
+    padding: 0.05rem 0.35rem !important;
+    border-color: #666 !important;
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  .hw-tense-pill--active {
+    font-weight: 700;
+    border-color: #000 !important;
+  }
+
+  .hw-worksheet__line {
+    margin: 0 0 0.22rem !important;
+    gap: 0.15rem 0.35rem !important;
+    page-break-inside: avoid;
+  }
+
+  .hw-worksheet__label {
+    font-size: 8pt !important;
+    min-width: 1.25rem !important;
+  }
+
+  .hw-blank-wrap {
+    margin: 0 0.05rem !important;
   }
 
   .hw-blank {
-    background: transparent;
-    border-bottom: 1pt solid #000;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1pt solid #000 !important;
+    border-radius: 0 !important;
+    padding: 0 0.15rem 0.05rem !important;
+    margin: 0 !important;
+    min-width: 5.5em !important;
+    min-height: 0 !important;
+    font-size: inherit !important;
+    color: transparent !important;
+  }
+
+  .hw-blank--wide {
+    min-width: 8em !important;
+  }
+
+  .hw-conj-hint--below {
+    margin: 0 !important;
+    font-size: 6.5pt !important;
+    line-height: 1.1 !important;
+    color: #333 !important;
+  }
+
+  .hw-negative-badge {
+    font-size: 5.5pt !important;
+    padding: 0.05rem 0.3rem !important;
+    vertical-align: middle;
+  }
+
+  .hw-worksheet__content .ja-ruby rt {
+    font-size: 0.5em !important;
   }
 }
 

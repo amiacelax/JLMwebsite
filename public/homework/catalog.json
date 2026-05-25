@@ -1,5 +1,13 @@
 {
   "playlistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+  "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+  "studentProfiles": {
+    "deme": {
+      "latestLessonUrl": "https://youtu.be/q3WRBr1LHm0",
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY"
+    }
+  },
   "assignments": [
     {
       "id": "2026-05-22-ben-m",
@@ -7,9 +15,31 @@
       "date": "2026-05-22",
       "level": "Low-Intermediate",
       "studentLabel": "Ben M",
-      "lessonName": "2026-05-22 Ben M 24",
+      "lessonName": "2026-05-22 — Lesson 24",
       "students": ["benm"],
       "youtubeUrl": "https://youtu.be/0LaGZZttAK0",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "ほしい",
+        "たい",
+        "desire",
+        "grammar",
+        "negative",
+        "verb conjugation",
+        "low-intermediate"
+      ],
+      "summary": "Practice ～がほしい, ～たい, and negative ほしくない / たくない in fill-in blanks."
+    },
+    {
+      "id": "2026-05-22-deme",
+      "title": "～がほしい vs ～に～たい・～がたい",
+      "date": "2026-05-22",
+      "level": "Low-Intermediate",
+      "studentLabel": "Deme",
+      "lessonName": "2026-05-22 — Lesson",
+      "students": ["deme"],
+      "youtubeUrl": "https://youtu.be/q3WRBr1LHm0",
       "forSale": false,
       "salePrice": 0.99,
       "tags": [

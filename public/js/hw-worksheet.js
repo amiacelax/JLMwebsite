@@ -253,9 +253,38 @@
 
     mount.appendChild(form);
 
-    actions.querySelector("[data-hw-print]")?.addEventListener("click", () => window.print());
+    actions.querySelector("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
 
     return form;
+  }
+
+  /**
+   * Print empty worksheet — blanks cleared, compact one-page layout via CSS.
+   * @param {HTMLFormElement} [formEl]
+   * @returns {boolean}
+   */
+  function printBlank(formEl) {
+    const form = formEl || document.getElementById("hw-worksheet-form");
+    if (!form) return false;
+
+    document.body.classList.add("hw-print-active");
+    const inputs = form.querySelectorAll(".hw-blank");
+    const saved = Array.from(inputs, (inp) => inp.value);
+    inputs.forEach((inp) => {
+      inp.value = "";
+    });
+
+    function restore() {
+      document.body.classList.remove("hw-print-active");
+      inputs.forEach((inp, i) => {
+        inp.value = saved[i];
+      });
+      window.removeEventListener("afterprint", restore);
+    }
+
+    window.addEventListener("afterprint", restore);
+    window.print();
+    return true;
   }
 
   function escapeHtml(str) {
@@ -477,6 +506,7 @@
 
   global.HwWorksheet = {
     render,
+    printBlank,
     formatHint,
     checkHomework,
     renderCheckResults,
