@@ -4,7 +4,7 @@
   "private": true,
   "description": "Japanese Language Mentor — professional Japanese teaching website",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --live-reload",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev --remote"
   },

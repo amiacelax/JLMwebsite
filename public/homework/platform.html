@@ -82,6 +82,14 @@
           <ul class="hw-library-list" id="hw-library-list"></ul>
         </section>
 
+        <section class="hw-teacher-submissions hw-platform-card hw-platform-card--wide" id="hw-teacher-submissions" hidden>
+          <h2 class="hw-platform-card__title">Student submissions</h2>
+          <p class="hw-platform-card__desc">Typed homework and printed-paper photo uploads submitted through Homework Hub.</p>
+          <button type="button" class="btn btn--ghost btn--sm" id="hw-refresh-submissions">Refresh submissions</button>
+          <p class="hw-library-meta" id="hw-submissions-meta" aria-live="polite"></p>
+          <ul class="hw-submission-list" id="hw-submission-list"></ul>
+        </section>
+
         <div class="hw-platform-grid" id="hw-student-grid">
           <section class="hw-platform-card">
             <h2 class="hw-platform-card__title">Assignments</h2>
@@ -103,14 +111,25 @@
 
           <section class="hw-platform-card">
             <h2 class="hw-platform-card__title">Upload your work</h2>
-            <p class="hw-platform-card__desc">Send completed homework for feedback (blackboard-style).</p>
-            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="File uploads coming in a later phase.">Upload homework (coming soon)</button>
+            <p class="hw-platform-card__desc">Finished on printed paper? Take a picture and send it to JD for feedback.</p>
+            <form class="hw-photo-upload" id="hw-photo-upload-form">
+              <label class="hw-photo-upload__label" for="hw-photo-file">Homework photo</label>
+              <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment" required>
+              <button type="submit" class="btn btn--ghost btn--full">Upload homework photo</button>
+              <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+            </form>
           </section>
 
           <section class="hw-platform-card">
             <h2 class="hw-platform-card__title">Extra homework</h2>
-            <p class="hw-platform-card__desc">$2 — AI draft, JD review, same fillable format.</p>
-            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="PayPal extra-HW button coming soon.">Request extra HW — $2 (coming soon)</button>
+            <p class="hw-platform-card__desc">Use your included extra request first. After that, request another assignment for $0.99 or upgrade for more.</p>
+            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="PayPal extra-HW button coming soon. Daily tier will have unlimited requests.">Get extra HW — $0.99 (coming soon)</button>
+          </section>
+
+          <section class="hw-platform-card">
+            <h2 class="hw-platform-card__title">Video response</h2>
+            <p class="hw-platform-card__desc">Higher tiers receive a personalized video response for each assignment, explaining mistakes and grammar points.</p>
+            <button type="button" class="btn btn--ghost btn--full" data-placeholder data-placeholder-msg="Video responses will appear here when the review workflow is connected.">Video feedback (coming soon)</button>
           </section>
 
           <section class="hw-platform-card hw-platform-card--wide">

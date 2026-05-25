@@ -44,6 +44,33 @@
     return window.location.origin + "/homework/platform.html#hw-" + id;
   }
 
+  function formatSubmissionDate(iso) {
+    if (!iso) return "";
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(iso));
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  function formatFileSize(bytes) {
+    const n = Number(bytes || 0);
+    if (!n) return "";
+    if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+    return (n / 1024 / 1024).toFixed(1) + " MB";
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function librarySearchText(entry) {
     return [
       entry.id,
@@ -348,6 +375,135 @@
     });
   }
 
+  async function loadTeacherSubmissions() {
+    const panel = document.getElementById("hw-teacher-submissions");
+    const list = document.getElementById("hw-submission-list");
+    const meta = document.getElementById("hw-submissions-meta");
+    if (!panel || !list) return;
+
+    panel.hidden = false;
+    list.innerHTML =
+      '<li class="hw-submission-item hw-submission-item--empty"><p>Loading submissions…</p></li>';
+    if (meta) meta.textContent = "";
+
+    try {
+      const res = await fetch("/api/homework-submissions", {
+        cache: "no-store",
+        headers: {
+          "X-HW-Role": session.role || "",
+          "X-HW-Username": session.username || "",
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load submissions.");
+      renderTeacherSubmissions(data.submissions || []);
+    } catch (err) {
+      list.innerHTML =
+        '<li class="hw-submission-item hw-submission-item--empty"><p>' +
+        escapeHtml((err && err.message) || "Could not load submissions.") +
+        "</p></li>";
+      if (meta) meta.textContent = "Check R2 binding and Worker logs if this persists.";
+    }
+  }
+
+  function renderTeacherSubmissions(submissions) {
+    const list = document.getElementById("hw-submission-list");
+    const meta = document.getElementById("hw-submissions-meta");
+    if (!list) return;
+    list.innerHTML = "";
+    if (meta) {
+      meta.textContent =
+        submissions.length +
+        " submission" +
+        (submissions.length === 1 ? "" : "s") +
+        " stored in Homework Hub.";
+    }
+    if (!submissions.length) {
+      list.innerHTML =
+        '<li class="hw-submission-item hw-submission-item--empty"><p>No submissions yet.</p></li>';
+      return;
+    }
+
+    submissions.forEach((sub) => {
+      const li = document.createElement("li");
+      li.className = "hw-submission-item";
+      const title = document.createElement("h3");
+      title.className = "hw-submission-item__title";
+      title.textContent =
+        (sub.type === "photo" ? "Photo upload" : "Typed homework") +
+        " — " +
+        (sub.displayName || sub.username || "Student");
+      const metaLine = document.createElement("p");
+      metaLine.className = "hw-submission-item__meta";
+      metaLine.textContent = [
+        formatSubmissionDate(sub.submittedAt),
+        sub.lessonName || sub.assignmentId,
+        sub.score,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const summary = document.createElement("p");
+      summary.className = "hw-submission-item__summary";
+      summary.textContent =
+        sub.type === "photo"
+          ? [sub.fileName, formatFileSize(sub.fileSize), sub.fileKey].filter(Boolean).join(" · ")
+          : sub.summary || "Typed worksheet submission";
+      const key = document.createElement("p");
+      key.className = "hw-submission-item__key";
+      key.textContent = "Record: " + (sub.jsonKey || sub.id);
+      li.append(title, metaLine, summary, key);
+      list.appendChild(li);
+    });
+  }
+
+  function bindPhotoUpload(activeAssignment) {
+    const form = document.getElementById("hw-photo-upload-form");
+    const fileInput = document.getElementById("hw-photo-file");
+    const status = document.getElementById("hw-photo-upload-status");
+    if (!form) return;
+    form.dataset.assignmentId = activeAssignment?.id || "printed-homework";
+    form.dataset.lessonName =
+      activeAssignment?.lessonName || activeAssignment?.title || "Printed homework";
+    if (form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        if (status) status.textContent = "Choose or take a photo first.";
+        return;
+      }
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      if (status) status.textContent = "Uploading photo…";
+
+      const body = new FormData();
+      body.append("photo", file);
+      body.append("username", session.username || "");
+      body.append("displayName", session.displayName || session.username || "");
+      body.append("assignmentId", form.dataset.assignmentId || "printed-homework");
+      body.append("lessonName", form.dataset.lessonName || "Printed homework");
+
+      try {
+        const res = await fetch("/api/homework-photo-upload", {
+          method: "POST",
+          body,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Upload failed.");
+        if (status) status.textContent = data.message || "Photo uploaded.";
+        showToast("Photo uploaded");
+        form.reset();
+      } catch (err) {
+        if (status) status.textContent = (err && err.message) || "Upload failed.";
+        showToast("Photo upload failed");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
   function copyText(text, toastMsg) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
@@ -385,6 +541,7 @@
     const hubTitle = document.getElementById("hw-hub-title");
     const hubDesc = document.getElementById("hw-hub-desc");
     const teacherLib = document.getElementById("hw-teacher-library");
+    const teacherSubmissions = document.getElementById("hw-teacher-submissions");
     const studentGrid = document.getElementById("hw-student-grid");
 
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
@@ -393,7 +550,13 @@
         "Search and manage fillable homework templates. Preview blanks, download JSON, or copy links for students (benm demo = student test site).";
     }
     if (teacherLib) teacherLib.hidden = false;
+    if (teacherSubmissions) teacherSubmissions.hidden = false;
     if (studentGrid) studentGrid.hidden = true;
+    const refreshSubmissions = document.getElementById("hw-refresh-submissions");
+    if (refreshSubmissions && refreshSubmissions.dataset.bound !== "true") {
+      refreshSubmissions.dataset.bound = "true";
+      refreshSubmissions.addEventListener("click", loadTeacherSubmissions);
+    }
 
     const searchInput = document.getElementById("hw-library-search");
     if (!catalogCache) {
@@ -419,6 +582,7 @@
     }
 
     renderLibraryList(entries, searchInput ? searchInput.value : "", active?.id);
+    await loadTeacherSubmissions();
     await loadWorksheetPreview(active);
   }
 
@@ -446,6 +610,7 @@
 
     renderAssignmentList(mine, active?.id);
     setLessonLinks(active, catalog.playlistUrl);
+    bindPhotoUpload(active);
 
     if (!active || !mount) {
       if (heading) heading.textContent = "Current homework";

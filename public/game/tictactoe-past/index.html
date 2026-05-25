@@ -20,6 +20,16 @@
   </header>
 
   <main class="ttt-main">
+    <section class="ttt-mode" aria-labelledby="ttt-mode-heading">
+      <h2 class="ttt-mode__heading" id="ttt-mode-heading">Practice mode</h2>
+      <div class="ttt-mode__options" role="group" aria-label="Choose conjugation practice mode">
+        <button type="button" class="ttt-mode__btn" data-ttt-mode="random" aria-pressed="true">Random</button>
+        <button type="button" class="ttt-mode__btn" data-ttt-mode="verb" aria-pressed="false">Verb past</button>
+        <button type="button" class="ttt-mode__btn" data-ttt-mode="adjective" aria-pressed="false">Adjective past</button>
+        <button type="button" class="ttt-mode__btn" data-ttt-mode="te" aria-pressed="false">て-form</button>
+      </div>
+    </section>
+
     <div class="ttt-board-wrap" id="ttt-board-wrap">
     <div class="ttt-board" id="ttt-board" role="grid" aria-label="Tic tac toe board">
       <button type="button" class="ttt-cell" data-i="0" role="gridcell" aria-label="Empty cell 1"></button>
@@ -58,7 +68,7 @@
     </div>
 
     <ul class="ttt-legend">
-      <li>Random prompts: <strong>verb past</strong>, <strong>て-form</strong>, <strong>い-adjectives</strong>, <strong>な-adjectives</strong>.</li>
+      <li>Choose a focused mode or use <strong>Random</strong> for verb past, adjective past, and て-form prompts together.</li>
       <li>Prompts use kanji with furigana where natural; hiragana or kanji OK for your answer.</li>
       <li>After 2 misses: <strong>One more try and I’ll show you the answer.</strong></li>
       <li>On the 3rd miss the answer appears — press <strong>Continue</strong> to place your mark.</li>
