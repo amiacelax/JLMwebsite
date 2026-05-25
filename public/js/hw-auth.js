@@ -48,10 +48,12 @@
   const VIDEO_RESPONSE_ADDON_PRICE = 15;
   const WEEKLY_HOMEWORK_UPGRADE_PRICE = 5;
 
-  /** PayPal subscription checkout (ncp payment links). */
+  /** PayPal billing plan subscribe URLs. */
   const PAYPAL = {
-    premium: "https://www.paypal.com/ncp/payment/ZWH5U8AEY6CVC",
-    videoFeedback: "https://www.paypal.com/ncp/payment/BNW7WYWSND25J",
+    premium:
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY",
+    videoFeedback:
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-15R38814RL5675323NIKHAIA",
   };
 
   /** @type {Record<string, object>} */

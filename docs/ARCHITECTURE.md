@@ -100,7 +100,7 @@ c:\JLM Website\
 - `hw-auth.js`: `sessionStorage`/`localStorage` key `jlm-hw-session`; accounts in `ACCOUNTS` with **account label** (`current_student` | `homework_only`), **tier** (`tier1` Basic, `tier2` Premium, `tier3` Unlimited, `student_special`), and optional **video response unlock** (`$15/mo` add-on stored in `localStorage` until PayPal).
 - Demo logins: `japaneselanguagementor` / `demo` (teacher); `benm` / `demo` (Current Student · Student Special); `deme` / `jelly` (Homework Only · Premium).
 - `hw-platform.js` renders tier badges, Student Special **$5/mo weekly upgrade** CTA, and **HW Review Playlist** when video access is enabled; extra-HW / $0.99 UI removed.
-- **PayPal (Homework):** Premium `HwAuth.PAYPAL.premium` → `ZWH5U8AEY6CVC`; Video Feedback `HwAuth.PAYPAL.videoFeedback` → `BNW7WYWSND25J`. Wired on `homework.html` Premium plan + platform video card. Account unlock is still manual until webhooks/D1.
+- **PayPal (Homework):** Premium subscription `P-9CF38809GM2257018NIKG6UY`; Video Feedback `P-15R38814RL5675323NIKHAIA` (`HwAuth.PAYPAL` in `hw-auth.js`). Wired on `homework.html` Premium plan + platform video card. Account unlock is still manual until webhooks/D1.
 - `platform.html` calls `HwAuth.requireAuth()` inline in `<head>`.
 - **Not production-safe** — server auth + D1 planned (`docs/NIHONGO-WEEKLY-PLATFORM.md`).
 
