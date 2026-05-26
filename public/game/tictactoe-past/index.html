@@ -14,12 +14,20 @@
   <header class="ttt-header">
     <div>
       <h1 class="ttt-header__title">Tic Tac Toe — conjugation</h1>
-      <p class="ttt-header__sub">You are X · Computer is O</p>
+      <p class="ttt-header__sub" id="ttt-header-sub">You are X · Computer is O</p>
     </div>
     <a class="ttt-header__back" href="/games.html">← Games</a>
   </header>
 
   <main class="ttt-main">
+    <section class="ttt-mode ttt-opponent" aria-labelledby="ttt-opponent-heading">
+      <h2 class="ttt-mode__heading" id="ttt-opponent-heading">Opponent</h2>
+      <div class="ttt-mode__options" role="group" aria-label="Choose opponent">
+        <button type="button" class="ttt-mode__btn" data-ttt-opponent="cpu" aria-pressed="true">vs Computer</button>
+        <button type="button" class="ttt-mode__btn" data-ttt-opponent="human" aria-pressed="false">vs Friend</button>
+      </div>
+    </section>
+
     <section class="ttt-mode" aria-labelledby="ttt-mode-heading">
       <h2 class="ttt-mode__heading" id="ttt-mode-heading">Practice mode</h2>
       <div class="ttt-mode__options" role="group" aria-label="Choose conjugation practice mode">
@@ -68,6 +76,7 @@
     </div>
 
     <ul class="ttt-legend">
+      <li><strong>vs Friend:</strong> two players share this device — Player 1 is X, Player 2 is O; take turns conjugating, then placing.</li>
       <li>Choose a focused mode or use <strong>Random</strong> for verb past, adjective past, and て-form prompts together.</li>
       <li>Prompts use kanji with furigana where natural; hiragana or kanji OK for your answer.</li>
       <li>After 2 misses: <strong>One more try and I’ll show you the answer.</strong></li>

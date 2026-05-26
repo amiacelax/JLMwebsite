@@ -1,6 +1,6 @@
 /**
  * Tic Tac Toe — conjugation to place each mark (past, て-form, い/な-adjectives).
- * Player: X · Computer: O
+ * vs Computer: X (you) · O (CPU) · vs Friend: X (P1) · O (P2)
  */
 (function () {
   function normalizeRuby(s) {
@@ -186,11 +186,17 @@
   const conjPanel = document.getElementById("ttt-conj-panel");
   const cpuLine = document.getElementById("ttt-cpu-line");
   const modeButtons = [...document.querySelectorAll("[data-ttt-mode]")];
+  const opponentButtons = [...document.querySelectorAll("[data-ttt-opponent]")];
+  const headerSubEl = document.getElementById("ttt-header-sub");
 
   let board = Array(9).fill("");
   let phase = "conjugate";
+  let opponentMode = "cpu";
+  let activeMark = "X";
   let currentMode = "random";
   let currentPrompt = null;
+  let promptChoicesByCell = Array(9).fill(null);
+  let selectedCell = -1;
   let lastPromptId = "";
   let wrongCount = 0;
   let answerRevealed = false;
@@ -219,10 +225,11 @@
     return prompts.length ? prompts : PROMPTS;
   }
 
-  function pickPrompt() {
-    let pool = promptsForMode(currentMode);
-    if (pool.length > 1 && lastPromptId) {
-      pool = pool.filter((p) => p.id !== lastPromptId);
+  function pickPrompt(sourceMode, avoidId) {
+    let pool = promptsForMode(sourceMode || currentMode);
+    const ban = avoidId || lastPromptId;
+    if (pool.length > 1 && ban) {
+      pool = pool.filter((p) => p.id !== ban);
     }
     const item = pool[Math.floor(Math.random() * pool.length)];
     lastPromptId = item.id;
@@ -239,6 +246,26 @@
     toastEl.className = "ttt-toast show" + (kind ? " ttt-toast--" + kind : "");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2800);
+  }
+
+  function playerLabel(mark) {
+    if (opponentMode === "human") {
+      return mark === "X" ? "Player 1 (X)" : "Player 2 (O)";
+    }
+    return "You";
+  }
+
+  function updateHeaderSub() {
+    if (!headerSubEl) return;
+    headerSubEl.textContent =
+      opponentMode === "human" ? "Player 1: X · Player 2: O — same device" : "You are X · Computer is O";
+  }
+
+  function updateOpponentButtons() {
+    opponentButtons.forEach((btn) => {
+      const pressed = btn.getAttribute("data-ttt-opponent") === opponentMode;
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+    });
   }
 
   function updatePlayerTurnGlow() {
@@ -277,6 +304,96 @@
     return '<span class="ttt-verb__dict" lang="ja">' + renderRubyHtml(prompt.ruby) + "</span>";
   }
 
+  function shuffled(list) {
+    const out = [...list];
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
+  function assignPromptChoicesToBoard() {
+    const pool = shuffled(promptsForMode(currentMode));
+    let ptr = 0;
+    promptChoicesByCell = Array(9).fill(null);
+    for (let i = 0; i < board.length; i++) {
+      if (board[i]) continue;
+      if (ptr >= pool.length) {
+        ptr = 0;
+      }
+      promptChoicesByCell[i] = pool[ptr++];
+    }
+  }
+
+  function selectPromptByCell(index) {
+    if (phase !== "conjugate" || board[index]) return;
+    if (selectedCell === index) {
+      selectedCell = -1;
+      currentPrompt = null;
+      wrongCount = 0;
+      hideReveal();
+      if (formPillEl) {
+        formPillEl.textContent = "Choose word";
+        formPillEl.className = "ttt-form-pill";
+      }
+      if (kindBadgeEl) {
+        kindBadgeEl.textContent = currentMode === "random" ? "Any type" : MODE_META[currentMode].label;
+        kindBadgeEl.className = "ttt-kind-badge";
+      }
+      if (verbEl) verbEl.innerHTML = "—";
+      if (hintEl) {
+        hintEl.textContent =
+          (opponentMode === "human" ? playerLabel(activeMark) + " — " : "") +
+          "See all words. Press a square to select.";
+      }
+      if (inputEl) {
+        inputEl.value = "";
+        inputEl.placeholder = "Choose a word first";
+        inputEl.disabled = true;
+      }
+      if (checkBtn) {
+        checkBtn.disabled = true;
+        checkBtn.textContent = "Check";
+      }
+      renderBoard();
+      return;
+    }
+    const selected = promptChoicesByCell[index];
+    if (!selected) return;
+    selectedCell = index;
+    currentPrompt = selected;
+    lastPromptId = selected.id;
+    wrongCount = 0;
+    hideReveal();
+    const meta = metaFor(selected);
+
+    if (formPillEl) {
+      formPillEl.textContent = meta.conjLabel;
+      formPillEl.className = "ttt-form-pill" + (selected.category === "te" ? " ttt-form-pill--te" : "");
+    }
+    if (kindBadgeEl) {
+      kindBadgeEl.textContent = KIND_LABEL[selected.kind] || selected.kind;
+      kindBadgeEl.className = "ttt-kind-badge ttt-kind-badge--" + selected.kind.replace("-", "");
+    }
+    if (verbEl) verbEl.innerHTML = renderPromptHtml(selected);
+    if (hintEl) {
+      hintEl.textContent =
+        (opponentMode === "human" ? playerLabel(activeMark) + " — " : "") + meta.taskHint;
+    }
+    if (inputEl) {
+      inputEl.value = "";
+      inputEl.placeholder = meta.placeholder;
+      inputEl.disabled = false;
+      inputEl.focus();
+    }
+    if (checkBtn) {
+      checkBtn.disabled = false;
+      checkBtn.textContent = "Check";
+    }
+    renderBoard();
+  }
+
   function showReveal(answer) {
     answerRevealed = true;
     if (revealEl) revealEl.hidden = false;
@@ -308,7 +425,10 @@
     if (inputEl) inputEl.disabled = true;
     if (checkBtn) checkBtn.disabled = true;
     hideReveal();
-    if (hintEl) hintEl.textContent = "Click an empty square for X.";
+    if (hintEl) {
+      hintEl.textContent =
+        playerLabel(activeMark) + ": click an empty square for " + activeMark + ".";
+    }
     renderBoard();
   }
 
@@ -320,15 +440,52 @@
     return null;
   }
 
+  function wordSizeClass(label) {
+    const s = String(label || "");
+    const len = [...s].length;
+    if (len >= 5 || (len >= 4 && /しい/.test(s))) return "ttt-cell__word--len5";
+    if (len >= 4) return "ttt-cell__word--len4";
+    if (len >= 3) return "ttt-cell__word--len3";
+    return "";
+  }
+
   function renderBoard() {
     const winner = checkWinner(board);
     cells.forEach((btn, i) => {
       const v = board[i];
-      btn.textContent = v || "";
+      const prompt = !v ? promptChoicesByCell[i] : null;
+      const showWord = Boolean(prompt);
+      btn.innerHTML = "";
+      if (v) {
+        btn.textContent = v;
+      } else if (showWord) {
+        const span = document.createElement("span");
+        span.className = "ttt-cell__word " + wordSizeClass(prompt.label);
+        span.textContent = prompt.label;
+        btn.appendChild(span);
+      }
       btn.classList.toggle("ttt-cell--x", v === "X");
       btn.classList.toggle("ttt-cell--o", v === "O");
-      btn.disabled = phase !== "place" || !!v || winner !== null;
-      btn.setAttribute("aria-label", v ? "Cell " + (i + 1) + ", " + v : "Empty cell " + (i + 1));
+      btn.classList.toggle("ttt-cell--pick", phase === "conjugate" && showWord);
+      btn.classList.toggle("ttt-cell--place-word", phase === "place" && showWord);
+      btn.classList.toggle("ttt-cell--selected", phase === "conjugate" && selectedCell === i);
+      if (winner !== null) {
+        btn.disabled = true;
+      } else if (phase === "place") {
+        btn.disabled = !!v;
+      } else if (phase === "conjugate") {
+        btn.disabled = !!v || !prompt;
+      } else {
+        btn.disabled = true;
+      }
+      btn.setAttribute(
+        "aria-label",
+        v
+          ? "Cell " + (i + 1) + ", " + v
+          : prompt
+          ? "Cell " + (i + 1) + ", " + prompt.label
+          : "Empty cell " + (i + 1)
+      );
     });
     if (winner === "X") highlightWin("X");
     else if (winner === "O") highlightWin("O");
@@ -346,32 +503,34 @@
     }
   }
 
-  function startPlayerTurn() {
+  function startTurn(mark) {
+    activeMark = mark;
     phase = "conjugate";
     wrongCount = 0;
+    selectedCell = -1;
     hideReveal();
-    currentPrompt = pickPrompt();
-    const meta = metaFor(currentPrompt);
-
+    currentPrompt = null;
+    assignPromptChoicesToBoard();
     if (formPillEl) {
-      formPillEl.textContent = meta.conjLabel;
-      formPillEl.className =
-        "ttt-form-pill" + (currentPrompt.category === "te" ? " ttt-form-pill--te" : "");
+      formPillEl.textContent = "Choose word";
+      formPillEl.className = "ttt-form-pill";
     }
     if (kindBadgeEl) {
-      kindBadgeEl.textContent = KIND_LABEL[currentPrompt.kind] || currentPrompt.kind;
-      kindBadgeEl.className = "ttt-kind-badge ttt-kind-badge--" + currentPrompt.kind.replace("-", "");
+      kindBadgeEl.textContent = currentMode === "random" ? "Any type" : MODE_META[currentMode].label;
+      kindBadgeEl.className = "ttt-kind-badge";
     }
-    if (verbEl) verbEl.innerHTML = renderPromptHtml(currentPrompt);
-    if (hintEl) hintEl.textContent = meta.taskHint;
+    if (verbEl) verbEl.innerHTML = "—";
+    if (hintEl) {
+      hintEl.textContent =
+        (opponentMode === "human" ? playerLabel(mark) + " — " : "") + "See all words. Press a square to select.";
+    }
     if (inputEl) {
       inputEl.value = "";
-      inputEl.placeholder = meta.placeholder;
-      inputEl.disabled = false;
-      inputEl.focus();
+      inputEl.placeholder = "Choose a word first";
+      inputEl.disabled = true;
     }
     if (checkBtn) {
-      checkBtn.disabled = false;
+      checkBtn.disabled = true;
       checkBtn.textContent = "Check";
     }
     if (conjPanel) conjPanel.hidden = false;
@@ -386,7 +545,11 @@
   }
 
   function onConjugateSubmit() {
-    if (phase !== "conjugate" || !currentPrompt) return;
+    if (phase !== "conjugate") return;
+    if (!currentPrompt) {
+      showToast("Choose a word square first.", "miss");
+      return;
+    }
 
     if (answerRevealed) {
       showToast("正解！", "ok");
@@ -425,11 +588,21 @@
   }
 
   function onCellClick(index) {
+    if (phase === "conjugate") {
+      selectPromptByCell(index);
+      return;
+    }
     if (phase !== "place" || board[index]) return;
-    board[index] = "X";
+    board[index] = activeMark;
     const result = checkWinner(board);
     renderBoard();
     if (result) return endGame(result);
+
+    if (opponentMode === "human") {
+      const next = activeMark === "X" ? "O" : "X";
+      startTurn(next);
+      return;
+    }
 
     phase = "cpu";
     if (conjPanel) conjPanel.hidden = true;
@@ -492,7 +665,7 @@
 
     const idx = cpuPickCell();
     if (idx == null || idx < 0) {
-      startPlayerTurn();
+      startTurn("X");
       return;
     }
 
@@ -501,7 +674,7 @@
     const result = checkWinner(board);
     if (result) return endGame(result);
 
-    startPlayerTurn();
+    startTurn("X");
   }
 
   function endGame(result) {
@@ -516,19 +689,36 @@
     updatePlayerTurnGlow();
 
     if (result === "X") {
-      showToast("You win! おめでとう！", "ok");
+      showToast(
+        opponentMode === "human" ? "Player 1 (X) wins! おめでとう！" : "You win! おめでとう！",
+        "ok"
+      );
     } else if (result === "O") {
-      showToast("Computer wins. Try again!", "miss");
+      showToast(
+        opponentMode === "human" ? "Player 2 (O) wins! おめでとう！" : "Computer wins. Try again!",
+        opponentMode === "human" ? "ok" : "miss"
+      );
     } else {
       showToast("Draw — 引き分け", "ok");
     }
+  }
+
+  function setOpponent(mode) {
+    if (mode !== "cpu" && mode !== "human") return;
+    if (mode === opponentMode) return;
+    opponentMode = mode;
+    updateOpponentButtons();
+    updateHeaderSub();
+    resetGame();
+    showToast(mode === "human" ? "vs Friend — pass the device each turn." : "vs Computer", "ok");
   }
 
   function resetGame() {
     board = Array(9).fill("");
     lastPromptId = "";
     wrongCount = 0;
-    startPlayerTurn();
+    activeMark = "X";
+    startTurn("X");
   }
 
   checkBtn?.addEventListener("click", onConjugateSubmit);
@@ -543,7 +733,12 @@
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => setMode(btn.getAttribute("data-ttt-mode") || "random"));
   });
+  opponentButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setOpponent(btn.getAttribute("data-ttt-opponent") || "cpu"));
+  });
 
+  updateOpponentButtons();
+  updateHeaderSub();
   updateModeButtons();
   resetGame();
 })();
