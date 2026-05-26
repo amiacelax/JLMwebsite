@@ -1,5 +1,7 @@
 /**
- * Lantern Word Hunt — full Japanese words in the dark; match the English prompt.
+ * Lantern Word Hunt — full Japanese words in the dark; match the reading prompt.
+ * Learning: no timer, 3 lives.
+ * Time attack: 14 rounds, 5 finds per round, scaling board size and timer bonuses.
  */
 (function () {
   const WORDS = [
@@ -75,14 +77,34 @@
     { word: "嫌い", reading: "きらい", en: "to dislike" },
   ];
 
-  const WORD_SECONDS = 30;
   const MAX_HEARTS = 3;
   const CHOICES = 5;
   const STAGE_CENTER = { x: 50, y: 40 };
   const REVEAL_THRESHOLD = 0.72;
   const POINTS_BASE = 100;
-  const POINTS_PER_SECOND = 3;
+  const TA_START_SECONDS = 5;
+  const TA_TOTAL_ROUNDS = 14;
+  const TA_FINDS_PER_ROUND = 5;
+  const TA_INTER_ROUND_SEC = 5;
   const MIN_DIST = 92;
+
+  /** words on board, seconds added on correct, seconds removed on wrong */
+  const TA_ROUND_RULES = [
+    { words: 5, correct: 5, wrong: 1 },
+    { words: 6, correct: 5, wrong: 1 },
+    { words: 7, correct: 5, wrong: 1 },
+    { words: 8, correct: 5, wrong: 1 },
+    { words: 9, correct: 5, wrong: 1 },
+    { words: 10, correct: 5, wrong: 1 },
+    { words: 10, correct: 4, wrong: 2 },
+    { words: 10, correct: 3, wrong: 2 },
+    { words: 10, correct: 3, wrong: 3 },
+    { words: 10, correct: 2, wrong: 3 },
+    { words: 10, correct: 2, wrong: 4 },
+    { words: 10, correct: 1.5, wrong: 4 },
+    { words: 10, correct: 1, wrong: 5 },
+    { words: 10, correct: 0.5, wrong: 5 },
+  ];
 
   const stage = document.getElementById("lhn-stage");
   const wordsEl = document.getElementById("lhn-words");
@@ -90,16 +112,26 @@
   const veil = document.getElementById("lhn-veil");
   const glow = document.getElementById("lhn-glow");
   const scoreEl = document.getElementById("lhn-score");
+  const streakEl = document.getElementById("lhn-streak");
   const readingEl = document.getElementById("lhn-target-reading");
   const meaningEl = document.getElementById("lhn-target-meaning");
   const findSubEl = document.getElementById("lhn-find-sub");
   const timerEl = document.getElementById("lhn-timer");
-  const toastEl = document.getElementById("lhn-toast");
   const actionBtn = document.getElementById("lhn-action");
   const heartsEl = document.getElementById("lhn-hearts");
   const stageHint = document.getElementById("lhn-stage-hint");
   const findPanel = document.getElementById("lhn-find-panel");
+  const headerSubEl = document.getElementById("lhn-header-sub");
+  const modeButtons = [...document.querySelectorAll("[data-lhn-mode]")];
+  const clearEl = document.getElementById("lhn-clear");
+  const fireworksEl = document.getElementById("lhn-fireworks");
+  const clearScoreEl = document.getElementById("lhn-clear-score");
 
+  let gameMode = "learning";
+  let gameClear = false;
+  let taRound = 1;
+  let taFindsInRound = 0;
+  let taBetweenRounds = false;
   let score = 0;
   let streak = 0;
   let hearts = MAX_HEARTS;
@@ -112,10 +144,18 @@
   let targetEntry = null;
   let roundChoices = [];
   let timerId = null;
-  let timeLeft = WORD_SECONDS;
+  let timeLeft = TA_START_SECONDS;
   let rafId = 0;
   let usedAnswersSession = new Set();
   let advanceTimer = null;
+
+  function isLearning() {
+    return gameMode === "learning";
+  }
+
+  function isTimeAttack() {
+    return gameMode === "timeAttack";
+  }
 
   function shuffled(list) {
     const out = [...list];
@@ -130,7 +170,18 @@
     return item.word;
   }
 
-  function pickRoundSet() {
+  function getTaRules() {
+    return TA_ROUND_RULES[Math.min(taRound, TA_TOTAL_ROUNDS) - 1] || TA_ROUND_RULES[0];
+  }
+
+  function formatTimeDelta(sec) {
+    const n = Number(sec);
+    if (Number.isInteger(n)) return String(n);
+    return n.toFixed(1).replace(/\.0$/, "");
+  }
+
+  function pickRoundSet(choiceCount) {
+    const count = Math.max(2, choiceCount || CHOICES);
     let targetPool = WORDS.filter((item) => !usedAnswersSession.has(wordKey(item)));
     if (targetPool.length === 0) {
       usedAnswersSession.clear();
@@ -144,12 +195,12 @@
     const pool = shuffled(WORDS);
 
     for (const item of pool) {
-      if (choices.length >= CHOICES) break;
+      if (choices.length >= count) break;
       if (usedEn.has(item.en)) continue;
       usedEn.add(item.en);
       choices.push(item);
     }
-    while (choices.length < CHOICES) {
+    while (choices.length < count) {
       const item = pool.find((w) => !choices.includes(w)) || WORDS[choices.length % WORDS.length];
       if (!choices.includes(item)) choices.push(item);
       else break;
@@ -176,19 +227,8 @@
     setTimeout(remove, 2100);
   }
 
-  function showToast(msg, kind) {
-    if (!toastEl) return;
-    toastEl.hidden = false;
-    toastEl.textContent = msg;
-    toastEl.className = "lhn-toast lhn-toast--" + (kind || "info");
-    clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => {
-      toastEl.hidden = true;
-    }, 2400);
-  }
-
   function renderHearts(damageIndex) {
-    if (!heartsEl) return;
+    if (!heartsEl || !isLearning()) return;
     heartsEl.innerHTML = "";
     for (let i = 0; i < MAX_HEARTS; i++) {
       const heart = document.createElement("span");
@@ -203,7 +243,7 @@
   }
 
   function loseHeart() {
-    if (hearts <= 0) return 0;
+    if (!isLearning() || hearts <= 0) return 0;
     const damageIndex = hearts - 1;
     hearts -= 1;
     renderHearts(damageIndex);
@@ -211,68 +251,220 @@
     return hearts;
   }
 
+  function updateModeUi() {
+    document.body.classList.toggle("lhn-body--learning", isLearning());
+    document.body.classList.toggle("lhn-body--time-attack", isTimeAttack());
+    modeButtons.forEach((btn) => {
+      const pressed = btn.getAttribute("data-lhn-mode") === gameMode;
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+      btn.disabled = (playing || Boolean(advanceTimer) || taBetweenRounds) && !gameOver;
+    });
+    if (headerSubEl) {
+      headerSubEl.textContent = isLearning()
+        ? "Shine your lantern · find the word · 3 lives"
+        : "Time attack · 14 rounds · 5 finds per round";
+    }
+    updateTaHeaderSub();
+    renderHearts(-1);
+    updateHud();
+  }
+
+  function setMode(mode) {
+    if (mode !== "learning" && mode !== "timeAttack") return;
+    if (mode === gameMode) return;
+    gameMode = mode;
+    updateModeUi();
+    resetGame();
+  }
+
   function updateActionButton() {
     if (!actionBtn) return;
-    actionBtn.disabled = playing || Boolean(advanceTimer);
+    actionBtn.disabled = playing || Boolean(advanceTimer) || taBetweenRounds;
     if (playing || advanceTimer) return;
     if (gameOver) {
       actionBtn.textContent = "New game";
       return;
     }
-    actionBtn.textContent =
-      score > 0 || hearts < MAX_HEARTS ? "Continue" : "New game";
+    const midRun = score > 0 || streak > 0 || (isLearning() && hearts < MAX_HEARTS);
+    actionBtn.textContent = midRun ? "Continue" : "New game";
   }
 
   function updateHud() {
     if (scoreEl) scoreEl.textContent = String(score);
-    if (timerEl) timerEl.textContent = String(timeLeft);
+    if (streakEl) streakEl.textContent = String(streak);
+    if (timerEl && isTimeAttack()) {
+      const display =
+        Number.isInteger(timeLeft) ? String(timeLeft) : timeLeft.toFixed(1).replace(/\.0$/, "");
+      timerEl.textContent = display;
+      timerEl.classList.toggle("lhn-hud__value--low", timeLeft <= 3);
+    }
   }
 
-  function endGameOver() {
+  function updateTaHeaderSub() {
+    if (!headerSubEl || !isTimeAttack() || !playing) return;
+    const rules = getTaRules();
+    headerSubEl.textContent =
+      "Round " +
+      taRound +
+      "/" +
+      TA_TOTAL_ROUNDS +
+      " · " +
+      taFindsInRound +
+      "/" +
+      TA_FINDS_PER_ROUND +
+      " found · +" +
+      formatTimeDelta(rules.correct) +
+      "s / −" +
+      formatTimeDelta(rules.wrong) +
+      "s";
+  }
+
+  function updateTaStageHint() {
+    if (!stageHint || !isTimeAttack()) return;
+    if (taBetweenRounds) return;
+    const rules = getTaRules();
+    stageHint.textContent =
+      "Round " +
+      taRound +
+      " · " +
+      rules.words +
+      " words · find " +
+      (taFindsInRound + 1) +
+      "/" +
+      TA_FINDS_PER_ROUND;
+  }
+
+  function hideClearOverlay() {
+    if (clearEl) {
+      clearEl.hidden = true;
+      clearEl.setAttribute("aria-hidden", "true");
+    }
+    if (fireworksEl) fireworksEl.innerHTML = "";
+  }
+
+  function showClearOverlay() {
+    if (clearScoreEl) clearScoreEl.textContent = "Score " + score;
+    if (clearEl) {
+      clearEl.hidden = false;
+      clearEl.setAttribute("aria-hidden", "false");
+    }
+    spawnFireworks();
+  }
+
+  function spawnFireworks() {
+    if (!fireworksEl) return;
+    fireworksEl.innerHTML = "";
+    const colors = ["#ffeb3b", "#ff9800", "#f44336", "#e91e63", "#9c27b0", "#03a9f4", "#4caf50"];
+    for (let i = 0; i < 48; i++) {
+      const p = document.createElement("span");
+      p.className = "lhn-clear__particle";
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 40 + Math.random() * 120;
+      p.style.left = 30 + Math.random() * 40 + "%";
+      p.style.top = 35 + Math.random() * 30 + "%";
+      p.style.setProperty("--fx", Math.cos(angle) * dist + "px");
+      p.style.setProperty("--fy", Math.sin(angle) * dist - 40 + "px");
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = Math.random() * 0.6 + "s";
+      p.style.animationDuration = 0.9 + Math.random() * 0.8 + "s";
+      fireworksEl.appendChild(p);
+    }
+    setTimeout(() => {
+      if (gameClear && fireworksEl) spawnFireworks();
+    }, 1600);
+  }
+
+  function endGameClear() {
+    gameClear = true;
     gameOver = true;
     playing = false;
+    taBetweenRounds = false;
     stopTimers();
     fadeAllWords();
     stage.classList.remove("lhn-stage--playing", "lhn-stage--lit");
     setFindPrompt(null, false);
-    showFloatText(STAGE_CENTER, "ゲームオーバー", "over");
-    showFloatText({ x: 50, y: 54 }, "Score " + score, "over-sub");
-    if (stageHint) stageHint.textContent = "Out of lives — press New game";
+    showFloatText(STAGE_CENTER, "ゲームクリア！", "clear");
+    showClearOverlay();
+    if (stageHint) stageHint.textContent = "Amazing — press New game to play again";
+    if (findSubEl) findSubEl.textContent = "You cleared all 14 rounds!";
     updateHud();
     updateActionButton();
+    updateModeUi();
   }
 
-  function scheduleAfterMistake(fromTimeout) {
+  function pulseTimer() {
+    if (!timerEl) return;
+    timerEl.classList.remove("lhn-hud__value--pulse");
+    void timerEl.offsetWidth;
+    timerEl.classList.add("lhn-hud__value--pulse");
+  }
+
+  function endGameOver(reason) {
+    gameOver = true;
+    gameClear = false;
+    playing = false;
+    taBetweenRounds = false;
+    hideClearOverlay();
+    stopTimers();
+    fadeAllWords();
+    stage.classList.remove("lhn-stage--playing", "lhn-stage--lit");
+    setFindPrompt(null, false);
+    if (reason === "time") {
+      showFloatText(STAGE_CENTER, "時間切れ！", "timeout");
+    } else {
+      showFloatText(STAGE_CENTER, "ゲームオーバー", "over");
+    }
+    showFloatText({ x: 50, y: 54 }, "Score " + score, "over-sub");
+    if (stageHint) {
+      stageHint.textContent = isLearning()
+        ? "Out of lives — press New game"
+        : "Time's up — press New game";
+    }
+    updateHud();
+    updateActionButton();
+    updateModeUi();
+  }
+
+  function scheduleAfterHeartLoss() {
     if (hearts <= 0) {
       clearTimeout(advanceTimer);
       advanceTimer = setTimeout(() => {
         advanceTimer = null;
         endGameOver();
       }, 500);
-      return;
     }
-    if (!fromTimeout) return;
-    clearTimeout(advanceTimer);
-    advanceTimer = setTimeout(() => {
-      advanceTimer = null;
-      beginRound(false);
-    }, 1400);
   }
 
-  function startWordTimer() {
+  function stopCountdown() {
     if (timerId) {
       clearInterval(timerId);
       timerId = null;
     }
+  }
+
+  function startCountdown() {
+    if (!isTimeAttack()) return;
+    stopCountdown();
     timerId = setInterval(() => {
       timeLeft -= 1;
       updateHud();
       if (timeLeft <= 0) {
-        clearInterval(timerId);
-        timerId = null;
-        onWordTimeout();
+        timeLeft = 0;
+        updateHud();
+        stopCountdown();
+        onTimeAttackEnd();
       }
     }, 1000);
+  }
+
+  function onTimeAttackEnd() {
+    if (!playing) return;
+    streak = 0;
+    if (stageHint && targetEntry) {
+      stageHint.textContent =
+        "Answer: " + targetEntry.item.word + " · " + targetEntry.item.reading;
+    }
+    endGameOver("time");
   }
 
   function setFindPrompt(target, active) {
@@ -340,9 +532,17 @@
     return Math.max(90, Math.min(155, w * 0.24));
   }
 
+  function minDistForCount(count) {
+    if (count >= 10) return 72;
+    if (count >= 8) return 80;
+    if (count >= 7) return 84;
+    return MIN_DIST;
+  }
+
   function placeChoices(choices) {
     const rect = stage.getBoundingClientRect();
     const placed = [];
+    const minDist = minDistForCount(choices.length);
 
     choices.forEach((item) => {
       const padX = item.word.length >= 4 ? 16 : 12;
@@ -350,15 +550,34 @@
       let x = 50;
       let y = 50;
       let ok = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
+      for (let attempt = 0; attempt < 120; attempt++) {
         x = padX + Math.random() * (100 - padX * 2);
         y = padY + Math.random() * (100 - padY * 2);
-        ok = placed.every((p) => distPct(x, y, p.x, p.y, rect) >= MIN_DIST);
+        ok = placed.every((p) => distPct(x, y, p.x, p.y, rect) >= minDist);
         if (ok) break;
       }
       placed.push({ x, y, item });
     });
     return placed;
+  }
+
+  function removeFoundWord(entry) {
+    entry.el.classList.add("lhn-word--fading");
+    entry.el.classList.remove("lhn-word--ready");
+    entry.el.style.pointerEvents = "none";
+    roundChoices = roundChoices.filter((e) => e !== entry);
+    if (targetEntry === entry) targetEntry = null;
+  }
+
+  function pickNextTargetFromBoard() {
+    const pool = roundChoices.filter((e) => !e.el.classList.contains("lhn-word--fading"));
+    if (pool.length === 0) return false;
+    const next = pool[Math.floor(Math.random() * pool.length)];
+    targetEntry = next;
+    setFindPrompt(next.item, true);
+    updateTaStageHint();
+    updateTaHeaderSub();
+    return true;
   }
 
   function clearBoard() {
@@ -407,6 +626,13 @@
     });
   }
 
+  function pauseRaf() {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
+
   function onWordClick(btn, item) {
     if (!playing || btn.classList.contains("lhn-word--fading")) return;
     if (!btn.classList.contains("lhn-word--ready")) return;
@@ -416,6 +642,20 @@
     if (!isTarget) {
       const wrongEntry = roundChoices.find((w) => w.el === btn);
       if (wrongEntry) showFloatText(wrongEntry, "ちがう！", "miss");
+
+      if (isTimeAttack()) {
+        const rules = getTaRules();
+        timeLeft = Math.max(0, timeLeft - rules.wrong);
+        updateHud();
+        pulseTimer();
+        if (timeLeft <= 0) {
+          onTimeAttackEnd();
+          return;
+        }
+        streak = 0;
+        return;
+      }
+
       loseHeart();
       streak = 0;
       if (hearts <= 0) {
@@ -426,16 +666,52 @@
         setFindPrompt(null, false);
         updateActionButton();
       }
-      scheduleAfterMistake(false);
+      scheduleAfterHeartLoss();
+      return;
+    }
+
+    const gained = POINTS_BASE;
+    score += gained;
+    streak += 1;
+
+    if (isTimeAttack()) {
+      const rules = getTaRules();
+      timeLeft += rules.correct;
+      updateHud();
+      pulseTimer();
+      showFloatText(targetEntry, "正解！ +" + formatTimeDelta(rules.correct) + "s", "ok");
+      updateActionButton();
+
+      const foundEntry = targetEntry;
+      removeFoundWord(foundEntry);
+      taFindsInRound += 1;
+      updateTaHeaderSub();
+
+      if (taFindsInRound >= TA_FINDS_PER_ROUND) {
+        pauseRaf();
+        clearTimeout(advanceTimer);
+        advanceTimer = setTimeout(() => {
+          advanceTimer = null;
+          completeTaRound();
+        }, 700);
+        return;
+      }
+
+      if (!pickNextTargetFromBoard()) {
+        onTimeAttackEnd();
+        return;
+      }
+
+      pauseRaf();
+      clearTimeout(advanceTimer);
+      advanceTimer = setTimeout(() => {
+        advanceTimer = null;
+        rafId = requestAnimationFrame(tick);
+      }, 450);
       return;
     }
 
     stopTimers();
-    const bonus = timeLeft * POINTS_PER_SECOND;
-    const gained = POINTS_BASE + bonus;
-    score += gained;
-    streak += 1;
-
     showFloatText(targetEntry, "正解！ +" + gained, "ok");
     updateHud();
     updateActionButton();
@@ -470,38 +746,94 @@
     rafId = requestAnimationFrame(tick);
   }
 
-  function stopTimers(keepAdvance) {
-    if (timerId) {
-      clearInterval(timerId);
-      timerId = null;
-    }
+  function stopRaf() {
     if (rafId) {
       cancelAnimationFrame(rafId);
       rafId = 0;
     }
+  }
+
+  function stopTimers(keepAdvance) {
+    stopCountdown();
+    stopRaf();
     if (!keepAdvance && advanceTimer) {
       clearTimeout(advanceTimer);
       advanceTimer = null;
     }
   }
 
-  function onWordTimeout() {
-    if (!playing) return;
-    playing = false;
-    stopTimers();
-    fadeAllWords();
-    streak = 0;
-    stage.classList.remove("lhn-stage--playing", "lhn-stage--lit");
-    setFindPrompt(targetEntry ? targetEntry.item : null, false);
-    showFloatText(STAGE_CENTER, "時間切れ！", "timeout");
-    if (stageHint && targetEntry) {
-      stageHint.textContent =
-        "Answer: " + targetEntry.item.word + " · " + targetEntry.item.reading;
+  function completeTaRound() {
+    if (taRound >= TA_TOTAL_ROUNDS) {
+      endGameClear();
+      return;
     }
-    loseHeart();
-    updateHud();
+    startTaInterRound(taRound + 1);
+  }
+
+  function startTaInterRound(nextRound) {
+    playing = false;
+    taBetweenRounds = true;
+    stopCountdown();
+    stopRaf();
+    fadeAllWords();
+    setFindPrompt(null, false);
     updateActionButton();
-    scheduleAfterMistake(true);
+    updateModeUi();
+
+    let left = TA_INTER_ROUND_SEC;
+    const tickCountdown = () => {
+      if (gameOver) {
+        taBetweenRounds = false;
+        return;
+      }
+      if (left > 0) {
+        if (stageHint) {
+          stageHint.textContent = "Round " + nextRound + " in " + left + "…";
+        }
+        showFloatText(STAGE_CENTER, String(left), "countdown");
+        left -= 1;
+        advanceTimer = setTimeout(tickCountdown, 1000);
+        return;
+      }
+      advanceTimer = null;
+      taBetweenRounds = false;
+      taRound = nextRound;
+      taFindsInRound = 0;
+      showFloatText(STAGE_CENTER, "ラウンド " + taRound, "start");
+      beginTaRound(false);
+    };
+    clearTimeout(advanceTimer);
+    tickCountdown();
+  }
+
+  function beginTaRound(showStart) {
+    if (!stage || !wordsEl || gameOver) return;
+
+    const rules = getTaRules();
+    const { choices, target } = pickRoundSet(rules.words);
+    spawnBoard(choices, target);
+    setFindPrompt(target, true);
+    updateActionButton();
+    updateModeUi();
+
+    playing = true;
+    lightRadius = measureLightRadius();
+    setLantern(50, 50);
+    pointerInside = false;
+
+    stage.classList.add("lhn-stage--playing");
+    updateTaStageHint();
+    updateTaHeaderSub();
+    updateHud();
+
+    if (showStart) {
+      showFloatText(STAGE_CENTER, "スタート！", "start");
+    } else {
+      showFloatText(STAGE_CENTER, "ラウンド " + taRound, "start");
+    }
+
+    startCountdown();
+    rafId = requestAnimationFrame(tick);
   }
 
   function beginRound(showStart) {
@@ -509,15 +841,27 @@
 
     stopTimers();
     playing = true;
-    timeLeft = WORD_SECONDS;
     lightRadius = measureLightRadius();
     setLantern(50, 50);
     pointerInside = false;
+    taBetweenRounds = false;
 
-    const { choices, target } = pickRoundSet();
+    if (isTimeAttack()) {
+      if (showStart) {
+        taRound = 1;
+        taFindsInRound = 0;
+        timeLeft = TA_START_SECONDS;
+        usedAnswersSession.clear();
+      }
+      beginTaRound(showStart);
+      return;
+    }
+
+    const { choices, target } = pickRoundSet(CHOICES);
     spawnBoard(choices, target);
     setFindPrompt(target, true);
     updateActionButton();
+    updateModeUi();
 
     stage.classList.add("lhn-stage--playing");
     if (stageHint) stageHint.textContent = "Find: " + target.word;
@@ -527,7 +871,6 @@
       showFloatText(STAGE_CENTER, "スタート！", "start");
     }
 
-    startWordTimer();
     rafId = requestAnimationFrame(tick);
   }
 
@@ -535,11 +878,16 @@
     stopTimers();
     playing = false;
     gameOver = false;
+    gameClear = false;
+    taBetweenRounds = false;
+    taRound = 1;
+    taFindsInRound = 0;
     score = 0;
     streak = 0;
     hearts = MAX_HEARTS;
-    timeLeft = WORD_SECONDS;
+    timeLeft = TA_START_SECONDS;
     usedAnswersSession.clear();
+    hideClearOverlay();
     clearBoard();
     stage.classList.remove("lhn-stage--playing", "lhn-stage--lit");
     pointerInside = false;
@@ -548,8 +896,8 @@
     renderHearts(-1);
     updateHud();
     updateActionButton();
+    updateModeUi();
     if (stageHint) stageHint.textContent = "Move mouse or finger to light the dark";
-    if (toastEl) toastEl.hidden = true;
   }
 
   function onPointerMove(e) {
@@ -581,11 +929,20 @@
     if (playing) updateReveal();
   });
 
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setMode(btn.getAttribute("data-lhn-mode") || "learning"));
+  });
+
   actionBtn?.addEventListener("click", () => {
     if (playing || advanceTimer) return;
     if (gameOver) resetGame();
-    beginRound(score === 0 && streak === 0 && hearts === MAX_HEARTS);
+    const freshRun =
+      score === 0 &&
+      streak === 0 &&
+      (isLearning() ? hearts === MAX_HEARTS : true);
+    beginRound(freshRun);
   });
 
+  updateModeUi();
   resetGame();
 })();

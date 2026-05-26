@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Lantern Word Hunt — shine your lantern to find the right kanji before time runs out">
+  <meta name="description" content="Lantern Kanji Hunt — shine your lantern to find the right kanji before time runs out">
   <title>Lantern Kanji Hunt — Japanese Language Mentor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/game/lantern-hunt/lantern.css">
 </head>
-<body class="lhn-body">
+<body class="lhn-body lhn-body--learning">
   <header class="lhn-header">
     <div>
       <h1 class="lhn-header__title">Lantern Kanji Hunt</h1>
-      <p class="lhn-header__sub">Shine your lantern · find the kanji · 30 seconds each</p>
+      <p class="lhn-header__sub" id="lhn-header-sub">Shine your lantern · find the word</p>
     </div>
     <a class="lhn-header__back" href="/games.html">← Games</a>
   </header>
@@ -25,15 +25,25 @@
         <span class="lhn-hud__label">Score</span>
         <span class="lhn-hud__value" id="lhn-score">0</span>
       </div>
-      <div class="lhn-hud__item">
+      <div class="lhn-hud__item" id="lhn-timer-wrap">
         <span class="lhn-hud__label">Time</span>
-        <span class="lhn-hud__value" id="lhn-timer">30</span>
+        <span class="lhn-hud__value" id="lhn-timer">5</span>
+      </div>
+      <div class="lhn-hud__item" id="lhn-streak-wrap">
+        <span class="lhn-hud__label">Streak</span>
+        <span class="lhn-hud__value" id="lhn-streak">0</span>
       </div>
     </div>
 
     <p class="lhn-toast" id="lhn-toast" role="status" aria-live="assertive" hidden></p>
 
     <div class="lhn-stage-wrap">
+      <div class="lhn-clear" id="lhn-clear" hidden>
+        <div class="lhn-clear__fireworks" id="lhn-fireworks" aria-hidden="true"></div>
+        <p class="lhn-clear__title">ゲームクリア！</p>
+        <p class="lhn-clear__sub">All 14 rounds cleared</p>
+        <p class="lhn-clear__score" id="lhn-clear-score">Score 0</p>
+      </div>
       <div class="lhn-stage" id="lhn-stage" tabindex="0" aria-label="Dark field — move pointer to shine your lantern">
         <div class="lhn-hearts" id="lhn-hearts" aria-label="3 lives"></div>
         <div class="lhn-words" id="lhn-words"></div>
@@ -53,16 +63,18 @@
       <p class="lhn-find__sub" id="lhn-find-sub">Press New game when you are ready</p>
     </div>
 
+    <section class="lhn-mode" aria-labelledby="lhn-mode-heading">
+      <h2 class="lhn-mode__heading" id="lhn-mode-heading">Mode</h2>
+      <div class="lhn-mode__options" role="group" aria-label="Game mode">
+        <button type="button" class="lhn-mode__btn" data-lhn-mode="learning" aria-pressed="true">Learning</button>
+        <button type="button" class="lhn-mode__btn" data-lhn-mode="timeAttack" aria-pressed="false">Time attack</button>
+      </div>
+    </section>
+
     <div class="lhn-controls">
       <button type="button" class="lhn-btn lhn-btn--primary" id="lhn-action">New game</button>
     </div>
 
-    <ul class="lhn-legend">
-      <li>Five <strong>full words</strong> hide in the dark — only one matches the reading in <strong>Find</strong>.</li>
-      <li>You have <strong>30 seconds</strong> per word. Words stay hidden until your lantern reveals them.</li>
-      <li>Tap the correct word when it glows. Wrong word = ちがう!</li>
-      <li>You have <strong>3 lives</strong>. The answer won’t repeat until you’ve seen every word in the set.</li>
-    </ul>
   </main>
 
   <script src="/game/lantern-hunt/lantern.js" defer></script>
