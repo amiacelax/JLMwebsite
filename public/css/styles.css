@@ -2690,6 +2690,204 @@ button.course-card__status:disabled {
   opacity: 1;
 }
 
+.hw-teacher-maker {
+  margin-bottom: 1.75rem;
+}
+
+.hw-maker-steps {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.hw-maker-steps code {
+  font-size: 0.8125rem;
+}
+
+.hw-maker-template-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-maker-template {
+  width: 100%;
+  max-width: 28rem;
+  margin-bottom: 1rem;
+  padding: 0.55rem 0.75rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.hw-maker-fieldset {
+  margin: 0 0 1.1rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.hw-maker-fieldset legend {
+  padding: 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-maker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
+}
+
+.hw-maker-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-maker-field--wide {
+  grid-column: 1 / -1;
+}
+
+.hw-maker-field--full {
+  grid-column: 1 / -1;
+}
+
+.hw-maker-field__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.hw-maker-field__row input {
+  flex: 1 1 12rem;
+}
+
+.hw-maker-field input,
+.hw-maker-field select,
+.hw-maker-field textarea {
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.hw-maker-field textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: 0.55rem 0.65rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  resize: vertical;
+}
+
+.hw-maker-field input,
+.hw-maker-field select {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-maker-format {
+  margin: 0 0 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-maker-format summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-maker-format__code {
+  margin: 0.35rem 0;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  background: var(--color-bg-elevated, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.hw-maker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.hw-maker-status {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-maker-status--error {
+  color: #e57373;
+}
+
+.hw-maker-catalog-out {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  max-height: 12rem;
+  overflow: auto;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-maker-preview-heading {
+  margin: 0 0 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.hw-maker-preview {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-maker-preview-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 560px) {
+  .hw-maker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .hw-teacher-library {
   margin-bottom: 1.75rem;
 }

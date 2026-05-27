@@ -76,6 +76,98 @@
           <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
         </div>
 
+        <section class="hw-teacher-maker hw-platform-card hw-platform-card--wide" id="hw-teacher-maker" hidden>
+          <h2 class="hw-platform-card__title">Homework maker</h2>
+          <p class="hw-platform-card__desc">Draft a fillable worksheet, preview it, then download JSON and paste the catalog entry. After you add files to the repo and deploy, students open it from their hub.</p>
+
+          <ol class="hw-maker-steps">
+            <li>Fill lesson info and sentence lines (format below).</li>
+            <li>Preview → download <code>{id}.json</code> into <code>public/homework/assignments/</code>.</li>
+            <li>Copy catalog entry → paste into <code>catalog.json</code> <code>assignments</code> array.</li>
+            <li><code>npm run deploy</code> — copy student link to Discord.</li>
+          </ol>
+
+          <label class="hw-maker-template-label" for="hw-maker-template">Template</label>
+          <select class="hw-maker-template" id="hw-maker-template">
+            <option value="">Load existing worksheet as template…</option>
+          </select>
+
+          <form class="hw-maker-form" id="hw-maker-form">
+            <fieldset class="hw-maker-fieldset">
+              <legend>Lesson &amp; student</legend>
+              <div class="hw-maker-grid">
+                <label class="hw-maker-field">Date <input type="date" name="date" required></label>
+                <label class="hw-maker-field">Student login id <input type="text" name="studentUsername" placeholder="benm" autocomplete="off" required></label>
+                <label class="hw-maker-field">Student label <input type="text" name="studentLabel" placeholder="Ben M" autocomplete="off" required></label>
+                <label class="hw-maker-field">Lesson # <input type="text" name="lessonNumber" placeholder="24" inputmode="numeric"></label>
+                <label class="hw-maker-field hw-maker-field--wide">Worksheet title <input type="text" name="title" placeholder="～がほしい vs ～たい" required></label>
+                <label class="hw-maker-field">Level
+                  <select name="level">
+                    <option>Beginner</option>
+                    <option selected>Low-Intermediate</option>
+                    <option>Intermediate</option>
+                    <option>Advanced</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field">Register
+                  <select name="register">
+                    <option value="casual" selected>Casual</option>
+                    <option value="polite">Polite</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">YouTube (latest lesson) <input type="url" name="youtubeUrl" placeholder="https://youtu.be/…"></label>
+                <label class="hw-maker-field hw-maker-field--wide">Tags (comma-separated) <input type="text" name="tags" placeholder="たい, desire, grammar"></label>
+                <label class="hw-maker-field hw-maker-field--wide">Library summary <input type="text" name="summary" placeholder="Short line for teacher search"></label>
+                <label class="hw-maker-field hw-maker-field--wide">File id
+                  <span class="hw-maker-field__row">
+                    <input type="text" name="id" placeholder="2026-05-27-ben-m" autocomplete="off">
+                    <button type="button" class="btn btn--ghost btn--sm" id="hw-maker-new-id-btn">Regenerate id</button>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <details class="hw-maker-format">
+              <summary>Line format (Section 1 &amp; 2)</summary>
+              <p>One sentence per line:</p>
+              <pre class="hw-maker-format__code">text before {answer} text after | dictionary | conjugation</pre>
+              <p>Section 2: leave <code>{ }</code> empty for open-ended blanks. Start a line with <code>!</code> for <strong>NEGATIVE</strong> items.</p>
+              <pre class="hw-maker-format__code">トイレに {行きたい} 。 | いく | たい
+!彼女が {ほしくない} 。 | ほしい | ない</pre>
+            </details>
+
+            <fieldset class="hw-maker-fieldset">
+              <legend>Section 1 — Grammar point (auto-checked)</legend>
+              <label class="hw-maker-field hw-maker-field--wide">Section title <input type="text" name="section1Title" placeholder="Section 1 — Grammar point"></label>
+              <label class="hw-maker-field hw-maker-field--wide">Instructions <input type="text" name="section1Instructions"></label>
+              <label class="hw-maker-field hw-maker-field--full">Lines
+                <textarea name="section1Lines" rows="8" spellcheck="false"></textarea>
+              </label>
+            </fieldset>
+
+            <fieldset class="hw-maker-fieldset">
+              <legend>Section 2 — Student words (sent to Discord)</legend>
+              <label class="hw-maker-field hw-maker-field--wide">Section title <input type="text" name="section2Title" placeholder="Section 2 — Your words"></label>
+              <label class="hw-maker-field hw-maker-field--wide">Instructions <input type="text" name="section2Instructions"></label>
+              <label class="hw-maker-field hw-maker-field--full">Lines
+                <textarea name="section2Lines" rows="6" spellcheck="false"></textarea>
+              </label>
+            </fieldset>
+
+            <div class="hw-maker-actions">
+              <button type="button" class="btn btn--primary" id="hw-maker-preview-btn">Update preview</button>
+              <button type="button" class="btn btn--ghost" id="hw-maker-download-btn">Download JSON</button>
+              <button type="button" class="btn btn--ghost" id="hw-maker-copy-catalog-btn">Copy catalog entry</button>
+              <button type="button" class="btn btn--ghost" id="hw-maker-copy-link-btn">Copy student link</button>
+            </div>
+            <p class="hw-maker-status" id="hw-maker-status" role="status" aria-live="polite"></p>
+          </form>
+
+          <pre class="hw-maker-catalog-out" id="hw-maker-catalog-snippet" hidden aria-label="Catalog JSON snippet"></pre>
+          <h3 class="hw-maker-preview-heading">Live preview</h3>
+          <div class="hw-maker-preview" id="hw-maker-preview"></div>
+        </section>
+
         <section class="hw-teacher-library hw-platform-card hw-platform-card--wide" id="hw-teacher-library" hidden>
           <h2 class="hw-platform-card__title">Worksheet library</h2>
           <p class="hw-platform-card__desc">All fillable homework templates — search, preview, download JSON, or copy a link for students.</p>
@@ -175,6 +267,7 @@
 
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-worksheet.js?v=20260530" defer></script>
-  <script src="/js/hw-platform.js?v=20260525i" defer></script>
+  <script src="/js/hw-maker.js?v=20260527" defer></script>
+  <script src="/js/hw-platform.js?v=20260527" defer></script>
 </body>
 </html>

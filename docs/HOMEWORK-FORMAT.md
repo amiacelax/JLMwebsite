@@ -31,9 +31,31 @@ Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`,
 ## Teacher hub (`japaneselanguagementor` demo)
 
 - Account role `teacher` in `hw-auth.js` — **Teacher's hub** with worksheet library (all catalog entries)
+- **Homework maker** on `platform.html` — draft lines → live preview → download `{id}.json` → copy catalog snippet → deploy
 - `benm` demo = student test site (assignments filtered by `students` in catalog)
 - Catalog: optional `tags`, `summary` for library search; `students` array controls who sees the sheet
-- Teacher actions: Preview, Download JSON, Copy JSON URL, Copy student link (`platform.html#hw-{id}`)
+- Teacher actions: Preview, Download JSON, Copy JSON URL, Copy student link (`platform.html#hw-{id}`), **Edit in maker**
+
+### Homework maker line format
+
+One sentence per line in Section 1 or 2 textareas:
+
+```
+text before {answer} text after | dictionary | conjugation
+```
+
+- Section 1: `{answer}` is the auto-check key (Section 1 grammar blanks).
+- Section 2: use empty `{ }` for open-ended student answers.
+- Prefix a line with `!` for **NEGATIVE** items.
+
+Example:
+
+```
+トイレに {行きたい} 。 | いく | たい
+!彼女が {ほしくない} 。 | ほしい | ない
+```
+
+Publish checklist: save JSON under `public/homework/assignments/`, add catalog entry, `npm run deploy`, send student link.
 
 ## Part types in `items[].parts`
 

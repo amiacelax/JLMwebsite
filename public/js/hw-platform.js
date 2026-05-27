@@ -552,7 +552,15 @@
         );
       });
 
-      actions.append(previewBtn, dl, copyJson, copyStudent);
+      const editMaker = document.createElement("button");
+      editMaker.type = "button";
+      editMaker.className = "btn btn--ghost btn--sm";
+      editMaker.textContent = "Edit in maker";
+      editMaker.addEventListener("click", () => {
+        openInMaker(entry.id);
+      });
+
+      actions.append(previewBtn, dl, copyJson, copyStudent, editMaker);
       li.append(main, actions);
       list.appendChild(li);
     });
@@ -638,6 +646,43 @@
 
   let catalogCache = null;
   let librarySearchBound = false;
+  let makerInitialized = false;
+
+  function getCatalogEntry(id) {
+    return (catalogCache?.assignments || []).find((e) => e.id === id) || null;
+  }
+
+  function openInMaker(id) {
+    const form = document.getElementById("hw-maker-form");
+    const templateSelect = document.getElementById("hw-maker-template");
+    const makerSection = document.getElementById("hw-teacher-maker");
+    if (!form || !global.HwMaker) return;
+    makerSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (templateSelect) templateSelect.value = id;
+    fetch("/homework/assignments/" + id + ".json", { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("load");
+        return res.json();
+      })
+      .then((assignment) => {
+        HwMaker.fillFormFromAssignment(form, assignment, getCatalogEntry(id));
+        showToast("Loaded in homework maker — " + id);
+        document.getElementById("hw-maker-preview-btn")?.click();
+      })
+      .catch(() => showToast("Could not load worksheet"));
+  }
+
+  function initHomeworkMaker(entries) {
+    if (!global.HwMaker || makerInitialized) return;
+    makerInitialized = true;
+    HwMaker.populateTemplates(document.getElementById("hw-maker-template"), entries);
+    HwMaker.init({
+      showToast,
+      copyText,
+      studentWorksheetUrl,
+      getCatalogEntry,
+    });
+  }
 
   async function loadTeacherHub() {
     document.body.classList.add("hw-role-teacher");
@@ -645,14 +690,16 @@
     const hubTitle = document.getElementById("hw-hub-title");
     const hubDesc = document.getElementById("hw-hub-desc");
     const teacherLib = document.getElementById("hw-teacher-library");
+    const teacherMaker = document.getElementById("hw-teacher-maker");
     const teacherSubmissions = document.getElementById("hw-teacher-submissions");
     const studentGrid = document.getElementById("hw-student-grid");
 
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Search and manage fillable homework templates. Preview blanks, download JSON, or copy links for students (benm demo = student test site).";
+        "Create new homework, manage the worksheet library, and copy student links (benm demo = student test site).";
     }
+    if (teacherMaker) teacherMaker.hidden = false;
     if (teacherLib) teacherLib.hidden = false;
     if (teacherSubmissions) teacherSubmissions.hidden = false;
     if (studentGrid) studentGrid.hidden = true;
@@ -664,6 +711,7 @@
       } catch {
         const meta = document.getElementById("hw-library-meta");
         if (meta) meta.textContent = "Could not load worksheet catalog.";
+        initHomeworkMaker([]);
         return;
       }
     }
@@ -680,6 +728,7 @@
       });
     }
 
+    initHomeworkMaker(entries);
     renderLibraryList(entries, searchInput ? searchInput.value : "", active?.id);
     await loadWorksheetPreview(active);
   }
