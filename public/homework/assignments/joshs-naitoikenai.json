@@ -124,7 +124,7 @@
           "id": "s1-5",
           "negative": true,
           "parts": [
-            { "type": "text", "value": "今日は遊んでは" },
+            { "type": "text", "value": "昨日は遊んでは" },
             {
               "type": "blank",
               "name": "s1-5",
@@ -159,7 +159,7 @@
               "wide": true,
               "hint": { "dictionary": "べんきょう", "conjugation": "する" }
             },
-            { "type": "text", "value": "しないといけない。" }
+            { "type": "text", "value": "しないといけなかった。" }
           ]
         },
         {
@@ -172,20 +172,20 @@
               "wide": true,
               "hint": { "dictionary": "ねる", "conjugation": "plain" }
             },
-            { "type": "text", "value": "ないといけない。" }
+            { "type": "text", "value": "ないといけなかった。" }
           ]
         },
         {
           "id": "s2-3",
           "parts": [
-            { "type": "text", "value": "また" },
+            { "type": "text", "value": "昨日、また" },
             {
               "type": "blank",
               "name": "s2-3",
               "wide": true,
               "hint": { "dictionary": "いく", "conjugation": "plain" }
             },
-            { "type": "text", "value": "。" }
+            { "type": "text", "value": "ないといけなかった。" }
           ]
         },
         {
@@ -203,7 +203,7 @@
               "ruby": [
                 { "text": "を" },
                 { "text": "食", "rt": "た" },
-                { "text": "べないといけない。" }
+                { "text": "べないといけなかった。" }
               ]
             }
           ]
@@ -217,7 +217,7 @@
               "wide": true,
               "hint": { "dictionary": "はたらく", "conjugation": "plain" }
             },
-            { "type": "text", "value": "ないといけない。" }
+            { "type": "text", "value": "ないといけなかった。" }
           ]
         }
       ]

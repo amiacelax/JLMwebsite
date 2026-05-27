@@ -81,6 +81,14 @@
     return part.answer || "";
   }
 
+  function expectedAnswerFromVariants(variants, register, tense, fallback) {
+    if (!variants) return fallback || "";
+    const reg = variants[register] || variants.casual;
+    if (reg && reg[tense]) return reg[tense];
+    if (variants.casual && variants.casual["Now-Later"]) return variants.casual["Now-Later"];
+    return fallback || "";
+  }
+
   function applyAnswerVariants(form) {
     if (!form) return;
     const register = form.dataset.hwRegister || "casual";
@@ -89,14 +97,30 @@
       if (!input.dataset.variants) return;
       try {
         const variants = JSON.parse(input.dataset.variants);
-        const ans =
-          (variants[register] && variants[register][tense]) ||
-          (variants.casual && variants.casual["Now-Later"]) ||
-          input.dataset.answer ||
-          "";
-        input.dataset.answer = ans;
+        input.dataset.answer = expectedAnswerFromVariants(
+          variants,
+          register,
+          tense,
+          input.dataset.answer
+        );
       } catch (_) {}
       input.classList.remove("hw-blank--correct", "hw-blank--wrong");
+    });
+  }
+
+  function bindVariantGrading(form) {
+    if (!form || form.dataset.hwVariantBound === "true") return;
+    form.dataset.hwVariantBound = "true";
+    form.addEventListener("input", (e) => {
+      const inp = e.target;
+      if (!inp?.classList?.contains("hw-blank") || !inp.dataset.variants) return;
+      applyAnswerVariants(form);
+      const expected = inp.dataset.answer;
+      if (!expected) return;
+      const has = Boolean(normalizeAnswer(inp.value));
+      const ok = answersMatch(inp.value, expected, true);
+      inp.classList.toggle("hw-blank--correct", ok && has);
+      inp.classList.toggle("hw-blank--wrong", has && !ok);
     });
   }
 
@@ -218,7 +242,7 @@
       if (interactive) {
         pill.addEventListener("click", () => {
           form.dataset.hwTense = label;
-          document.querySelectorAll(".hw-tense-bubbles").forEach((group) => {
+          form.querySelectorAll(".hw-tense-bubbles").forEach((group) => {
             group.querySelectorAll(".hw-tense-pill").forEach((el) => {
               const isOn = el.textContent === label;
               el.classList.toggle("hw-tense-pill--active", isOn);
@@ -381,11 +405,12 @@
     heading.textContent = section.title;
     head.appendChild(heading);
 
-    if (section.tenseBubbles && section.tenseBubbles.length && interactive) {
+    const tenseAtMeta = form?.dataset.hwTenseAtMeta === "1";
+    if (section.tenseBubbles && section.tenseBubbles.length && interactive && !tenseAtMeta) {
       const tense =
         (form && form.dataset.hwTense) || section.activeTense || section.tenseBubbles[0];
       head.appendChild(renderTenseBubbles(form, section, tense, true));
-    } else if (section.tenseBubbles && section.tenseBubbles.length) {
+    } else if (section.tenseBubbles && section.tenseBubbles.length && !tenseAtMeta) {
       head.appendChild(
         renderTenseBubbles(form, section, section.activeTense || section.tenseBubbles[0], false)
       );
@@ -496,9 +521,7 @@
   function render(mount, assignment, options) {
     options = options || {};
     const authoring = Boolean(options.authoring);
-    const prepared = enrichGrammarVariants(
-      JSON.parse(JSON.stringify(assignment || { sections: [] }))
-    );
+    const prepared = JSON.parse(JSON.stringify(assignment || { sections: [] }));
     mount.innerHTML = "";
 
     const form = document.createElement("form");
@@ -525,18 +548,28 @@
       "</p>" +
       (authoring
         ? hasVariants
-          ? '<p class="hw-worksheet__meta-hint">Teacher: type the sentence and <strong>casual</strong> answer in each blank. Students get <strong>Casual</strong> / <strong>Polite</strong> and tense pills (polite forms are generated from your casual answers).</p>'
+          ? '<p class="hw-worksheet__meta-hint">Teacher: type each sentence and the <strong>casual · Now-Later</strong> answer in the blank. Add polite/past forms in the JSON when you publish separate variants.</p>'
           : '<p class="hw-worksheet__meta-hint">Teacher: type the sentence around each blank and the <strong>correct answer</strong> in the blank. Students will see the same layout without answers filled in.</p>'
         : interactive
-          ? '<p class="hw-worksheet__meta-hint">Switch <strong>Casual</strong> / <strong>Polite</strong> and <strong>Now-Later</strong> / <strong>Past</strong> to practice the same sentences in different forms.</p>'
+          ? '<p class="hw-worksheet__meta-hint">Use the pills only if this sheet includes those answer sets. JD may also publish separate homework for past or polite practice.</p>'
           : "");
     metaTop.appendChild(metaText);
-    if (!options.preview && hasVariants) {
+    const grammarSection = (prepared.sections || []).find((s) => s.mode === "grammar-blank");
+    const variantControlsInteractive = !options.preview && hasVariants;
+
+    if (variantControlsInteractive) {
       form.dataset.hwRegister = form.dataset.hwRegister || prepared.register || "casual";
       form.dataset.hwTense = form.dataset.hwTense || "Now-Later";
-      metaTop.appendChild(
-        renderRegisterPills(form, form.dataset.hwRegister, !authoring)
-      );
+      const controls = document.createElement("div");
+      controls.className = "hw-worksheet__meta-controls";
+      controls.appendChild(renderRegisterPills(form, form.dataset.hwRegister, true));
+      if (grammarSection?.tenseBubbles?.length) {
+        form.dataset.hwTenseAtMeta = "1";
+        controls.appendChild(
+          renderTenseBubbles(form, grammarSection, form.dataset.hwTense, true)
+        );
+      }
+      metaTop.appendChild(controls);
     }
 
     meta.appendChild(metaTop);
@@ -546,7 +579,10 @@
       form.appendChild(renderSection(form, section, interactive, authoring));
     });
 
-    if (!authoring) applyAnswerVariants(form);
+    if (!authoring) {
+      applyAnswerVariants(form);
+      if (interactive) bindVariantGrading(form);
+    }
 
     const actions = document.createElement("div");
     actions.className = "hw-worksheet__actions";
@@ -627,11 +663,12 @@
       .normalize("NFKC");
   }
 
-  function answersMatch(student, expected) {
+  function answersMatch(student, expected, strict) {
     const a = normalizeAnswer(student);
     const b = normalizeAnswer(expected);
     if (!a || !b) return false;
     if (a === b) return true;
+    if (strict) return false;
     // Allow student to include particle when answer is grammar stem only
     if (a.endsWith(b) || b.endsWith(a)) return true;
     return false;
@@ -642,6 +679,7 @@
    * @returns {{ graded: Array<object>, openEnded: Array<object>, score: { correct: number, total: number }, openFilled: number, openTotal: number }}
    */
   function checkHomework(form) {
+    applyAnswerVariants(form);
     const graded = [];
     const openEnded = [];
     let correct = 0;
@@ -650,10 +688,11 @@
     form.querySelectorAll(".hw-blank").forEach((input) => {
       const expected = input.dataset.answer;
       const value = input.value;
+      const strict = Boolean(input.dataset.variants);
       input.classList.remove("hw-blank--correct", "hw-blank--wrong");
 
       if (expected) {
-        const ok = answersMatch(value, expected);
+        const ok = answersMatch(value, expected, strict);
         if (ok) {
           correct += 1;
           input.classList.add("hw-blank--correct");
@@ -739,22 +778,22 @@
           html +=
             "<li class=\"hw-check-results__item hw-check-results__item--ok\">" +
             label +
-            " ✓ Correct · Yours: <span class=\"hw-check-yours\" lang=\"ja\">" +
-            yours +
+            ' <span class="hw-check-top hw-check-top--ok">Correct: <span class="hw-check-expected" lang="ja">' +
+            expected +
             "</span>" +
-            '<div class="hw-check-complete" lang="ja">' +
+            '<div class="hw-check-complete hw-check-complete--ok" lang="ja">' +
             completed +
             "</div></li>";
         } else {
           html +=
             "<li class=\"hw-check-results__item hw-check-results__item--miss\">" +
             label +
-            " ✗ Expected: <span class=\"hw-check-expected\" lang=\"ja\">" +
-            expected +
-            "</span> · Yours: <span class=\"hw-check-yours\" lang=\"ja\">" +
+            ' <span class="hw-check-top hw-check-top--miss">✖ Incorrect: <span class="hw-check-yours hw-check-yours--miss" lang="ja">' +
             yours +
-            "</span>" +
-            '<div class="hw-check-complete" lang="ja">' +
+            '</span> <span class="hw-check-top hw-check-top--ok">Correct: <span class="hw-check-expected" lang="ja">' +
+            expected +
+            "</span></span></span>" +
+            '<div class="hw-check-complete hw-check-complete--miss" lang="ja">' +
             completed +
             "</div></li>";
         }
@@ -819,7 +858,8 @@
       assignmentId: meta.assignmentId,
       lessonName: meta.lessonName,
       title: meta.title,
-      register: meta.register,
+      register: form.dataset.hwRegister || meta.register,
+      tense: form.dataset.hwTense || "Now-Later",
       scoreCorrect: report.score.correct,
       scoreTotal: report.score.total,
       section1,
@@ -834,9 +874,11 @@
     checkHomework,
     renderCheckResults,
     normalizeAnswer,
+    answersMatch,
     buildSubmitPayload,
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,
+    applyAnswerVariants,
   };
 })(window);

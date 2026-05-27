@@ -3392,6 +3392,22 @@ body.hw-role-teacher #hw-teacher-library {
   gap: 1rem;
 }
 
+.hw-worksheet__meta-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.hw-worksheet__meta-controls .hw-register,
+.hw-worksheet__meta-controls .hw-tense-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
 .hw-worksheet__meta-text {
   flex: 1 1 auto;
   min-width: 0;
@@ -3494,21 +3510,28 @@ button.hw-register__pill {
 .hw-tense-bubbles {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
+}
+
+.hw-register__pill,
+.hw-tense-pill {
+  min-width: 5.75rem;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .hw-tense-pill {
   display: inline-block;
-  padding: 0.2rem 0.55rem;
-  font-family: Inter, sans-serif;
-  font-size: 0.6875rem;
+  padding: 0.35rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   border-radius: 999px;
-  border: 1px solid var(--color-border);
-  line-height: 1.3;
+  border: 1px solid transparent;
+  line-height: 1.2;
   cursor: pointer;
-  background: transparent;
 }
 
 button.hw-tense-pill {
@@ -3516,14 +3539,23 @@ button.hw-tense-pill {
 }
 
 .hw-tense-pill--active {
-  background: var(--color-green-soft);
-  color: var(--color-green);
-  border-color: var(--color-green);
+  color: #0d1b2a;
+  background: #00b894;
+  border-color: #55efc4;
+  box-shadow: 0 0 0 1px rgba(85, 239, 196, 0.35);
 }
 
 .hw-tense-pill--inactive {
   color: var(--color-text-muted);
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
   opacity: 0.55;
+}
+
+[data-theme="light"] .hw-tense-pill--active {
+  color: #fff;
+  background: #008f72;
+  border-color: #00b894;
 }
 
 .hw-worksheet__section-intro {
@@ -3746,7 +3778,7 @@ button.hw-tense-pill {
 }
 
 .hw-check-results__item--ok {
-  color: #00b894;
+  color: var(--color-text);
 }
 
 .hw-check-results__item--miss {
@@ -3755,12 +3787,34 @@ button.hw-tense-pill {
 }
 
 .hw-check-expected {
-  color: #f0bcbc;
-  font-weight: 500;
+  color: #00d68f;
+  font-weight: 600;
 }
 
 .hw-check-yours {
   color: var(--color-text);
+}
+
+.hw-check-top {
+  font-weight: 700;
+}
+
+.hw-check-top--ok {
+  color: #00d68f;
+}
+
+.hw-check-top--miss {
+  color: #ff7b7b;
+}
+
+.hw-check-yours--ok {
+  color: #00d68f;
+  font-weight: 600;
+}
+
+.hw-check-yours--miss {
+  color: #ff7b7b;
+  font-weight: 600;
 }
 
 .hw-check-open {
@@ -3783,7 +3837,31 @@ button.hw-tense-pill {
   color: var(--color-text);
 }
 
+.hw-check-complete--ok {
+  border-left-color: #00d68f;
+  color: #00d68f;
+}
+
+.hw-check-complete--miss {
+  border-left-color: #ff7b7b;
+  color: #ff7b7b;
+}
+
 [data-theme="light"] .hw-check-expected {
+  color: #0c9a60;
+}
+
+[data-theme="light"] .hw-check-top--ok,
+[data-theme="light"] .hw-check-yours--ok {
+  color: #0c9a60;
+}
+
+[data-theme="light"] .hw-check-top--miss,
+[data-theme="light"] .hw-check-yours--miss {
+  color: #b54545;
+}
+
+[data-theme="light"] .hw-check-complete--miss {
   color: #b54545;
 }
 
