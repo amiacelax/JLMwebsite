@@ -28,34 +28,39 @@ Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`,
 - `"negative": true` on an item — red `NEGATIVE` pill after the sentence; answer should be negative (e.g. `ほしくない`)
 - Hints omit conjugation when it is `たい`, `plain`, or `ない` — show `（ほしい）` not `（ほしい・ない）`
 
-## Teacher hub (`japaneselanguagementor` demo)
+## Teacher hub (`jlm` demo)
 
 - Account role `teacher` in `hw-auth.js` — **Teacher's hub** with worksheet library (all catalog entries)
-- **Homework maker** on `platform.html` — draft lines → live preview → download `{id}.json` → copy catalog snippet → deploy
+- **Homework maker** — enter **student id** + **grammar point** (e.g. `～ないといけない`) → **Generate with AI** (`POST /api/homework-generate`, needs `OPENAI_API_KEY`)
+- File id auto: `{studentid}-{grammar-slug}` (e.g. `benm-naitoikenai`)
+- Optional **YouTube** URL → catalog + student “latest lesson” card
 - `benm` demo = student test site (assignments filtered by `students` in catalog)
-- Catalog: optional `tags`, `summary` for library search; `students` array controls who sees the sheet
-- Teacher actions: Preview, Download JSON, Copy JSON URL, Copy student link (`platform.html#hw-{id}`), **Edit in maker**
+- Teacher actions: Preview, Download JSON, Copy catalog entry, Copy student link (`platform.html#hw-{id}`), load template / **Edit in maker**
 
-### Homework maker line format
+### Student practice toggles
 
-One sentence per line in Section 1 or 2 textareas:
+On the worksheet (not in the maker): students tap **Casual / Polite** and **Now-Later / Past**. Section 1 blanks use `variants` on each blank:
+
+```json
+"variants": {
+  "casual": { "Now-Later": "行かないといけない", "Past": "行かなかった" },
+  "polite": { "Now-Later": "行かないといけません", "Past": "行かなかった" }
+}
+```
+
+AI generation should fill this grid. Legacy sheets with a single `answer` still work (no toggle effect).
+
+### Manual line format (advanced)
+
+One sentence per line:
 
 ```
 text before {answer} text after | dictionary | conjugation
 ```
 
-- Section 1: `{answer}` is the auto-check key (Section 1 grammar blanks).
-- Section 2: use empty `{ }` for open-ended student answers.
-- Prefix a line with `!` for **NEGATIVE** items.
+Section 2: empty `{ }` for open blanks. Prefix `!` for **NEGATIVE**.
 
-Example:
-
-```
-トイレに {行きたい} 。 | いく | たい
-!彼女が {ほしくない} 。 | ほしい | ない
-```
-
-Publish checklist: save JSON under `public/homework/assignments/`, add catalog entry, `npm run deploy`, send student link.
+Publish: save JSON under `public/homework/assignments/`, add catalog entry, `npm run deploy`, send student link.
 
 ## Part types in `items[].parts`
 

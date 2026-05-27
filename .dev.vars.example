@@ -9,3 +9,9 @@ DISCORD_CHANNEL_ID=1507209734095241266
 # Homework submissions — create webhook in channel 1507650471836258404
 DISCORD_HOMEWORK_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_HW_ID/YOUR_HW_TOKEN
 DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
+
+# Homework maker — OPTIONAL. The maker works with NO keys (built-in templates).
+# Only add this if you sign up at platform.openai.com and want smarter AI drafts:
+# OPENAI_API_KEY=sk-...
+#
+# Your Cloudflare API token (for wrangler login / deploy) is NOT the same thing — you do not put it here.

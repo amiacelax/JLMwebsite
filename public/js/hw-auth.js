@@ -58,14 +58,22 @@
 
   /** @type {Record<string, object>} */
   const ACCOUNTS = {
-    japaneselanguagementor: {
+    jlm: {
       password: "demo",
-      displayName: "japaneselanguagementor",
+      displayName: "JLM",
       role: "teacher",
     },
     benm: {
       password: "demo",
       displayName: "Ben M",
+      role: "student",
+      accountLabel: "current_student",
+      tier: "student_special",
+      videoResponseUnlock: false,
+    },
+    joshs: {
+      password: "jelly",
+      displayName: "Josh S",
       role: "student",
       accountLabel: "current_student",
       tier: "student_special",
@@ -235,6 +243,22 @@
     return false;
   }
 
+  function listStudentAccounts() {
+    return Object.entries(ACCOUNTS)
+      .filter(([, account]) => account.role === "student")
+      .map(([username, account]) => ({
+        username,
+        displayName: account.displayName || username,
+      }))
+      .sort((a, b) => a.username.localeCompare(b.username));
+  }
+
+  function isStudentAccount(username) {
+    const key = normalizeUsername(username);
+    const account = ACCOUNTS[key];
+    return Boolean(account && account.role === "student");
+  }
+
   global.HwAuth = {
     SESSION_KEY,
     VIDEO_UNLOCK_PREFIX,
@@ -258,5 +282,7 @@
     canShowWeeklyHomeworkUpgrade,
     getTierMeta,
     enableVideoResponseUnlock,
+    listStudentAccounts,
+    isStudentAccount,
   };
 })(window);

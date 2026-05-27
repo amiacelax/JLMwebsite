@@ -2,6 +2,11 @@
   "playlistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
   "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
   "studentProfiles": {
+    "joshs": {
+      "latestLessonUrl": "https://youtu.be/J1RsLT9TOKU",
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BS3IIj7z42egtdStDWeraO",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BS3IIj7z42egtdStDWeraO"
+    },
     "deme": {
       "latestLessonUrl": "https://youtu.be/q3WRBr1LHm0",
       "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY",
@@ -52,6 +57,28 @@
         "low-intermediate"
       ],
       "summary": "Practice ～がほしい, ～たい, and negative ほしくない / たくない in fill-in blanks."
+    },
+    {
+      "id": "joshs-naitoikenai",
+      "title": "～ないといけない",
+      "date": "2026-05-27",
+      "level": "Low-Intermediate",
+      "studentLabel": "Josh S",
+      "lessonName": "2026-05-27 — Lesson",
+      "students": ["joshs"],
+      "youtubeUrl": "https://youtu.be/J1RsLT9TOKU",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "ないといけない",
+        "なければならない",
+        "obligation",
+        "grammar",
+        "negative",
+        "verb conjugation",
+        "low-intermediate"
+      ],
+      "summary": "Practice ～ないといけない — must / have to — in fill-in blanks."
     }
   ]
 }

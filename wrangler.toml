@@ -10,6 +10,11 @@ not_found_handling = "single-page-application"
 [observability]
 enabled = true
 
+[[kv_namespaces]]
+binding = "HOMEWORK_KV"
+id = "7e0eeef7af724f49ad5985302ea6fdc6"
+preview_id = "75771c0dd6174e8593a354fab3b7709e"
+
 [vars]
 # #website-inquiries — contact + promo webhooks must post here
 DISCORD_CHANNEL_ID = "1507209734095241266"

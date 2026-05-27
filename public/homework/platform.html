@@ -17,6 +17,10 @@
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
       HwAuth.requireAuth('/homework.html');
+      var s = HwAuth.getSession();
+      if (s && s.role === 'teacher') {
+        document.documentElement.classList.add('hw-is-teacher');
+      }
     })();
   </script>
 </head>
@@ -76,178 +80,140 @@
           <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
         </div>
 
+        <!-- Teacher: create homework (same fill-in-the-blank layout as students) -->
         <section class="hw-teacher-maker hw-platform-card hw-platform-card--wide" id="hw-teacher-maker" hidden>
-          <h2 class="hw-platform-card__title">Homework maker</h2>
-          <p class="hw-platform-card__desc">Draft a fillable worksheet, preview it, then download JSON and paste the catalog entry. After you add files to the repo and deploy, students open it from their hub.</p>
+          <h2 class="hw-platform-card__title">Create homework</h2>
+          <p class="hw-platform-card__desc">Load a student’s homework to edit, or start a new sheet. Changes go live on their hub when you publish or update.</p>
 
-          <ol class="hw-maker-steps">
-            <li>Fill lesson info and sentence lines (format below).</li>
-            <li>Preview → download <code>{id}.json</code> into <code>public/homework/assignments/</code>.</li>
-            <li>Copy catalog entry → paste into <code>catalog.json</code> <code>assignments</code> array.</li>
-            <li><code>npm run deploy</code> — copy student link to Discord.</li>
-          </ol>
-
-          <label class="hw-maker-template-label" for="hw-maker-template">Template</label>
-          <select class="hw-maker-template" id="hw-maker-template">
-            <option value="">Load existing worksheet as template…</option>
-          </select>
-
-          <form class="hw-maker-form" id="hw-maker-form">
-            <fieldset class="hw-maker-fieldset">
-              <legend>Lesson &amp; student</legend>
-              <div class="hw-maker-grid">
-                <label class="hw-maker-field">Date <input type="date" name="date" required></label>
-                <label class="hw-maker-field">Student login id <input type="text" name="studentUsername" placeholder="benm" autocomplete="off" required></label>
-                <label class="hw-maker-field">Student label <input type="text" name="studentLabel" placeholder="Ben M" autocomplete="off" required></label>
-                <label class="hw-maker-field">Lesson # <input type="text" name="lessonNumber" placeholder="24" inputmode="numeric"></label>
-                <label class="hw-maker-field hw-maker-field--wide">Worksheet title <input type="text" name="title" placeholder="～がほしい vs ～たい" required></label>
-                <label class="hw-maker-field">Level
-                  <select name="level">
-                    <option>Beginner</option>
-                    <option selected>Low-Intermediate</option>
-                    <option>Intermediate</option>
-                    <option>Advanced</option>
-                  </select>
-                </label>
-                <label class="hw-maker-field">Register
-                  <select name="register">
-                    <option value="casual" selected>Casual</option>
-                    <option value="polite">Polite</option>
-                  </select>
-                </label>
-                <label class="hw-maker-field hw-maker-field--wide">YouTube (latest lesson) <input type="url" name="youtubeUrl" placeholder="https://youtu.be/…"></label>
-                <label class="hw-maker-field hw-maker-field--wide">Tags (comma-separated) <input type="text" name="tags" placeholder="たい, desire, grammar"></label>
-                <label class="hw-maker-field hw-maker-field--wide">Library summary <input type="text" name="summary" placeholder="Short line for teacher search"></label>
-                <label class="hw-maker-field hw-maker-field--wide">File id
-                  <span class="hw-maker-field__row">
-                    <input type="text" name="id" placeholder="2026-05-27-ben-m" autocomplete="off">
-                    <button type="button" class="btn btn--ghost btn--sm" id="hw-maker-new-id-btn">Regenerate id</button>
-                  </span>
-                </label>
-              </div>
-            </fieldset>
-
-            <details class="hw-maker-format">
-              <summary>Line format (Section 1 &amp; 2)</summary>
-              <p>One sentence per line:</p>
-              <pre class="hw-maker-format__code">text before {answer} text after | dictionary | conjugation</pre>
-              <p>Section 2: leave <code>{ }</code> empty for open-ended blanks. Start a line with <code>!</code> for <strong>NEGATIVE</strong> items.</p>
-              <pre class="hw-maker-format__code">トイレに {行きたい} 。 | いく | たい
-!彼女が {ほしくない} 。 | ほしい | ない</pre>
-            </details>
-
-            <fieldset class="hw-maker-fieldset">
-              <legend>Section 1 — Grammar point (auto-checked)</legend>
-              <label class="hw-maker-field hw-maker-field--wide">Section title <input type="text" name="section1Title" placeholder="Section 1 — Grammar point"></label>
-              <label class="hw-maker-field hw-maker-field--wide">Instructions <input type="text" name="section1Instructions"></label>
-              <label class="hw-maker-field hw-maker-field--full">Lines
-                <textarea name="section1Lines" rows="8" spellcheck="false"></textarea>
+          <form class="hw-teacher-meta" id="hw-teacher-meta-form">
+            <div class="hw-teacher-meta__grid">
+              <label class="hw-maker-field">
+                Student id
+                <select name="studentUsername" id="hw-teacher-student" required>
+                  <option value="joshs">joshs — Josh S</option>
+                  <option value="benm">benm — Ben M</option>
+                  <option value="deme">deme — Deme</option>
+                </select>
               </label>
-            </fieldset>
-
-            <fieldset class="hw-maker-fieldset">
-              <legend>Section 2 — Student words (sent to Discord)</legend>
-              <label class="hw-maker-field hw-maker-field--wide">Section title <input type="text" name="section2Title" placeholder="Section 2 — Your words"></label>
-              <label class="hw-maker-field hw-maker-field--wide">Instructions <input type="text" name="section2Instructions"></label>
-              <label class="hw-maker-field hw-maker-field--full">Lines
-                <textarea name="section2Lines" rows="6" spellcheck="false"></textarea>
+              <label class="hw-maker-field hw-maker-field--wide">
+                Edit existing
+                <span class="hw-teacher-edit-row">
+                  <select id="hw-teacher-edit-select" aria-label="Choose homework to edit">
+                    <option value="">— New blank sheet —</option>
+                  </select>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-teacher-load-btn">Load</button>
+                </span>
               </label>
-            </fieldset>
-
-            <div class="hw-maker-actions">
-              <button type="button" class="btn btn--primary" id="hw-maker-preview-btn">Update preview</button>
-              <button type="button" class="btn btn--ghost" id="hw-maker-download-btn">Download JSON</button>
-              <button type="button" class="btn btn--ghost" id="hw-maker-copy-catalog-btn">Copy catalog entry</button>
-              <button type="button" class="btn btn--ghost" id="hw-maker-copy-link-btn">Copy student link</button>
+              <label class="hw-maker-field hw-maker-field--wide">
+                Grammar point
+                <input type="text" name="grammarPoint" id="hw-teacher-grammar" placeholder="～ないといけない" required>
+              </label>
+              <label class="hw-maker-field hw-maker-field--wide">
+                YouTube (optional)
+                <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="https://youtu.be/…">
+              </label>
             </div>
-            <p class="hw-maker-status" id="hw-maker-status" role="status" aria-live="polite"></p>
+            <div class="hw-teacher-meta__actions">
+              <button type="button" class="btn btn--primary" id="hw-teacher-publish-btn">Publish new homework</button>
+              <button type="button" class="btn btn--ghost" id="hw-teacher-reset-btn">New blank sheet</button>
+            </div>
+            <p class="hw-maker-status" id="hw-teacher-status" role="status" aria-live="polite">
+              Fill in the worksheet below — same layout students see.
+            </p>
           </form>
 
-          <pre class="hw-maker-catalog-out" id="hw-maker-catalog-snippet" hidden aria-label="Catalog JSON snippet"></pre>
-          <h3 class="hw-maker-preview-heading">Live preview</h3>
-          <div class="hw-maker-preview" id="hw-maker-preview"></div>
+          <div class="hw-teacher-save-bar" id="hw-teacher-save-bar" hidden>
+            <p class="hw-teacher-save-bar__text" id="hw-teacher-editing-note">
+              Edit the sentences in the worksheet below, then save.
+            </p>
+            <button type="button" class="btn btn--primary" id="hw-teacher-update-btn">Update with edits</button>
+          </div>
+
+          <h3 class="hw-maker-preview-heading">Homework worksheet</h3>
+          <p class="hw-maker-preview-hint" id="hw-teacher-worksheet-hint">
+            Type in the blanks below — same sheet students see. No file upload needed.
+          </p>
+          <div class="hw-teacher-worksheet" id="hw-teacher-worksheet-mount" aria-label="Homework worksheet editor"></div>
         </section>
 
         <section class="hw-teacher-library hw-platform-card hw-platform-card--wide" id="hw-teacher-library" hidden>
           <h2 class="hw-platform-card__title">Worksheet library</h2>
-          <p class="hw-platform-card__desc">All fillable homework templates — search, preview, download JSON, or copy a link for students.</p>
+          <p class="hw-platform-card__desc">Past worksheets — open one to copy into the editor above.</p>
           <label class="hw-library-search-label" for="hw-library-search">Search</label>
-          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="e.g. たい, negative, verb conjugation…" autocomplete="off">
+          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
           <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
           <ul class="hw-library-list" id="hw-library-list"></ul>
         </section>
 
-        <section class="hw-teacher-submissions hw-platform-card hw-platform-card--wide" id="hw-teacher-submissions" hidden>
-          <h2 class="hw-platform-card__title">Student submissions</h2>
-          <p class="hw-platform-card__desc">Typed homework and printed-paper photo uploads are sent directly to the homework Discord channel for now.</p>
-        </section>
+        <!-- Everything below here is student-only (hidden for teachers) -->
+        <div id="hw-platform-student-only">
+          <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
+            <section class="hw-platform-card hw-grid-lesson">
+              <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+              <p class="hw-platform-card__desc" id="hw-lesson-meta">YouTube — full lesson recording.</p>
+              <a class="btn btn--ghost btn--full" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+              <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
+            </section>
 
-        <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
-          <section class="hw-platform-card hw-grid-lesson">
-            <h2 class="hw-platform-card__title">Your most recent lesson</h2>
-            <p class="hw-platform-card__desc" id="hw-lesson-meta">YouTube — full lesson recording.</p>
-            <a class="btn btn--ghost btn--full" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
-            <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
-          </section>
+            <section class="hw-platform-card hw-grid-upload">
+              <h2 class="hw-platform-card__title">Upload your work</h2>
+              <p class="hw-platform-card__desc">Finished on printed paper? Take a picture and send it to JD in Discord for feedback.</p>
+              <form class="hw-photo-upload" id="hw-photo-upload-form">
+                <label class="hw-photo-upload__label" for="hw-photo-file">Homework photo</label>
+                <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment" required>
+                <button type="submit" class="btn btn--ghost btn--full">Upload homework photo</button>
+                <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+              </form>
+            </section>
 
-          <section class="hw-platform-card hw-grid-upload">
-            <h2 class="hw-platform-card__title">Upload your work</h2>
-            <p class="hw-platform-card__desc">Finished on printed paper? Take a picture and send it to JD in Discord for feedback.</p>
-            <form class="hw-photo-upload" id="hw-photo-upload-form">
-              <label class="hw-photo-upload__label" for="hw-photo-file">Homework photo</label>
-              <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment" required>
-              <button type="submit" class="btn btn--ghost btn--full">Upload homework photo</button>
-              <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
-            </form>
-          </section>
+            <article class="course-card course-card--locked hw-addon-card hw-grid-video" id="hw-video-response-card" tabindex="0">
+              <span class="course-card__lock" aria-hidden="true">
+                <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+              </span>
+              <h2 class="course-card__title">Video response</h2>
+              <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
+              <div class="course-card__footer" id="hw-video-response-footer"></div>
+            </article>
 
-          <article class="course-card course-card--locked hw-addon-card hw-grid-video" id="hw-video-response-card" tabindex="0">
-            <span class="course-card__lock" aria-hidden="true">
-              <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-              <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-            </span>
-            <h2 class="course-card__title">Video response</h2>
-            <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
-            <div class="course-card__footer" id="hw-video-response-footer"></div>
-          </article>
+            <section class="hw-platform-card hw-grid-assignments" id="hw-current-assignment-card">
+              <h2 class="hw-platform-card__title">Current assignment</h2>
+              <p class="hw-platform-card__desc">Your latest homework from JD, ready to fill in below.</p>
+              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
+              <div class="hw-current-assignment__pills">
+                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Homework Online</a>
+                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
+              </div>
+            </section>
 
-          <section class="hw-platform-card hw-grid-assignments" id="hw-current-assignment-card">
-            <h2 class="hw-platform-card__title">Current assignment</h2>
-            <p class="hw-platform-card__desc">Your latest homework from JD, ready to fill in below.</p>
-            <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
-            <div class="hw-current-assignment__pills">
-              <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Homework Online</a>
-              <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
-            </div>
-          </section>
+            <article class="course-card course-card--locked hw-addon-card hw-grid-upgrade" id="hw-weekly-upgrade-card" hidden tabindex="0">
+              <span class="course-card__lock" aria-hidden="true">
+                <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+              </span>
+              <h2 class="course-card__title">Weekly homework</h2>
+              <p class="course-card__desc">Student Special add-on for current students.</p>
+              <div class="course-card__footer">
+                <button type="button" class="course-card__status" id="hw-weekly-upgrade-btn" aria-label="Upgrade to weekly homework for five dollars per month">
+                  <span class="course-card__status-text course-card__status-text--locked">Add-on</span>
+                  <span class="course-card__status-text course-card__status-text--unlock">Upgrade?</span>
+                </button>
+                <span class="course-card__price" aria-label="Price: five dollars per month">$5</span>
+              </div>
+            </article>
 
-          <article class="course-card course-card--locked hw-addon-card hw-grid-upgrade" id="hw-weekly-upgrade-card" hidden tabindex="0">
-            <span class="course-card__lock" aria-hidden="true">
-              <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-              <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-            </span>
-            <h2 class="course-card__title">Weekly homework</h2>
-            <p class="course-card__desc">Student Special add-on for current students.</p>
-            <div class="course-card__footer">
-              <button type="button" class="course-card__status" id="hw-weekly-upgrade-btn" aria-label="Upgrade to weekly homework for five dollars per month">
-                <span class="course-card__status-text course-card__status-text--locked">Add-on</span>
-                <span class="course-card__status-text course-card__status-text--unlock">Upgrade?</span>
-              </button>
-              <span class="course-card__price" aria-label="Price: five dollars per month">$5</span>
-            </div>
-          </article>
+            <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
+              <h2 class="hw-platform-card__title">Notifications</h2>
+              <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready (wired in Phase 5).</p>
+              <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
+            </section>
+          </div>
 
-          <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
-            <h2 class="hw-platform-card__title">Notifications</h2>
-            <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready (wired in Phase 5).</p>
-            <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
-          </section>
-        </div>
-
-        <div class="hw-worksheet-section" id="hw-worksheet-section">
-          <h2 class="hw-worksheet-heading" id="hw-worksheet-heading">Current homework</h2>
-          <p class="hw-worksheet-intro" id="hw-worksheet-intro">Loading worksheet…</p>
-          <div id="hw-worksheet-mount"></div>
+          <div class="hw-worksheet-section" id="hw-worksheet-section">
+            <h2 class="hw-worksheet-heading" id="hw-worksheet-heading">Current homework</h2>
+            <p class="hw-worksheet-intro" id="hw-worksheet-intro">Loading worksheet…</p>
+            <div id="hw-worksheet-mount"></div>
+          </div>
         </div>
 
         <p class="subpage-back">
@@ -266,8 +232,8 @@
   </footer>
 
   <script src="/js/subpage.js" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260530" defer></script>
-  <script src="/js/hw-maker.js?v=20260527" defer></script>
-  <script src="/js/hw-platform.js?v=20260527" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260609" defer></script>
+  <script src="/js/hw-teacher-editor.js?v=20260609" defer></script>
+  <script src="/js/hw-platform.js?v=20260609" defer></script>
 </body>
 </html>

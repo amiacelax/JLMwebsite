@@ -2,6 +2,7 @@
  * Homework platform — student hub (assignments + submit) or teacher hub (worksheet library).
  */
 (function () {
+  const global = window;
   const session = HwAuth.getSession();
   if (!session) return;
 
@@ -210,7 +211,6 @@
       entry.id,
       entry.title,
       entry.date,
-      entry.level,
       entry.lessonName,
       entry.studentLabel,
       entry.summary,
@@ -223,9 +223,39 @@
   }
 
   async function fetchCatalog() {
-    const res = await fetch("/homework/catalog.json", { cache: "no-store" });
+    const res = await fetch("/api/homework-catalog", { cache: "no-store" });
     if (!res.ok) throw new Error("catalog");
     return res.json();
+  }
+
+  function normalizeAssignmentPayload(data) {
+    if (!data) return null;
+    if (data.sections && Array.isArray(data.sections)) return data;
+    if (data.assignment && data.assignment.sections) return data.assignment;
+    return data;
+  }
+
+  async function fetchAssignmentJson(id) {
+    try {
+      const res = await fetch(
+        "/api/homework-assignment?id=" + encodeURIComponent(id),
+        { cache: "no-store" }
+      );
+      if (res.ok) {
+        const assignment = normalizeAssignmentPayload(await res.json());
+        if (assignment?.sections?.length) return assignment;
+      }
+    } catch {
+      /* fall through to static file */
+    }
+    const staticRes = await fetch(
+      "/homework/assignments/" + encodeURIComponent(id) + ".json",
+      { cache: "no-store" }
+    );
+    if (!staticRes.ok) throw new Error("assignment");
+    const assignment = normalizeAssignmentPayload(await staticRes.json());
+    if (!assignment?.sections?.length) throw new Error("assignment");
+    return assignment;
   }
 
   function bindWorksheetSave(form, assignmentMeta, options) {
@@ -320,9 +350,7 @@
 
     let assignment;
     try {
-      const res = await fetch("/homework/assignments/" + catalogEntry.id + ".json", { cache: "no-store" });
-      if (!res.ok) throw new Error("assignment");
-      assignment = await res.json();
+      assignment = await fetchAssignmentJson(catalogEntry.id);
     } catch {
       if (intro) intro.textContent = "Could not load this worksheet.";
       mount.innerHTML = "";
@@ -488,7 +516,7 @@
 
       const sub = document.createElement("p");
       sub.className = "hw-library-item__sub";
-      sub.textContent = [entry.date, entry.level, entry.lessonName || entry.studentLabel]
+      sub.textContent = [entry.lessonName || entry.title, (entry.students || []).join(", ")]
         .filter(Boolean)
         .join(" · ");
 
@@ -555,9 +583,9 @@
       const editMaker = document.createElement("button");
       editMaker.type = "button";
       editMaker.className = "btn btn--ghost btn--sm";
-      editMaker.textContent = "Edit in maker";
+      editMaker.textContent = "Open in editor";
       editMaker.addEventListener("click", () => {
-        openInMaker(entry.id);
+        openInTeacherEditor(entry.id);
       });
 
       actions.append(previewBtn, dl, copyJson, copyStudent, editMaker);
@@ -646,63 +674,83 @@
 
   let catalogCache = null;
   let librarySearchBound = false;
-  let makerInitialized = false;
 
   function getCatalogEntry(id) {
     return (catalogCache?.assignments || []).find((e) => e.id === id) || null;
   }
 
-  function openInMaker(id) {
-    const form = document.getElementById("hw-maker-form");
-    const templateSelect = document.getElementById("hw-maker-template");
-    const makerSection = document.getElementById("hw-teacher-maker");
-    if (!form || !global.HwMaker) return;
-    makerSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (templateSelect) templateSelect.value = id;
-    fetch("/homework/assignments/" + id + ".json", { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error("load");
-        return res.json();
-      })
-      .then((assignment) => {
-        HwMaker.fillFormFromAssignment(form, assignment, getCatalogEntry(id));
-        showToast("Loaded in homework maker — " + id);
-        document.getElementById("hw-maker-preview-btn")?.click();
-      })
-      .catch(() => showToast("Could not load worksheet"));
+  function initTeacherEditor() {
+    if (!global.HwTeacherEditor) return;
+    const mount = document.getElementById("hw-teacher-worksheet-mount");
+    if (!mount) return;
+    if (mount.querySelector("#hw-worksheet-form")) return;
+    HwTeacherEditor.init({
+      showToast,
+      fetchAssignmentJson,
+      fetchCatalog,
+      getCatalogEntry,
+      getTeacherSession: () => session,
+      getStudentAccounts: function () {
+        if (global.HwAuth && typeof global.HwAuth.listStudentAccounts === "function") {
+          return global.HwAuth.listStudentAccounts();
+        }
+        return [];
+      },
+      isStudentAccount: function (username) {
+        if (global.HwAuth && typeof global.HwAuth.isStudentAccount === "function") {
+          return global.HwAuth.isStudentAccount(username);
+        }
+        return ["joshs", "benm", "deme"].includes(String(username || "").toLowerCase());
+      },
+      onPublished: async function (id) {
+        catalogCache = null;
+        try {
+          catalogCache = await fetchCatalog();
+          HwTeacherEditor.refreshCatalog(catalogCache.assignments || []);
+          if (id) {
+            const editSelect = document.getElementById("hw-teacher-edit-select");
+            if (editSelect) editSelect.value = id;
+          }
+        } catch {
+          /* ignore */
+        }
+        showToast("Student can refresh their hub to see changes");
+      },
+    });
   }
 
-  function initHomeworkMaker(entries) {
-    if (!global.HwMaker || makerInitialized) return;
-    makerInitialized = true;
-    HwMaker.populateTemplates(document.getElementById("hw-maker-template"), entries);
-    HwMaker.init({
-      showToast,
-      copyText,
-      studentWorksheetUrl,
-      getCatalogEntry,
-    });
+  async function openInTeacherEditor(id) {
+    const maker = document.getElementById("hw-teacher-maker");
+    if (maker) maker.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+      const assignment = await fetchAssignmentJson(id);
+      HwTeacherEditor.loadAssignment(assignment, getCatalogEntry(id));
+      showToast("Loaded " + id);
+    } catch {
+      showToast("Could not load worksheet");
+    }
   }
 
   async function loadTeacherHub() {
     document.body.classList.add("hw-role-teacher");
+    document.documentElement.classList.add("hw-is-teacher");
 
     const hubTitle = document.getElementById("hw-hub-title");
     const hubDesc = document.getElementById("hw-hub-desc");
-    const teacherLib = document.getElementById("hw-teacher-library");
     const teacherMaker = document.getElementById("hw-teacher-maker");
-    const teacherSubmissions = document.getElementById("hw-teacher-submissions");
-    const studentGrid = document.getElementById("hw-student-grid");
+    const teacherLib = document.getElementById("hw-teacher-library");
+    const studentOnly = document.getElementById("hw-platform-student-only");
 
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Create new homework, manage the worksheet library, and copy student links (benm demo = student test site).";
+        "Create homework for a student — fill in the worksheet the same way they will see it, then publish.";
     }
     if (teacherMaker) teacherMaker.hidden = false;
     if (teacherLib) teacherLib.hidden = false;
-    if (teacherSubmissions) teacherSubmissions.hidden = false;
-    if (studentGrid) studentGrid.hidden = true;
+    if (studentOnly) studentOnly.hidden = true;
+
+    initTeacherEditor();
 
     const searchInput = document.getElementById("hw-library-search");
     if (!catalogCache) {
@@ -710,15 +758,20 @@
         catalogCache = await fetchCatalog();
       } catch {
         const meta = document.getElementById("hw-library-meta");
-        if (meta) meta.textContent = "Could not load worksheet catalog.";
-        initHomeworkMaker([]);
+        if (meta) meta.textContent = "Could not load worksheet library.";
+        if (global.HwTeacherEditor?.bootstrap) await HwTeacherEditor.bootstrap();
         return;
       }
     }
 
     const entries = catalogCache.assignments || [];
     const hashId = window.location.hash.replace(/^#hw-/, "");
-    const active = entries.find((e) => e.id === hashId) || entries[0] || null;
+    if (global.HwTeacherEditor?.refreshCatalog) {
+      HwTeacherEditor.refreshCatalog(entries);
+    }
+    if (global.HwTeacherEditor?.bootstrap) {
+      HwTeacherEditor.bootstrap();
+    }
 
     if (searchInput && !librarySearchBound) {
       librarySearchBound = true;
@@ -728,13 +781,22 @@
       });
     }
 
-    initHomeworkMaker(entries);
-    renderLibraryList(entries, searchInput ? searchInput.value : "", active?.id);
-    await loadWorksheetPreview(active);
+    renderLibraryList(entries, searchInput ? searchInput.value : "", hashId);
+
+    if (hashId) {
+      await openInTeacherEditor(hashId);
+    }
   }
 
   async function loadStudentHub() {
     document.body.classList.add("hw-role-student");
+
+    const teacherMaker = document.getElementById("hw-teacher-maker");
+    const teacherLib = document.getElementById("hw-teacher-library");
+    const studentOnly = document.getElementById("hw-platform-student-only");
+    if (teacherMaker) teacherMaker.hidden = true;
+    if (teacherLib) teacherLib.hidden = true;
+    if (studentOnly) studentOnly.hidden = false;
 
     const mount = document.getElementById("hw-worksheet-mount");
     const heading = document.getElementById("hw-worksheet-heading");
@@ -769,9 +831,7 @@
 
     let assignment;
     try {
-      const res = await fetch("/homework/assignments/" + active.id + ".json", { cache: "no-store" });
-      if (!res.ok) throw new Error("assignment");
-      assignment = await res.json();
+      assignment = await fetchAssignmentJson(active.id);
     } catch {
       if (intro) intro.textContent = "Could not load this worksheet.";
       return;
@@ -789,10 +849,17 @@
     bindWorksheetSave(form, assignment);
   }
 
+  function ensureTeacherEditorMounted() {
+    if (!isTeacher) return;
+    initTeacherEditor();
+  }
+
   function init() {
     if (isTeacher) {
-      loadTeacherHub();
-      window.addEventListener("hashchange", loadTeacherHub);
+      initTeacherEditor();
+      void loadTeacherHub();
+      requestAnimationFrame(ensureTeacherEditorMounted);
+      setTimeout(ensureTeacherEditorMounted, 0);
     } else {
       renderAccountBar();
       bindWeeklyUpgradeCard();

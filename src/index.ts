@@ -1,10 +1,25 @@
+import {
+  generateHomeworkWithAi,
+  type HomeworkGenerateRequest,
+} from "./homework-generate";
+import {
+  mergeCatalog,
+  publishToStudentHub,
+  loadPublishedAssignment,
+  type CatalogFile,
+  type PublishPayload,
+} from "./homework-kv";
+
 interface Env {
   ASSETS: Fetcher;
+  HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
   /** website-inquiries — used to verify the webhook posts to the right channel */
   DISCORD_CHANNEL_ID?: string;
   DISCORD_HOMEWORK_WEBHOOK_URL?: string;
   DISCORD_HOMEWORK_CHANNEL_ID?: string;
+  OPENAI_API_KEY?: string;
+  HW_TEACHER_USER?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -564,6 +579,136 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
   }
 }
 
+async function loadStaticCatalog(env: Env): Promise<CatalogFile> {
+  const res = await env.ASSETS.fetch(
+    new Request(new URL("/homework/catalog.json", "https://internal.local"))
+  );
+  if (!res.ok) return { assignments: [] };
+  return (await res.json()) as CatalogFile;
+}
+
+async function handleHomeworkCatalog(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  try {
+    const staticCatalog = await loadStaticCatalog(env);
+    const merged = await mergeCatalog(staticCatalog, env.HOMEWORK_KV);
+    return jsonResponse(merged);
+  } catch (err) {
+    console.error("homework-catalog failed:", err);
+    return jsonResponse({ error: "Could not load homework catalog." }, 500);
+  }
+}
+
+async function handleHomeworkAssignment(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim();
+  if (!id || !/^[a-z0-9-]+$/i.test(id)) {
+    return jsonResponse({ error: "Invalid assignment id." }, 400);
+  }
+
+  try {
+    if (env.HOMEWORK_KV) {
+      const published = await loadPublishedAssignment(env.HOMEWORK_KV, id);
+      if (published) return jsonResponse(published);
+    }
+    const assetRes = await env.ASSETS.fetch(
+      new Request(new URL(`/homework/assignments/${id}.json`, "https://internal.local"))
+    );
+    if (assetRes.ok) {
+      return new Response(assetRes.body, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...CORS_HEADERS,
+        },
+      });
+    }
+    return jsonResponse({ error: "Assignment not found." }, 404);
+  } catch (err) {
+    console.error("homework-assignment failed:", err);
+    return jsonResponse({ error: "Could not load assignment." }, 500);
+  }
+}
+
+async function handleHomeworkPublish(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as PublishPayload;
+    const result = await publishToStudentHub(data, env);
+    const origin = new URL(request.url).origin;
+    return jsonResponse({
+      success: true,
+      message: result.updated
+        ? `Updated homework for ${data.studentUsername}. They can refresh their Homework Hub to see your edits.`
+        : `Published for ${data.studentUsername}. They can open it on their Homework Hub now.`,
+      id: result.id,
+      studentUrl: origin + result.studentUrl,
+      updated: result.updated,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED" || code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Student id and worksheet id are required." }, 400);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse(
+        { error: "Unknown student id. Add the account in hw-auth.js first." },
+        400
+      );
+    }
+    console.error("homework-publish failed:", err);
+    return jsonResponse({ error: "Could not publish homework." }, 500);
+  }
+}
+
+async function handleHomeworkGenerate(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as HomeworkGenerateRequest;
+    const result = await generateHomeworkWithAi(data, env);
+    return jsonResponse({ success: true, ...result });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "UNKNOWN";
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "GRAMMAR_REQUIRED" || code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Grammar point and student id are required." }, 400);
+    }
+    if (code === "AI_FAILED" || code === "AI_EMPTY" || code === "AI_INVALID") {
+      return jsonResponse(
+        { error: "AI could not build homework. Try again or edit manually." },
+        502
+      );
+    }
+    console.error("homework-generate failed:", err);
+    return jsonResponse({ error: "Homework generation failed." }, 500);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -582,6 +727,22 @@ export default {
 
     if (url.pathname === "/api/homework-photo-upload") {
       return handleHomeworkPhotoUpload(request, env);
+    }
+
+    if (url.pathname === "/api/homework-generate") {
+      return handleHomeworkGenerate(request, env);
+    }
+
+    if (url.pathname === "/api/homework-catalog") {
+      return handleHomeworkCatalog(request, env);
+    }
+
+    if (url.pathname === "/api/homework-assignment") {
+      return handleHomeworkAssignment(request, env);
+    }
+
+    if (url.pathname === "/api/homework-publish") {
+      return handleHomeworkPublish(request, env);
     }
 
     return env.ASSETS.fetch(request);

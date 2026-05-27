@@ -12,19 +12,121 @@
     return "（" + d + "・" + c + "）";
   }
 
-  function renderRegisterPills(activeRegister) {
+  /**
+   * Build casual/polite × Now-Later/Past answer keys from a casual present answer.
+   * @param {string} casualNowLater
+   * @returns {object|null}
+   */
+  function buildRegisterVariants(casualNowLater) {
+    const casual = String(casualNowLater || "").trim();
+    if (!casual) return null;
+
+    if (/ないといけない$/.test(casual)) {
+      const stem = casual.replace(/ないといけない$/, "");
+      return {
+        casual: {
+          "Now-Later": casual,
+          Past: stem + "ないといけなかった",
+        },
+        polite: {
+          "Now-Later": stem + "ないといけません",
+          Past: stem + "ないといけませんでした",
+        },
+      };
+    }
+
+    if (/いけない$/.test(casual)) {
+      const stem = casual.replace(/いけない$/, "");
+      return {
+        casual: {
+          "Now-Later": casual,
+          Past: stem + "いけなかった",
+        },
+        polite: {
+          "Now-Later": stem + "いけません",
+          Past: stem + "いけませんでした",
+        },
+      };
+    }
+
+    return null;
+  }
+
+  function enrichGrammarVariants(assignment) {
+    if (!assignment) return assignment;
+    assignment.register = assignment.register || "casual";
+    (assignment.sections || []).forEach((section) => {
+      if (section.mode !== "grammar-blank") return;
+      (section.items || []).forEach((item) => {
+        (item.parts || []).forEach((part) => {
+          if (part.type !== "blank" || part.variants) return;
+          const variants = buildRegisterVariants(part.answer);
+          if (!variants) return;
+          part.variants = variants;
+          if (!part.answer) part.answer = variants.casual["Now-Later"];
+        });
+      });
+    });
+    return assignment;
+  }
+
+  function resolveVariantAnswer(part, register, tense) {
+    const variants = part.variants;
+    if (variants && variants[register] && variants[register][tense]) {
+      return variants[register][tense];
+    }
+    if (variants && variants.casual && variants.casual["Now-Later"]) {
+      return variants.casual["Now-Later"];
+    }
+    return part.answer || "";
+  }
+
+  function applyAnswerVariants(form) {
+    if (!form) return;
+    const register = form.dataset.hwRegister || "casual";
+    const tense = form.dataset.hwTense || "Now-Later";
+    form.querySelectorAll(".hw-blank").forEach((input) => {
+      if (!input.dataset.variants) return;
+      try {
+        const variants = JSON.parse(input.dataset.variants);
+        const ans =
+          (variants[register] && variants[register][tense]) ||
+          (variants.casual && variants.casual["Now-Later"]) ||
+          input.dataset.answer ||
+          "";
+        input.dataset.answer = ans;
+      } catch (_) {}
+      input.classList.remove("hw-blank--correct", "hw-blank--wrong");
+    });
+  }
+
+  function renderRegisterPills(form, activeRegister, interactive) {
     const wrap = document.createElement("div");
     wrap.className = "hw-register";
     wrap.setAttribute("role", "group");
-    wrap.setAttribute("aria-label", "Lesson speech register");
+    wrap.setAttribute("aria-label", "Speech register — switch to practice polite or casual");
 
     ["casual", "polite"].forEach((key) => {
-      const pill = document.createElement("span");
+      const pill = document.createElement(interactive ? "button" : "span");
+      if (interactive) pill.type = "button";
       const isActive = key === activeRegister;
       pill.className =
         "hw-register__pill" + (isActive ? " hw-register__pill--active" : " hw-register__pill--inactive");
       pill.textContent = key === "casual" ? "Casual" : "Polite";
       if (isActive) pill.setAttribute("aria-current", "true");
+      if (interactive) {
+        pill.addEventListener("click", () => {
+          form.dataset.hwRegister = key;
+          wrap.querySelectorAll(".hw-register__pill").forEach((el) => {
+            const on = el.textContent === (key === "casual" ? "Casual" : "Polite");
+            el.classList.toggle("hw-register__pill--active", on);
+            el.classList.toggle("hw-register__pill--inactive", !on);
+            if (on) el.setAttribute("aria-current", "true");
+            else el.removeAttribute("aria-current");
+          });
+          applyAnswerVariants(form);
+        });
+      }
       wrap.appendChild(pill);
     });
 
@@ -80,6 +182,7 @@
     input.name = part.name;
     input.autocomplete = "off";
     input.setAttribute("aria-label", "Answer");
+    if (part.variants) input.dataset.variants = JSON.stringify(part.variants);
     if (part.answer) input.dataset.answer = part.answer;
     wrap.appendChild(input);
 
@@ -97,29 +200,140 @@
     return badge;
   }
 
-  function renderTenseBubbles(section) {
+  function renderTenseBubbles(form, section, activeTense, interactive) {
     const options = section.tenseBubbles || ["Now-Later", "Past"];
-    const active = section.activeTense || options[0];
+    const active = activeTense || section.activeTense || options[0];
     const wrap = document.createElement("div");
     wrap.className = "hw-tense-bubbles";
     wrap.setAttribute("role", "group");
-    wrap.setAttribute("aria-label", "Verb tense guide");
+    wrap.setAttribute("aria-label", "Tense — switch Now-Later or Past");
 
     options.forEach((label) => {
-      const pill = document.createElement("span");
+      const pill = document.createElement(interactive ? "button" : "span");
+      if (interactive) pill.type = "button";
       const on = label === active;
       pill.className = "hw-tense-pill" + (on ? " hw-tense-pill--active" : " hw-tense-pill--inactive");
       pill.textContent = label;
       if (on) pill.setAttribute("aria-current", "true");
+      if (interactive) {
+        pill.addEventListener("click", () => {
+          form.dataset.hwTense = label;
+          document.querySelectorAll(".hw-tense-bubbles").forEach((group) => {
+            group.querySelectorAll(".hw-tense-pill").forEach((el) => {
+              const isOn = el.textContent === label;
+              el.classList.toggle("hw-tense-pill--active", isOn);
+              el.classList.toggle("hw-tense-pill--inactive", !isOn);
+              if (isOn) el.setAttribute("aria-current", "true");
+              else el.removeAttribute("aria-current");
+            });
+          });
+          applyAnswerVariants(form);
+        });
+      }
       wrap.appendChild(pill);
     });
 
     return wrap;
   }
 
+  function authorTextFromPart(part) {
+    if (!part) return "";
+    if (part.type === "text" && part.value) return part.value;
+    if (part.ruby && part.ruby.length) {
+      return part.ruby.map((seg) => seg.text || "").join("");
+    }
+    return "";
+  }
+
+  function renderAuthorTextInput(value) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "hw-blank hw-author-text";
+    input.setAttribute("data-part-type", "text");
+    input.value = value || "";
+    input.setAttribute("aria-label", "Sentence text");
+    return input;
+  }
+
+  function renderAuthorBlank(part, showHints) {
+    const wrap = document.createElement("span");
+    wrap.className = "hw-blank-wrap";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "hw-blank hw-blank--wide hw-author-blank";
+    input.name = part.name;
+    input.setAttribute("data-part-type", "blank");
+    input.setAttribute("data-blank-name", part.name);
+    input.value = part.answer || "";
+    input.setAttribute("aria-label", "Correct answer for blank");
+    if (part.answer) input.dataset.answer = part.answer;
+    wrap.appendChild(input);
+
+    if (showHints) {
+      const hintRow = document.createElement("span");
+      hintRow.className = "hw-author-hint-row";
+      const dict = document.createElement("input");
+      dict.type = "text";
+      dict.className = "hw-author-hint";
+      dict.placeholder = "dictionary (e.g. いく)";
+      dict.setAttribute("data-hint-dict", part.name);
+      dict.value = part.hint?.dictionary || "";
+      const conj = document.createElement("input");
+      conj.type = "text";
+      conj.className = "hw-author-hint";
+      conj.placeholder = "conjugation";
+      conj.setAttribute("data-hint-conj", part.name);
+      conj.value = part.hint?.conjugation || "plain";
+      hintRow.append(dict, conj);
+      wrap.appendChild(hintRow);
+    }
+
+    return wrap;
+  }
+
+  function renderAuthorLine(item, index, sectionMode) {
+    const line = document.createElement("p");
+    line.className =
+      "hw-worksheet__line hw-worksheet__line--author" +
+      (item.negative ? " hw-worksheet__line--negative" : "");
+    line.dataset.itemId = item.id || "item-" + (index + 1);
+
+    const label = document.createElement("span");
+    label.className = "hw-worksheet__label";
+    label.textContent = LABELS[index] || String(index + 1);
+    line.appendChild(label);
+
+    const content = document.createElement("span");
+    content.className = "hw-worksheet__content";
+
+    (item.parts || []).forEach((part) => {
+      if (part.type === "text" || part.ruby) {
+        content.appendChild(renderAuthorTextInput(authorTextFromPart(part)));
+      } else if (part.type === "blank") {
+        content.appendChild(renderAuthorBlank(part, sectionMode === "grammar-blank"));
+      }
+    });
+
+    if (sectionMode === "grammar-blank") {
+      const negLabel = document.createElement("label");
+      negLabel.className = "hw-author-negative-label";
+      const neg = document.createElement("input");
+      neg.type = "checkbox";
+      neg.className = "hw-author-negative";
+      neg.checked = Boolean(item.negative);
+      negLabel.append(neg, document.createTextNode(" Negative"));
+      content.appendChild(negLabel);
+    }
+
+    line.appendChild(content);
+    return line;
+  }
+
   function renderLine(item, index) {
     const line = document.createElement("p");
     line.className = "hw-worksheet__line" + (item.negative ? " hw-worksheet__line--negative" : "");
+    line.dataset.itemId = item.id || "";
 
     const label = document.createElement("span");
     label.className = "hw-worksheet__label";
@@ -153,9 +367,11 @@
     return line;
   }
 
-  function renderSection(section) {
+  function renderSection(form, section, interactive, authoring) {
     const wrap = document.createElement("div");
     wrap.className = "hw-worksheet__section";
+    wrap.dataset.sectionId = section.id || "";
+    wrap.dataset.mode = section.mode || "";
 
     const head = document.createElement("div");
     head.className = "hw-worksheet__section-head";
@@ -165,8 +381,14 @@
     heading.textContent = section.title;
     head.appendChild(heading);
 
-    if (section.tenseBubbles && section.tenseBubbles.length) {
-      head.appendChild(renderTenseBubbles(section));
+    if (section.tenseBubbles && section.tenseBubbles.length && interactive) {
+      const tense =
+        (form && form.dataset.hwTense) || section.activeTense || section.tenseBubbles[0];
+      head.appendChild(renderTenseBubbles(form, section, tense, true));
+    } else if (section.tenseBubbles && section.tenseBubbles.length) {
+      head.appendChild(
+        renderTenseBubbles(form, section, section.activeTense || section.tenseBubbles[0], false)
+      );
     }
 
     wrap.appendChild(head);
@@ -179,10 +401,91 @@
     }
 
     (section.items || []).forEach((item, i) => {
-      wrap.appendChild(renderLine(item, i));
+      if (authoring) {
+        wrap.appendChild(renderAuthorLine(item, i, section.mode));
+      } else {
+        wrap.appendChild(renderLine(item, i));
+      }
     });
 
     return wrap;
+  }
+
+  /**
+   * Build assignment JSON from teacher authoring form.
+   * @param {HTMLFormElement} form
+   */
+  function assignmentFromAuthoringForm(form) {
+    const assignment = {
+      id: form.dataset.assignmentId || "",
+      title: form.dataset.title || "",
+      youtubeUrl: form.dataset.youtubeUrl || "",
+      status: "draft",
+      forSale: false,
+      salePrice: 0.99,
+      sections: [],
+    };
+
+    form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
+      const section = {
+        id: secEl.dataset.sectionId || "section",
+        title: secEl.querySelector(".hw-worksheet__section-title")?.textContent || "",
+        instructions:
+          secEl.querySelector(".hw-worksheet__section-intro")?.textContent || "",
+        mode: secEl.dataset.mode || "grammar-blank",
+        items: [],
+      };
+      if (section.mode === "grammar-blank") {
+        section.tenseBubbles = ["Now-Later", "Past"];
+        section.activeTense = "Now-Later";
+      }
+
+      secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl, index) => {
+        const item = { id: lineEl.dataset.itemId || "item-" + (index + 1), parts: [] };
+        if (lineEl.querySelector(".hw-author-negative")?.checked) {
+          item.negative = true;
+        }
+        const content = lineEl.querySelector(".hw-worksheet__content");
+        if (!content) return;
+
+        content.querySelectorAll("[data-part-type]").forEach((el) => {
+          if (el.dataset.partType === "text") {
+            const value = el.value.trim();
+            if (value) item.parts.push({ type: "text", value });
+          } else if (el.dataset.partType === "blank") {
+            const name = el.dataset.blankName || el.name;
+            const part = { type: "blank", name, wide: true };
+            const answer = el.value.trim();
+            if (answer) part.answer = answer;
+            const dict = content
+              .querySelector('[data-hint-dict="' + name + '"]')
+              ?.value.trim();
+            const conj =
+              content.querySelector('[data-hint-conj="' + name + '"]')?.value.trim() ||
+              "plain";
+            if (dict && section.mode === "grammar-blank") {
+              part.hint = { dictionary: dict, conjugation: conj };
+            }
+            item.parts.push(part);
+          }
+        });
+
+        if (item.parts.length) section.items.push(item);
+      });
+
+      assignment.sections.push(section);
+    });
+
+    enrichGrammarVariants(assignment);
+    return assignment;
+  }
+
+  function assignmentHasVariants(assignment) {
+    return (assignment.sections || []).some((section) =>
+      (section.items || []).some((item) =>
+        (item.parts || []).some((part) => part.type === "blank" && part.variants)
+      )
+    );
   }
 
   /**
@@ -192,51 +495,69 @@
    */
   function render(mount, assignment, options) {
     options = options || {};
+    const authoring = Boolean(options.authoring);
+    const prepared = enrichGrammarVariants(
+      JSON.parse(JSON.stringify(assignment || { sections: [] }))
+    );
     mount.innerHTML = "";
 
     const form = document.createElement("form");
     form.id = "hw-worksheet-form";
-    form.className = "hw-worksheet";
+    form.className = "hw-worksheet" + (authoring ? " hw-worksheet--authoring" : "");
     form.lang = "ja";
-    form.setAttribute("data-assignment-id", assignment.id || "");
+    form.setAttribute("data-assignment-id", prepared.id || "");
+    form.dataset.title = prepared.title || "";
+    form.dataset.youtubeUrl = prepared.youtubeUrl || "";
 
     const meta = document.createElement("div");
     meta.className = "hw-worksheet__meta";
     const metaTop = document.createElement("div");
     metaTop.className = "hw-worksheet__meta-top";
 
+    const hasVariants = assignmentHasVariants(prepared);
+    const interactive = !options.preview && !authoring && hasVariants;
+
     const metaText = document.createElement("div");
     metaText.className = "hw-worksheet__meta-text";
     metaText.innerHTML =
-      '<p class="hw-worksheet__meta-date">' +
-      escapeHtml(assignment.date || "") +
-      (assignment.level ? ' · <span class="hw-worksheet__meta-level">' + escapeHtml(assignment.level) + "</span>" : "") +
-      "</p>" +
       '<p class="hw-worksheet__meta-title">' +
-      escapeHtml(assignment.title || "Homework") +
-      "</p>";
+      escapeHtml(prepared.title || "Homework") +
+      "</p>" +
+      (authoring
+        ? hasVariants
+          ? '<p class="hw-worksheet__meta-hint">Teacher: type the sentence and <strong>casual</strong> answer in each blank. Students get <strong>Casual</strong> / <strong>Polite</strong> and tense pills (polite forms are generated from your casual answers).</p>'
+          : '<p class="hw-worksheet__meta-hint">Teacher: type the sentence around each blank and the <strong>correct answer</strong> in the blank. Students will see the same layout without answers filled in.</p>'
+        : interactive
+          ? '<p class="hw-worksheet__meta-hint">Switch <strong>Casual</strong> / <strong>Polite</strong> and <strong>Now-Later</strong> / <strong>Past</strong> to practice the same sentences in different forms.</p>'
+          : "");
     metaTop.appendChild(metaText);
-
-    const reg = String(assignment.register || "").toLowerCase();
-    if (reg === "casual" || reg === "polite") {
-      metaTop.appendChild(renderRegisterPills(reg));
+    if (!options.preview && hasVariants) {
+      form.dataset.hwRegister = form.dataset.hwRegister || prepared.register || "casual";
+      form.dataset.hwTense = form.dataset.hwTense || "Now-Later";
+      metaTop.appendChild(
+        renderRegisterPills(form, form.dataset.hwRegister, !authoring)
+      );
     }
 
     meta.appendChild(metaTop);
     form.appendChild(meta);
 
-    (assignment.sections || []).forEach((section) => {
-      form.appendChild(renderSection(section));
+    (prepared.sections || []).forEach((section) => {
+      form.appendChild(renderSection(form, section, interactive, authoring));
     });
+
+    if (!authoring) applyAnswerVariants(form);
 
     const actions = document.createElement("div");
     actions.className = "hw-worksheet__actions";
-    actions.innerHTML =
-      '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>' +
-      (options.preview
-        ? ""
-        : '<button type="submit" class="btn btn--primary">Submit homework</button>');
-    form.appendChild(actions);
+    if (!authoring) {
+      actions.innerHTML =
+        '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>' +
+        (options.preview
+          ? ""
+          : '<button type="submit" class="btn btn--primary">Submit homework</button>');
+      form.appendChild(actions);
+    }
 
     const status = document.createElement("p");
     status.id = "hw-save-status";
@@ -253,7 +574,7 @@
 
     mount.appendChild(form);
 
-    actions.querySelector("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
+    actions.querySelector?.("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
 
     return form;
   }
@@ -514,5 +835,8 @@
     renderCheckResults,
     normalizeAnswer,
     buildSubmitPayload,
+    assignmentFromAuthoringForm,
+    buildRegisterVariants,
+    enrichGrammarVariants,
   };
 })(window);

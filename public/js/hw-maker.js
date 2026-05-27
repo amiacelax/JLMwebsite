@@ -1,15 +1,9 @@
 /**
- * Teacher homework maker — build assignment JSON + catalog entry from line templates.
+ * Teacher homework maker — AI draft or manual lines → preview → download / catalog.
  */
 (function (global) {
-  const DEFAULT_S1 =
-    "トイレに {行きたい} 。 | いく | たい\n" +
-    "コーヒーが {飲みたい} 。 | のむ | たい\n" +
-    "!彼女が {ほしくない} 。 | ほしい | ない";
-
-  const DEFAULT_S2 =
-    "{ } やめたい。 | やめる | たい\n" +
-    "!{ } が {ほしくない} 。 | ほしい | ない";
+  const MAKER_STUDENT_KEY = "jlm-hw-maker-student";
+  const DEFAULT_STUDENT = "joshs";
 
   function slugify(text) {
     return String(text || "")
@@ -18,13 +12,10 @@
       .replace(/^-+|-+$/g, "");
   }
 
-  function todayIso() {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  function makeAssignmentId(date, studentLabel) {
-    const slug = slugify(studentLabel) || "student";
-    return (date || todayIso()) + "-" + slug;
+  function makeAssignmentId(studentUsername, grammarPoint) {
+    const student = slugify(studentUsername) || "student";
+    const grammar = slugify(grammarPoint) || "homework";
+    return student + "-" + grammar;
   }
 
   function parseLine(line, mode, index, sectionPrefix) {
@@ -80,26 +71,14 @@
     return items;
   }
 
-  function buildAssignment(meta, section1Text, section2Text) {
-    const date = meta.date || todayIso();
-    const id = meta.id || makeAssignmentId(date, meta.studentLabel);
-    const lessonNum = String(meta.lessonNumber || "").trim();
-    const lessonName =
-      meta.lessonName ||
-      (lessonNum ? date + " — Lesson " + lessonNum : date + " — Lesson");
-
-    const tags = String(meta.tags || "")
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+  function buildFromLines(meta, section1Text, section2Text) {
+    const grammarPoint = meta.grammarPoint || meta.title || "Homework";
+    const studentUsername = meta.studentUsername;
+    const id = makeAssignmentId(studentUsername, grammarPoint);
 
     const assignment = {
       id,
-      title: meta.title || "Homework",
-      date,
-      register: meta.register || "casual",
-      studentLabel: meta.studentLabel || "",
-      lessonName,
+      title: grammarPoint,
       youtubeUrl: meta.youtubeUrl || "",
       status: "draft",
       forSale: false,
@@ -107,9 +86,8 @@
       sections: [
         {
           id: "grammar",
-          title: meta.section1Title || "Section 1 — Grammar point",
+          title: "Section 1 — Grammar point",
           instructions:
-            meta.section1Instructions ||
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
           mode: "grammar-blank",
           tenseBubbles: ["Now-Later", "Past"],
@@ -118,9 +96,8 @@
         },
         {
           id: "context",
-          title: meta.section2Title || "Section 2 — Your words",
+          title: "Section 2 — Your words",
           instructions:
-            meta.section2Instructions ||
             "Fill in the blank with your own Japanese. Any correct answer is fine — be creative.",
           mode: "context-blank",
           items: parseLines(section2Text, "context-blank", "s2"),
@@ -128,46 +105,59 @@
       ],
     };
 
-    if (meta.sourceVideo) assignment.sourceVideo = meta.sourceVideo;
-
     const catalogEntry = {
       id,
-      title: assignment.title,
-      date,
-      level: meta.level || "Low-Intermediate",
-      studentLabel: meta.studentLabel || "",
-      lessonName,
-      students: meta.studentUsername ? [meta.studentUsername.toLowerCase()] : [],
+      title: grammarPoint,
+      studentLabel: studentUsername,
+      lessonName: grammarPoint,
+      students: studentUsername ? [studentUsername] : [],
       youtubeUrl: meta.youtubeUrl || "",
       forSale: false,
       salePrice: 0.99,
-      tags,
-      summary: meta.summary || "",
+      summary: "Homework: " + grammarPoint,
     };
 
     return { assignment, catalogEntry };
   }
 
   function readMeta(form) {
-    const fd = new FormData(form);
+    const studentUsername = String(
+      form.querySelector('[name="studentUsername"]')?.value || ""
+    )
+      .trim()
+      .toLowerCase();
+    const grammarPoint = String(
+      form.querySelector('[name="grammarPoint"]')?.value || ""
+    ).trim();
     return {
-      id: String(fd.get("id") || "").trim(),
-      date: String(fd.get("date") || "").trim(),
-      studentUsername: String(fd.get("studentUsername") || "").trim().toLowerCase(),
-      studentLabel: String(fd.get("studentLabel") || "").trim(),
-      lessonNumber: String(fd.get("lessonNumber") || "").trim(),
-      lessonName: String(fd.get("lessonName") || "").trim(),
-      title: String(fd.get("title") || "").trim(),
-      level: String(fd.get("level") || "").trim(),
-      register: String(fd.get("register") || "casual"),
-      youtubeUrl: String(fd.get("youtubeUrl") || "").trim(),
-      tags: String(fd.get("tags") || "").trim(),
-      summary: String(fd.get("summary") || "").trim(),
-      section1Title: String(fd.get("section1Title") || "").trim(),
-      section1Instructions: String(fd.get("section1Instructions") || "").trim(),
-      section2Title: String(fd.get("section2Title") || "").trim(),
-      section2Instructions: String(fd.get("section2Instructions") || "").trim(),
+      studentUsername,
+      grammarPoint,
+      title: grammarPoint,
+      youtubeUrl: String(form.querySelector('[name="youtubeUrl"]')?.value || "").trim(),
+      notes: String(form.querySelector('[name="notes"]')?.value || "").trim(),
     };
+  }
+
+  /** Built-in lines when /api/homework-generate is unavailable (offline or not deployed). */
+  const FALLBACK_S1_NAI =
+    "明日、学校に {行かないといけない} 。 | いく | plain\n" +
+    "もう {帰らないといけない} 。 | かえる | plain\n" +
+    "薬を {飲まないといけない} 。 | のむ | plain\n" +
+    "{勉強しないといけない} 。 | べんきょう | する\n" +
+    "!今日は遊んでは {いけない} 。 | あそぶ | ない";
+
+  const FALLBACK_S2 =
+    "{ } について書いてください。 | かく | plain\n" +
+    "私は { } と思います。 | おもう | plain\n" +
+    "{ } ことがあります。 | ある | plain\n" +
+    "友達に { } と言いました。 | いう | plain\n" +
+    "{ } を見ました。 | みる | plain";
+
+  function generateLocalFallback(meta) {
+    const gp = meta.grammarPoint || "";
+    const isNai = /ないといけない|なければならない|なくちゃ/i.test(gp.replace(/～/g, ""));
+    const s1 = isNai ? FALLBACK_S1_NAI : FALLBACK_S1_NAI;
+    return buildFromLines(meta, s1, FALLBACK_S2);
   }
 
   function downloadJson(filename, obj) {
@@ -182,59 +172,15 @@
     URL.revokeObjectURL(url);
   }
 
-  function syncIdField(form) {
-    const date = form.elements.date?.value || todayIso();
-    const label = form.elements.studentLabel?.value || "";
-    const idField = form.elements.id;
-    if (idField && !idField.dataset.manual) {
-      idField.value = makeAssignmentId(date, label);
-    }
-  }
-
-  function fillFormFromAssignment(form, assignment, catalogEntry) {
-    if (!form || !assignment) return;
-    form.elements.date.value = assignment.date || todayIso();
-    form.elements.studentLabel.value = assignment.studentLabel || catalogEntry?.studentLabel || "";
-    form.elements.studentUsername.value = (catalogEntry?.students || [])[0] || "";
-    form.elements.title.value = assignment.title || "";
-    form.elements.register.value = assignment.register || "casual";
-    form.elements.youtubeUrl.value = assignment.youtubeUrl || catalogEntry?.youtubeUrl || "";
-    form.elements.tags.value = (catalogEntry?.tags || []).join(", ");
-    form.elements.summary.value = catalogEntry?.summary || "";
-    form.elements.level.value = catalogEntry?.level || "Low-Intermediate";
-    form.elements.id.value = assignment.id || "";
-    form.elements.id.dataset.manual = "true";
-
-    const lessonMatch = String(assignment.lessonName || "").match(/Lesson\s+(\d+)/i);
-    form.elements.lessonNumber.value = lessonMatch ? lessonMatch[1] : "";
-    form.elements.lessonName.value = assignment.lessonName || "";
-
-    const s1 = (assignment.sections || []).find((s) => s.mode === "grammar-blank");
-    const s2 = (assignment.sections || []).find((s) => s.mode === "context-blank");
-    if (s1) {
-      form.elements.section1Title.value = s1.title || "";
-      form.elements.section1Instructions.value = s1.instructions || "";
-      form.elements.section1Lines.value = itemsToLines(s1.items || []);
-    }
-    if (s2) {
-      form.elements.section2Title.value = s2.title || "";
-      form.elements.section2Instructions.value = s2.instructions || "";
-      form.elements.section2Lines.value = itemsToLines(s2.items || []);
-    }
-  }
-
   function itemsToLines(items) {
     return items
       .map((item) => {
         let line = "";
-        const parts = item.parts || [];
-        parts.forEach((p) => {
+        (item.parts || []).forEach((p) => {
           if (p.type === "text") line += p.value || "";
-          if (p.type === "blank") {
-            line += "{" + (p.answer || "") + "}";
-          }
+          if (p.type === "blank") line += "{" + (p.answer || "") + "}";
         });
-        const blank = parts.find((p) => p.type === "blank");
+        const blank = (item.parts || []).find((p) => p.type === "blank");
         if (blank?.hint) {
           line += " | " + (blank.hint.dictionary || "") + " | " + (blank.hint.conjugation || "");
         }
@@ -244,131 +190,389 @@
       .join("\n");
   }
 
+  function fillLinesFromAssignment(form, assignment) {
+    if (!form || !assignment) return;
+    const s1 = (assignment.sections || []).find((s) => s.mode === "grammar-blank");
+    const s2 = (assignment.sections || []).find((s) => s.mode === "context-blank");
+    if (form.elements.section1Lines && s1) {
+      form.elements.section1Lines.value = itemsToLines(s1.items || []);
+    }
+    if (form.elements.section2Lines && s2) {
+      form.elements.section2Lines.value = itemsToLines(s2.items || []);
+    }
+  }
+
+  function fillFormFromAssignment(form, assignment, catalogEntry) {
+    if (!form || !assignment) return;
+    const studentInput = form.querySelector('[name="studentUsername"]');
+    const grammarInput = form.querySelector('[name="grammarPoint"]');
+    const youtubeInput = form.querySelector('[name="youtubeUrl"]');
+    if (studentInput) {
+      studentInput.value =
+        (catalogEntry?.students || [])[0] || assignment.studentLabel || "";
+    }
+    if (grammarInput) grammarInput.value = assignment.title || "";
+    if (youtubeInput) {
+      youtubeInput.value = assignment.youtubeUrl || catalogEntry?.youtubeUrl || "";
+    }
+    fillLinesFromAssignment(form, assignment);
+  }
+
   function init(options) {
     const form = document.getElementById("hw-maker-form");
     const previewMount = document.getElementById("hw-maker-preview");
     const statusEl = document.getElementById("hw-maker-status");
     const catalogOut = document.getElementById("hw-maker-catalog-snippet");
+    const idNote = document.getElementById("hw-maker-id-note");
     const templateSelect = document.getElementById("hw-maker-template");
+    const publishBtn = document.getElementById("hw-maker-publish-btn");
+    const downloadBtn = document.getElementById("hw-maker-download-btn");
+    const copyLinkBtn = document.getElementById("hw-maker-copy-link-btn");
+
     const showToast = options.showToast || function () {};
     const copyText = options.copyText || function () {};
     const studentWorksheetUrl = options.studentWorksheetUrl || function () {
       return "";
     };
+    const getTeacherSession = options.getTeacherSession || function () {
+      return null;
+    };
+    const getStudentAccounts = options.getStudentAccounts || function () {
+      return [];
+    };
+    const isStudentAccount = options.isStudentAccount || function () {
+      return true;
+    };
 
     if (!form || form.dataset.bound === "true") return;
     form.dataset.bound = "true";
 
-    if (form.elements.section1Lines && !form.elements.section1Lines.value) {
-      form.elements.section1Lines.value = DEFAULT_S1;
-    }
-    if (form.elements.section2Lines && !form.elements.section2Lines.value) {
-      form.elements.section2Lines.value = DEFAULT_S2;
-    }
-    if (form.elements.date && !form.elements.date.value) {
-      form.elements.date.value = todayIso();
+    form.addEventListener("submit", (e) => e.preventDefault());
+    form.setAttribute("novalidate", "novalidate");
+
+    const studentField = form.querySelector('[name="studentUsername"]');
+    const studentList = document.getElementById("hw-maker-students");
+    const accounts = getStudentAccounts();
+    if (studentList && accounts.length) {
+      studentList.innerHTML = accounts
+        .map(
+          (a) =>
+            '<option value="' +
+            a.username +
+            '">' +
+            (a.displayName || a.username) +
+            "</option>"
+        )
+        .join("");
     }
 
-    form.elements.date?.addEventListener("change", () => syncIdField(form));
-    form.elements.studentLabel?.addEventListener("input", () => syncIdField(form));
-    form.elements.id?.addEventListener("input", () => {
-      form.elements.id.dataset.manual = "true";
-    });
-
-    function currentBuild() {
-      const meta = readMeta(form);
-      return buildAssignment(
-        meta,
-        form.elements.section1Lines?.value,
-        form.elements.section2Lines?.value
-      );
+    function defaultStudentId() {
+      try {
+        const params = new URLSearchParams(global.location.search);
+        const fromUrl = String(params.get("for") || "")
+          .trim()
+          .toLowerCase();
+        if (fromUrl && isStudentAccount(fromUrl)) return fromUrl;
+        const stored = String(localStorage.getItem(MAKER_STUDENT_KEY) || "")
+          .trim()
+          .toLowerCase();
+        if (stored && isStudentAccount(stored)) return stored;
+      } catch {
+        /* ignore */
+      }
+      return isStudentAccount(DEFAULT_STUDENT) ? DEFAULT_STUDENT : accounts[0]?.username || "";
     }
+
+    if (studentField && !String(studentField.value || "").trim()) {
+      studentField.value = defaultStudentId();
+    }
+
+    function rememberStudent(username) {
+      try {
+        localStorage.setItem(MAKER_STUDENT_KEY, username);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function validateStudent(meta) {
+      if (!meta.studentUsername) {
+        setStatus("Student id is required.", true);
+        return false;
+      }
+      if (!isStudentAccount(meta.studentUsername)) {
+        const ids = accounts.map((a) => a.username).join(", ") || "—";
+        setStatus(
+          'No account for "' +
+            meta.studentUsername +
+            '". Pick a student id from the list: ' +
+            ids,
+          true
+        );
+        showToast("Unknown student id");
+        return false;
+      }
+      return true;
+    }
+
+    let lastResult = null;
 
     function setStatus(msg, isError) {
       if (!statusEl) return;
       statusEl.textContent = msg;
       statusEl.classList.toggle("hw-maker-status--error", !!isError);
+      statusEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
-    function renderPreview() {
-      if (!previewMount || typeof global.HwWorksheet?.render !== "function") return;
-      const { assignment } = currentBuild();
-      if (!assignment.sections[0].items.length && !assignment.sections[1].items.length) {
+    function focusStatus() {
+      statusEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function setActionsEnabled(on) {
+      [publishBtn, downloadBtn, copyLinkBtn].forEach((btn) => {
+        if (btn) btn.disabled = !on;
+      });
+    }
+
+    function renderPreview(assignment) {
+      if (!previewMount) return;
+      if (typeof global.HwWorksheet?.render !== "function") {
         previewMount.innerHTML =
-          '<p class="hw-maker-preview-empty">Add at least one line in Section 1 or 2 to preview.</p>';
-        setStatus("No valid lines parsed — check the format below.", true);
+          '<p class="hw-maker-preview-empty">Worksheet renderer failed to load. Hard-refresh the page.</p>';
         return;
       }
-      previewMount.innerHTML = "";
-      global.HwWorksheet.render(previewMount, assignment, { preview: true });
-      const s1 = assignment.sections[0].items.length;
-      const s2 = assignment.sections[1].items.length;
+      if (!assignment?.sections?.length) {
+        previewMount.innerHTML =
+          '<p class="hw-maker-preview-empty">Generate homework to see a preview.</p>';
+        return;
+      }
+      try {
+        previewMount.innerHTML = "";
+        global.HwWorksheet.render(previewMount, assignment, { preview: true });
+        previewMount.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (err) {
+        previewMount.innerHTML =
+          '<p class="hw-maker-preview-empty">Preview error: ' +
+          (err && err.message ? err.message : "unknown") +
+          "</p>";
+      }
+    }
+
+    function applyResult(result) {
+      lastResult = result;
+      setActionsEnabled(true);
+      renderPreview(result.assignment);
+      if (idNote) {
+        idNote.hidden = false;
+        const who =
+          (result.catalogEntry.students || [])[0] ||
+          studentField?.value ||
+          "student";
+        idNote.textContent =
+          "After you publish, " +
+          who +
+          " sees this on their Homework Hub · #" +
+          result.assignment.id +
+          " (benm and other students are unaffected)";
+      }
+      fillLinesFromAssignment(form, result.assignment);
+      const s1 = result.assignment.sections[0]?.items?.length || 0;
+      const s2 = result.assignment.sections[1]?.items?.length || 0;
       setStatus(
-        "Preview: " +
+        "Ready — " +
           s1 +
-          " Section 1 item" +
-          (s1 === 1 ? "" : "s") +
-          ", " +
+          " grammar items, " +
           s2 +
-          " Section 2 item" +
-          (s2 === 1 ? "" : "s") +
-          " · ID " +
-          assignment.id
+          " open items · id " +
+          result.assignment.id
       );
     }
 
-    form.addEventListener("input", () => {
-      window.clearTimeout(form._previewTimer);
-      form._previewTimer = window.setTimeout(renderPreview, 280);
-    });
-
-    document.getElementById("hw-maker-preview-btn")?.addEventListener("click", (e) => {
+    document.getElementById("hw-maker-generate-btn")?.addEventListener("click", async (e) => {
       e.preventDefault();
-      renderPreview();
-      showToast("Preview updated");
-    });
-
-    document.getElementById("hw-maker-download-btn")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      const { assignment } = currentBuild();
-      if (!assignment.sections[0].items.length) {
-        setStatus("Section 1 needs at least one valid line before download.", true);
+      const meta = readMeta(form);
+      if (!meta.grammarPoint) {
+        setStatus("Grammar point is required.", true);
         return;
       }
-      downloadJson(assignment.id + ".json", assignment);
-      showToast("Downloaded " + assignment.id + ".json");
-    });
+      if (!validateStudent(meta)) return;
 
-    document.getElementById("hw-maker-copy-catalog-btn")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      const { catalogEntry } = currentBuild();
-      const snippet = JSON.stringify(catalogEntry, null, 2);
-      if (catalogOut) {
-        catalogOut.hidden = false;
-        catalogOut.textContent = snippet;
-      }
-      copyText(snippet, "Catalog entry copied — paste into catalog.json assignments");
-    });
-
-    document.getElementById("hw-maker-copy-link-btn")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      const { assignment, catalogEntry } = currentBuild();
-      const user = catalogEntry.students[0];
-      if (!user) {
-        setStatus("Enter student Discord username (login id) so they can see this sheet.", true);
+      const session = getTeacherSession();
+      if (!session || session.role !== "teacher") {
+        setStatus("Teacher login required.", true);
         return;
       }
-      copyText(
-        studentWorksheetUrl(assignment.id),
-        "Student link copied for " + user
+      rememberStudent(meta.studentUsername);
+
+      const btn = document.getElementById("hw-maker-generate-btn");
+      if (btn) btn.disabled = true;
+      setStatus("Generating homework…");
+      focusStatus();
+
+      try {
+        const ac = new AbortController();
+        const abortTimer = window.setTimeout(() => ac.abort(), 15000);
+        const res = await fetch("/api/homework-generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            grammarPoint: meta.grammarPoint,
+            studentUsername: meta.studentUsername,
+            youtubeUrl: meta.youtubeUrl,
+            notes: meta.notes,
+            teacherUsername: session.username,
+          }),
+          signal: ac.signal,
+        });
+        window.clearTimeout(abortTimer);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Generation failed.");
+        }
+        if (!data.assignment?.sections?.length) {
+          throw new Error("Server returned an empty worksheet.");
+        }
+        const catalogEntry = data.catalogEntry || {
+          id: data.assignment.id,
+          title: data.assignment.title,
+          students: [meta.studentUsername],
+          youtubeUrl: meta.youtubeUrl,
+        };
+        applyResult({ assignment: data.assignment, catalogEntry });
+        const src = data.source || "template";
+        const srcLabel =
+          src === "openai"
+            ? "OpenAI"
+            : src === "cloudflare"
+              ? "Cloudflare AI"
+              : "built-in template (no API key)";
+        setStatus(
+          "Generated via " +
+            srcLabel +
+            " for " +
+            meta.studentUsername +
+            " — review, then Publish to student hub."
+        );
+        showToast("Homework generated");
+      } catch (err) {
+        const apiFailed =
+          err &&
+          (err.name === "AbortError" ||
+            err.name === "TypeError" ||
+            /failed|fetch|network/i.test(String(err.message || "")));
+        if (apiFailed) {
+          try {
+            const fallback = generateLocalFallback(meta);
+            if (fallback.assignment.sections[0]?.items?.length) {
+              applyResult(fallback);
+              setStatus(
+                "Server unreachable — used built-in worksheet for " +
+                  meta.studentUsername +
+                  ". You can still Publish to student hub."
+              );
+              showToast("Generated locally (offline fallback)");
+              return;
+            }
+          } catch {
+            /* fall through */
+          }
+        }
+        const msg =
+          err && err.name === "AbortError"
+            ? "Request timed out — try again or use “Apply lines to preview” below."
+            : (err && err.message) || "Could not generate homework.";
+        setStatus(msg, true);
+        showToast("Generate failed");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    document.getElementById("hw-maker-apply-lines-btn")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const meta = readMeta(form);
+      if (!meta.grammarPoint) {
+        setStatus("Grammar point is required.", true);
+        return;
+      }
+      if (!validateStudent(meta)) return;
+      const result = buildFromLines(
+        meta,
+        form.elements.section1Lines?.value,
+        form.elements.section2Lines?.value
       );
+      if (!result.assignment.sections[0].items.length) {
+        setStatus("Section 1 needs at least one valid line.", true);
+        return;
+      }
+      applyResult(result);
+      showToast("Manual lines applied");
     });
 
-    document.getElementById("hw-maker-new-id-btn")?.addEventListener("click", (e) => {
+    downloadBtn?.addEventListener("click", (e) => {
       e.preventDefault();
-      delete form.elements.id.dataset.manual;
-      syncIdField(form);
-      renderPreview();
+      if (!lastResult) return;
+      downloadJson(lastResult.assignment.id + ".json", lastResult.assignment);
+      showToast("Downloaded " + lastResult.assignment.id + ".json");
+    });
+
+    publishBtn?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (!lastResult) return;
+
+      const session = getTeacherSession();
+      if (!session || session.role !== "teacher") {
+        setStatus("Teacher login required.", true);
+        return;
+      }
+
+      const meta = readMeta(form);
+      if (!validateStudent(meta)) return;
+      if (publishBtn) publishBtn.disabled = true;
+      setStatus("Publishing to " + meta.studentUsername + "'s hub…");
+      rememberStudent(meta.studentUsername);
+
+      try {
+        const res = await fetch("/api/homework-publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherUsername: session.username,
+            studentUsername: meta.studentUsername,
+            assignment: lastResult.assignment,
+            catalogEntry: lastResult.catalogEntry,
+            youtubeUrl: meta.youtubeUrl,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Publish failed.");
+
+        setStatus(
+          (data.message ||
+            "Published! " + meta.studentUsername + " can refresh their Homework Hub.") +
+            " Worksheet id: " +
+            lastResult.assignment.id
+        );
+        showToast("Published for " + meta.studentUsername);
+        if (data.studentUrl && copyLinkBtn) {
+          copyText(data.studentUrl, "Student link copied");
+        }
+        if (options.onPublished) options.onPublished();
+      } catch (err) {
+        setStatus((err && err.message) || "Could not publish.", true);
+        showToast("Publish failed");
+      } finally {
+        if (publishBtn) publishBtn.disabled = false;
+      }
+    });
+
+    copyLinkBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!lastResult) return;
+      copyText(
+        studentWorksheetUrl(lastResult.assignment.id),
+        "Student link copied"
+      );
     });
 
     if (templateSelect) {
@@ -376,44 +580,57 @@
         const id = templateSelect.value;
         if (!id) return;
         try {
-          const res = await fetch("/homework/assignments/" + id + ".json", { cache: "no-store" });
-          if (!res.ok) throw new Error("load");
-          const assignment = await res.json();
-          let catalogEntry = null;
-          if (options.getCatalogEntry) {
-            catalogEntry = options.getCatalogEntry(id);
-          }
+          const loadAssignment =
+            options.fetchAssignmentJson ||
+            (async (assignmentId) => {
+              const res = await fetch(
+                "/api/homework-assignment?id=" + encodeURIComponent(assignmentId),
+                { cache: "no-store" }
+              );
+              if (!res.ok) throw new Error("load");
+              return res.json();
+            });
+          const assignment = await loadAssignment(id);
+          const catalogEntry = options.getCatalogEntry
+            ? options.getCatalogEntry(id)
+            : null;
           fillFormFromAssignment(form, assignment, catalogEntry);
-          renderPreview();
-          showToast("Loaded template " + id);
+          applyResult({
+            assignment,
+            catalogEntry: catalogEntry || {
+              id: assignment.id,
+              title: assignment.title,
+              students: assignment.studentLabel ? [assignment.studentLabel] : [],
+              youtubeUrl: assignment.youtubeUrl,
+            },
+          });
+          showToast("Loaded " + id);
         } catch {
-          showToast("Could not load template");
+          showToast("Could not load worksheet");
         }
       });
     }
 
-    syncIdField(form);
-    renderPreview();
+    setActionsEnabled(false);
   }
 
   function populateTemplates(select, entries) {
     if (!select) return;
-    select.innerHTML = '<option value="">Load existing worksheet as template…</option>';
+    select.innerHTML = '<option value="">Choose to edit or duplicate…</option>';
     (entries || [])
       .slice()
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+      .sort((a, b) => String(b.title || b.id).localeCompare(String(a.title || a.id)))
       .forEach((entry) => {
         const opt = document.createElement("option");
         opt.value = entry.id;
-        opt.textContent = (entry.date || "") + " · " + (entry.title || entry.id);
+        opt.textContent = (entry.title || entry.id) + " · " + (entry.students || []).join(", ");
         select.appendChild(opt);
       });
   }
 
   global.HwMaker = {
     init,
-    buildAssignment,
-    parseLines,
+    buildFromLines,
     makeAssignmentId,
     populateTemplates,
     fillFormFromAssignment,
