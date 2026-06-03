@@ -80,75 +80,132 @@
           <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
         </div>
 
-        <!-- Teacher: create homework (same fill-in-the-blank layout as students) -->
-        <section class="hw-teacher-maker hw-platform-card hw-platform-card--wide" id="hw-teacher-maker" hidden>
-          <h2 class="hw-platform-card__title">Create homework</h2>
-          <p class="hw-platform-card__desc">Load a student’s homework to edit, or start a new sheet. Changes go live on their hub when you publish or update.</p>
-
-          <form class="hw-teacher-meta" id="hw-teacher-meta-form">
-            <div class="hw-teacher-meta__grid">
-              <label class="hw-maker-field">
-                Student id
-                <select name="studentUsername" id="hw-teacher-student" required>
-                  <option value="joshs">joshs — Josh S</option>
-                  <option value="benm">benm — Ben M</option>
-                  <option value="deme">deme — Deme</option>
-                  <option value="ivan">ivan — Ivan</option>
-                </select>
-              </label>
-              <label class="hw-maker-field hw-maker-field--wide">
-                Edit existing
-                <span class="hw-teacher-edit-row">
-                  <select id="hw-teacher-edit-select" aria-label="Choose homework to edit">
-                    <option value="">— New blank sheet —</option>
-                  </select>
-                  <button type="button" class="btn btn--ghost btn--sm" id="hw-teacher-load-btn">Load</button>
-                </span>
-              </label>
-              <label class="hw-maker-field hw-maker-field--wide">
-                Grammar point
-                <input type="text" name="grammarPoint" id="hw-teacher-grammar" placeholder="～ないといけない" required>
-              </label>
-              <label class="hw-maker-field hw-maker-field--wide">
-                YouTube (optional)
-                <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="https://youtu.be/…">
-              </label>
-              <label class="hw-maker-field hw-maker-field--wide">
-                Lesson playlist (optional)
-                <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…">
-              </label>
-            </div>
-            <div class="hw-teacher-meta__actions">
-              <button type="button" class="btn btn--primary" id="hw-teacher-publish-btn">Publish new homework</button>
-              <button type="button" class="btn btn--ghost" id="hw-teacher-reset-btn">New blank sheet</button>
-            </div>
-            <p class="hw-maker-status" id="hw-teacher-status" role="status" aria-live="polite">
-              Fill in the worksheet below — same layout students see.
-            </p>
-          </form>
-
-          <div class="hw-teacher-save-bar" id="hw-teacher-save-bar" hidden>
-            <p class="hw-teacher-save-bar__text" id="hw-teacher-editing-note">
-              Edit the sentences in the worksheet below, then save.
-            </p>
-            <button type="button" class="btn btn--primary" id="hw-teacher-update-btn">Update with edits</button>
+        <!-- Teacher hub: tabs + panels -->
+        <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
+          <div class="hw-teacher-tabs" role="tablist" aria-label="Teacher hub sections">
+            <button type="button" class="hw-teacher-tabs__btn is-active" role="tab" id="hw-teacher-tab-maker" aria-selected="true" aria-controls="hw-teacher-maker" data-teacher-tab="maker">Worksheet maker</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-homework" aria-selected="false" aria-controls="hw-teacher-homework" data-teacher-tab="homework">Homework</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
           </div>
 
-          <h3 class="hw-maker-preview-heading">Homework worksheet</h3>
-          <p class="hw-maker-preview-hint" id="hw-teacher-worksheet-hint">
-            Type in the blanks below — same sheet students see. No file upload needed.
-          </p>
-          <div class="hw-teacher-worksheet" id="hw-teacher-worksheet-mount" aria-label="Homework worksheet editor"></div>
-        </section>
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
+            <h2 class="hw-platform-card__title">Worksheet maker</h2>
+            <p class="hw-platform-card__desc">Build a worksheet without tying it to a student. Save to the library, then send it from the Homework tab.</p>
 
-        <section class="hw-teacher-library hw-platform-card hw-platform-card--wide" id="hw-teacher-library" hidden>
-          <h2 class="hw-platform-card__title">Worksheet library</h2>
-          <p class="hw-platform-card__desc">Past worksheets — open one to copy into the editor above.</p>
-          <label class="hw-library-search-label" for="hw-library-search">Search</label>
-          <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
-          <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
-          <ul class="hw-library-list" id="hw-library-list"></ul>
-        </section>
+            <form class="hw-teacher-meta" id="hw-teacher-maker-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Grammar point / title
+                  <input type="text" name="grammarPoint" id="hw-teacher-maker-grammar" placeholder="～ないといけない" required>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Load worksheet
+                  <span class="hw-teacher-edit-row">
+                    <select id="hw-teacher-maker-edit-select" aria-label="Choose worksheet to edit">
+                      <option value="">— New blank sheet —</option>
+                    </select>
+                  </span>
+                  <span class="hw-teacher-edit-hint">Choosing a worksheet loads it below. Saved sheets use a neutral id (e.g. sheet-naitoikenai).</span>
+                </label>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--ghost" id="hw-teacher-maker-reset-btn">New blank sheet</button>
+                <button type="button" class="btn btn--primary" id="hw-teacher-maker-save-btn">Save to library</button>
+              </div>
+              <p class="hw-maker-status" id="hw-teacher-maker-status" role="status" aria-live="polite">
+                Fill in the worksheet below, then save to the library.
+              </p>
+            </form>
+
+            <div class="hw-teacher-save-bar" id="hw-teacher-maker-save-bar" hidden>
+              <p class="hw-teacher-save-bar__text" id="hw-teacher-maker-editing-note">
+                Edit the worksheet below, then save your changes.
+              </p>
+              <button type="button" class="btn btn--primary" id="hw-teacher-maker-update-btn">Update saved worksheet</button>
+            </div>
+
+            <h3 class="hw-maker-preview-heading">Worksheet</h3>
+            <p class="hw-maker-preview-hint">Type in the blanks below — same layout students will see.</p>
+            <div class="hw-teacher-worksheet" id="hw-teacher-maker-mount" aria-label="Worksheet editor"></div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-homework" role="tabpanel" aria-labelledby="hw-teacher-tab-homework" hidden>
+            <h2 class="hw-platform-card__title">Homework — send to student</h2>
+            <p class="hw-platform-card__desc">Pick a saved worksheet and which student should see it on their hub. This does not change the worksheet in the library.</p>
+
+            <form class="hw-teacher-meta" id="hw-teacher-publish-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Publish to student
+                  <select name="studentUsername" id="hw-teacher-publish-student" required>
+                    <option value="">— Choose student —</option>
+                    <option value="joshs">joshs — Josh S</option>
+                    <option value="benm">benm — Ben M</option>
+                    <option value="deme">deme — Deme</option>
+                    <option value="ivan">ivan — Ivan</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Worksheet
+                  <select id="hw-teacher-publish-worksheet" aria-label="Choose worksheet to publish" required>
+                    <option value="">— Choose worksheet —</option>
+                  </select>
+                  <span class="hw-teacher-edit-hint" id="hw-teacher-publish-hint">Choose a student and worksheet, then send.</span>
+                </label>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--primary" id="hw-teacher-send-btn">Send to student’s hub</button>
+              </div>
+              <p class="hw-maker-status" id="hw-teacher-publish-status" role="status" aria-live="polite">
+                Select a worksheet from the library and a student to publish.
+              </p>
+            </form>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
+            <h2 class="hw-platform-card__title">Student info</h2>
+            <p class="hw-platform-card__desc">Latest lesson link and lesson playlist for a student’s hub. Save here without publishing homework.</p>
+
+            <form class="hw-teacher-meta" id="hw-teacher-account-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field">
+                  Student id
+                  <select name="studentUsername" id="hw-teacher-account-student" required>
+                    <option value="joshs">joshs — Josh S</option>
+                    <option value="benm">benm — Ben M</option>
+                    <option value="deme">deme — Deme</option>
+                    <option value="ivan">ivan — Ivan</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Lesson playlist
+                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…" required>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Latest lesson — YouTube (optional override)
+                  <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
+                </label>
+                <p class="hw-teacher-account-note">The <strong>last</strong> video in the playlist becomes the student’s “Watch lesson” link (refreshes about every hour). Add each new lesson at the <strong>bottom</strong> of the playlist. Override only if the feed can’t read a private playlist.</p>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
+              </div>
+              <p class="hw-maker-status" id="hw-teacher-account-status" role="status" aria-live="polite">
+                Pick a student, paste links, then save.
+              </p>
+            </form>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-library" id="hw-teacher-library" role="tabpanel" aria-labelledby="hw-teacher-tab-library" hidden>
+            <h2 class="hw-platform-card__title">Worksheet library</h2>
+            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from Homework.</p>
+            <label class="hw-library-search-label" for="hw-library-search">Search</label>
+            <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
+            <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
+            <ul class="hw-library-list" id="hw-library-list"></ul>
+          </section>
+        </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
         <div id="hw-platform-student-only">
@@ -238,7 +295,7 @@
 
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-worksheet.js?v=20260615" defer></script>
-  <script src="/js/hw-teacher-editor.js?v=20260527" defer></script>
-  <script src="/js/hw-platform.js?v=20260615" defer></script>
+  <script src="/js/hw-teacher-editor.js?v=20260603" defer></script>
+  <script src="/js/hw-platform.js?v=20260603" defer></script>
 </body>
 </html>

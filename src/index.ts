@@ -5,9 +5,13 @@ import {
 import {
   mergeCatalog,
   publishToStudentHub,
+  saveStudentProfile,
+  saveWorksheetDraft,
   loadPublishedAssignment,
   type CatalogFile,
   type PublishPayload,
+  type StudentProfilePayload,
+  type SaveWorksheetPayload,
 } from "./homework-kv";
 
 interface Env {
@@ -720,6 +724,79 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
   }
 }
 
+async function handleHomeworkSaveWorksheet(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as SaveWorksheetPayload;
+    const result = await saveWorksheetDraft(data, env);
+    return jsonResponse({
+      success: true,
+      message: result.updated
+        ? `Updated worksheet “${result.id}” in the library.`
+        : `Saved worksheet “${result.id}” to the library.`,
+      id: result.id,
+      updated: result.updated,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED") {
+      return jsonResponse({ error: "Worksheet id is required." }, 400);
+    }
+    console.error("homework-save-worksheet failed:", err);
+    return jsonResponse({ error: "Could not save worksheet." }, 500);
+  }
+}
+
+async function handleHomeworkStudentProfile(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as StudentProfilePayload;
+    const result = await saveStudentProfile(data, env);
+    return jsonResponse({
+      success: true,
+      message: `Saved links for ${result.student}. They can refresh their Homework Hub to see updates.`,
+      student: result.student,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Student id is required." }, 400);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse(
+        { error: "Unknown student id. Add the account in hw-auth.js first." },
+        400
+      );
+    }
+    console.error("homework-student-profile failed:", err);
+    return jsonResponse({ error: "Could not save student info." }, 500);
+  }
+}
+
 async function handleHomeworkGenerate(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -785,6 +862,14 @@ export default {
 
     if (url.pathname === "/api/homework-publish") {
       return handleHomeworkPublish(request, env);
+    }
+
+    if (url.pathname === "/api/homework-student-profile") {
+      return handleHomeworkStudentProfile(request, env);
+    }
+
+    if (url.pathname === "/api/homework-save-worksheet") {
+      return handleHomeworkSaveWorksheet(request, env);
     }
 
     return env.ASSETS.fetch(request);

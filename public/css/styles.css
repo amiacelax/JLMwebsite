@@ -3151,11 +3151,82 @@ body.hw-role-teacher #hw-platform-student-only {
   display: none !important;
 }
 
-html.hw-is-teacher #hw-teacher-maker,
-html.hw-is-teacher #hw-teacher-library,
-body.hw-role-teacher #hw-teacher-maker,
-body.hw-role-teacher #hw-teacher-library {
+html.hw-is-teacher #hw-teacher-hub,
+body.hw-role-teacher #hw-teacher-hub {
   display: block !important;
+}
+
+.hw-teacher-hub {
+  display: none;
+}
+
+.hw-teacher-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.hw-teacher-tabs__btn {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.hw-teacher-tabs__btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.hw-teacher-tabs__btn.is-active {
+  background: var(--color-accent-soft, rgba(232, 93, 44, 0.12));
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.hw-teacher-panel[hidden] {
+  display: none !important;
+}
+
+.hw-teacher-step {
+  margin-bottom: 1.5rem;
+}
+
+.hw-teacher-step--publish {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.hw-teacher-step__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.85rem;
+}
+
+.hw-teacher-edit-hint {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 0.35rem;
+  font-weight: 400;
+}
+
+.hw-teacher-account-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
 }
 
 .hw-teacher-worksheet {

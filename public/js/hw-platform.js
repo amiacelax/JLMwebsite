@@ -702,7 +702,7 @@
 
   function initTeacherEditor() {
     if (!global.HwTeacherEditor) return;
-    const mount = document.getElementById("hw-teacher-worksheet-mount");
+    const mount = document.getElementById("hw-teacher-maker-mount");
     if (!mount) return;
     if (mount.querySelector("#hw-worksheet-form")) return;
     HwTeacherEditor.init({
@@ -723,6 +723,18 @@
         }
         return ["joshs", "benm", "deme", "ivan"].includes(String(username || "").toLowerCase());
       },
+      onWorksheetSaved: async function () {
+        catalogCache = null;
+        try {
+          catalogCache = await fetchCatalog();
+          HwTeacherEditor.refreshCatalog(
+            catalogCache.assignments || [],
+            catalogCache.studentProfiles || {}
+          );
+        } catch {
+          /* ignore */
+        }
+      },
       onPublished: async function (id) {
         catalogCache = null;
         try {
@@ -732,8 +744,8 @@
             catalogCache.studentProfiles || {}
           );
           if (id) {
-            const editSelect = document.getElementById("hw-teacher-edit-select");
-            if (editSelect) editSelect.value = id;
+            const publishSelect = document.getElementById("hw-teacher-publish-worksheet");
+            if (publishSelect) publishSelect.value = id;
           }
         } catch {
           /* ignore */
@@ -744,8 +756,9 @@
   }
 
   async function openInTeacherEditor(id) {
-    const maker = document.getElementById("hw-teacher-maker");
-    if (maker) maker.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("hw-teacher-tab-maker")?.click();
+    const makerPanel = document.getElementById("hw-teacher-maker");
+    if (makerPanel) makerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     try {
       const assignment = await fetchAssignmentJson(id);
       HwTeacherEditor.loadAssignment(assignment, getCatalogEntry(id));
@@ -755,25 +768,78 @@
     }
   }
 
+  function initTeacherTabs() {
+    const tablist = document.querySelector(".hw-teacher-tabs");
+    if (!tablist || tablist.dataset.bound === "true") return;
+    tablist.dataset.bound = "true";
+
+    const tabs = tablist.querySelectorAll("[data-teacher-tab]");
+    const panels = {
+      account: document.getElementById("hw-teacher-account"),
+      maker: document.getElementById("hw-teacher-maker"),
+      homework: document.getElementById("hw-teacher-homework"),
+      library: document.getElementById("hw-teacher-library"),
+    };
+
+    function activate(name) {
+      tabs.forEach((tab) => {
+        const on = tab.getAttribute("data-teacher-tab") === name;
+        tab.classList.toggle("is-active", on);
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      Object.keys(panels).forEach((key) => {
+        const panel = panels[key];
+        if (panel) panel.hidden = key !== name;
+      });
+      try {
+        localStorage.setItem("jlm-hw-teacher-tab", name);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        activate(tab.getAttribute("data-teacher-tab") || "account");
+      });
+    });
+
+    let initial = "maker";
+    try {
+      const saved = localStorage.getItem("jlm-hw-teacher-tab");
+      if (
+        saved === "maker" ||
+        saved === "homework" ||
+        saved === "account" ||
+        saved === "library"
+      ) {
+        initial = saved;
+      }
+    } catch {
+      /* ignore */
+    }
+    activate(initial);
+    return activate;
+  }
+
   async function loadTeacherHub() {
     document.body.classList.add("hw-role-teacher");
     document.documentElement.classList.add("hw-is-teacher");
 
     const hubTitle = document.getElementById("hw-hub-title");
     const hubDesc = document.getElementById("hw-hub-desc");
-    const teacherMaker = document.getElementById("hw-teacher-maker");
-    const teacherLib = document.getElementById("hw-teacher-library");
+    const teacherHub = document.getElementById("hw-teacher-hub");
     const studentOnly = document.getElementById("hw-platform-student-only");
 
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Create homework for a student — fill in the worksheet the same way they will see it, then publish.";
+        "Worksheet maker → Homework → Student info → Worksheet library.";
     }
-    if (teacherMaker) teacherMaker.hidden = false;
-    if (teacherLib) teacherLib.hidden = false;
+    if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
+    const activateTeacherTab = initTeacherTabs();
     initTeacherEditor();
 
     const searchInput = document.getElementById("hw-library-search");
@@ -808,6 +874,7 @@
     renderLibraryList(entries, searchInput ? searchInput.value : "", hashId);
 
     if (hashId) {
+      if (activateTeacherTab) activateTeacherTab("maker");
       await openInTeacherEditor(hashId);
     }
   }
@@ -815,11 +882,9 @@
   async function loadStudentHub() {
     document.body.classList.add("hw-role-student");
 
-    const teacherMaker = document.getElementById("hw-teacher-maker");
-    const teacherLib = document.getElementById("hw-teacher-library");
+    const teacherHub = document.getElementById("hw-teacher-hub");
     const studentOnly = document.getElementById("hw-platform-student-only");
-    if (teacherMaker) teacherMaker.hidden = true;
-    if (teacherLib) teacherLib.hidden = true;
+    if (teacherHub) teacherHub.hidden = true;
     if (studentOnly) studentOnly.hidden = false;
 
     const mount = document.getElementById("hw-worksheet-mount");
