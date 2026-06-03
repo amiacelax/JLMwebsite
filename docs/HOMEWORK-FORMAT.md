@@ -77,6 +77,7 @@ Publish: save JSON under `public/homework/assignments/`, add catalog entry, `npm
 
 - `students` — usernames (lowercase) allowed to see the assignment
 - `youtubeUrl` — latest lesson for that student
+- `lessonPlaylistUrl` — per-student YouTube lesson playlist (`studentProfiles` in catalog, or teacher hub field → KV on publish)
 - `playlistUrl` — all lessons (top-level in catalog)
 - `forSale` / `salePrice` — future PayPal `$0.99` archive for non-subscribers
 

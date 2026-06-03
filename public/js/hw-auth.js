@@ -87,6 +87,14 @@
       tier: "tier2",
       videoResponseUnlock: false,
     },
+    ivan: {
+      password: "jelly",
+      displayName: "Ivan",
+      role: "student",
+      accountLabel: "current_student",
+      tier: "student_special",
+      videoResponseUnlock: false,
+    },
   };
 
   function normalizeUsername(raw) {

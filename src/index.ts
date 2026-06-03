@@ -80,12 +80,46 @@ function getWebhook(env: Env): string | null {
 }
 
 function sanitizeWebhookUrl(raw: string | undefined): string | null {
-  const url = raw?.trim().replace(/[\u0000-\u001F\u007F]/g, "");
-  return url || null;
+  if (raw == null || raw === "") return null;
+  let url = String(raw).trim().replace(/[\u0000-\u001F\u007F]/g, "");
+  if (
+    (url.startsWith('"') && url.endsWith('"')) ||
+    (url.startsWith("'") && url.endsWith("'"))
+  ) {
+    url = url.slice(1, -1).trim();
+  }
+  if (!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//i.test(url)) {
+    console.error("Invalid Discord webhook URL (must be https://discord.com/api/webhooks/...)");
+    return null;
+  }
+  return url;
 }
 
-function getHomeworkWebhook(env: Env): string | null {
-  return sanitizeWebhookUrl(env.DISCORD_HOMEWORK_WEBHOOK_URL);
+type ResolvedHomeworkWebhook = {
+  url: string;
+  channelId?: string;
+  /** True when homework webhook secret is missing and site webhook is used */
+  usedFallback: boolean;
+};
+
+function resolveHomeworkWebhook(env: Env): ResolvedHomeworkWebhook | null {
+  const homeworkUrl = sanitizeWebhookUrl(env.DISCORD_HOMEWORK_WEBHOOK_URL);
+  if (homeworkUrl) {
+    return {
+      url: homeworkUrl,
+      channelId: env.DISCORD_HOMEWORK_CHANNEL_ID,
+      usedFallback: false,
+    };
+  }
+  const siteUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
+  if (siteUrl) {
+    return {
+      url: siteUrl,
+      channelId: env.DISCORD_CHANNEL_ID,
+      usedFallback: true,
+    };
+  }
+  return null;
 }
 
 async function getWebhookChannelMismatch(
@@ -446,28 +480,31 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
   const error = validateHomeworkSubmit(data);
   if (error) return jsonResponse({ error }, 400);
 
-  const webhookUrl = getHomeworkWebhook(env);
-  if (!webhookUrl) {
+  const webhook = resolveHomeworkWebhook(env);
+  if (!webhook) {
+    console.error("homework-submit: no Discord webhook configured");
     return jsonResponse(
       {
         error:
-          "Homework submit is not configured yet. Ask JD to set DISCORD_HOMEWORK_WEBHOOK_URL.",
+          "Homework submit is not set up on the server yet. Your answers are still saved in this browser — ask JD to enable Discord homework notifications.",
       },
       503
     );
   }
 
+  if (webhook.usedFallback) {
+    console.warn(
+      "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
+    );
+  }
+
   const channelError = await getWebhookChannelMismatch(
-    webhookUrl,
-    env.DISCORD_HOMEWORK_CHANNEL_ID,
-    "homework submissions"
+    webhook.url,
+    webhook.channelId,
+    webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
   );
   if (channelError) {
-    console.error(channelError);
-    return jsonResponse(
-      { error: "Homework submit is misconfigured. Please try again later." },
-      503
-    );
+    console.warn("homework-submit channel check:", channelError);
   }
 
   const student = data.displayName?.trim() || data.username!.trim();
@@ -478,12 +515,15 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
       : "—";
 
   const bodyText = [
-    `Homework submitted — ${student}`,
+    webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
+    `Homework submitted — ${student} (${data.username!.trim()})`,
     "",
     buildHomeworkDiscordDescription(data, student, lesson, score),
-  ].join("\n");
+  ]
+    .filter((line) => line != null)
+    .join("\n");
 
-  const result = await notifyHomeworkDiscord(webhookUrl, bodyText);
+  const result = await notifyHomeworkDiscord(webhook.url, bodyText);
 
   if (!result.ok) {
     console.error("Homework Discord error", result.status, result.detail);
@@ -526,12 +566,13 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({ error: "Image must be under 8 MB." }, 400);
     }
 
-    const webhookUrl = getHomeworkWebhook(env);
-    if (!webhookUrl) {
+    const webhook = resolveHomeworkWebhook(env);
+    if (!webhook) {
+      console.error("homework-photo: no Discord webhook configured");
       return jsonResponse(
         {
           error:
-            "Homework photo upload is not configured yet. Ask JD to set DISCORD_HOMEWORK_WEBHOOK_URL.",
+            "Photo upload is not set up on the server yet. Ask JD to enable homework notifications in Discord.",
         },
         503
       );
@@ -540,26 +581,27 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
     const safeName = safeKeyPart(file.name, "homework-photo.jpg");
 
     const channelError = await getWebhookChannelMismatch(
-      webhookUrl,
-      env.DISCORD_HOMEWORK_CHANNEL_ID,
-      "homework submissions"
+      webhook.url,
+      webhook.channelId,
+      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
     );
     if (channelError) {
-      console.error(channelError);
-      return jsonResponse(
-        { error: "Homework photo upload is misconfigured. Please try again later." },
-        503
-      );
+      console.warn("homework-photo channel check:", channelError);
     }
 
     const text = [
+      webhook.usedFallback
+        ? "[Homework photo — posted via site webhook until HW webhook is set]"
+        : null,
       `Printed homework photo — ${displayName}`,
       "",
       `Student: ${displayName} (${username})`,
       `Assignment: ${lessonName}`,
       `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
-    ].join("\n");
-    const result = await notifyHomeworkDiscordWithFile(webhookUrl, text, file);
+    ]
+      .filter((line) => line != null)
+      .join("\n");
+    const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
     if (!result.ok) {
       console.error("Homework photo Discord error", result.status, result.detail);
       return jsonResponse(

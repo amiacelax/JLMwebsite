@@ -303,13 +303,34 @@
         {
           username: session.username,
           displayName: session.displayName,
-          assignmentId,
-          lessonName: submitMeta.lessonName,
+          assignmentId: assignmentId || assignmentMeta.id || form.getAttribute("data-assignment-id"),
+          lessonName:
+            submitMeta.lessonName ||
+            assignmentMeta.lessonName ||
+            assignmentMeta.title ||
+            assignmentId,
           title: submitMeta.title || assignmentMeta.title,
           register: assignmentMeta.register,
         },
         report
       );
+
+      if (!payload.assignmentId) {
+        if (saveStatus) {
+          saveStatus.textContent = "Worksheet id missing — refresh the page and try again.";
+        }
+        showToast("Submit failed");
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+      if (!payload.section1?.length && !payload.section2?.length) {
+        if (saveStatus) {
+          saveStatus.textContent = "Fill in at least one blank before submitting.";
+        }
+        showToast("Nothing to submit");
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
 
       try {
         const res = await fetch("/api/homework-submit", {
@@ -700,13 +721,16 @@
         if (global.HwAuth && typeof global.HwAuth.isStudentAccount === "function") {
           return global.HwAuth.isStudentAccount(username);
         }
-        return ["joshs", "benm", "deme"].includes(String(username || "").toLowerCase());
+        return ["joshs", "benm", "deme", "ivan"].includes(String(username || "").toLowerCase());
       },
       onPublished: async function (id) {
         catalogCache = null;
         try {
           catalogCache = await fetchCatalog();
-          HwTeacherEditor.refreshCatalog(catalogCache.assignments || []);
+          HwTeacherEditor.refreshCatalog(
+            catalogCache.assignments || [],
+            catalogCache.studentProfiles || {}
+          );
           if (id) {
             const editSelect = document.getElementById("hw-teacher-edit-select");
             if (editSelect) editSelect.value = id;
@@ -767,7 +791,7 @@
     const entries = catalogCache.assignments || [];
     const hashId = window.location.hash.replace(/^#hw-/, "");
     if (global.HwTeacherEditor?.refreshCatalog) {
-      HwTeacherEditor.refreshCatalog(entries);
+      HwTeacherEditor.refreshCatalog(entries, catalogCache.studentProfiles || {});
     }
     if (global.HwTeacherEditor?.bootstrap) {
       HwTeacherEditor.bootstrap();
@@ -846,7 +870,19 @@
     }
 
     const form = HwWorksheet.render(mount, assignment);
-    bindWorksheetSave(form, assignment);
+    const saveMeta = {
+      ...assignment,
+      id: assignment.id || active.id,
+      title: assignment.title || active.title,
+      lessonName:
+        assignment.lessonName || active.lessonName || active.title || active.id,
+      date: assignment.date || active.date,
+      register: assignment.register || "casual",
+    };
+    if (!form.getAttribute("data-assignment-id") && saveMeta.id) {
+      form.setAttribute("data-assignment-id", saveMeta.id);
+    }
+    bindWorksheetSave(form, saveMeta);
   }
 
   function ensureTeacherEditorMounted() {

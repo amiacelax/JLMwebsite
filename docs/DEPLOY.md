@@ -99,16 +99,35 @@ Paste the new webhook URL when prompted (not stored in the repo).
 
 ---
 
+## Homework submit → Discord (`#homework-submissions`)
+
+Students **Submit homework** posts to a **separate** webhook from the contact form.
+
+1. In Discord, open the homework channel (`DISCORD_HOMEWORK_CHANNEL_ID` in `wrangler.toml`, default `1507650471836258404`).
+2. **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook** → copy URL.
+3. Local: add to `.dev.vars` as `DISCORD_HOMEWORK_WEBHOOK_URL=...`
+4. Production:
+
+```powershell
+npx.cmd wrangler secret put DISCORD_HOMEWORK_WEBHOOK_URL
+```
+
+Paste the homework-channel webhook URL, then redeploy. If this secret is missing, students see a “not set up on the server” error (answers still stay in browser localStorage).
+
+---
+
 ## Checklist
 
 | Step | Status |
 |------|--------|
 | Logged into Cloudflare (`wrangler whoami`) | Done |
 | `DISCORD_WEBHOOK_URL` secret on Worker | Done |
+| `DISCORD_HOMEWORK_WEBHOOK_URL` secret on Worker | **Required for homework submit** |
 | Register workers.dev subdomain | **You** — one dashboard click |
 | `npx.cmd wrangler deploy` | Run after subdomain |
 | Domain on Cloudflare + custom domain on Worker | **You** — DNS cutover |
 | Test contact form + promo on live URL | After deploy |
+| Test homework submit as student on live URL | After homework webhook secret |
 
 ---
 
@@ -117,3 +136,28 @@ Paste the new webhook URL when prompted (not stored in the repo).
 - **PowerShell blocks `npx`:** use `npx.cmd wrangler deploy`  
 - **Contact form 503:** webhook missing, wrong channel, or bad URL — see **Discord webhook → #website-inquiries** above; check Worker logs for `Discord webhook is not pointed at`  
 - **Old Squarespace still shows:** DNS cache — wait or flush; confirm nameservers point to Cloudflare
+
+### Wrangler `Authentication error [code: 10000]` / `Failed to retrieve account IDs`
+
+Wrangler is not authorized for the Cloudflare account that owns this Worker (`account_id` is in `wrangler.toml`).
+
+**Fix A — re-login (most common):**
+
+```powershell
+cd "C:\JLM Website"
+npx.cmd wrangler logout
+npx.cmd wrangler login
+npx.cmd wrangler whoami
+```
+
+Use the browser login for **languagementor.jp@gmail.com** (same account as deploy docs). Then retry `wrangler secret put`.
+
+**Fix B — set secrets in the dashboard (no CLI):**
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com/ec76ee6b6ba9798967983f0f4d7f1437) → **Workers & Pages** → **japanese-language-mentor**
+2. **Settings** → **Variables and Secrets** → **Add** → **Secret**
+3. Name: `DISCORD_HOMEWORK_WEBHOOK_URL`, value: your homework-channel Discord webhook URL → **Encrypt**
+4. **Deploy the Worker** after adding or changing secrets (dashboard: **Workers & Pages** → **japanese-language-mentor** → **Deployments** → **Deploy** / connect Git, or `npx.cmd wrangler deploy`). Until deploy, new secrets may not apply to the live script.
+5. Test student submit on the live site.
+
+**Fix C — API token:** If you use `CLOUDFLARE_API_TOKEN` instead of OAuth, create a token with **Workers Scripts Edit** (and **Account** read). Do not commit the token.

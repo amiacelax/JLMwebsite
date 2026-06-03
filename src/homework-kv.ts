@@ -19,6 +19,7 @@ const KV_INDEX = "catalog-index";
 const assignmentKey = (id: string) => `assignment:${id}`;
 const catalogKey = (id: string) => `catalog:${id}`;
 const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
+const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
 
 export interface PublishPayload {
   teacherUsername?: string;
@@ -26,6 +27,7 @@ export interface PublishPayload {
   assignment: Record<string, unknown>;
   catalogEntry: Record<string, unknown>;
   youtubeUrl?: string;
+  lessonPlaylistUrl?: string;
 }
 
 interface KvEnv {
@@ -36,7 +38,7 @@ interface KvEnv {
 const TEACHER_DEFAULT = "jlm";
 
 /** Must match student accounts in public/js/hw-auth.js */
-const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme"]);
+const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan"]);
 
 function isTeacher(username: string | undefined, env: KvEnv): boolean {
   const allowed = (env.HW_TEACHER_USER || TEACHER_DEFAULT).toLowerCase();
@@ -91,6 +93,15 @@ export async function publishToStudentHub(
     await kv.put(studentYoutubeKey(student), youtube);
   }
 
+  if (data.lessonPlaylistUrl !== undefined) {
+    const playlist = String(data.lessonPlaylistUrl || "").trim();
+    if (playlist) {
+      await kv.put(studentLessonPlaylistKey(student), playlist);
+    } else {
+      await kv.delete(studentLessonPlaylistKey(student));
+    }
+  }
+
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
   await kv.put(catalogKey(id), JSON.stringify(catalogEntry));
 
@@ -136,6 +147,13 @@ export async function getStudentYoutube(kv: KVNamespace, username: string): Prom
   return kv.get(studentYoutubeKey(username.toLowerCase()));
 }
 
+export async function getStudentLessonPlaylist(
+  kv: KVNamespace,
+  username: string
+): Promise<string | null> {
+  return kv.get(studentLessonPlaylistKey(username.toLowerCase()));
+}
+
 export async function mergeCatalog(
   staticCatalog: CatalogFile,
   kv: KVNamespace | undefined
@@ -157,25 +175,32 @@ export async function mergeCatalog(
   };
 
   if (kv) {
+    const kvNs = kv;
+    type StudentProfile = NonNullable<CatalogFile["studentProfiles"]>[string];
     merged.studentProfiles = { ...(staticCatalog.studentProfiles || {}) };
+    async function applyKvStudentMedia(key: string, base: StudentProfile) {
+      const yt = await getStudentYoutube(kvNs, key);
+      const playlist = await getStudentLessonPlaylist(kvNs, key);
+      let next: StudentProfile = { ...base };
+      if (yt) {
+        next = { ...next, latestLessonUrl: yt, youtubeUrl: yt };
+      }
+      if (playlist) {
+        next = { ...next, lessonPlaylistUrl: playlist };
+      }
+      if (yt || playlist) {
+        merged.studentProfiles![key] = next;
+      }
+    }
+
     for (const [user, profile] of Object.entries(staticCatalog.studentProfiles || {})) {
       const key = user.toLowerCase();
-      const yt = await getStudentYoutube(kv, key);
-      if (yt) {
-        merged.studentProfiles![key] = { ...profile, latestLessonUrl: yt, youtubeUrl: yt };
-      }
+      await applyKvStudentMedia(key, profile);
     }
     for (const entry of published) {
       for (const user of (entry.students as string[]) || []) {
         const key = String(user).toLowerCase();
-        const yt = await getStudentYoutube(kv, key);
-        if (yt) {
-          merged.studentProfiles![key] = {
-            ...(merged.studentProfiles![key] || {}),
-            latestLessonUrl: yt,
-            youtubeUrl: yt,
-          };
-        }
+        await applyKvStudentMedia(key, merged.studentProfiles![key] || {});
       }
     }
   }

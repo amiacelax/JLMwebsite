@@ -6,9 +6,11 @@
     { username: "joshs", displayName: "Josh S" },
     { username: "benm", displayName: "Ben M" },
     { username: "deme", displayName: "Deme" },
+    { username: "ivan", displayName: "Ivan" },
   ];
 
   let catalogAssignments = [];
+  let catalogStudentProfiles = {};
   let editingAssignmentId = null;
   let editorOptions = null;
 
@@ -108,7 +110,20 @@
       studentUsername,
       grammarPoint,
       youtubeUrl: String(form.querySelector('[name="youtubeUrl"]')?.value || "").trim(),
+      lessonPlaylistUrl: String(
+        form.querySelector('[name="lessonPlaylistUrl"]')?.value || ""
+      ).trim(),
     };
+  }
+
+  function applyStudentProfileFields(form, studentUsername) {
+    if (!form) return;
+    const student = String(studentUsername || "").toLowerCase();
+    const profile = catalogStudentProfiles[student] || {};
+    const playlistInput = form.querySelector('[name="lessonPlaylistUrl"]');
+    if (playlistInput) {
+      playlistInput.value = profile.lessonPlaylistUrl || profile.reviewPlaylistUrl || "";
+    }
   }
 
   function getCatalogEntry(id) {
@@ -196,6 +211,7 @@
     try {
       const data = await editorOptions.fetchCatalog();
       catalogAssignments = data.assignments || [];
+      catalogStudentProfiles = data.studentProfiles || {};
     } catch {
       /* use FALLBACK_ASSIGNMENTS */
     }
@@ -412,6 +428,7 @@
             assignment,
             catalogEntry,
             youtubeUrl: meta.youtubeUrl,
+            lessonPlaylistUrl: meta.lessonPlaylistUrl,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -420,6 +437,17 @@
         editingAssignmentId = assignment.id;
         if (editSelect) editSelect.value = assignment.id;
         updateEditModeUI();
+
+        if (meta.lessonPlaylistUrl) {
+          catalogStudentProfiles[meta.studentUsername] = {
+            ...(catalogStudentProfiles[meta.studentUsername] || {}),
+            lessonPlaylistUrl: meta.lessonPlaylistUrl,
+          };
+        } else if (catalogStudentProfiles[meta.studentUsername]) {
+          const next = { ...catalogStudentProfiles[meta.studentUsername] };
+          delete next.lessonPlaylistUrl;
+          catalogStudentProfiles[meta.studentUsername] = next;
+        }
 
         setStatus(data.message || (isUpdate ? "Updated!" : "Published!"));
         showToast(isUpdate ? "Homework updated" : "Homework published");
@@ -450,6 +478,7 @@
 
       studentSelect?.addEventListener("change", async () => {
         await ensureCatalogLoaded();
+        applyStudentProfileFields(metaForm, studentSelect.value);
         populateEditSelect(studentSelect.value);
         clearEditMode();
         renderSheet();
@@ -527,18 +556,26 @@
       "Choose homework → Load, or edit the blank sheet below → Publish new homework."
     );
 
-    ensureCatalogLoaded().then(() => populateEditSelect(studentSelect?.value));
+    ensureCatalogLoaded().then(() => {
+      applyStudentProfileFields(metaForm, studentSelect?.value);
+      populateEditSelect(studentSelect?.value);
+    });
   }
 
-  function refreshCatalog(assignments) {
+  function refreshCatalog(assignments, studentProfiles) {
     catalogAssignments = assignments || [];
+    if (studentProfiles) catalogStudentProfiles = studentProfiles;
+    const metaForm = document.getElementById("hw-teacher-meta-form");
     const studentSelect = document.getElementById("hw-teacher-student");
+    applyStudentProfileFields(metaForm, studentSelect?.value);
     populateEditSelect(studentSelect?.value);
   }
 
   function bootstrap() {
     return ensureCatalogLoaded().then(() => {
+      const metaForm = document.getElementById("hw-teacher-meta-form");
       const studentSelect = document.getElementById("hw-teacher-student");
+      applyStudentProfileFields(metaForm, studentSelect?.value);
       populateEditSelect(studentSelect?.value);
     });
   }

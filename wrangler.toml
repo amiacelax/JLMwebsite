@@ -1,4 +1,5 @@
 name = "japanese-language-mentor"
+account_id = "ec76ee6b6ba9798967983f0f4d7f1437"
 main = "src/index.ts"
 compatibility_date = "2026-05-20"
 
