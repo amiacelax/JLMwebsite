@@ -16,7 +16,7 @@ YouTube: unlisted full lesson (link only on site, not hosted in repo)
 | **1** | `grammar-blank` | The grammar point only (e.g. 行きたい) | Under the blank: `（いく・たい）` |
 | **2** | `context-blank` | Three wide open blanks (one per line) | Optional on blank |
 
-Default layout: **5** grammar lines (Section 1) + **3** open lines (Section 2). Section 2 shows a **□ QUESTION** marker before each blank (like the Section 1 **NEGATIVE** pill).
+Default layout: **5** grammar lines (Section 1) + **3** open lines (Section 2). Check **Question** on a Section 2 line to show the blue **QUESTION** pill (same pattern as **Negative**).
 
 Section 1 blanks may include `"answer"` and `"variants"` for the teacher editor only — students do not see keys; JD reviews submissions on Discord (no auto-check for now).
 
@@ -28,6 +28,7 @@ Section 1 blanks may include `"answer"` and `"variants"` for the teacher editor 
 ### Negative items (optional)
 
 - `"negative": true` on an item — red `NEGATIVE` pill after the sentence; answer should be negative (e.g. `ほしくない`)
+- `"question": true` on a Section 2 item — blue **QUESTION** pill after the blank (teacher checks **Question** in the maker, same as **Negative**)
 - Hints omit conjugation when it is `たい`, `plain`, or `ない` — show `（ほしい）` not `（ほしい・ない）`
 
 ## Teacher hub (`jlm` demo)
@@ -60,7 +61,7 @@ One sentence per line:
 text before {answer} text after | dictionary | conjugation
 ```
 
-Section 2: empty `{ }` for open blanks. Prefix `!` for **NEGATIVE**.
+Section 2: empty `{ }` for open blanks. Prefix `!` for **NEGATIVE** (Section 1). Prefix `?` for **QUESTION** (Section 2).
 
 Publish: save JSON under `public/homework/assignments/`, add catalog entry, `npm run deploy`, send student link.
 

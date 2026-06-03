@@ -23,8 +23,13 @@
     if (!raw || raw.startsWith("#")) return null;
 
     let negative = false;
+    let question = false;
     if (raw.startsWith("!")) {
       negative = true;
+      raw = raw.slice(1).trim();
+    }
+    if (raw.startsWith("?")) {
+      question = true;
       raw = raw.slice(1).trim();
     }
 
@@ -58,6 +63,7 @@
 
     const item = { id, parts };
     if (negative) item.negative = true;
+    if (question) item.question = true;
     return item;
   }
 
@@ -185,6 +191,7 @@
           line += " | " + (blank.hint.dictionary || "") + " | " + (blank.hint.conjugation || "");
         }
         if (item.negative) line = "!" + line;
+        if (item.question) line = "?" + line;
         return line;
       })
       .join("\n");

@@ -238,7 +238,7 @@
     const badge = document.createElement("span");
     badge.className = "hw-question-badge";
     badge.textContent = "QUESTION";
-    badge.setAttribute("aria-label", "Your own sentence");
+    badge.setAttribute("aria-label", "Open-ended question");
     return badge;
   }
 
@@ -368,19 +368,26 @@
       }
     });
 
-    if (sectionMode === "context-blank") {
-      content.appendChild(renderQuestionBadge());
-    }
-
     if (sectionMode === "grammar-blank") {
       const negLabel = document.createElement("label");
-      negLabel.className = "hw-author-negative-label";
+      negLabel.className = "hw-author-marker-label";
       const neg = document.createElement("input");
       neg.type = "checkbox";
       neg.className = "hw-author-negative";
       neg.checked = Boolean(item.negative);
       negLabel.append(neg, document.createTextNode(" Negative"));
       content.appendChild(negLabel);
+    }
+
+    if (sectionMode === "context-blank") {
+      const qLabel = document.createElement("label");
+      qLabel.className = "hw-author-marker-label";
+      const q = document.createElement("input");
+      q.type = "checkbox";
+      q.className = "hw-author-question";
+      q.checked = Boolean(item.question);
+      qLabel.append(q, document.createTextNode(" Question"));
+      content.appendChild(qLabel);
     }
 
     line.appendChild(content);
@@ -425,7 +432,7 @@
       content.appendChild(renderNegativeBadge());
     }
 
-    if (sectionMode === "context-blank") {
+    if (item.question) {
       content.appendChild(renderQuestionBadge());
     }
 
@@ -512,6 +519,9 @@
         const item = { id: lineEl.dataset.itemId || "item-" + (index + 1), parts: [] };
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
+        }
+        if (lineEl.querySelector(".hw-author-question")?.checked) {
+          item.question = true;
         }
         const content = lineEl.querySelector(".hw-worksheet__content");
         if (!content) return;

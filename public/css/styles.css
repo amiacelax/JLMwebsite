@@ -2970,6 +2970,7 @@ button.course-card__status:disabled {
   color: var(--color-text);
 }
 
+.hw-author-marker-label,
 .hw-author-negative-label {
   display: inline-flex;
   align-items: center;
@@ -2980,6 +2981,7 @@ button.course-card__status:disabled {
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  cursor: pointer;
 }
 
 .hw-worksheet__line--author .hw-worksheet__content {
@@ -3714,29 +3716,19 @@ button.hw-tense-pill {
 }
 
 .hw-question-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-  margin-left: 0.35rem;
+  display: inline-block;
   vertical-align: middle;
+  margin-left: 0.35rem;
+  padding: 0.15rem 0.5rem;
   font-family: Inter, sans-serif;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: var(--color-text-muted);
+  color: #fff;
+  background: #1565c0;
+  border: none;
+  border-radius: 999px;
   white-space: nowrap;
-}
-
-.hw-question-badge::before {
-  content: "";
-  display: inline-block;
-  width: 0.7rem;
-  height: 0.7rem;
-  background: #fff;
-  border: 1px solid color-mix(in srgb, var(--color-text-muted) 35%, transparent);
-  border-radius: 2px;
-  flex-shrink: 0;
 }
 
 .hw-worksheet__label {
@@ -4137,12 +4129,9 @@ textarea.hw-blank.hw-blank--open {
   }
 
   body.hw-print-active .hw-question-badge {
-    color: #5c6478 !important;
-  }
-
-  body.hw-print-active .hw-question-badge::before {
-    background: #fff !important;
-    border: 1px solid #9aa3b5 !important;
+    color: #fff !important;
+    background: #0d47a1 !important;
+    border: 1px solid #0a3d91 !important;
   }
 
   body.hw-print-active .hw-worksheet__content .ja-ruby rt {
