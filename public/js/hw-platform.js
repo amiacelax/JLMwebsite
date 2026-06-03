@@ -271,7 +271,7 @@
 
     const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
-    const inputs = form.querySelectorAll(".hw-blank");
+    const inputs = form.querySelectorAll("input.hw-blank, textarea.hw-blank");
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
       inputs.forEach((inp) => {
@@ -291,9 +291,8 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const report = HwWorksheet.checkHomework(form);
-      HwWorksheet.renderCheckResults(form, report);
-      const { correct, total } = report.score;
+      const report = HwWorksheet.collectHomeworkAnswers(form);
+      HwWorksheet.renderCheckResults(form);
 
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true;
@@ -343,11 +342,7 @@
           throw new Error(data.error || "Submit failed.");
         }
         if (saveStatus) {
-          saveStatus.textContent =
-            data.message ||
-            (total > 0
-              ? "Submitted! Section 1: " + correct + "/" + total + ". JD received your answers."
-              : "Submitted! JD received your answers.");
+          saveStatus.textContent = data.message || "Submitted! JD received your answers.";
         }
         showToast("Sent to JD");
       } catch (err) {
@@ -931,7 +926,7 @@
     if (heading) heading.textContent = view.heading;
     if (intro) {
       intro.textContent =
-        "Fill in the blanks, then Submit homework. Section 1 is auto-checked; Section 2 is sent to JD on Discord.";
+        "Fill in the blanks, then Submit homework. JD will review your answers on Discord.";
     }
 
     const form = HwWorksheet.render(mount, assignment);

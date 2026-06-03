@@ -45,20 +45,16 @@
           answer: "",
           hint: { dictionary: "", conjugation: "plain" },
         },
-        { type: "text", value: "。" },
       ],
     };
   }
 
-  function openItem(n) {
+  /** Section 2 — three open blanks (not auto-graded). */
+  function section2Item(n) {
     const id = "s2-" + n;
     return {
       id,
-      parts: [
-        { type: "text", value: "" },
-        { type: "blank", name: id, wide: true },
-        { type: "text", value: "" },
-      ],
+      parts: [{ type: "blank", name: id, wide: true }],
     };
   }
 
@@ -87,9 +83,9 @@
           id: "context",
           title: "Section 2 — Your words",
           instructions:
-            "Fill in the blank with your own Japanese. Any correct answer is fine — be creative.",
+            "Write your own sentences using this grammar in the boxes below.",
           mode: "context-blank",
-          items: [1, 2, 3, 4, 5].map(openItem),
+          items: [1, 2, 3].map(section2Item),
         },
       ],
     };

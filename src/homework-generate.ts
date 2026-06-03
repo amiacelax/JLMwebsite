@@ -61,7 +61,7 @@ Each blank MUST include variants:
   "polite": { "Now-Later": "...", "Past": "..." }
 }
 
-Section 1: exactly 5 items with answers. Section 2: exactly 5 open items (no answer on blanks).
+Section 1: exactly 5 items with answers. Section 2: exactly 3 items, each one wide blank only (no answer on blanks).
 Include 1-2 negative items where natural. Hints use hiragana dictionary + conjugation.`;
 
 function slugify(text: string): string {
@@ -179,7 +179,7 @@ function grammarLine(
     parts: [
       { type: "text", value: before },
       blankPart(id, variants, hint),
-      { type: "text", value: after },
+      ...(after ? [{ type: "text", value: after }] : []),
     ],
   };
 }
@@ -214,7 +214,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": "行かないといけない", Past: "行かないといけなかった" },
           polite: { "Now-Later": "行かないといけません", Past: "行かないといけませんでした" },
         },
-        "。",
+        "",
         { dictionary: "いく", conjugation: "plain" }
       ),
       grammarLine(
@@ -224,7 +224,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": "帰らないといけない", Past: "帰らないといけなかった" },
           polite: { "Now-Later": "帰らないといけません", Past: "帰らないといけませんでした" },
         },
-        "。",
+        "",
         { dictionary: "かえる", conjugation: "plain" }
       ),
       grammarLine(
@@ -234,7 +234,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": "飲まないといけない", Past: "飲まないといけなかった" },
           polite: { "Now-Later": "飲まないといけません", Past: "飲まないといけませんでした" },
         },
-        "。",
+        "",
         { dictionary: "のむ", conjugation: "plain" }
       ),
       grammarLine(
@@ -244,7 +244,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": "勉強しないといけない", Past: "勉強しないといけなかった" },
           polite: { "Now-Later": "勉強しないといけません", Past: "勉強しないといけませんでした" },
         },
-        "。",
+        "",
         { dictionary: "べんきょう", conjugation: "する" }
       ),
       grammarLine(
@@ -254,7 +254,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": "いけない", Past: "いけなかった" },
           polite: { "Now-Later": "いけません", Past: "いけませんでした" },
         },
-        "。",
+        "",
         { dictionary: "あそぶ", conjugation: "ない" },
         true
       ),
@@ -269,7 +269,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": stem, Past: stem + "（過去）" },
           polite: { "Now-Later": stem + "です", Past: stem + "でした" },
         },
-        "。",
+        "",
         { dictionary: "れんしゅう", conjugation: "plain" }
       ),
       grammarLine(
@@ -279,7 +279,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": stem, Past: stem + "（過去）" },
           polite: { "Now-Later": stem + "です", Past: stem + "でした" },
         },
-        "。",
+        "",
         { dictionary: "れんしゅう", conjugation: "plain" }
       ),
       grammarLine(
@@ -289,7 +289,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": stem, Past: stem + "（過去）" },
           polite: { "Now-Later": stem + "です", Past: stem + "でした" },
         },
-        "。",
+        "",
         { dictionary: "れんしゅう", conjugation: "plain" }
       ),
       grammarLine(
@@ -299,7 +299,7 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": stem, Past: stem + "（過去）" },
           polite: { "Now-Later": stem + "です", Past: stem + "でした" },
         },
-        "。",
+        "",
         { dictionary: "れんしゅう", conjugation: "plain" }
       ),
       grammarLine(
@@ -309,19 +309,16 @@ function generateHomeworkFromTemplate(
           casual: { "Now-Later": stem, Past: stem + "（過去）" },
           polite: { "Now-Later": stem + "です", Past: stem + "でした" },
         },
-        "。",
+        "",
         { dictionary: "れんしゅう", conjugation: "plain" }
       ),
     ];
   }
 
-  const s2Items = [
-    openLine("s2-1", "", "について書いてください。", { dictionary: "かく", conjugation: "plain" }),
-    openLine("s2-2", "私は", "と思います。", { dictionary: "おもう", conjugation: "plain" }),
-    openLine("s2-3", "", "ことがあります。", { dictionary: "ある", conjugation: "plain" }),
-    openLine("s2-4", "友達に", "と言いました。", { dictionary: "いう", conjugation: "plain" }),
-    openLine("s2-5", "", "を見ました。", { dictionary: "みる", conjugation: "plain" }),
-  ];
+  const s2Items = [1, 2, 3].map((n) => {
+    const id = "s2-" + n;
+    return { id, parts: [{ type: "blank", name: id, wide: true }] };
+  });
 
   return {
     title: grammarPoint,
@@ -340,7 +337,7 @@ function generateHomeworkFromTemplate(
         id: "context",
         title: "Section 2 — Your words",
         instructions:
-          "Fill in the blank with your own Japanese. Any correct answer is fine — be creative.",
+          "Write your own sentences using this grammar in the boxes below.",
         mode: "context-blank",
         items: s2Items,
       },
@@ -363,7 +360,7 @@ async function generateWithOpenAi(
     `Student: ${studentUsername}`,
     youtubeUrl ? `YouTube: ${youtubeUrl}` : "",
     notes ? `Notes: ${notes}` : "",
-    "Section 1: 5 grammar blanks with full variant grid. Section 2: 5 open blanks.",
+    "Section 1: 5 grammar blanks with full variant grid. Section 2: 3 open wide blanks (one per item).",
   ]
     .filter(Boolean)
     .join("\n");

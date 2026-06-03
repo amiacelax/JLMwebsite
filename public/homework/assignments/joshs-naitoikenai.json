@@ -15,13 +15,19 @@
       "title": "Section 1 — Grammar point",
       "instructions": "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
       "mode": "grammar-blank",
-      "tenseBubbles": ["Now-Later", "Past"],
+      "tenseBubbles": [
+        "Now-Later",
+        "Past"
+      ],
       "activeTense": "Now-Later",
       "items": [
         {
           "id": "s1-1",
           "parts": [
-            { "type": "text", "value": "明日、学校に" },
+            {
+              "type": "text",
+              "value": "明日、学校に"
+            },
             {
               "type": "blank",
               "name": "s1-1",
@@ -37,15 +43,24 @@
                   "Past": "行かないといけませんでした"
                 }
               },
-              "hint": { "dictionary": "いく", "conjugation": "plain" }
+              "hint": {
+                "dictionary": "いく",
+                "conjugation": "plain"
+              }
             },
-            { "type": "text", "value": "。" }
+            {
+              "type": "text",
+              "value": "。"
+            }
           ]
         },
         {
           "id": "s1-2",
           "parts": [
-            { "type": "text", "value": "もう" },
+            {
+              "type": "text",
+              "value": "もう"
+            },
             {
               "type": "blank",
               "name": "s1-2",
@@ -61,15 +76,24 @@
                   "Past": "帰らないといけませんでした"
                 }
               },
-              "hint": { "dictionary": "かえる", "conjugation": "plain" }
+              "hint": {
+                "dictionary": "かえる",
+                "conjugation": "plain"
+              }
             },
-            { "type": "text", "value": "。" }
+            {
+              "type": "text",
+              "value": "。"
+            }
           ]
         },
         {
           "id": "s1-3",
           "parts": [
-            { "type": "text", "value": "薬を" },
+            {
+              "type": "text",
+              "value": "薬を"
+            },
             {
               "type": "blank",
               "name": "s1-3",
@@ -85,9 +109,15 @@
                   "Past": "飲まないといけませんでした"
                 }
               },
-              "hint": { "dictionary": "のむ", "conjugation": "plain" }
+              "hint": {
+                "dictionary": "のむ",
+                "conjugation": "plain"
+              }
             },
-            { "type": "text", "value": "。" }
+            {
+              "type": "text",
+              "value": "。"
+            }
           ]
         },
         {
@@ -96,8 +126,13 @@
             {
               "type": "text",
               "ruby": [
-                { "text": "宿題", "rt": "しゅくだい" },
-                { "text": "を" }
+                {
+                  "text": "宿題",
+                  "rt": "しゅくだい"
+                },
+                {
+                  "text": "を"
+                }
               ]
             },
             {
@@ -115,31 +150,49 @@
                   "Past": "しないといけませんでした"
                 }
               },
-              "hint": { "dictionary": "する", "conjugation": "plain" }
+              "hint": {
+                "dictionary": "する",
+                "conjugation": "plain"
+              }
             },
-            { "type": "text", "value": "。" }
+            {
+              "type": "text",
+              "value": "。"
+            }
           ]
         },
         {
           "id": "s1-5",
           "negative": true,
           "parts": [
-            { "type": "text", "value": "昨日は遊んでは" },
+            {
+              "type": "text",
+              "value": "昨日は遊んでは"
+            },
             {
               "type": "blank",
               "name": "s1-5",
               "wide": true,
               "answer": "いけない",
               "variants": {
-                "casual": { "Now-Later": "いけない", "Past": "いけなかった" },
+                "casual": {
+                  "Now-Later": "いけない",
+                  "Past": "いけなかった"
+                },
                 "polite": {
                   "Now-Later": "いけません",
                   "Past": "いけませんでした"
                 }
               },
-              "hint": { "dictionary": "あそぶ", "conjugation": "ない" }
+              "hint": {
+                "dictionary": "あそぶ",
+                "conjugation": "ない"
+              }
             },
-            { "type": "text", "value": "。" }
+            {
+              "type": "text",
+              "value": "。"
+            }
           ]
         }
       ]
@@ -147,7 +200,7 @@
     {
       "id": "context",
       "title": "Section 2 — Your words",
-      "instructions": "Fill in the blank with your own Japanese. Any correct answer is fine — be creative.",
+      "instructions": "Write your own sentences using this grammar in the boxes below.",
       "mode": "context-blank",
       "items": [
         {
@@ -156,68 +209,28 @@
             {
               "type": "blank",
               "name": "s2-1",
-              "wide": true,
-              "hint": { "dictionary": "べんきょう", "conjugation": "する" }
-            },
-            { "type": "text", "value": "しないといけなかった。" }
+              "wide": true
+            }
           ]
         },
         {
           "id": "s2-2",
-          "negative": true,
           "parts": [
             {
               "type": "blank",
               "name": "s2-2",
-              "wide": true,
-              "hint": { "dictionary": "ねる", "conjugation": "plain" }
-            },
-            { "type": "text", "value": "ないといけなかった。" }
+              "wide": true
+            }
           ]
         },
         {
           "id": "s2-3",
           "parts": [
-            { "type": "text", "value": "昨日、また" },
             {
               "type": "blank",
               "name": "s2-3",
-              "wide": true,
-              "hint": { "dictionary": "いく", "conjugation": "plain" }
-            },
-            { "type": "text", "value": "ないといけなかった。" }
-          ]
-        },
-        {
-          "id": "s2-4",
-          "negative": true,
-          "parts": [
-            {
-              "type": "blank",
-              "name": "s2-4",
-              "wide": true,
-              "hint": { "dictionary": "たべる", "conjugation": "plain" }
-            },
-            {
-              "type": "text",
-              "ruby": [
-                { "text": "を" },
-                { "text": "食", "rt": "た" },
-                { "text": "べないといけなかった。" }
-              ]
+              "wide": true
             }
-          ]
-        },
-        {
-          "id": "s2-5",
-          "parts": [
-            {
-              "type": "blank",
-              "name": "s2-5",
-              "wide": true,
-              "hint": { "dictionary": "はたらく", "conjugation": "plain" }
-            },
-            { "type": "text", "value": "ないといけなかった。" }
           ]
         }
       ]

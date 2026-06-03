@@ -338,12 +338,8 @@ function formatSection1Discord(rows: HomeworkAnswerRow[] | undefined): string {
     .map((row) => {
       const label = row.label?.trim() || "—";
       const yours = row.student?.trim() || "(blank)";
-      const expected = row.expected?.trim() || "—";
       const sentence = row.completed?.trim() || "";
-      if (row.correct) {
-        return `${label} ✓ Correct · Yours: ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
-      }
-      return `${label} ✗ Expected: ${expected} · Yours: ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
+      return `${label} ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
     })
     .join("\n");
 }
@@ -362,21 +358,19 @@ function formatSection2Discord(rows: HomeworkAnswerRow[] | undefined): string {
 function buildHomeworkDiscordDescription(
   data: HomeworkSubmitPayload,
   student: string,
-  lesson: string,
-  score: string
+  lesson: string
 ): string {
   const lines = [
     `Student: ${student}`,
     `Lesson: ${lesson}`,
     data.title?.trim() ? `Grammar: ${data.title.trim()}` : null,
     data.register?.trim() ? `Register: ${data.register.trim()}` : null,
-    score !== "—" ? `Section 1 score: ${score}` : null,
     "",
     "Section 1",
     "",
     formatSection1Discord(data.section1),
     "",
-    "Section 2 — completed sentences",
+    "Section 2 — your response",
     "",
     formatSection2Discord(data.section2),
   ];
@@ -513,16 +507,11 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
   const student = data.displayName?.trim() || data.username!.trim();
   const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
-  const score =
-    data.scoreTotal != null && data.scoreTotal > 0
-      ? `${data.scoreCorrect ?? 0}/${data.scoreTotal} Section 1`
-      : "—";
-
   const bodyText = [
     webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
     `Homework submitted — ${student} (${data.username!.trim()})`,
     "",
-    buildHomeworkDiscordDescription(data, student, lesson, score),
+    buildHomeworkDiscordDescription(data, student, lesson),
   ]
     .filter((line) => line != null)
     .join("\n");

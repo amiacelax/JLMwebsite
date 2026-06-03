@@ -14,9 +14,11 @@ YouTube: unlisted full lesson (link only on site, not hosted in repo)
 | Section | `mode` | Student fills | Hint shows |
 |---------|--------|---------------|------------|
 | **1** | `grammar-blank` | The grammar point only (e.g. 行きたい) | Under the blank: `（いく・たい）` |
-| **2** | `context-blank` | Everything except the grammar (open-ended) | Same — hint nested on the blank |
+| **2** | `context-blank` | Three wide open blanks (one per line) | Optional on blank |
 
-Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`, not shown to students).
+Default layout: **5** grammar lines (Section 1) + **3** open lines (Section 2). Section 2 shows a **□ QUESTION** marker before each blank (like the Section 1 **NEGATIVE** pill).
+
+Section 1 blanks may include `"answer"` and `"variants"` for the teacher editor only — students do not see keys; JD reviews submissions on Discord (no auto-check for now).
 
 ### Section 1 header (optional)
 
@@ -37,9 +39,9 @@ Section 1 blanks may include `"answer"` for auto-check (stored in `data-answer`,
 - `benm` demo = student test site (assignments filtered by `students` in catalog)
 - Teacher actions: Preview, Download JSON, Copy catalog entry, Copy student link (`platform.html#hw-{id}`), load template / **Edit in maker**
 
-### Student practice toggles
+### Variants (teacher / future auto-check)
 
-On the worksheet (not in the maker): students tap **Casual / Polite** and **Now-Later / Past**. Section 1 blanks use `variants` on each blank:
+Section 1 blanks may use `variants` on each blank (for polite/casual and tense keys). Student-facing register/tense toggles are off while grading is manual.
 
 ```json
 "variants": {

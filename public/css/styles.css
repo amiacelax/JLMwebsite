@@ -3713,6 +3713,32 @@ button.hw-tense-pill {
   white-space: nowrap;
 }
 
+.hw-question-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  font-family: Inter, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.hw-question-badge::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--color-text-muted) 35%, transparent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 .hw-worksheet__label {
   display: inline-block;
   min-width: 1.75rem;
@@ -3740,6 +3766,46 @@ button.hw-tense-pill {
 
 .hw-blank--wide {
   min-width: 10em;
+}
+
+.hw-worksheet__section[data-mode="context-blank"] .hw-worksheet__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hw-worksheet__section[data-mode="context-blank"] .hw-blank--wide {
+  width: 100%;
+  min-width: 12em;
+  box-sizing: border-box;
+}
+
+.hw-blank-wrap--multiline {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0 0;
+}
+
+.hw-worksheet__line--open-response {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.hw-worksheet__line--open-response .hw-worksheet__content {
+  display: block;
+  width: 100%;
+}
+
+textarea.hw-blank.hw-blank--open {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 9rem;
+  resize: vertical;
+  line-height: 1.55;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  margin: 0;
 }
 
 .hw-blank:focus {
@@ -4068,6 +4134,15 @@ button.hw-tense-pill {
     color: #fff !important;
     background: #b71c1c !important;
     border: 1px solid #8e0000 !important;
+  }
+
+  body.hw-print-active .hw-question-badge {
+    color: #5c6478 !important;
+  }
+
+  body.hw-print-active .hw-question-badge::before {
+    background: #fff !important;
+    border: 1px solid #9aa3b5 !important;
   }
 
   body.hw-print-active .hw-worksheet__content .ja-ruby rt {

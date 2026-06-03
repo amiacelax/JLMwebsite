@@ -196,19 +196,29 @@
     return document.createTextNode(part.value || "");
   }
 
-  function renderBlankWithHint(part) {
+  function renderBlankWithHint(part, options) {
+    options = options || {};
     const wrap = document.createElement("span");
-    wrap.className = "hw-blank-wrap";
+    wrap.className = "hw-blank-wrap" + (part.multiline ? " hw-blank-wrap--multiline" : "");
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "hw-blank" + (part.wide ? " hw-blank--wide" : "");
-    input.name = part.name;
-    input.autocomplete = "off";
-    input.setAttribute("aria-label", "Answer");
-    if (part.variants) input.dataset.variants = JSON.stringify(part.variants);
-    if (part.answer) input.dataset.answer = part.answer;
-    wrap.appendChild(input);
+    let field;
+    if (part.multiline) {
+      field = document.createElement("textarea");
+      field.rows = 6;
+      field.className = "hw-blank hw-blank--wide hw-blank--open";
+    } else {
+      field = document.createElement("input");
+      field.type = "text";
+      field.className = "hw-blank" + (part.wide ? " hw-blank--wide" : "");
+    }
+    field.name = part.name;
+    field.autocomplete = "off";
+    field.setAttribute("aria-label", part.multiline ? "Your response" : "Answer");
+    if (!options.omitAnswers && part.variants) {
+      field.dataset.variants = JSON.stringify(part.variants);
+    }
+    if (!options.omitAnswers && part.answer) field.dataset.answer = part.answer;
+    wrap.appendChild(field);
 
     const hintData = part.hint || null;
     if (hintData) wrap.appendChild(renderHintBelow(hintData));
@@ -221,6 +231,14 @@
     badge.className = "hw-negative-badge";
     badge.textContent = "NEGATIVE";
     badge.setAttribute("aria-label", "Answer must be negative form");
+    return badge;
+  }
+
+  function renderQuestionBadge() {
+    const badge = document.createElement("span");
+    badge.className = "hw-question-badge";
+    badge.textContent = "QUESTION";
+    badge.setAttribute("aria-label", "Your own sentence");
     return badge;
   }
 
@@ -283,16 +301,23 @@
     const wrap = document.createElement("span");
     wrap.className = "hw-blank-wrap";
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "hw-blank hw-blank--wide hw-author-blank";
-    input.name = part.name;
-    input.setAttribute("data-part-type", "blank");
-    input.setAttribute("data-blank-name", part.name);
-    input.value = part.answer || "";
-    input.setAttribute("aria-label", "Correct answer for blank");
-    if (part.answer) input.dataset.answer = part.answer;
-    wrap.appendChild(input);
+    let field;
+    if (part.multiline) {
+      field = document.createElement("textarea");
+      field.rows = 6;
+      field.className = "hw-blank hw-blank--wide hw-blank--open hw-author-blank";
+    } else {
+      field = document.createElement("input");
+      field.type = "text";
+      field.className = "hw-blank hw-blank--wide hw-author-blank";
+    }
+    field.name = part.name;
+    field.setAttribute("data-part-type", "blank");
+    field.setAttribute("data-blank-name", part.name);
+    field.value = part.answer || "";
+    field.setAttribute("aria-label", part.multiline ? "Model response (optional)" : "Answer key (optional)");
+    if (part.answer) field.dataset.answer = part.answer;
+    wrap.appendChild(field);
 
     if (showHints) {
       const hintRow = document.createElement("span");
@@ -317,18 +342,22 @@
   }
 
   function renderAuthorLine(item, index, sectionMode) {
-    const line = document.createElement("p");
+    const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
+    const line = document.createElement(openBlock ? "div" : "p");
     line.className =
       "hw-worksheet__line hw-worksheet__line--author" +
-      (item.negative ? " hw-worksheet__line--negative" : "");
+      (item.negative ? " hw-worksheet__line--negative" : "") +
+      (openBlock ? " hw-worksheet__line--open-response" : "");
     line.dataset.itemId = item.id || "item-" + (index + 1);
 
-    const label = document.createElement("span");
-    label.className = "hw-worksheet__label";
-    label.textContent = LABELS[index] || String(index + 1);
-    line.appendChild(label);
+    if (!openBlock) {
+      const label = document.createElement("span");
+      label.className = "hw-worksheet__label";
+      label.textContent = LABELS[index] || String(index + 1);
+      line.appendChild(label);
+    }
 
-    const content = document.createElement("span");
+    const content = document.createElement(openBlock ? "div" : "span");
     content.className = "hw-worksheet__content";
 
     (item.parts || []).forEach((part) => {
@@ -338,6 +367,10 @@
         content.appendChild(renderAuthorBlank(part, sectionMode === "grammar-blank"));
       }
     });
+
+    if (sectionMode === "context-blank") {
+      content.appendChild(renderQuestionBadge());
+    }
 
     if (sectionMode === "grammar-blank") {
       const negLabel = document.createElement("label");
@@ -354,24 +387,30 @@
     return line;
   }
 
-  function renderLine(item, index) {
-    const line = document.createElement("p");
-    line.className = "hw-worksheet__line" + (item.negative ? " hw-worksheet__line--negative" : "");
+  function renderLine(item, index, sectionMode) {
+    const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
+    const line = document.createElement(openBlock ? "div" : "p");
+    line.className =
+      "hw-worksheet__line" +
+      (item.negative ? " hw-worksheet__line--negative" : "") +
+      (openBlock ? " hw-worksheet__line--open-response" : "");
     line.dataset.itemId = item.id || "";
 
-    const label = document.createElement("span");
-    label.className = "hw-worksheet__label";
-    label.textContent = LABELS[index] || String(index + 1);
-    line.appendChild(label);
+    if (!openBlock) {
+      const label = document.createElement("span");
+      label.className = "hw-worksheet__label";
+      label.textContent = LABELS[index] || String(index + 1);
+      line.appendChild(label);
+    }
 
-    const content = document.createElement("span");
+    const content = document.createElement(openBlock ? "div" : "span");
     content.className = "hw-worksheet__content";
 
     (item.parts || []).forEach((part) => {
       if (part.type === "text") {
         content.appendChild(renderTextPart(part));
       } else if (part.type === "blank") {
-        content.appendChild(renderBlankWithHint(part));
+        content.appendChild(renderBlankWithHint(part, { omitAnswers: true }));
       } else if (part.type === "hint") {
         /* legacy: hint after blank in JSON — attach below previous blank if possible */
         const wraps = content.querySelectorAll(".hw-blank-wrap");
@@ -384,6 +423,10 @@
 
     if (item.negative) {
       content.appendChild(renderNegativeBadge());
+    }
+
+    if (sectionMode === "context-blank") {
+      content.appendChild(renderQuestionBadge());
     }
 
     line.appendChild(content);
@@ -429,7 +472,7 @@
       if (authoring) {
         wrap.appendChild(renderAuthorLine(item, i, section.mode));
       } else {
-        wrap.appendChild(renderLine(item, i));
+        wrap.appendChild(renderLine(item, i, section.mode));
       }
     });
 
@@ -473,11 +516,18 @@
         const content = lineEl.querySelector(".hw-worksheet__content");
         if (!content) return;
 
-        content.querySelectorAll("[data-part-type]").forEach((el) => {
+        content.querySelectorAll("input[data-part-type], textarea[data-part-type]").forEach((el) => {
           if (el.dataset.partType === "text") {
             const value = el.value.trim();
             if (value) item.parts.push({ type: "text", value });
           } else if (el.dataset.partType === "blank") {
+            if (el.tagName === "TEXTAREA") {
+              const part = { type: "blank", name: el.name, wide: true, multiline: true };
+              const answer = el.value.trim();
+              if (answer) part.answer = answer;
+              item.parts.push(part);
+              return;
+            }
             const name = el.dataset.blankName || el.name;
             const part = { type: "blank", name, wide: true };
             const answer = el.value.trim();
@@ -537,8 +587,8 @@
     const metaTop = document.createElement("div");
     metaTop.className = "hw-worksheet__meta-top";
 
-    const hasVariants = assignmentHasVariants(prepared);
-    const interactive = !options.preview && !authoring && hasVariants;
+    const hasVariants = false;
+    const interactive = false;
 
     const metaText = document.createElement("div");
     metaText.className = "hw-worksheet__meta-text";
@@ -547,12 +597,8 @@
       escapeHtml(prepared.title || "Homework") +
       "</p>" +
       (authoring
-        ? hasVariants
-          ? '<p class="hw-worksheet__meta-hint">Teacher: type each sentence and the <strong>casual · Now-Later</strong> answer in the blank. Add polite/past forms in the JSON when you publish separate variants.</p>'
-          : '<p class="hw-worksheet__meta-hint">Teacher: type the sentence around each blank and the <strong>correct answer</strong> in the blank. Students will see the same layout without answers filled in.</p>'
-        : interactive
-          ? '<p class="hw-worksheet__meta-hint">Use the pills only if this sheet includes those answer sets. JD may also publish separate homework for past or polite practice.</p>'
-          : "");
+        ? '<p class="hw-worksheet__meta-hint">Teacher: type each sentence and an optional answer key in the blank (not shown to students). Section 1 has five lines; Section 2 has three open lines.</p>'
+        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. JD will review your work.</p>');
     metaTop.appendChild(metaText);
     const grammarSection = (prepared.sections || []).find((s) => s.mode === "grammar-blank");
     const variantControlsInteractive = !options.preview && hasVariants;
@@ -579,10 +625,6 @@
       form.appendChild(renderSection(form, section, interactive, authoring));
     });
 
-    if (!authoring) {
-      applyAnswerVariants(form);
-      if (interactive) bindVariantGrading(form);
-    }
 
     const actions = document.createElement("div");
     actions.className = "hw-worksheet__actions";
@@ -723,102 +765,66 @@
 
   function getBlankInput(form, inputName) {
     const el = form.elements.namedItem(inputName);
-    return el && el.tagName === "INPUT" ? el : null;
+    if (!el || (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA")) return null;
+    return el;
   }
 
   function completedSentenceForBlank(form, inputName, answerText) {
     const input = getBlankInput(form, inputName);
     if (!input) return (answerText || "").trim() || "(blank)";
+    if (input.tagName === "TEXTAREA") return (answerText || input.value || "").trim() || "(blank)";
     const content = input.closest(".hw-worksheet__content");
     if (!content) return (answerText || "").trim() || "(blank)";
     const clone = content.cloneNode(true);
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
-    clone.querySelectorAll(".hw-negative-badge").forEach((el) => el.remove());
+    clone.querySelectorAll(".hw-negative-badge, .hw-question-badge").forEach((el) => el.remove());
     clone.querySelectorAll("rt").forEach((el) => el.remove());
     const blank = clone.querySelector(".hw-blank");
     if (blank) blank.replaceWith(document.createTextNode((answerText || "").trim() || "___"));
     return clone.textContent.replace(/\s+/g, " ").trim();
   }
 
-  function renderCheckResults(form, report) {
+  function renderCheckResults(form) {
     const box = form.querySelector("#hw-check-results");
     if (!box) return;
+    box.hidden = true;
+  }
 
-    const { score, openFilled, openTotal } = report;
-    let html = '<div class="hw-check-results__summary">';
+  /** Collect student answers for submit (no auto-grading). */
+  function collectHomeworkAnswers(form) {
+    const section1 = [];
+    const section2 = [];
 
-    if (score.total > 0) {
-      html +=
-        "<p><strong>Section 1 (grammar):</strong> " +
-        score.correct +
-        " / " +
-        score.total +
-        " correct</p>";
-    }
-
-    html +=
-      "<p><strong>Section 2 (your sentences):</strong> " +
-      openFilled +
-      " / " +
-      openTotal +
-      " filled in — open-ended, not auto-graded yet.</p>";
-
-    html +=
-      "<p class=\"hw-check-results__note\">Your full answers are below (same as what JD receives). Scroll up to edit.</p></div>";
-
-    if (report.graded.length) {
-      html += '<p class="hw-check-results__subhead"><strong>Section 1</strong></p><ul class="hw-check-results__list">';
-      report.graded.forEach((row, i) => {
-        const label = LABELS[i] || String(i + 1);
-        const yours = row.student ? escapeHtml(row.student) : "(blank)";
-        const expected = row.expected ? escapeHtml(row.expected) : "—";
-        const completed = escapeHtml(completedSentenceForBlank(form, row.name, row.student));
-
-        if (row.ok) {
-          html +=
-            "<li class=\"hw-check-results__item hw-check-results__item--ok\">" +
-            label +
-            ' <span class="hw-check-top hw-check-top--ok">Correct: <span class="hw-check-expected" lang="ja">' +
-            expected +
-            "</span>" +
-            '<div class="hw-check-complete hw-check-complete--ok" lang="ja">' +
-            completed +
-            "</div></li>";
+    form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
+      const mode = secEl.dataset.mode || "";
+      let idx = 0;
+      secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
+        if (!el.name) return;
+        const student = el.value.trim();
+        const row = {
+          name: el.name,
+          label:
+            mode === "context-blank"
+              ? "QUESTION " + (LABELS[idx] || String(idx + 1))
+              : LABELS[idx] || String(idx + 1),
+          prompt: promptForBlank(form, el.name),
+          student,
+          completed: completedSentenceForBlank(form, el.name, student),
+        };
+        if (mode === "grammar-blank") {
+          section1.push(row);
+          idx += 1;
         } else {
-          html +=
-            "<li class=\"hw-check-results__item hw-check-results__item--miss\">" +
-            label +
-            ' <span class="hw-check-top hw-check-top--miss">✖ Incorrect: <span class="hw-check-yours hw-check-yours--miss" lang="ja">' +
-            yours +
-            '</span> <span class="hw-check-top hw-check-top--ok">Correct: <span class="hw-check-expected" lang="ja">' +
-            expected +
-            "</span></span></span>" +
-            '<div class="hw-check-complete hw-check-complete--miss" lang="ja">' +
-            completed +
-            "</div></li>";
+          section2.push(row);
         }
       });
-      html += "</ul>";
-    }
+    });
 
-    if (report.openEnded.length) {
-      html += '<p class="hw-check-results__subhead"><strong>Section 2 — completed sentences</strong></p><ul class="hw-check-results__list">';
-      report.openEnded.forEach((row, i) => {
-        const label = LABELS[i] || String(i + 1);
-        const completed = escapeHtml(completedSentenceForBlank(form, row.name, row.student));
-        html +=
-          "<li class=\"hw-check-results__item hw-check-results__item--open\">" +
-          label +
-          '<div class="hw-check-complete" lang="ja">' +
-          (row.filled ? completed : "(blank)") +
-          "</div></li>";
-      });
-      html += "</ul>";
-    }
-
-    box.innerHTML = html;
-    box.hidden = false;
-    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return {
+      section1,
+      section2,
+      score: { correct: 0, total: 0 },
+    };
   }
 
   function promptForBlank(form, inputName) {
@@ -836,20 +842,18 @@
   }
 
   function buildSubmitPayload(form, meta, report) {
-    const section1 = report.graded.map((row, i) => ({
-      label: LABELS[i] || String(i + 1),
-      prompt: promptForBlank(form, row.name),
+    const section1 = (report.section1 || []).map((row) => ({
+      label: row.label,
+      prompt: row.prompt,
       student: row.student,
-      expected: row.expected,
-      correct: row.ok,
-      completed: completedSentenceForBlank(form, row.name, row.student),
+      completed: row.completed,
     }));
 
-    const section2 = report.openEnded.map((row, i) => ({
-      label: LABELS[i] || String(i + 1),
-      prompt: promptForBlank(form, row.name),
+    const section2 = (report.section2 || []).map((row) => ({
+      label: row.label,
+      prompt: row.prompt,
       student: row.student,
-      completed: completedSentenceForBlank(form, row.name, row.student),
+      completed: row.completed,
     }));
 
     return {
@@ -860,8 +864,6 @@
       title: meta.title,
       register: form.dataset.hwRegister || meta.register,
       tense: form.dataset.hwTense || "Now-Later",
-      scoreCorrect: report.score.correct,
-      scoreTotal: report.score.total,
       section1,
       section2,
     };
@@ -872,6 +874,7 @@
     printBlank,
     formatHint,
     checkHomework,
+    collectHomeworkAnswers,
     renderCheckResults,
     normalizeAnswer,
     answersMatch,
