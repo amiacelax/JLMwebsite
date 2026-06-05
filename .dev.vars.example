@@ -14,4 +14,8 @@ DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
 # Only add this if you sign up at platform.openai.com and want smarter AI drafts:
 # OPENAI_API_KEY=sk-...
 #
+# Harris Firm client preview (password-protected, noindex)
+# HARRIS_PREVIEW_USER=harris
+# HARRIS_PREVIEW_PASSWORD=your-secret-password
+
 # Your Cloudflare API token (for wrangler login / deploy) is NOT the same thing — you do not put it here.

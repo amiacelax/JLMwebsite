@@ -1,0 +1,82 @@
+Harris Firm — US Notarization page update (WordPress)
+=====================================================
+
+This package contains a light layout refresh for:
+  https://harrisfirm.com/us-notarization/
+
+Files included:
+  - us-notarization-content.html  → page body HTML
+  - us-notarization.css           → styles for Additional CSS
+
+What changed (content is the same):
+  - "Click to Make a Notary Request" is now a green button: "Make a Notary Request"
+  - Sections are grouped in simple bordered boxes
+  - Testimonials use blockquote styling
+
+----------------------------------------------------------------------
+STEP 1 — Back up the current page
+----------------------------------------------------------------------
+In WordPress admin: Pages → "United States Notarization in Japan"
+Copy the existing page content somewhere safe before replacing it.
+
+----------------------------------------------------------------------
+STEP 2 — Replace the page HTML
+----------------------------------------------------------------------
+Edit the page. Use whichever editor your site supports:
+
+  A) Classic Editor / default page editor
+     - Switch to the "Code" or "Text" tab (not Visual).
+     - Delete everything in the page body.
+     - Paste the full contents of us-notarization-content.html.
+
+  B) Block Editor (Gutenberg)
+     - Remove existing blocks in the main content area.
+     - Add one "Custom HTML" block.
+     - Paste the full contents of us-notarization-content.html.
+
+  C) Elementor
+     - If the page body is plain WordPress content (Hello theme default),
+       edit the page in WordPress as in A or B above.
+     - If the page is an Elementor layout, add an HTML widget and paste
+       us-notarization-content.html, or replace the text widgets to match.
+
+Keep the page title "United States Notarization in Japan" — the theme
+already shows that as the H1. Do not add a second H1 in the content.
+
+Remove any leftover markup for the old green "Click to Make a Notary
+Request" link if it is still on the page.
+
+----------------------------------------------------------------------
+STEP 3 — Add the CSS
+----------------------------------------------------------------------
+Appearance → Customize → Additional CSS
+Paste the entire contents of us-notarization.css at the bottom.
+Click Publish.
+
+All selectors are scoped under .notary-page so they should not affect
+other pages.
+
+----------------------------------------------------------------------
+STEP 4 — Preview and publish
+----------------------------------------------------------------------
+Preview the page. Check:
+  - Green "Make a Notary Request" button links to the application form
+  - Boxes around appointments, requirements, services, testimonials
+  - Mobile layout looks acceptable
+
+Update/publish the page when satisfied.
+
+----------------------------------------------------------------------
+Troubleshooting
+----------------------------------------------------------------------
+- Button looks like a plain link?
+  → Confirm us-notarization.css was saved in Additional CSS.
+
+- Boxes have no borders?
+  → Same as above; also hard-refresh the browser (Ctrl+F5).
+
+- Theme overrides button colors?
+  → The CSS uses !important on button text color only; if needed, add
+    .notary-page .notary-btn { background: #339966 !important; }
+
+Questions about this handoff: contact the person who sent you this zip.

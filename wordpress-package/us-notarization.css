@@ -1,0 +1,113 @@
+/* Harris Firm — US Notarization page styles
+   Paste into WordPress: Appearance → Customize → Additional CSS */
+
+.notary-page {
+  max-width: 720px;
+  margin: 0 auto;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #333;
+}
+
+.notary-page h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.55;
+  margin: 1.25rem 0 0.75rem;
+  color: #1a1a1a;
+}
+
+.notary-page h3:first-child {
+  margin-top: 0;
+}
+
+.notary-page .notary-cta {
+  text-align: center;
+  margin: 1.75rem 0 1.5rem;
+  padding: 1.75rem 1.5rem;
+  background: #f7f9f8;
+  border: 1px solid #e2ebe6;
+  border-radius: 6px;
+}
+
+.notary-page .notary-btn {
+  display: inline-block;
+  padding: 0.85rem 2rem;
+  background: #339966;
+  color: #fff !important;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-decoration: none !important;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.notary-page .notary-btn:hover,
+.notary-page .notary-btn:focus {
+  background: #2a7a52;
+  color: #fff !important;
+}
+
+.notary-page .notary-cta-note {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.notary-page .notary-card {
+  margin: 1.25rem 0;
+  padding: 1.25rem 1.5rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.notary-page .notary-card--notice {
+  background: #faf8f5;
+  border-color: #e8e0d4;
+}
+
+.notary-page .notary-card p {
+  margin: 0 0 0.75rem;
+}
+
+.notary-page .notary-card p:last-child {
+  margin-bottom: 0;
+}
+
+.notary-page .notary-card ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.35rem;
+}
+
+.notary-page .notary-card li {
+  margin-bottom: 0.45rem;
+}
+
+.notary-page .notary-card li:last-child {
+  margin-bottom: 0;
+}
+
+.notary-page .notary-card a {
+  color: #339966;
+}
+
+.notary-page .notary-card--testimonials blockquote {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem 0.85rem 1.15rem;
+  border-left: 3px solid #339966;
+  background: #f9f9f9;
+  font-style: italic;
+  color: #444;
+}
+
+.notary-page .notary-card--testimonials blockquote:first-of-type {
+  margin-top: 0.75rem;
+}
+
+.notary-page .notary-card--testimonials blockquote p {
+  margin: 0;
+}

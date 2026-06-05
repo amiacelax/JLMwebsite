@@ -82,12 +82,20 @@
 
         <!-- Teacher hub: tabs + panels -->
         <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
+          <div class="hw-client-preview-banner" id="hw-client-preview-banner">
+            <p class="hw-client-preview-banner__label">Client preview</p>
+            <p class="hw-client-preview-banner__title">
+              <a href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">Harris Firm — US Notarization</a>
+            </p>
+            <p class="hw-client-preview-banner__hint">Password protected · not indexed by search engines. Share the link and login with your client.</p>
+          </div>
           <div class="hw-teacher-tabs" role="tablist" aria-label="Teacher hub sections">
             <button type="button" class="hw-teacher-tabs__btn is-active" role="tab" id="hw-teacher-tab-maker" aria-selected="true" aria-controls="hw-teacher-maker" data-teacher-tab="maker">Worksheet maker</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-homework" aria-selected="false" aria-controls="hw-teacher-homework" data-teacher-tab="homework">Homework</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-submissions" aria-selected="false" aria-controls="hw-teacher-submissions" data-teacher-tab="submissions">Submissions</button>
           </div>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
@@ -247,6 +255,29 @@
             <p class="hw-library-meta" id="hw-ideas-meta" aria-live="polite"></p>
             <ul class="hw-ideas-list" id="hw-ideas-list"></ul>
           </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-submissions" id="hw-teacher-submissions" role="tabpanel" aria-labelledby="hw-teacher-tab-submissions" hidden>
+            <h2 class="hw-platform-card__title">Student submissions</h2>
+            <p class="hw-platform-card__desc">Homework students submit online or upload as photos — stored here so nothing is lost in Discord.</p>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-maker-field" for="hw-submissions-student">
+                Student
+                <select id="hw-submissions-student">
+                  <option value="">All students</option>
+                  <option value="joshs">joshs — Josh S</option>
+                  <option value="benm">benm — Ben M</option>
+                  <option value="deme">deme — Deme</option>
+                  <option value="ivan">ivan — Ivan</option>
+                </select>
+              </label>
+              <label class="hw-library-search-label" for="hw-submissions-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-submissions-search" placeholder="student, lesson, assignment id…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-submissions-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-submissions-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-submissions-list"></ul>
+          </section>
         </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
@@ -339,6 +370,7 @@
   <script src="/js/hw-worksheet.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260606" defer></script>
+  <script src="/js/hw-teacher-submissions.js?v=20260606" defer></script>
   <script src="/js/hw-platform.js?v=20260617" defer></script>
 </body>
 </html>

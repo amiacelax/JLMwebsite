@@ -1,4 +1,10 @@
 import {
+  isHarrisPreviewAuthorized,
+  isHarrisPreviewPath,
+  harrisPreviewUnauthorized,
+  withHarrisPreviewHeaders,
+} from "./harris-preview-auth";
+import {
   generateHomeworkWithAi,
   type HomeworkGenerateRequest,
 } from "./homework-generate";
@@ -26,6 +32,13 @@ import {
   type TeacherIdeaDeletePayload,
   type TeacherIdeaTagPayload,
   type TeacherIdeaImageDeletePayload,
+  saveHomeworkOnlineSubmission,
+  saveHomeworkPhotoSubmission,
+  listHomeworkSubmissions,
+  getHomeworkSubmission,
+  loadHomeworkSubmissionPhoto,
+  type HomeworkOnlineSubmitInput,
+  type HomeworkPhotoSubmitInput,
 } from "./homework-kv";
 
 interface Env {
@@ -38,6 +51,8 @@ interface Env {
   DISCORD_HOMEWORK_CHANNEL_ID?: string;
   OPENAI_API_KEY?: string;
   HW_TEACHER_USER?: string;
+  HARRIS_PREVIEW_USER?: string;
+  HARRIS_PREVIEW_PASSWORD?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -492,48 +507,78 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
   const error = validateHomeworkSubmit(data);
   if (error) return jsonResponse({ error }, 400);
 
+  let stored = false;
+  try {
+    await saveHomeworkOnlineSubmission(data as HomeworkOnlineSubmitInput, env);
+    stored = true;
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 400);
+    }
+    if (code !== "KV_NOT_CONFIGURED") {
+      console.error("homework-submit store failed:", err);
+    }
+  }
+
   const webhook = resolveHomeworkWebhook(env);
-  if (!webhook) {
+  let discordOk = false;
+  if (webhook) {
+    if (webhook.usedFallback) {
+      console.warn(
+        "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
+      );
+    }
+
+    const channelError = await getWebhookChannelMismatch(
+      webhook.url,
+      webhook.channelId,
+      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+    );
+    if (channelError) {
+      console.warn("homework-submit channel check:", channelError);
+    }
+
+    const student = data.displayName?.trim() || data.username!.trim();
+    const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
+    const bodyText = [
+      webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
+      `Homework submitted — ${student} (${data.username!.trim()})`,
+      "",
+      buildHomeworkDiscordDescription(data, student, lesson),
+    ]
+      .filter((line) => line != null)
+      .join("\n");
+
+    const result = await notifyHomeworkDiscord(webhook.url, bodyText);
+    discordOk = result.ok;
+    if (!result.ok) {
+      console.error("Homework Discord error", result.status, result.detail);
+    }
+  } else {
     console.error("homework-submit: no Discord webhook configured");
+  }
+
+  if (stored) {
+    return jsonResponse({
+      success: true,
+      message: discordOk
+        ? "Submitted! JD can see your answers in Discord and on the teacher hub."
+        : "Submitted! Your answers were saved on the teacher hub.",
+    });
+  }
+
+  if (!webhook) {
     return jsonResponse(
       {
         error:
-          "Homework submit is not set up on the server yet. Your answers are still saved in this browser — ask JD to enable Discord homework notifications.",
+          "Homework submit is not set up on the server yet. Your answers are still saved in this browser — ask JD to enable homework storage.",
       },
       503
     );
   }
 
-  if (webhook.usedFallback) {
-    console.warn(
-      "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
-    );
-  }
-
-  const channelError = await getWebhookChannelMismatch(
-    webhook.url,
-    webhook.channelId,
-    webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
-  );
-  if (channelError) {
-    console.warn("homework-submit channel check:", channelError);
-  }
-
-  const student = data.displayName?.trim() || data.username!.trim();
-  const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
-  const bodyText = [
-    webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
-    `Homework submitted — ${student} (${data.username!.trim()})`,
-    "",
-    buildHomeworkDiscordDescription(data, student, lesson),
-  ]
-    .filter((line) => line != null)
-    .join("\n");
-
-  const result = await notifyHomeworkDiscord(webhook.url, bodyText);
-
-  if (!result.ok) {
-    console.error("Homework Discord error", result.status, result.detail);
+  if (!discordOk) {
     return jsonResponse(
       { error: "Could not send homework. Please try again in a few minutes." },
       502
@@ -573,44 +618,87 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({ error: "Image must be under 8 MB." }, 400);
     }
 
+    const photoMeta: HomeworkPhotoSubmitInput = {
+      username,
+      displayName,
+      assignmentId,
+      lessonName,
+    };
+
+    let stored = false;
+    try {
+      await saveHomeworkPhotoSubmission(photoMeta, file, env);
+      stored = true;
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 400);
+      }
+      if (code === "IMAGE_TYPE") {
+        return jsonResponse({ error: "Please upload an image file." }, 400);
+      }
+      if (code === "IMAGE_TOO_LARGE") {
+        return jsonResponse({ error: "Image must be under 8 MB." }, 400);
+      }
+      if (code !== "KV_NOT_CONFIGURED") {
+        console.error("homework-photo store failed:", err);
+      }
+    }
+
     const webhook = resolveHomeworkWebhook(env);
-    if (!webhook) {
+    let discordOk = false;
+    if (webhook) {
+      const safeName = safeKeyPart(file.name, "homework-photo.jpg");
+      const channelError = await getWebhookChannelMismatch(
+        webhook.url,
+        webhook.channelId,
+        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+      );
+      if (channelError) {
+        console.warn("homework-photo channel check:", channelError);
+      }
+
+      const text = [
+        webhook.usedFallback
+          ? "[Homework photo — posted via site webhook until HW webhook is set]"
+          : null,
+        `Printed homework photo — ${displayName}`,
+        "",
+        `Student: ${displayName} (${username})`,
+        `Assignment: ${lessonName}`,
+        `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+      ]
+        .filter((line) => line != null)
+        .join("\n");
+      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+      discordOk = result.ok;
+      if (!result.ok) {
+        console.error("Homework photo Discord error", result.status, result.detail);
+      }
+    } else {
       console.error("homework-photo: no Discord webhook configured");
+    }
+
+    if (stored) {
+      return jsonResponse({
+        success: true,
+        message: discordOk
+          ? "Photo sent! JD can see it in Discord and on the teacher hub."
+          : "Photo saved on the teacher hub.",
+      });
+    }
+
+    if (!webhook) {
       return jsonResponse(
         {
           error:
-            "Photo upload is not set up on the server yet. Ask JD to enable homework notifications in Discord.",
+            "Photo upload is not set up on the server yet. Ask JD to enable homework storage.",
         },
         503
       );
     }
 
-    const safeName = safeKeyPart(file.name, "homework-photo.jpg");
-
-    const channelError = await getWebhookChannelMismatch(
-      webhook.url,
-      webhook.channelId,
-      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
-    );
-    if (channelError) {
-      console.warn("homework-photo channel check:", channelError);
-    }
-
-    const text = [
-      webhook.usedFallback
-        ? "[Homework photo — posted via site webhook until HW webhook is set]"
-        : null,
-      `Printed homework photo — ${displayName}`,
-      "",
-      `Student: ${displayName} (${username})`,
-      `Assignment: ${lessonName}`,
-      `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
-    ]
-      .filter((line) => line != null)
-      .join("\n");
-    const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
-    if (!result.ok) {
-      console.error("Homework photo Discord error", result.status, result.detail);
+    if (!discordOk) {
       return jsonResponse(
         { error: "Could not send photo. Please try again in a few minutes." },
         502
@@ -1108,6 +1196,78 @@ async function handleTeacherIdeaDelete(request: Request, env: Env): Promise<Resp
   }
 }
 
+async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const id = url.searchParams.get("id") || "";
+    if (id) {
+      const submission = await getHomeworkSubmission(env, id);
+      if (!submission) return jsonResponse({ error: "Submission not found." }, 404);
+      return jsonResponse({ submission });
+    }
+
+    const student = url.searchParams.get("student") || "";
+    const submissions = await listHomeworkSubmissions(env, { student });
+    return jsonResponse({ submissions });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    console.error("homework-submissions list failed:", err);
+    return jsonResponse({ error: "Could not load submissions." }, 500);
+  }
+}
+
+async function handleHomeworkSubmissionPhoto(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const id = url.searchParams.get("id") || "";
+    const loaded = await loadHomeworkSubmissionPhoto(teacherUsername, id, env);
+    if (!loaded) return jsonResponse({ error: "Photo not found." }, 404);
+
+    return new Response(loaded.body, {
+      status: 200,
+      headers: {
+        "Content-Type": loaded.mimeType,
+        "Cache-Control": "private, max-age=3600",
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    console.error("homework-submission photo failed:", err);
+    return jsonResponse({ error: "Could not load photo." }, 500);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -1122,6 +1282,14 @@ export default {
 
     if (url.pathname === "/api/homework-submit") {
       return handleHomeworkSubmit(request, env);
+    }
+
+    if (url.pathname === "/api/homework-submissions") {
+      return handleHomeworkSubmissions(request, env);
+    }
+
+    if (url.pathname === "/api/homework-submissions/photo") {
+      return handleHomeworkSubmissionPhoto(request, env);
     }
 
     if (url.pathname === "/api/homework-photo-upload") {
@@ -1178,6 +1346,14 @@ export default {
 
     if (url.pathname === "/api/teacher-ideas/delete") {
       return handleTeacherIdeaDelete(request, env);
+    }
+
+    if (isHarrisPreviewPath(url.pathname)) {
+      if (!isHarrisPreviewAuthorized(request, env)) {
+        return harrisPreviewUnauthorized();
+      }
+      const assetResponse = await env.ASSETS.fetch(request);
+      return withHarrisPreviewHeaders(assetResponse);
     }
 
     return env.ASSETS.fetch(request);

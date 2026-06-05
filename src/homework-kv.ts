@@ -850,3 +850,270 @@ export async function deleteTeacherIdea(
 
   return { id };
 }
+
+/** Student homework submissions (online answers + printed photos). */
+
+const SUBMISSIONS_INDEX = "submissions-index";
+const submissionKey = (id: string) => `submission:${id}`;
+const submissionPhotoKey = (id: string) => `submission-photo:${id}`;
+const submissionPhotoMetaKey = (id: string) => `submission-photo-meta:${id}`;
+
+const SUBMISSION_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+const SUBMISSION_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+export interface HomeworkAnswerRow {
+  label?: string;
+  prompt?: string;
+  student?: string;
+  expected?: string;
+  correct?: boolean;
+  completed?: string;
+}
+
+export interface HomeworkSubmissionPhoto {
+  id: string;
+  mimeType: string;
+  name?: string;
+}
+
+export interface HomeworkSubmission {
+  id: string;
+  type: "online" | "photo";
+  username: string;
+  displayName: string;
+  assignmentId: string;
+  lessonName?: string;
+  title?: string;
+  register?: string;
+  scoreCorrect?: number;
+  scoreTotal?: number;
+  section1?: HomeworkAnswerRow[];
+  section2?: HomeworkAnswerRow[];
+  photo?: HomeworkSubmissionPhoto;
+  submittedAt: string;
+}
+
+export interface HomeworkOnlineSubmitInput {
+  username?: string;
+  displayName?: string;
+  assignmentId?: string;
+  lessonName?: string;
+  title?: string;
+  register?: string;
+  scoreCorrect?: number;
+  scoreTotal?: number;
+  section1?: HomeworkAnswerRow[];
+  section2?: HomeworkAnswerRow[];
+}
+
+export interface HomeworkPhotoSubmitInput {
+  username?: string;
+  displayName?: string;
+  assignmentId?: string;
+  lessonName?: string;
+}
+
+function isKnownStudent(username: string | undefined): boolean {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  return STUDENT_ACCOUNTS.has(user);
+}
+
+function makeSubmissionId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `sub-${Date.now()}-${rand}`;
+}
+
+function makeSubmissionPhotoId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `subimg-${Date.now()}-${rand}`;
+}
+
+async function readSubmissionsIndex(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(SUBMISSIONS_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeSubmissionsIndex(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(SUBMISSIONS_INDEX, JSON.stringify(unique));
+}
+
+async function storeSubmissionPhoto(
+  kv: KVNamespace,
+  file: File
+): Promise<HomeworkSubmissionPhoto> {
+  const mimeType = String(file.type || "").trim().toLowerCase();
+  if (!SUBMISSION_PHOTO_TYPES.has(mimeType)) throw new Error("IMAGE_TYPE");
+  if (file.size > SUBMISSION_PHOTO_MAX_BYTES) throw new Error("IMAGE_TOO_LARGE");
+
+  const id = makeSubmissionPhotoId();
+  const buffer = await file.arrayBuffer();
+  await kv.put(submissionPhotoKey(id), buffer);
+  await kv.put(
+    submissionPhotoMetaKey(id),
+    JSON.stringify({
+      mimeType,
+      name: String(file.name || "").trim() || undefined,
+      size: buffer.byteLength,
+      createdAt: new Date().toISOString(),
+    })
+  );
+
+  return { id, mimeType, name: String(file.name || "").trim() || undefined };
+}
+
+async function writeSubmission(kv: KVNamespace, submission: HomeworkSubmission): Promise<void> {
+  await kv.put(submissionKey(submission.id), JSON.stringify(submission));
+  const index = await readSubmissionsIndex(kv);
+  if (!index.includes(submission.id)) {
+    index.unshift(submission.id);
+    await writeSubmissionsIndex(kv, index);
+  }
+}
+
+export async function saveHomeworkOnlineSubmission(
+  data: HomeworkOnlineSubmitInput,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+
+  const assignmentId = String(data.assignmentId || "").trim();
+  if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
+
+  const section1 = Array.isArray(data.section1) ? data.section1 : [];
+  const section2 = Array.isArray(data.section2) ? data.section2 : [];
+  if (!section1.length && !section2.length) throw new Error("ANSWERS_REQUIRED");
+
+  const submission: HomeworkSubmission = {
+    id: makeSubmissionId(),
+    type: "online",
+    username,
+    displayName: String(data.displayName || username).trim() || username,
+    assignmentId,
+    lessonName: String(data.lessonName || "").trim() || undefined,
+    title: String(data.title || "").trim() || undefined,
+    register: String(data.register || "").trim() || undefined,
+    scoreCorrect: data.scoreCorrect,
+    scoreTotal: data.scoreTotal,
+    section1,
+    section2,
+    submittedAt: new Date().toISOString(),
+  };
+
+  await writeSubmission(kv, submission);
+  return { id: submission.id };
+}
+
+export async function saveHomeworkPhotoSubmission(
+  data: HomeworkPhotoSubmitInput,
+  file: File,
+  env: KvEnv
+): Promise<{ id: string; photoId: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+
+  const photo = await storeSubmissionPhoto(kv, file);
+  const submission: HomeworkSubmission = {
+    id: makeSubmissionId(),
+    type: "photo",
+    username,
+    displayName: String(data.displayName || username).trim() || username,
+    assignmentId: String(data.assignmentId || "printed-homework").trim() || "printed-homework",
+    lessonName: String(data.lessonName || "").trim() || undefined,
+    photo,
+    submittedAt: new Date().toISOString(),
+  };
+
+  await writeSubmission(kv, submission);
+  return { id: submission.id, photoId: photo.id };
+}
+
+export async function listHomeworkSubmissions(
+  env: KvEnv,
+  opts?: { student?: string }
+): Promise<HomeworkSubmission[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const filterStudent = String(opts?.student || "")
+    .trim()
+    .toLowerCase();
+  const ids = await readSubmissionsIndex(kv);
+  const submissions: HomeworkSubmission[] = [];
+
+  for (const id of ids) {
+    const raw = await kv.get(submissionKey(id));
+    if (!raw) continue;
+    try {
+      const entry = JSON.parse(raw) as HomeworkSubmission;
+      if (filterStudent && entry.username !== filterStudent) continue;
+      submissions.push(entry);
+    } catch {
+      /* skip corrupt */
+    }
+  }
+
+  return submissions;
+}
+
+export async function getHomeworkSubmission(
+  env: KvEnv,
+  id: string
+): Promise<HomeworkSubmission | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const submissionId = String(id || "").trim();
+  if (!submissionId) return null;
+
+  const raw = await kv.get(submissionKey(submissionId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as HomeworkSubmission;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadHomeworkSubmissionPhoto(
+  teacherUsername: string | undefined,
+  photoId: string,
+  env: KvEnv
+): Promise<{ body: ArrayBuffer; mimeType: string } | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(photoId || "").trim();
+  if (!id) return null;
+
+  const metaRaw = await kv.get(submissionPhotoMetaKey(id));
+  const body = await kv.get(submissionPhotoKey(id), "arrayBuffer");
+  if (!metaRaw || !body) return null;
+
+  try {
+    const meta = JSON.parse(metaRaw) as { mimeType?: string };
+    return { body, mimeType: meta.mimeType || "application/octet-stream" };
+  } catch {
+    return null;
+  }
+}

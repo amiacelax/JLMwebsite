@@ -7,6 +7,7 @@ compatibility_date = "2026-05-20"
 directory = "./public"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/preview/*"]
 
 [observability]
 enabled = true
@@ -17,6 +18,7 @@ id = "7e0eeef7af724f49ad5985302ea6fdc6"
 preview_id = "75771c0dd6174e8593a354fab3b7709e"
 
 [vars]
+HARRIS_PREVIEW_USER = "harris"
 # #website-inquiries — contact + promo webhooks must post here
 DISCORD_CHANNEL_ID = "1507209734095241266"
 # #homework-submissions (or your HW channel) — homework submit webhook must post here

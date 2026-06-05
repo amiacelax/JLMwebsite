@@ -775,6 +775,7 @@
       homework: document.getElementById("hw-teacher-homework"),
       library: document.getElementById("hw-teacher-library"),
       ideas: document.getElementById("hw-teacher-ideas"),
+      submissions: document.getElementById("hw-teacher-submissions"),
     };
 
     function activate(name) {
@@ -808,7 +809,8 @@
         saved === "homework" ||
         saved === "account" ||
         saved === "library" ||
-        saved === "ideas"
+        saved === "ideas" ||
+        saved === "submissions"
       ) {
         initial = saved;
       }
@@ -831,7 +833,7 @@
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Worksheet maker → Homework → Student info → Worksheet library → Ideas & memos.";
+        "Worksheet maker → Homework → Student info → Library → Ideas & memos → Submissions.";
     }
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
@@ -840,6 +842,12 @@
     initTeacherEditor();
     if (global.HwTeacherIdeas?.init) {
       HwTeacherIdeas.init({
+        getTeacherSession: () => session,
+        showToast,
+      });
+    }
+    if (global.HwTeacherSubmissions?.init) {
+      HwTeacherSubmissions.init({
         getTeacherSession: () => session,
         showToast,
       });
