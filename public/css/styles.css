@@ -487,10 +487,19 @@ body.is-nav-open {
 
 
 .hero__subtitle {
-  font-size: 1.0625rem;
-  color: var(--color-text-muted);
   max-width: 32rem;
   margin-bottom: 2rem;
+}
+
+.hero__subtitle p {
+  margin: 0 0 0.85rem;
+  font-size: 1.0625rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.hero__subtitle p:last-child {
+  margin-bottom: 0;
 }
 
 .hero__actions {
@@ -1781,25 +1790,29 @@ body.is-modal-open {
 .form-status.is-error { color: var(--color-accent-hover); }
 
 .contact-schedule-link {
-  margin: 0.45rem 0 0;
+  margin: 0.65rem 0 0;
   text-align: left;
 }
 
 .contact-schedule-link__button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-accent-hover);
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .contact-schedule-link__button:hover {
-  color: #ff9a8e;
+  border-color: var(--color-green);
+  color: var(--color-green);
+  background: var(--color-green-soft);
 }
 
 /* Footer */
