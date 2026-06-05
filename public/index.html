@@ -54,7 +54,7 @@
             <li><a href="/courses.html">Courses</a></li>
           </ul>
         </div>
-        <a class="btn btn--primary btn--sm nav__cta" href="#contact">Send Message</a>
+        <a class="btn btn--primary btn--sm nav__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
       </div>
     </nav>
   </header>
@@ -157,10 +157,7 @@
           </div>
         </div>
         <div class="meet__body">
-          <div class="meet__body-head">
-            <h3 class="meet__body-title">Hi, I'm JD! I teach Japanese.</h3>
-            <a class="btn btn--primary meet__body-cta" href="#contact">Send a Message</a>
-          </div>
+          <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free consultation">Free Consultation</a>
           <p class="about__lead">
             Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan. I help students go beyond grammar drills to build real, practical Japanese.
           </p>
@@ -188,17 +185,21 @@
               <li>Flexible scheduling</li>
               <li>All levels welcome</li>
             </ul>
-            <details class="service-card__lesson-video">
-              <summary class="service-card__lesson-summary">
-                <span class="service-card__lesson-play" aria-hidden="true"></span>
-                Watch a lesson
-              </summary>
-              <div class="video-wrapper video-wrapper--lesson">
-                <video controls playsinline preload="metadata" title="Kash lesson commercial">
-                  <source src="/videos/kash-lesson-commercial.mp4" type="video/mp4">
-                </video>
+            <div class="service-card__bottom">
+              <div class="service-card__lesson-video">
+                <p class="service-card__lesson-label">Watch a lesson</p>
+                <div class="video-wrapper video-wrapper--lesson">
+                  <iframe
+                    src="https://www.youtube.com/embed/T9n5U0L6tYk"
+                    title="Watch a lesson"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    loading="lazy"
+                  ></iframe>
+                </div>
               </div>
-            </details>
+              <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
+            </div>
           </article>
           <article class="service-card">
             <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5~</span><span class="service-card__price-suffix">/mo</span></p>
@@ -209,9 +210,12 @@
               <li>Detailed corrections</li>
               <li>Self-learner friendly</li>
             </ul>
-            <div class="service-card__actions">
-              <button class="service-card__link service-card__link-button" type="button" data-hw-breakdown-open>See tier breakdown</button>
-              <a class="service-card__link" href="#contact" data-service="Homework Hub">Join Homework Hub →</a>
+            <div class="service-card__bottom">
+              <div class="service-card__actions">
+                <button class="service-card__link service-card__link-button" type="button" data-hw-breakdown-open>See tier breakdown</button>
+                <a class="service-card__link" href="#contact" data-service="Homework Hub">Join Homework Hub →</a>
+              </div>
+              <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
             </div>
           </article>
           <article class="service-card">
@@ -223,21 +227,14 @@
               <li>Structured progression</li>
               <li>Quick wins</li>
             </ul>
-            <div class="service-card__actions">
-              <button class="service-card__link service-card__link-button" type="button" data-jumpstart-open>See 5-day plan</button>
-              <a class="service-card__link" href="#contact" data-service="Japanese Jumpstart">Get in touch →</a>
+            <div class="service-card__bottom">
+              <div class="service-card__actions">
+                <button class="service-card__link service-card__link-button" type="button" data-jumpstart-open>See 5-day plan</button>
+                <a class="service-card__link" href="#contact" data-service="Japanese Jumpstart">Get in touch →</a>
+              </div>
+              <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
             </div>
           </article>
-        </div>
-        <div class="pricing-banner">
-          <div class="pricing-banner__content">
-            <span class="pricing-banner__price">$49</span>
-            <div>
-              <strong>Private lessons</strong>
-              <p>No confusing pay structures. Learn at your own pace; once a week, once a month, once a year, whatever!</p>
-            </div>
-          </div>
-          <a class="btn btn--primary" href="#contact" data-service="Free consultation">Free Consultation</a>
         </div>
       </div>
     </section>

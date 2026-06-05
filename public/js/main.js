@@ -490,15 +490,6 @@
     });
   });
 
-  document.querySelectorAll(".service-card__lesson-video").forEach((details) => {
-    details.addEventListener("toggle", () => {
-      const video = details.querySelector("video");
-      if (!video || details.open) return;
-      video.pause();
-      video.currentTime = 0;
-    });
-  });
-
   document.querySelector(".nav__brand")?.addEventListener("click", (e) => {
     e.preventDefault();
     window.scrollTo({ top: 0, behavior: "smooth" });
