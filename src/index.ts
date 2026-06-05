@@ -8,10 +8,24 @@ import {
   saveStudentProfile,
   saveWorksheetDraft,
   loadPublishedAssignment,
+  listTeacherIdeas,
+  listTeacherIdeaTags,
+  saveTeacherIdea,
+  deleteTeacherIdea,
+  addTeacherIdeaTag,
+  deleteTeacherIdeaTag,
+  deleteTeacherIdeaImage,
+  listCustomTeacherIdeaTags,
+  uploadTeacherIdeaImage,
+  loadTeacherIdeaImage,
   type CatalogFile,
   type PublishPayload,
   type StudentProfilePayload,
   type SaveWorksheetPayload,
+  type TeacherIdeaPayload,
+  type TeacherIdeaDeletePayload,
+  type TeacherIdeaTagPayload,
+  type TeacherIdeaImageDeletePayload,
 } from "./homework-kv";
 
 interface Env {
@@ -817,6 +831,283 @@ async function handleHomeworkGenerate(request: Request, env: Env): Promise<Respo
   }
 }
 
+async function handleTeacherIdeas(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+    if (teacherUsername.trim().toLowerCase() !== allowed) {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    try {
+      const [ideas, tags, customTags] = await Promise.all([
+        listTeacherIdeas(env),
+        listTeacherIdeaTags(env),
+        listCustomTeacherIdeaTags(env),
+      ]);
+      return jsonResponse({ ideas, tags, customTags });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+      }
+      console.error("teacher-ideas list failed:", err);
+      return jsonResponse({ error: "Could not load ideas." }, 500);
+    }
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as TeacherIdeaPayload;
+    const result = await saveTeacherIdea(data, env);
+    return jsonResponse({
+      success: true,
+      message: result.updated ? "Idea updated." : "Idea saved.",
+      id: result.id,
+      updated: result.updated,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "TEXT_REQUIRED" || code === "CONTENT_REQUIRED") {
+      return jsonResponse({ error: "Add some text or at least one image before saving." }, 400);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Idea not found." }, 404);
+    }
+    console.error("teacher-ideas save failed:", err);
+    return jsonResponse({ error: "Could not save idea." }, 500);
+  }
+}
+
+async function handleTeacherIdeaTag(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as TeacherIdeaTagPayload;
+    const result = await addTeacherIdeaTag(data, env);
+    return jsonResponse({
+      success: true,
+      message: `Tag “${result.tag}” added.`,
+      tag: result.tag,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "TAG_INVALID") {
+      return jsonResponse({ error: "Use letters, numbers, or hyphens (max 24 chars)." }, 400);
+    }
+    console.error("teacher-ideas tag failed:", err);
+    return jsonResponse({ error: "Could not add tag." }, 500);
+  }
+}
+
+async function handleTeacherIdeaImageUpload(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const form = await request.formData();
+    const teacherUsername = String(form.get("teacherUsername") || "").trim();
+    const file = form.get("image");
+    if (!isUploadedFile(file)) {
+      return jsonResponse({ error: "Image file is required." }, 400);
+    }
+
+    const result = await uploadTeacherIdeaImage(teacherUsername, file, env);
+    const origin = new URL(request.url).origin;
+    const url =
+      origin +
+      "/api/teacher-ideas/image?id=" +
+      encodeURIComponent(result.id) +
+      "&teacherUsername=" +
+      encodeURIComponent(teacherUsername);
+    return jsonResponse({
+      success: true,
+      message: "Image uploaded.",
+      ...result,
+      url,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "IMAGE_TYPE") {
+      return jsonResponse({ error: "Use a JPEG, PNG, GIF, or WebP image." }, 400);
+    }
+    if (code === "IMAGE_TOO_LARGE") {
+      return jsonResponse({ error: "Image must be under 4 MB." }, 400);
+    }
+    console.error("teacher-ideas image upload failed:", err);
+    return jsonResponse({ error: "Could not upload image." }, 500);
+  }
+}
+
+async function handleTeacherIdeaImage(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const id = url.searchParams.get("id") || "";
+    const loaded = await loadTeacherIdeaImage(teacherUsername, id, env);
+    if (!loaded) return jsonResponse({ error: "Image not found." }, 404);
+
+    return new Response(loaded.body, {
+      status: 200,
+      headers: {
+        "Content-Type": loaded.mimeType,
+        "Cache-Control": "private, max-age=3600",
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    console.error("teacher-ideas image load failed:", err);
+    return jsonResponse({ error: "Could not load image." }, 500);
+  }
+}
+
+async function handleTeacherIdeaImageDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as TeacherIdeaImageDeletePayload;
+    const result = await deleteTeacherIdeaImage(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Image deleted.",
+      id: result.id,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED" || code === "NOT_FOUND") {
+      return jsonResponse({ error: "Image not found." }, 404);
+    }
+    console.error("teacher-ideas image delete failed:", err);
+    return jsonResponse({ error: "Could not delete image." }, 500);
+  }
+}
+
+async function handleTeacherIdeaTagDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as TeacherIdeaTagPayload;
+    const result = await deleteTeacherIdeaTag(data, env);
+    return jsonResponse({
+      success: true,
+      message: `Tag “${result.tag}” deleted.`,
+      tag: result.tag,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "TAG_INVALID" || code === "NOT_FOUND") {
+      return jsonResponse({ error: "Tag not found." }, 404);
+    }
+    if (code === "TAG_DEFAULT") {
+      return jsonResponse({ error: "Built-in tags cannot be deleted." }, 400);
+    }
+    console.error("teacher-ideas tag delete failed:", err);
+    return jsonResponse({ error: "Could not delete tag." }, 500);
+  }
+}
+
+async function handleTeacherIdeaDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as TeacherIdeaDeletePayload;
+    const result = await deleteTeacherIdea(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Idea deleted.",
+      id: result.id,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Ideas storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED") {
+      return jsonResponse({ error: "Idea id is required." }, 400);
+    }
+    console.error("teacher-ideas delete failed:", err);
+    return jsonResponse({ error: "Could not delete idea." }, 500);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -859,6 +1150,34 @@ export default {
 
     if (url.pathname === "/api/homework-save-worksheet") {
       return handleHomeworkSaveWorksheet(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas") {
+      return handleTeacherIdeas(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/tags") {
+      return handleTeacherIdeaTag(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/tags/delete") {
+      return handleTeacherIdeaTagDelete(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/upload-image") {
+      return handleTeacherIdeaImageUpload(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/image") {
+      return handleTeacherIdeaImage(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/images/delete") {
+      return handleTeacherIdeaImageDelete(request, env);
+    }
+
+    if (url.pathname === "/api/teacher-ideas/delete") {
+      return handleTeacherIdeaDelete(request, env);
     }
 
     return env.ASSETS.fetch(request);

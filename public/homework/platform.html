@@ -87,6 +87,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-homework" aria-selected="false" aria-controls="hw-teacher-homework" data-teacher-tab="homework">Homework</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
           </div>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
@@ -205,6 +206,47 @@
             <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
             <ul class="hw-library-list" id="hw-library-list"></ul>
           </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-ideas" id="hw-teacher-ideas" role="tabpanel" aria-labelledby="hw-teacher-tab-ideas" hidden>
+            <h2 class="hw-platform-card__title">Ideas &amp; memos</h2>
+            <p class="hw-platform-card__desc">Quick notes so ideas don’t get lost in Discord. Tag them, then search later.</p>
+
+            <form class="hw-ideas-compose" id="hw-ideas-compose-form">
+              <div class="hw-ideas-compose-drop" id="hw-ideas-compose-drop">
+                <label class="hw-maker-field hw-maker-field--wide" for="hw-ideas-text">
+                  New idea
+                  <textarea id="hw-ideas-text" name="text" rows="4" placeholder="Lesson tweak, site idea, game mechanic, homework note… Paste or drop images here too."></textarea>
+                </label>
+                <p class="hw-ideas-drop-hint">Paste from clipboard, drag &amp; drop images, or <button type="button" class="hw-ideas-attach-link" id="hw-ideas-attach-btn">attach files</button>.</p>
+                <input type="file" id="hw-ideas-file-input" class="hw-ideas-file-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+                <ul class="hw-ideas-image-grid" id="hw-ideas-image-grid" hidden></ul>
+              </div>
+              <fieldset class="hw-ideas-tag-fieldset">
+                <legend class="hw-ideas-tag-legend">Tags</legend>
+                <div class="hw-ideas-tag-picks" id="hw-ideas-tag-picks"></div>
+                <div class="hw-ideas-new-tag-row">
+                  <label class="hw-ideas-new-tag-label" for="hw-ideas-new-tag">Add your own tag</label>
+                  <div class="hw-ideas-new-tag-controls">
+                    <input type="text" class="hw-ideas-new-tag-input" id="hw-ideas-new-tag" placeholder="e.g. discord, podcast…" maxlength="24" autocomplete="off">
+                    <button type="button" class="btn btn--ghost btn--sm" id="hw-ideas-add-tag">Add tag</button>
+                  </div>
+                </div>
+              </fieldset>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--ghost" id="hw-ideas-cancel-edit" hidden>Cancel edit</button>
+                <button type="submit" class="btn btn--primary" id="hw-ideas-save-btn">Save idea</button>
+              </div>
+              <p class="hw-maker-status" id="hw-ideas-compose-status" role="status" aria-live="polite">Jot something down and save it here.</p>
+            </form>
+
+            <div class="hw-ideas-search-block">
+              <label class="hw-library-search-label" for="hw-ideas-search">Search ideas</label>
+              <input type="search" class="hw-library-search" id="hw-ideas-search" placeholder="keywords, tags…" autocomplete="off">
+              <div class="hw-ideas-filter-tags" id="hw-ideas-filter-tags" aria-label="Filter by tag"></div>
+            </div>
+            <p class="hw-library-meta" id="hw-ideas-meta" aria-live="polite"></p>
+            <ul class="hw-ideas-list" id="hw-ideas-list"></ul>
+          </section>
         </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
@@ -296,6 +338,7 @@
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-worksheet.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>
+  <script src="/js/hw-teacher-ideas.js?v=20260606" defer></script>
   <script src="/js/hw-platform.js?v=20260617" defer></script>
 </body>
 </html>

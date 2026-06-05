@@ -774,6 +774,7 @@
       maker: document.getElementById("hw-teacher-maker"),
       homework: document.getElementById("hw-teacher-homework"),
       library: document.getElementById("hw-teacher-library"),
+      ideas: document.getElementById("hw-teacher-ideas"),
     };
 
     function activate(name) {
@@ -806,7 +807,8 @@
         saved === "maker" ||
         saved === "homework" ||
         saved === "account" ||
-        saved === "library"
+        saved === "library" ||
+        saved === "ideas"
       ) {
         initial = saved;
       }
@@ -829,13 +831,19 @@
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Worksheet maker → Homework → Student info → Worksheet library.";
+        "Worksheet maker → Homework → Student info → Worksheet library → Ideas & memos.";
     }
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
     const activateTeacherTab = initTeacherTabs();
     initTeacherEditor();
+    if (global.HwTeacherIdeas?.init) {
+      HwTeacherIdeas.init({
+        getTeacherSession: () => session,
+        showToast,
+      });
+    }
 
     const searchInput = document.getElementById("hw-library-search");
     if (!catalogCache) {

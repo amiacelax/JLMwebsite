@@ -397,3 +397,456 @@ export async function mergeCatalog(
 
   return merged;
 }
+
+/** Teacher ideas / memos (private notes, searchable). */
+
+const IDEAS_INDEX = "teacher-ideas-index";
+const IDEAS_CUSTOM_TAGS = "teacher-ideas-custom-tags";
+const ideaKey = (id: string) => `teacher-idea:${id}`;
+const ideaAssetKey = (id: string) => `teacher-idea-asset:${id}`;
+const ideaAssetMetaKey = (id: string) => `teacher-idea-asset-meta:${id}`;
+
+const IDEA_IMAGE_MAX_COUNT = 12;
+const IDEA_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+const IDEA_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+interface IdeaAssetMeta {
+  mimeType: string;
+  name?: string;
+  size: number;
+  createdAt: string;
+}
+
+export const DEFAULT_IDEA_TAGS = ["lesson", "media", "website", "game", "hw"] as const;
+/** @deprecated use DEFAULT_IDEA_TAGS */
+export const TEACHER_IDEA_TAGS = DEFAULT_IDEA_TAGS;
+
+export interface TeacherIdeaImage {
+  id: string;
+  name?: string;
+  mimeType: string;
+}
+
+export interface TeacherIdea {
+  id: string;
+  text: string;
+  tags: string[];
+  images?: TeacherIdeaImage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeacherIdeaPayload {
+  teacherUsername?: string;
+  id?: string;
+  text?: string;
+  tags?: string[];
+  images?: TeacherIdeaImage[];
+}
+
+export interface TeacherIdeaImageDeletePayload {
+  teacherUsername?: string;
+  id?: string;
+}
+
+export interface TeacherIdeaDeletePayload {
+  teacherUsername?: string;
+  id?: string;
+}
+
+export interface TeacherIdeaTagPayload {
+  teacherUsername?: string;
+  tag?: string;
+}
+
+async function readIdeasIndex(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(IDEAS_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeIdeasIndex(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(IDEAS_INDEX, JSON.stringify(unique));
+}
+
+const IDEA_TAG_MAX_LEN = 24;
+const IDEA_TAG_MAX_COUNT = 12;
+
+export function slugifyIdeaTag(raw: string): string {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, IDEA_TAG_MAX_LEN);
+}
+
+async function readCustomIdeaTags(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(IDEAS_CUSTOM_TAGS);
+  if (!raw) return [];
+  try {
+    const tags = JSON.parse(raw) as string[];
+    if (!Array.isArray(tags)) return [];
+    return tags.map(slugifyIdeaTag).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function writeCustomIdeaTags(kv: KVNamespace, tags: string[]): Promise<void> {
+  const defaults = new Set(DEFAULT_IDEA_TAGS);
+  const unique: string[] = [];
+  for (const tag of tags) {
+    const slug = slugifyIdeaTag(tag);
+    if (!slug || defaults.has(slug as (typeof DEFAULT_IDEA_TAGS)[number])) continue;
+    if (!unique.includes(slug)) unique.push(slug);
+  }
+  unique.sort();
+  await kv.put(IDEAS_CUSTOM_TAGS, JSON.stringify(unique));
+}
+
+async function registerCustomIdeaTags(kv: KVNamespace, tags: string[]): Promise<void> {
+  const existing = await readCustomIdeaTags(kv);
+  const merged = [...existing];
+  let changed = false;
+  for (const tag of tags) {
+    const slug = slugifyIdeaTag(tag);
+    if (!slug) continue;
+    if ((DEFAULT_IDEA_TAGS as readonly string[]).includes(slug)) continue;
+    if (!merged.includes(slug)) {
+      merged.push(slug);
+      changed = true;
+    }
+  }
+  if (changed) await writeCustomIdeaTags(kv, merged);
+}
+
+async function listKnownIdeaTags(kv: KVNamespace): Promise<string[]> {
+  const custom = await readCustomIdeaTags(kv);
+  const known = new Set([...DEFAULT_IDEA_TAGS, ...custom]);
+  return [...known].sort();
+}
+
+function normalizeIdeaTags(tags: string[] | undefined, knownTags: Set<string>): string[] {
+  const out: string[] = [];
+  for (const tag of tags || []) {
+    const slug = slugifyIdeaTag(tag);
+    if (!slug || !knownTags.has(slug)) continue;
+    if (!out.includes(slug)) out.push(slug);
+    if (out.length >= IDEA_TAG_MAX_COUNT) break;
+  }
+  return out;
+}
+
+export async function listTeacherIdeaTags(env: KvEnv): Promise<string[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  return listKnownIdeaTags(kv);
+}
+
+export async function listCustomTeacherIdeaTags(env: KvEnv): Promise<string[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  return readCustomIdeaTags(kv);
+}
+
+export async function addTeacherIdeaTag(
+  data: TeacherIdeaTagPayload,
+  env: KvEnv
+): Promise<{ tag: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const slug = slugifyIdeaTag(String(data.tag || ""));
+  if (!slug) throw new Error("TAG_INVALID");
+  if ((DEFAULT_IDEA_TAGS as readonly string[]).includes(slug)) {
+    return { tag: slug };
+  }
+
+  const existing = await readCustomIdeaTags(kv);
+  if (!existing.includes(slug)) {
+    await writeCustomIdeaTags(kv, [...existing, slug]);
+  }
+  return { tag: slug };
+}
+
+export async function deleteTeacherIdeaTag(
+  data: TeacherIdeaTagPayload,
+  env: KvEnv
+): Promise<{ tag: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const slug = slugifyIdeaTag(String(data.tag || ""));
+  if (!slug) throw new Error("TAG_INVALID");
+  if ((DEFAULT_IDEA_TAGS as readonly string[]).includes(slug)) {
+    throw new Error("TAG_DEFAULT");
+  }
+
+  const existing = await readCustomIdeaTags(kv);
+  if (!existing.includes(slug)) throw new Error("NOT_FOUND");
+
+  await writeCustomIdeaTags(
+    kv,
+    existing.filter((entry) => entry !== slug)
+  );
+
+  const now = new Date().toISOString();
+  const ids = await readIdeasIndex(kv);
+  for (const id of ids) {
+    const raw = await kv.get(ideaKey(id));
+    if (!raw) continue;
+    let idea: TeacherIdea;
+    try {
+      idea = JSON.parse(raw) as TeacherIdea;
+    } catch {
+      continue;
+    }
+    if (!(idea.tags || []).includes(slug)) continue;
+    idea.tags = idea.tags.filter((entry) => entry !== slug);
+    idea.updatedAt = now;
+    await kv.put(ideaKey(id), JSON.stringify(idea));
+  }
+
+  return { tag: slug };
+}
+
+function makeIdeaAssetId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `img-${Date.now()}-${rand}`;
+}
+
+async function readIdeaAssetMeta(kv: KVNamespace, id: string): Promise<IdeaAssetMeta | null> {
+  const raw = await kv.get(ideaAssetMetaKey(id));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as IdeaAssetMeta;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteIdeaAsset(kv: KVNamespace, id: string): Promise<void> {
+  await kv.delete(ideaAssetKey(id));
+  await kv.delete(ideaAssetMetaKey(id));
+}
+
+async function deleteIdeaAssets(kv: KVNamespace, images: TeacherIdeaImage[] | undefined): Promise<void> {
+  for (const image of images || []) {
+    if (image?.id) await deleteIdeaAsset(kv, image.id);
+  }
+}
+
+function normalizeIdeaImages(
+  images: TeacherIdeaImage[] | undefined,
+  knownAssetIds: Set<string>
+): TeacherIdeaImage[] {
+  const out: TeacherIdeaImage[] = [];
+  for (const image of images || []) {
+    const id = String(image?.id || "").trim();
+    const mimeType = String(image?.mimeType || "").trim().toLowerCase();
+    if (!id || !knownAssetIds.has(id) || !IDEA_IMAGE_TYPES.has(mimeType)) continue;
+    if (out.some((entry) => entry.id === id)) continue;
+    out.push({
+      id,
+      mimeType,
+      name: String(image.name || "").trim() || undefined,
+    });
+    if (out.length >= IDEA_IMAGE_MAX_COUNT) break;
+  }
+  return out;
+}
+
+export async function uploadTeacherIdeaImage(
+  teacherUsername: string | undefined,
+  file: File,
+  env: KvEnv
+): Promise<{ id: string; mimeType: string; name?: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const mimeType = String(file.type || "").trim().toLowerCase();
+  if (!IDEA_IMAGE_TYPES.has(mimeType)) throw new Error("IMAGE_TYPE");
+  if (file.size > IDEA_IMAGE_MAX_BYTES) throw new Error("IMAGE_TOO_LARGE");
+
+  const id = makeIdeaAssetId();
+  const buffer = await file.arrayBuffer();
+  const meta: IdeaAssetMeta = {
+    mimeType,
+    name: String(file.name || "").trim() || undefined,
+    size: buffer.byteLength,
+    createdAt: new Date().toISOString(),
+  };
+
+  await kv.put(ideaAssetKey(id), buffer);
+  await kv.put(ideaAssetMetaKey(id), JSON.stringify(meta));
+
+  return { id, mimeType, name: meta.name };
+}
+
+export async function loadTeacherIdeaImage(
+  teacherUsername: string | undefined,
+  assetId: string,
+  env: KvEnv
+): Promise<{ body: ArrayBuffer; mimeType: string } | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(assetId || "").trim();
+  if (!id) return null;
+
+  const meta = await readIdeaAssetMeta(kv, id);
+  const body = await kv.get(ideaAssetKey(id), "arrayBuffer");
+  if (!body || !meta) return null;
+
+  return { body, mimeType: meta.mimeType };
+}
+
+export async function deleteTeacherIdeaImage(
+  data: TeacherIdeaImageDeletePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.id || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+
+  const meta = await readIdeaAssetMeta(kv, id);
+  if (!meta) throw new Error("NOT_FOUND");
+
+  await deleteIdeaAsset(kv, id);
+  return { id };
+}
+
+export async function listTeacherIdeas(env: KvEnv): Promise<TeacherIdea[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const ids = await readIdeasIndex(kv);
+  const ideas: TeacherIdea[] = [];
+  for (const id of ids) {
+    const raw = await kv.get(ideaKey(id));
+    if (!raw) continue;
+    try {
+      ideas.push(JSON.parse(raw) as TeacherIdea);
+    } catch {
+      /* skip corrupt */
+    }
+  }
+  return ideas;
+}
+
+export async function saveTeacherIdea(
+  data: TeacherIdeaPayload,
+  env: KvEnv
+): Promise<{ id: string; updated: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const text = String(data.text || "").trim();
+  const incomingImages = Array.isArray(data.images) ? data.images : [];
+  const assetIds = new Set<string>();
+  for (const image of incomingImages) {
+    const assetId = String(image?.id || "").trim();
+    if (!assetId) continue;
+    const meta = await readIdeaAssetMeta(kv, assetId);
+    if (meta) assetIds.add(assetId);
+  }
+  const images = normalizeIdeaImages(incomingImages, assetIds);
+  if (!text && !images.length) throw new Error("CONTENT_REQUIRED");
+
+  const incoming = (data.tags || []).map(slugifyIdeaTag).filter(Boolean);
+  await registerCustomIdeaTags(kv, incoming);
+  const known = new Set(await listKnownIdeaTags(kv));
+  const tags = normalizeIdeaTags(incoming, known);
+  const now = new Date().toISOString();
+  const existingId = String(data.id || "").trim();
+  let id = existingId;
+  let updated = false;
+
+  if (id) {
+    const raw = await kv.get(ideaKey(id));
+    if (!raw) throw new Error("NOT_FOUND");
+    let prev: TeacherIdea;
+    try {
+      prev = JSON.parse(raw) as TeacherIdea;
+    } catch {
+      throw new Error("NOT_FOUND");
+    }
+    const keepIds = new Set(images.map((image) => image.id));
+    const removed = (prev.images || []).filter((image) => !keepIds.has(image.id));
+    await deleteIdeaAssets(kv, removed);
+
+    const idea: TeacherIdea = {
+      ...prev,
+      text,
+      tags,
+      images,
+      updatedAt: now,
+    };
+    await kv.put(ideaKey(id), JSON.stringify(idea));
+    updated = true;
+  } else {
+    id = `idea-${Date.now()}`;
+    const idea: TeacherIdea = {
+      id,
+      text,
+      tags,
+      images,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await kv.put(ideaKey(id), JSON.stringify(idea));
+    const index = await readIdeasIndex(kv);
+    index.unshift(id);
+    await writeIdeasIndex(kv, index);
+  }
+
+  return { id, updated };
+}
+
+export async function deleteTeacherIdea(
+  data: TeacherIdeaDeletePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.id || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+
+  const raw = await kv.get(ideaKey(id));
+  if (raw) {
+    try {
+      const idea = JSON.parse(raw) as TeacherIdea;
+      await deleteIdeaAssets(kv, idea.images);
+    } catch {
+      /* continue */
+    }
+  }
+
+  await kv.delete(ideaKey(id));
+  const index = await readIdeasIndex(kv);
+  await writeIdeasIndex(
+    kv,
+    index.filter((entry) => entry !== id)
+  );
+
+  return { id };
+}
