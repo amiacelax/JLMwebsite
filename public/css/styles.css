@@ -3176,13 +3176,9 @@ body.hw-role-teacher #hw-teacher-hub {
 
 .hw-teacher-tabs {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0 0 0.35rem;
-  padding-bottom: 0.35rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  margin: 0 0 1rem;
 }
 
 .hw-teacher-tabs__btn {
@@ -3195,16 +3191,9 @@ body.hw-role-teacher #hw-teacher-hub {
   font-size: 0.875rem;
   font-weight: 600;
   padding: 0.5rem 1rem;
-  flex-shrink: 0;
   white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.hw-teacher-tabs-hint {
-  margin: 0 0 1rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-faint);
 }
 
 .hw-teacher-tabs__btn:hover {
@@ -3591,6 +3580,15 @@ body.hw-role-teacher #hw-teacher-hub {
 .hw-submissions-item--open {
   border-color: var(--color-green);
   box-shadow: 0 0 0 1px var(--color-green-soft);
+}
+
+.hw-submissions-item--editing {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.hw-promo-compose {
+  margin-bottom: 1.25rem;
 }
 
 .hw-submissions-item--empty p {

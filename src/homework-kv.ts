@@ -1126,6 +1126,7 @@ const promoEmailLookupKey = (email: string) => `promo-email:${email}`;
 
 export interface PromoSignup {
   id: string;
+  name?: string;
   email: string;
   page: string;
   signedUpAt: string;
@@ -1157,7 +1158,7 @@ async function writePromoIndex(kv: KVNamespace, ids: string[]): Promise<void> {
 }
 
 export async function savePromoSignup(
-  data: { email: string; page?: string },
+  data: { email: string; name?: string; page?: string },
   env: KvEnv
 ): Promise<{ id: string; duplicate: boolean }> {
   const kv = env.HOMEWORK_KV;
@@ -1167,8 +1168,24 @@ export async function savePromoSignup(
   const normalized = normalizePromoEmail(email);
   if (!normalized) throw new Error("EMAIL_REQUIRED");
 
+  const name = String(data.name || "").trim();
   const existingId = await kv.get(promoEmailLookupKey(normalized));
   if (existingId) {
+    if (name) {
+      const raw = await kv.get(promoSignupKey(existingId));
+      if (raw) {
+        try {
+          const record = JSON.parse(raw) as PromoSignup;
+          const merged = [record.name, name].filter(Boolean).join("; ");
+          if (merged && merged !== record.name) {
+            record.name = merged;
+            await kv.put(promoSignupKey(existingId), JSON.stringify(record));
+          }
+        } catch {
+          /* ignore corrupt entry */
+        }
+      }
+    }
     return { id: existingId, duplicate: true };
   }
 
@@ -1176,6 +1193,7 @@ export async function savePromoSignup(
   const record: PromoSignup = {
     id,
     email,
+    ...(name ? { name } : {}),
     page: String(data.page || "").trim() || "Unknown",
     signedUpAt: new Date().toISOString(),
   };
@@ -1210,4 +1228,115 @@ export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
   return signups.sort(
     (a, b) => new Date(b.signedUpAt).getTime() - new Date(a.signedUpAt).getTime()
   );
+}
+
+export interface PromoSignupSavePayload {
+  teacherUsername?: string;
+  id?: string;
+  name?: string;
+  email: string;
+  page?: string;
+}
+
+export interface PromoSignupDeletePayload {
+  teacherUsername?: string;
+  id?: string;
+}
+
+export async function savePromoSignupTeacher(
+  data: PromoSignupSavePayload,
+  env: KvEnv
+): Promise<{ id: string; updated: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const email = String(data.email || "").trim();
+  const normalized = normalizePromoEmail(email);
+  if (!normalized) throw new Error("EMAIL_REQUIRED");
+
+  const name = String(data.name || "").trim();
+  const page = String(data.page || "").trim() || "Manual";
+  const id = String(data.id || "").trim();
+
+  if (id) {
+    const raw = await kv.get(promoSignupKey(id));
+    if (!raw) throw new Error("NOT_FOUND");
+
+    let record: PromoSignup;
+    try {
+      record = JSON.parse(raw) as PromoSignup;
+    } catch {
+      throw new Error("NOT_FOUND");
+    }
+
+    const oldNormalized = normalizePromoEmail(record.email);
+    if (normalized !== oldNormalized) {
+      const clashId = await kv.get(promoEmailLookupKey(normalized));
+      if (clashId && clashId !== id) throw new Error("EMAIL_IN_USE");
+      await kv.delete(promoEmailLookupKey(oldNormalized));
+      await kv.put(promoEmailLookupKey(normalized), id);
+    }
+
+    record.email = email;
+    if (name) record.name = name;
+    else delete record.name;
+
+    await kv.put(promoSignupKey(id), JSON.stringify(record));
+    return { id, updated: true };
+  }
+
+  const existingId = await kv.get(promoEmailLookupKey(normalized));
+  if (existingId) throw new Error("EMAIL_IN_USE");
+
+  const newId = makePromoSignupId();
+  const record: PromoSignup = {
+    id: newId,
+    email,
+    ...(name ? { name } : {}),
+    page,
+    signedUpAt: new Date().toISOString(),
+  };
+
+  await kv.put(promoSignupKey(newId), JSON.stringify(record));
+  await kv.put(promoEmailLookupKey(normalized), newId);
+
+  const ids = await readPromoIndex(kv);
+  ids.unshift(newId);
+  await writePromoIndex(kv, ids);
+
+  return { id: newId, updated: false };
+}
+
+export async function deletePromoSignup(
+  data: PromoSignupDeletePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.id || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+
+  const raw = await kv.get(promoSignupKey(id));
+  if (!raw) throw new Error("NOT_FOUND");
+
+  let record: PromoSignup;
+  try {
+    record = JSON.parse(raw) as PromoSignup;
+  } catch {
+    throw new Error("NOT_FOUND");
+  }
+
+  await kv.delete(promoSignupKey(id));
+  await kv.delete(promoEmailLookupKey(normalizePromoEmail(record.email)));
+
+  const ids = await readPromoIndex(kv);
+  await writePromoIndex(
+    kv,
+    ids.filter((entry) => entry !== id)
+  );
+
+  return { id };
 }

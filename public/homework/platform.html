@@ -99,7 +99,6 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
           </div>
-          <p class="hw-teacher-tabs-hint">Scroll the tabs on smaller screens — <strong>Email list</strong> and <strong>Birthdays</strong> are at the end.</p>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
             <h2 class="hw-platform-card__title">Worksheet maker</h2>
@@ -284,11 +283,29 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-promo" id="hw-teacher-promo" role="tabpanel" aria-labelledby="hw-teacher-tab-promo" hidden>
             <h2 class="hw-platform-card__title">Email list</h2>
-            <p class="hw-platform-card__desc">Visitors who sign up through the promotions popup on the site — stored here and still posted to Discord.</p>
+            <p class="hw-platform-card__desc">Popup signups and manual contacts — add, edit, or remove entries here.</p>
+
+            <form class="hw-teacher-meta hw-promo-compose" id="hw-promo-compose-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field">
+                  Name
+                  <input type="text" id="hw-promo-compose-name" name="name" placeholder="Student or contact name" autocomplete="off">
+                </label>
+                <label class="hw-maker-field">
+                  Email / contact
+                  <input type="text" id="hw-promo-compose-email" name="email" placeholder="email@example.com or note" required autocomplete="off">
+                </label>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--ghost" id="hw-promo-compose-cancel" hidden>Cancel edit</button>
+                <button type="submit" class="btn btn--primary" id="hw-promo-compose-save">Add contact</button>
+              </div>
+              <p class="hw-maker-status" id="hw-promo-compose-status" role="status" aria-live="polite">Add a name and email, or click Edit on an existing entry.</p>
+            </form>
 
             <div class="hw-submissions-toolbar">
               <label class="hw-library-search-label" for="hw-promo-search">Search</label>
-              <input type="search" class="hw-library-search" id="hw-promo-search" placeholder="email or page…" autocomplete="off">
+              <input type="search" class="hw-library-search" id="hw-promo-search" placeholder="name, email, or page…" autocomplete="off">
               <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-copy">Copy emails</button>
               <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-refresh">Refresh</button>
             </div>
@@ -401,7 +418,7 @@
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260606" defer></script>
   <script src="/js/hw-teacher-submissions.js?v=20260606" defer></script>
-  <script src="/js/hw-teacher-promo.js?v=20260606" defer></script>
+  <script src="/js/hw-teacher-promo.js?v=20260607" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260606" defer></script>
   <script src="/js/hw-platform.js?v=20260605b" defer></script>
 </body>

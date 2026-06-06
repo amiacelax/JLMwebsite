@@ -45,6 +45,10 @@ import {
   loadHomeworkSubmissionPhoto,
   savePromoSignup,
   listPromoSignups,
+  savePromoSignupTeacher,
+  deletePromoSignup,
+  type PromoSignupSavePayload,
+  type PromoSignupDeletePayload,
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
 } from "./homework-kv";
@@ -389,31 +393,99 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   });
 }
 
-async function handlePromoSignupsList(request: Request, env: Env): Promise<Response> {
+async function handlePromoSignups(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-  if (request.method !== "GET") {
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+    if (teacherUsername.trim().toLowerCase() !== allowed) {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+
+    try {
+      const signups = await listPromoSignups(env);
+      return jsonResponse({ signups });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Email list storage is not configured on this server." }, 503);
+      }
+      console.error("promo-signups list failed:", err);
+      return jsonResponse({ error: "Could not load email list." }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    try {
+      const data = (await request.json()) as PromoSignupSavePayload;
+      const result = await savePromoSignupTeacher(data, env);
+      return jsonResponse({
+        success: true,
+        message: result.updated ? "Contact updated." : "Contact added.",
+        id: result.id,
+        updated: result.updated,
+      });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Email list storage is not configured on this server." }, 503);
+      }
+      if (code === "TEACHER_ONLY") {
+        return jsonResponse({ error: "Teacher login required." }, 403);
+      }
+      if (code === "EMAIL_REQUIRED") {
+        return jsonResponse({ error: "Email or contact info is required." }, 400);
+      }
+      if (code === "EMAIL_IN_USE") {
+        return jsonResponse({ error: "That email is already on the list." }, 409);
+      }
+      if (code === "NOT_FOUND") {
+        return jsonResponse({ error: "Contact not found." }, 404);
+      }
+      console.error("promo-signups save failed:", err);
+      return jsonResponse({ error: "Could not save contact." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
+async function handlePromoSignupDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
 
-  const url = new URL(request.url);
-  const teacherUsername = url.searchParams.get("teacherUsername") || "";
-  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
-  if (teacherUsername.trim().toLowerCase() !== allowed) {
-    return jsonResponse({ error: "Teacher login required." }, 403);
-  }
-
   try {
-    const signups = await listPromoSignups(env);
-    return jsonResponse({ signups });
+    const data = (await request.json()) as PromoSignupDeletePayload;
+    const result = await deletePromoSignup(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Contact removed.",
+      id: result.id,
+    });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
     if (code === "KV_NOT_CONFIGURED") {
       return jsonResponse({ error: "Email list storage is not configured on this server." }, 503);
     }
-    console.error("promo-signups list failed:", err);
-    return jsonResponse({ error: "Could not load email list." }, 500);
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED") {
+      return jsonResponse({ error: "Contact id is required." }, 400);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Contact not found." }, 404);
+    }
+    console.error("promo-signups delete failed:", err);
+    return jsonResponse({ error: "Could not delete contact." }, 500);
   }
 }
 
@@ -1366,7 +1438,11 @@ export default {
     }
 
     if (url.pathname === "/api/promo-signups") {
-      return handlePromoSignupsList(request, env);
+      return handlePromoSignups(request, env);
+    }
+
+    if (url.pathname === "/api/promo-signups/delete") {
+      return handlePromoSignupDelete(request, env);
     }
 
     if (url.pathname === "/api/student-birthdays") {
