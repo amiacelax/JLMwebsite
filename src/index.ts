@@ -1,9 +1,15 @@
+import { runBirthdayReminders } from "./birthday-reminders";
 import {
   isHarrisPreviewAuthorized,
   isHarrisPreviewPath,
   harrisPreviewUnauthorized,
   withHarrisPreviewHeaders,
 } from "./harris-preview-auth";
+import {
+  daysUntilBirthday,
+  formatBirthdayLabel,
+  listStudentBirthdaysSorted,
+} from "./student-birthdays";
 import {
   generateHomeworkWithAi,
   type HomeworkGenerateRequest,
@@ -37,6 +43,8 @@ import {
   listHomeworkSubmissions,
   getHomeworkSubmission,
   loadHomeworkSubmissionPhoto,
+  savePromoSignup,
+  listPromoSignups,
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
 } from "./homework-kv";
@@ -334,21 +342,41 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   }
 
   const page = data.page?.trim() || "Unknown page";
+  const email = data.email!.trim();
+
+  let kvSaved = false;
+  let duplicate = false;
+  try {
+    const saved = await savePromoSignup({ email, page }, env);
+    kvSaved = true;
+    duplicate = saved.duplicate;
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code !== "KV_NOT_CONFIGURED") {
+      console.error("promo-signup KV save failed:", err);
+    }
+  }
+
   const result = await notifyDiscord(webhookUrl, {
-    title: "Website inquiries — promo email signup",
+    title: duplicate
+      ? "Website inquiries — promo email signup (duplicate)"
+      : "Website inquiries — promo email signup",
     color: 0x67c4eb,
     fields: [
-      { name: "Email", value: data.email!.trim(), inline: true },
+      { name: "Email", value: email, inline: true },
       { name: "Page", value: page, inline: true },
       {
         name: "Type",
         value: "Limited promotions & discounts list",
         inline: true,
       },
+      ...(kvSaved
+        ? [{ name: "Stored in hub", value: duplicate ? "Already on list" : "Yes", inline: true }]
+        : []),
     ],
   });
 
-  if (!result.ok) {
+  if (!kvSaved && !result.ok) {
     return jsonResponse(
       { error: "Could not save your email. Please try again in a few minutes." },
       502
@@ -359,6 +387,34 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
     success: true,
     message: "You're on the list! Watch your inbox for updates.",
   });
+}
+
+async function handlePromoSignupsList(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const signups = await listPromoSignups(env);
+    return jsonResponse({ signups });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Email list storage is not configured on this server." }, 503);
+    }
+    console.error("promo-signups list failed:", err);
+    return jsonResponse({ error: "Could not load email list." }, 500);
+  }
 }
 
 function formatSection1Discord(rows: HomeworkAnswerRow[] | undefined): string {
@@ -1232,6 +1288,35 @@ async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Re
   }
 }
 
+async function handleStudentBirthdays(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  const birthdays = listStudentBirthdaysSorted().map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    month: entry.month,
+    day: entry.day,
+    uncertain: !!entry.uncertain,
+    note: entry.note || null,
+    label: formatBirthdayLabel(entry),
+    daysUntil: daysUntilBirthday(entry),
+  }));
+
+  return jsonResponse({ birthdays });
+}
+
 async function handleHomeworkSubmissionPhoto(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1278,6 +1363,14 @@ export default {
 
     if (url.pathname === "/api/promo-signup") {
       return handlePromoSignup(request, env);
+    }
+
+    if (url.pathname === "/api/promo-signups") {
+      return handlePromoSignupsList(request, env);
+    }
+
+    if (url.pathname === "/api/student-birthdays") {
+      return handleStudentBirthdays(request, env);
     }
 
     if (url.pathname === "/api/homework-submit") {
@@ -1357,5 +1450,13 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(
+    _event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<void> {
+    ctx.waitUntil(runBirthdayReminders(env));
   },
 };

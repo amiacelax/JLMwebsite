@@ -96,7 +96,10 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-submissions" aria-selected="false" aria-controls="hw-teacher-submissions" data-teacher-tab="submissions">Submissions</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
           </div>
+          <p class="hw-teacher-tabs-hint">Scroll the tabs on smaller screens — <strong>Email list</strong> and <strong>Birthdays</strong> are at the end.</p>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
             <h2 class="hw-platform-card__title">Worksheet maker</h2>
@@ -278,6 +281,33 @@
             <p class="hw-library-meta" id="hw-submissions-meta" aria-live="polite"></p>
             <ul class="hw-submissions-list" id="hw-submissions-list"></ul>
           </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-promo" id="hw-teacher-promo" role="tabpanel" aria-labelledby="hw-teacher-tab-promo" hidden>
+            <h2 class="hw-platform-card__title">Email list</h2>
+            <p class="hw-platform-card__desc">Visitors who sign up through the promotions popup on the site — stored here and still posted to Discord.</p>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-library-search-label" for="hw-promo-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-promo-search" placeholder="email or page…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-copy">Copy emails</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-promo-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-promo-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-birthdays" id="hw-teacher-birthdays" role="tabpanel" aria-labelledby="hw-teacher-tab-birthdays" hidden>
+            <h2 class="hw-platform-card__title">Student birthdays</h2>
+            <p class="hw-platform-card__desc">Seed list for now — you can merge with student profiles later. Birthday reminders post to <strong>#website-inquiries</strong> around 9:00 Japan time (same webhook as contact form and promo signups).</p>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-library-search-label" for="hw-birthdays-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-birthdays-search" placeholder="name or date…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-birthdays-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-birthdays-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-birthdays-list"></ul>
+          </section>
         </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
@@ -371,6 +401,8 @@
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260606" defer></script>
   <script src="/js/hw-teacher-submissions.js?v=20260606" defer></script>
-  <script src="/js/hw-platform.js?v=20260617" defer></script>
+  <script src="/js/hw-teacher-promo.js?v=20260606" defer></script>
+  <script src="/js/hw-teacher-birthdays.js?v=20260606" defer></script>
+  <script src="/js/hw-platform.js?v=20260605b" defer></script>
 </body>
 </html>

@@ -23,3 +23,7 @@ HARRIS_PREVIEW_USER = "harris"
 DISCORD_CHANNEL_ID = "1507209734095241266"
 # #homework-submissions (or your HW channel) — homework submit webhook must post here
 DISCORD_HOMEWORK_CHANNEL_ID = "1507650471836258404"
+
+# 00:00 UTC daily ≈ 9:00 Japan time — student birthday Discord reminders
+[triggers]
+crons = ["0 0 * * *"]

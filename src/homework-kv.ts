@@ -1117,3 +1117,97 @@ export async function loadHomeworkSubmissionPhoto(
     return null;
   }
 }
+
+/** Promo email signups (website popup). */
+
+const PROMO_INDEX = "promo-signups-index";
+const promoSignupKey = (id: string) => `promo-signup:${id}`;
+const promoEmailLookupKey = (email: string) => `promo-email:${email}`;
+
+export interface PromoSignup {
+  id: string;
+  email: string;
+  page: string;
+  signedUpAt: string;
+}
+
+function normalizePromoEmail(email: string): string {
+  return String(email || "").trim().toLowerCase();
+}
+
+function makePromoSignupId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `promo-${Date.now()}-${rand}`;
+}
+
+async function readPromoIndex(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(PROMO_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writePromoIndex(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(PROMO_INDEX, JSON.stringify(unique));
+}
+
+export async function savePromoSignup(
+  data: { email: string; page?: string },
+  env: KvEnv
+): Promise<{ id: string; duplicate: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const email = String(data.email || "").trim();
+  const normalized = normalizePromoEmail(email);
+  if (!normalized) throw new Error("EMAIL_REQUIRED");
+
+  const existingId = await kv.get(promoEmailLookupKey(normalized));
+  if (existingId) {
+    return { id: existingId, duplicate: true };
+  }
+
+  const id = makePromoSignupId();
+  const record: PromoSignup = {
+    id,
+    email,
+    page: String(data.page || "").trim() || "Unknown",
+    signedUpAt: new Date().toISOString(),
+  };
+
+  await kv.put(promoSignupKey(id), JSON.stringify(record));
+  await kv.put(promoEmailLookupKey(normalized), id);
+
+  const ids = await readPromoIndex(kv);
+  ids.unshift(id);
+  await writePromoIndex(kv, ids);
+
+  return { id, duplicate: false };
+}
+
+export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const ids = await readPromoIndex(kv);
+  const signups: PromoSignup[] = [];
+
+  for (const id of ids) {
+    const raw = await kv.get(promoSignupKey(id));
+    if (!raw) continue;
+    try {
+      signups.push(JSON.parse(raw) as PromoSignup);
+    } catch {
+      /* skip corrupt entry */
+    }
+  }
+
+  return signups.sort(
+    (a, b) => new Date(b.signedUpAt).getTime() - new Date(a.signedUpAt).getTime()
+  );
+}

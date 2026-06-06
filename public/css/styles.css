@@ -510,22 +510,33 @@ body.is-nav-open {
 }
 
 .hero__actions .btn--primary {
-  padding: 1.35rem 2.25rem;
+  padding: 1.35rem 2.5rem;
   font-size: 1.1875rem;
   min-height: 4rem;
   border-radius: calc(var(--radius-md) + 3px);
 }
 
 .hero__actions .btn--ghost.btn--stack {
-  padding: 1.15rem 1.75rem;
-  min-height: 4rem;
+  padding: 1.1rem 1.6rem;
+  min-height: 3.65rem;
+  font-size: 1.0625rem;
   align-self: stretch;
 }
 
 @media (min-width: 480px) {
   .hero__actions .btn--ghost.btn--stack {
     align-self: center;
-    min-width: 11rem;
+    min-width: 10rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .hero__actions .btn--primary {
+    min-width: 15rem;
+  }
+
+  .hero__actions .btn--ghost.btn--stack {
+    min-width: 9.25rem;
   }
 }
 
@@ -1820,17 +1831,33 @@ body.is-modal-open {
   }
 
   .hero__inner {
+    display: flex;
+    flex-direction: column;
     gap: 1.75rem;
   }
+
+  .hero__content {
+    display: contents;
+  }
+
+  .hero__eyebrow { order: 1; }
+  .hero__title { order: 2; }
+  .hero__subtitle { order: 3; }
+  .hero__actions { order: 4; }
+  .hero__visual { order: 5; }
+  .hero__cta-grid { order: 6; }
 
   .hero__title {
     font-size: clamp(1.75rem, 8vw, 2.25rem);
   }
 
   .hero__visual {
-    order: 2;
     min-height: auto;
     padding-bottom: 0;
+  }
+
+  .hero__actions {
+    margin-bottom: 1.25rem;
   }
 
   .hero__photo-wrap--torn {
@@ -1858,8 +1885,21 @@ body.is-modal-open {
 
   .hero__actions .btn {
     width: 100%;
-    min-height: 3.25rem;
-    padding: 1rem 1.25rem;
+  }
+
+  .hero__actions .btn--primary {
+    font-size: 1.25rem;
+    min-height: 3.85rem;
+    padding: 1.2rem 1.5rem;
+  }
+
+  .hero__actions .btn--ghost.btn--stack {
+    width: auto;
+    max-width: 13.5rem;
+    align-self: center;
+    font-size: 1rem;
+    min-height: 2.875rem;
+    padding: 0.85rem 1.15rem;
   }
 
   .hero__actions .btn--primary,
@@ -3136,23 +3176,35 @@ body.hw-role-teacher #hw-teacher-hub {
 
 .hw-teacher-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.35rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .hw-teacher-tabs__btn {
   appearance: none;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text-muted);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  padding: 0.55rem 1.1rem;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.hw-teacher-tabs-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-faint);
 }
 
 .hw-teacher-tabs__btn:hover {
@@ -3605,6 +3657,11 @@ body.hw-role-teacher #hw-teacher-hub {
   object-fit: cover;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+
+.hw-birthdays-item--today {
+  border-color: color-mix(in srgb, var(--color-gold) 55%, var(--color-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-gold) 35%, transparent);
 }
 
 .hw-submissions-item__actions {
@@ -4891,7 +4948,9 @@ body.promo-modal-open {
 }
 
 .promo-modal[hidden] {
-  display: none;
+  display: none !important;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .promo-modal__backdrop {

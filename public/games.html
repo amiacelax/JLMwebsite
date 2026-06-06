@@ -18,7 +18,7 @@
     })();
   </script>
 </head>
-<body class="subpage" data-promo-page="Games">
+<body class="subpage">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header">
@@ -85,22 +85,6 @@
     </div>
   </footer>
 
-  <div id="promo-modal" class="promo-modal" hidden>
-    <div class="promo-modal__backdrop" data-promo-close aria-hidden="true"></div>
-    <div class="promo-modal__dialog" role="dialog" aria-labelledby="promo-title" aria-modal="true">
-      <button class="promo-modal__close" type="button" data-promo-close aria-label="Close">×</button>
-      <h2 id="promo-title" class="promo-modal__title">Limited promotions &amp; discounts</h2>
-      <p class="promo-modal__desc">Enter your email to hear about deals and new features first.</p>
-      <form id="promo-form" class="promo-modal__form" novalidate>
-        <label class="visually-hidden" for="promo-email">Email</label>
-        <input type="email" id="promo-email" name="email" required placeholder="you@example.com" autocomplete="email">
-        <button class="btn btn--primary btn--full" type="submit" id="promo-submit">Get updates</button>
-      </form>
-      <p id="promo-status" class="promo-modal__status" role="status" aria-live="polite"></p>
-    </div>
-  </div>
-
   <script src="/js/subpage.js" defer></script>
-  <script src="/js/promo-email.js" defer></script>
 </body>
 </html>
