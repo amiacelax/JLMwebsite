@@ -11,6 +11,7 @@
 
   let submissionsCache = [];
   let expandedId = null;
+  let loading = false;
   let bound = false;
   let options = null;
 
@@ -167,6 +168,15 @@
     const session = options?.getTeacherSession?.();
     if (!list || !session) return;
 
+    if (loading) {
+      if (meta) meta.textContent = "Loading submissions…";
+      global.HwLoading?.showListWait(list, {
+        message: "Loading submissions…",
+        extraClass: "hw-submissions-item",
+      });
+      return;
+    }
+
     const searchInput = document.getElementById("hw-submissions-search");
     const studentFilter = document.getElementById("hw-submissions-student");
     const q = String(searchInput?.value || "")
@@ -276,19 +286,24 @@
   async function reloadSubmissions() {
     const session = options?.getTeacherSession?.();
     if (!session || session.role !== "teacher") return;
+    if (loading) return;
 
     const studentFilter = document.getElementById("hw-submissions-student");
     const student = studentFilter ? studentFilter.value : "";
 
+    loading = true;
+    renderList();
     try {
       submissionsCache = await fetchSubmissions(session, student);
       if (expandedId && !submissionsCache.some((entry) => entry.id === expandedId)) {
         expandedId = null;
       }
-      renderList();
     } catch (err) {
       const meta = document.getElementById("hw-submissions-meta");
       if (meta) meta.textContent = err.message || "Could not load submissions.";
+    } finally {
+      loading = false;
+      renderList();
     }
   }
 

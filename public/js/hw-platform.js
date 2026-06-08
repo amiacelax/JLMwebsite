@@ -778,6 +778,7 @@
       submissions: document.getElementById("hw-teacher-submissions"),
       promo: document.getElementById("hw-teacher-promo"),
       birthdays: document.getElementById("hw-teacher-birthdays"),
+      harris: document.getElementById("hw-teacher-harris"),
     };
 
     function activate(name) {
@@ -794,6 +795,9 @@
         localStorage.setItem("jlm-hw-teacher-tab", name);
       } catch {
         /* ignore */
+      }
+      if (name === "ideas" && global.HwTeacherIdeas?.reloadIfNeeded) {
+        HwTeacherIdeas.reloadIfNeeded();
       }
     }
 
@@ -814,13 +818,24 @@
         saved === "ideas" ||
         saved === "submissions" ||
         saved === "promo" ||
-        saved === "birthdays"
+        saved === "birthdays" ||
+        saved === "harris"
       ) {
         initial = saved;
       }
     } catch {
       /* ignore */
     }
+    document.getElementById("hw-harris-copy-link")?.addEventListener("click", async () => {
+      const url = new URL("/preview/harris-notarization/", window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Preview link copied.");
+      } catch {
+        showToast("Could not copy link.");
+      }
+    });
+
     activate(initial);
     return activate;
   }

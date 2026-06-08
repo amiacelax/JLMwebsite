@@ -3,6 +3,7 @@
  */
 (function (global) {
   let birthdaysCache = [];
+  let loading = false;
   let bound = false;
   let options = null;
 
@@ -50,6 +51,15 @@
     const list = document.getElementById("hw-birthdays-list");
     const meta = document.getElementById("hw-birthdays-meta");
     if (!list) return;
+
+    if (loading) {
+      if (meta) meta.textContent = "Loading birthdays…";
+      global.HwLoading?.showListWait(list, {
+        message: "Loading birthdays…",
+        extraClass: "hw-submissions-item",
+      });
+      return;
+    }
 
     const query = (document.getElementById("hw-birthdays-search")?.value || "")
       .trim()
@@ -131,13 +141,18 @@
   async function reloadBirthdays() {
     const session = options?.getTeacherSession?.();
     if (!session || session.role !== "teacher") return;
+    if (loading) return;
 
+    loading = true;
+    renderList();
     try {
       birthdaysCache = await fetchBirthdays(session);
-      renderList();
     } catch (err) {
       const meta = document.getElementById("hw-birthdays-meta");
       if (meta) meta.textContent = err.message || "Could not load birthdays.";
+    } finally {
+      loading = false;
+      renderList();
     }
   }
 

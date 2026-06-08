@@ -13,6 +13,9 @@
   let selectedTags = new Set();
   let pendingImages = [];
   let filterTag = "";
+  let lengthSort = "";
+  let loading = false;
+  let loadedOnce = false;
   let bound = false;
   let options = null;
 
@@ -55,6 +58,22 @@
   function ideaSearchText(idea) {
     const imageNames = (idea.images || []).map((image) => image.name || "").join(" ");
     return [idea.text, ...(idea.tags || []), imageNames].join(" ").toLowerCase();
+  }
+
+  function ideaTextLength(idea) {
+    return String(idea.text || "").trim().length;
+  }
+
+  function compareByDate(a, b) {
+    return String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt));
+  }
+
+  function updateLengthSortUi() {
+    document.querySelectorAll("[data-idea-length-sort]").forEach((btn) => {
+      const on = btn.getAttribute("data-idea-length-sort") === lengthSort;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
   }
 
   function getSelectedTags() {
@@ -492,6 +511,15 @@
     const session = options?.getTeacherSession?.();
     if (!list) return;
 
+    if (loading) {
+      if (meta) meta.textContent = "Loading ideas…";
+      global.HwLoading?.showListWait(list, {
+        message: "Loading ideas & memos…",
+        extraClass: "hw-ideas-item",
+      });
+      return;
+    }
+
     const searchInput = document.getElementById("hw-ideas-search");
     const q = String(searchInput?.value || "")
       .trim()
@@ -504,7 +532,17 @@
     if (q) {
       filtered = filtered.filter((idea) => ideaSearchText(idea).includes(q));
     }
-    filtered.sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    if (lengthSort === "longest") {
+      filtered.sort(
+        (a, b) => ideaTextLength(b) - ideaTextLength(a) || compareByDate(a, b)
+      );
+    } else if (lengthSort === "shortest") {
+      filtered.sort(
+        (a, b) => ideaTextLength(a) - ideaTextLength(b) || compareByDate(a, b)
+      );
+    } else {
+      filtered.sort(compareByDate);
+    }
 
     list.replaceChildren();
     if (meta) {
@@ -514,6 +552,11 @@
         (filtered.length === 1 ? "" : "s") +
         (q ? ' matching “' + searchInput.value.trim() + "”" : "") +
         (filterTag ? " · tag: " + filterTag : "") +
+        (lengthSort === "longest"
+          ? " · longest first"
+          : lengthSort === "shortest"
+            ? " · shortest first"
+            : "") +
         (ideasCache.length !== filtered.length ? " of " + ideasCache.length : "");
     }
 
@@ -603,6 +646,10 @@
   async function reloadIdeas() {
     const session = options?.getTeacherSession?.();
     if (!session || session.role !== "teacher") return;
+    if (loading) return;
+
+    loading = true;
+    renderList();
     try {
       const data = await fetchIdeas(session);
       ideasCache = data.ideas;
@@ -610,11 +657,18 @@
       mergeKnownTags(data.tags);
       if (filterTag && !knownTags.includes(filterTag)) filterTag = "";
       refreshTagUi();
-      renderList();
+      loadedOnce = true;
     } catch (err) {
       const meta = document.getElementById("hw-ideas-meta");
       if (meta) meta.textContent = err.message || "Could not load ideas.";
+    } finally {
+      loading = false;
+      renderList();
     }
+  }
+
+  function reloadIfNeeded() {
+    if (!loadedOnce && !loading) void reloadIdeas();
   }
 
   async function handleAddTag() {
@@ -717,6 +771,16 @@
       renderFilterTags();
       renderList();
     });
+
+    document.querySelectorAll("[data-idea-length-sort]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.getAttribute("data-idea-length-sort") || "";
+        lengthSort = next && next === lengthSort ? "" : next;
+        updateLengthSortUi();
+        renderList();
+      });
+    });
+    updateLengthSortUi();
 
     attachBtn?.addEventListener("click", () => fileInput?.click());
 
@@ -833,5 +897,5 @@
     void reloadIdeas();
   }
 
-  global.HwTeacherIdeas = { init, reload: reloadIdeas, renderList };
+  global.HwTeacherIdeas = { init, reload: reloadIdeas, reloadIfNeeded, renderList };
 })(window);

@@ -4,6 +4,7 @@
 (function (global) {
   let signupsCache = [];
   let editingId = null;
+  let loading = false;
   let bound = false;
   let options = null;
 
@@ -105,6 +106,15 @@
     const meta = document.getElementById("hw-promo-meta");
     if (!list) return;
 
+    if (loading) {
+      if (meta) meta.textContent = "Loading email list…";
+      global.HwLoading?.showListWait(list, {
+        message: "Loading email list…",
+        extraClass: "hw-submissions-item",
+      });
+      return;
+    }
+
     const query = (document.getElementById("hw-promo-search")?.value || "").trim().toLowerCase();
     const filtered = signupsCache.filter((entry) => {
       if (!query) return true;
@@ -205,13 +215,18 @@
   async function reloadSignups() {
     const session = options?.getTeacherSession?.();
     if (!session || session.role !== "teacher") return;
+    if (loading) return;
 
+    loading = true;
+    renderList();
     try {
       signupsCache = await fetchSignups(session);
-      renderList();
     } catch (err) {
       const meta = document.getElementById("hw-promo-meta");
       if (meta) meta.textContent = err.message || "Could not load email list.";
+    } finally {
+      loading = false;
+      renderList();
     }
   }
 
