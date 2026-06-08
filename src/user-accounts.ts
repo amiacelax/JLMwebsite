@@ -108,7 +108,6 @@ export interface SignupInput {
   email: string;
   password: string;
   displayName?: string;
-  emailListOptIn?: boolean;
 }
 
 export async function createUserAccount(
@@ -127,7 +126,7 @@ export async function createUserAccount(
   if (!isValidUsername(username)) throw new Error("USERNAME_INVALID");
   if (RESERVED_USERNAMES.has(username)) throw new Error("USERNAME_RESERVED");
   if (!email || !isValidEmail(email)) throw new Error("EMAIL_INVALID");
-  if (password.length < 8) throw new Error("PASSWORD_WEAK");
+  if (!password) throw new Error("PASSWORD_REQUIRED");
 
   const existingUser = await kv.get(userKey(username));
   if (existingUser) throw new Error("USERNAME_TAKEN");
@@ -159,15 +158,13 @@ export async function createUserAccount(
   ids.unshift(username);
   await writeUsersIndex(kv, ids);
 
-  if (data.emailListOptIn !== false) {
-    try {
-      await savePromoSignup(
-        { email, name: displayName, page: "Account signup" },
-        env
-      );
-    } catch {
-      /* signup still succeeds if email list write fails */
-    }
+  try {
+    await savePromoSignup(
+      { email, name: displayName, page: "Account signup" },
+      env
+    );
+  } catch {
+    /* signup still succeeds if email list write fails */
   }
 
   return { session: toAuthSession(record) };

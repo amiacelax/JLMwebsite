@@ -496,8 +496,8 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
     if (code === "EMAIL_INVALID") {
       return jsonResponse({ error: "A valid email is required." }, 400);
     }
-    if (code === "PASSWORD_WEAK") {
-      return jsonResponse({ error: "Password must be at least 8 characters." }, 400);
+    if (code === "PASSWORD_REQUIRED") {
+      return jsonResponse({ error: "Password is required." }, 400);
     }
     if (code === "USERNAME_TAKEN" || code === "EMAIL_TAKEN") {
       return jsonResponse({ error: "Username or email is already in use." }, 409);

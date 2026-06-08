@@ -94,20 +94,15 @@
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("hw-signup-email")?.value ?? "";
-      const displayName = document.getElementById("hw-signup-display")?.value ?? "";
       const username = document.getElementById("hw-signup-username")?.value ?? "";
       const password = document.getElementById("hw-signup-password")?.value ?? "";
-      const emailListOptIn =
-        document.getElementById("hw-signup-email-list")?.checked ?? true;
       const remember = true;
 
       const result = await HwAuth.signupAsync(
         {
           email,
-          displayName,
           username,
           password,
-          emailListOptIn,
         },
         remember
       );
