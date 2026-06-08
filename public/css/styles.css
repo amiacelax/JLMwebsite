@@ -2217,6 +2217,50 @@ body.subpage--platform .hw-platform-bar {
     0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
+.hw-auth-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.hw-auth-tabs__btn {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.45rem 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.hw-auth-tabs__btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.hw-auth-tabs__btn.is-active {
+  background: var(--color-accent-soft, rgba(232, 93, 44, 0.12));
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.hw-login-inlay__optional {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+button.pricing-banner {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
 .hw-login-inlay__title {
   margin: 0 0 1.5rem;
   font-size: 1.375rem;

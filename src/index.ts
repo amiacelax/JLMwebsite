@@ -52,6 +52,12 @@ import {
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
 } from "./homework-kv";
+import {
+  createUserAccount,
+  loginUserAccount,
+  type SignupInput,
+  type LoginInput,
+} from "./user-accounts";
 
 interface Env {
   ASSETS: Fetcher;
@@ -452,6 +458,82 @@ async function handlePromoSignups(request: Request, env: Env): Promise<Response>
   }
 
   return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
+async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as SignupInput;
+    const result = await createUserAccount(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Account created.",
+      session: result.session,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
+    }
+    if (code === "USERNAME_REQUIRED") {
+      return jsonResponse({ error: "Username is required." }, 400);
+    }
+    if (code === "USERNAME_INVALID") {
+      return jsonResponse(
+        { error: "Username must be 3–24 characters: letters, numbers, _ or -." },
+        400
+      );
+    }
+    if (code === "USERNAME_RESERVED") {
+      return jsonResponse({ error: "That username is reserved." }, 409);
+    }
+    if (code === "EMAIL_INVALID") {
+      return jsonResponse({ error: "A valid email is required." }, 400);
+    }
+    if (code === "PASSWORD_WEAK") {
+      return jsonResponse({ error: "Password must be at least 8 characters." }, 400);
+    }
+    if (code === "USERNAME_TAKEN" || code === "EMAIL_TAKEN") {
+      return jsonResponse({ error: "Username or email is already in use." }, 409);
+    }
+    console.error("auth signup failed:", err);
+    return jsonResponse({ error: "Could not create account." }, 500);
+  }
+}
+
+async function handleAuthLogin(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as LoginInput;
+    const result = await loginUserAccount(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Logged in.",
+      session: result.session,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Invalid username or password." }, 401);
+    }
+    console.error("auth login failed:", err);
+    return jsonResponse({ error: "Could not log in." }, 500);
+  }
 }
 
 async function handlePromoSignupDelete(request: Request, env: Env): Promise<Response> {
@@ -1431,6 +1513,14 @@ export default {
 
     if (url.pathname === "/api/contact") {
       return handleContact(request, env);
+    }
+
+    if (url.pathname === "/api/auth/signup") {
+      return handleAuthSignup(request, env);
+    }
+
+    if (url.pathname === "/api/auth/login") {
+      return handleAuthLogin(request, env);
     }
 
     if (url.pathname === "/api/promo-signup") {

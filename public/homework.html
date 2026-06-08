@@ -67,33 +67,69 @@
         </div>
 
         <div class="hw-login-inlay-wrap">
-          <div class="hw-login-inlay" aria-label="Student login">
-            <h2 class="hw-login-inlay__title">Log in</h2>
+          <div class="hw-login-inlay" aria-label="Account access">
+            <div class="hw-auth-tabs" role="tablist" aria-label="Account">
+              <button type="button" class="hw-auth-tabs__btn is-active" role="tab" id="hw-auth-tab-login" aria-selected="true" aria-controls="hw-auth-panel-login" data-auth-tab="login">Log in</button>
+              <button type="button" class="hw-auth-tabs__btn" role="tab" id="hw-auth-tab-signup" aria-selected="false" aria-controls="hw-auth-panel-signup" data-auth-tab="signup">Create account</button>
+            </div>
 
             <div id="hw-login-fields">
-              <form id="hw-login-form" class="hw-login-inlay__form" autocomplete="username">
-                <div class="hw-login-inlay__field">
-                  <label for="hw-username">Discord username</label>
-                  <input type="text" id="hw-username" name="username" required autocomplete="username" placeholder="e.g. jlm">
-                </div>
-                <div class="hw-login-inlay__field">
-                  <label for="hw-password">Password</label>
-                  <input type="password" id="hw-password" name="password" required autocomplete="current-password" placeholder="••••••••">
-                </div>
-                <div class="hw-login-inlay__extras">
-                  <label class="hw-login-inlay__remember">
-                    <input type="checkbox" id="hw-remember" name="remember">
-                    <span>Remember me</span>
-                  </label>
-                </div>
-                <button type="submit" class="hw-login-inlay__submit">Log in</button>
-                <p id="hw-login-error" class="hw-login-inlay__error" hidden role="alert"></p>
-                <p class="hw-login-inlay__note">Subscriber accounts only.</p>
-              </form>
+              <div id="hw-auth-panel-login" role="tabpanel" aria-labelledby="hw-auth-tab-login">
+                <form id="hw-login-form" class="hw-login-inlay__form" autocomplete="username">
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-username">Username</label>
+                    <input type="text" id="hw-username" name="username" required autocomplete="username" placeholder="e.g. sakura42">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-password">Password</label>
+                    <input type="password" id="hw-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                  </div>
+                  <div class="hw-login-inlay__extras">
+                    <label class="hw-login-inlay__remember">
+                      <input type="checkbox" id="hw-remember" name="remember">
+                      <span>Remember me</span>
+                    </label>
+                  </div>
+                  <button type="submit" class="hw-login-inlay__submit">Log in</button>
+                  <p id="hw-login-error" class="hw-login-inlay__error" hidden role="alert"></p>
+                  <p class="hw-login-inlay__note">Create an account before subscribing or buying a course.</p>
+                </form>
+              </div>
+
+              <div id="hw-auth-panel-signup" role="tabpanel" aria-labelledby="hw-auth-tab-signup" hidden>
+                <form id="hw-signup-form" class="hw-login-inlay__form">
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-signup-email">Email</label>
+                    <input type="email" id="hw-signup-email" name="email" required autocomplete="email" placeholder="you@example.com">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-signup-display">Display name <span class="hw-login-inlay__optional">(optional)</span></label>
+                    <input type="text" id="hw-signup-display" name="displayName" autocomplete="name" placeholder="How we greet you">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-signup-username">Username</label>
+                    <input type="text" id="hw-signup-username" name="username" required autocomplete="username" placeholder="letters, numbers, _ or -">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-signup-password">Password</label>
+                    <input type="password" id="hw-signup-password" name="password" required autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
+                  </div>
+                  <div class="hw-login-inlay__extras">
+                    <label class="hw-login-inlay__remember">
+                      <input type="checkbox" id="hw-signup-email-list" name="emailListOptIn" checked>
+                      <span>Add me to the email list</span>
+                    </label>
+                  </div>
+                  <button type="submit" class="hw-login-inlay__submit">Create account</button>
+                  <p id="hw-signup-error" class="hw-login-inlay__error" hidden role="alert"></p>
+                  <p class="hw-login-inlay__note">You’ll choose a plan or course after your account is created.</p>
+                </form>
+              </div>
             </div>
 
             <div id="hw-logged-in-bar" class="hw-login-inlay__logged-in" hidden>
               <p class="hw-login-inlay__signed-in">Signed in as <strong id="hw-logged-in-name"></strong></p>
+              <p class="hw-login-inlay__note" id="hw-logged-in-tier"></p>
               <button type="button" class="hw-login-inlay__submit" id="hw-go-platform">Go to your hub</button>
               <button type="button" class="btn btn--ghost btn--full" id="hw-landing-logout">Log out</button>
             </div>
@@ -140,8 +176,8 @@
                 <li>Free access to all games</li>
                 <li>Video responses: +$15 / 4 weeks add-on</li>
               </ul>
-              <a class="btn btn--primary btn--full" href="https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY" target="_blank" rel="noopener noreferrer">Subscribe — Premium</a>
-              <a class="btn btn--ghost btn--full hw-plan__addon" href="https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-15R38814RL5675323NIKHAIA" target="_blank" rel="noopener noreferrer">Add video feedback — $15 / 4 weeks</a>
+              <button type="button" class="btn btn--primary btn--full" data-hw-checkout="premium">Subscribe — Premium</button>
+              <button type="button" class="btn btn--ghost btn--full hw-plan__addon" data-hw-checkout="video-feedback">Add video feedback — $15 / 4 weeks</button>
             </article>
             <article class="hw-plan">
               <p class="hw-plan__price"><span class="hw-plan__amount">$99</span><span class="hw-plan__period">/mo</span></p>
@@ -188,7 +224,8 @@
   </footer>
 
   <script src="/js/hw-auth.js"></script>
+  <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/subpage.js" defer></script>
-  <script src="/js/hw-login.js" defer></script>
+  <script src="/js/hw-login.js?v=20260611" defer></script>
 </body>
 </html>

@@ -33,6 +33,15 @@
     badges.append(labelPill, tierPill);
   }
 
+  function renderPendingNotice() {
+    if (isTeacher || session.tier !== "pending") return;
+    const desc = document.getElementById("hw-hub-desc");
+    if (desc) {
+      desc.textContent =
+        "Your account is ready. Pick a homework plan on the Homework page, or unlock courses from Courses — checkout uses your login.";
+    }
+  }
+
   function bindWeeklyUpgradeCard() {
     const card = document.getElementById("hw-weekly-upgrade-card");
     const btn = document.getElementById("hw-weekly-upgrade-btn");
@@ -149,7 +158,9 @@
 
     if (HwAuth.canOfferVideoUnlock(session)) {
       if (desc) desc.textContent = VIDEO_RESPONSE_DESC;
-      const videoPaypal = HwAuth.PAYPAL?.videoFeedback;
+      const videoPaypal =
+        global.HwCheckout?.buildCheckoutUrl?.("video-feedback", session) ||
+        HwAuth.PAYPAL?.videoFeedback;
       footer.append(
         videoPaypal
           ? courseStatusLink(
@@ -1005,6 +1016,7 @@
       setTimeout(ensureTeacherEditorMounted, 0);
     } else {
       renderAccountBar();
+      renderPendingNotice();
       bindWeeklyUpgradeCard();
       loadStudentHub();
       window.addEventListener("hashchange", loadStudentHub);

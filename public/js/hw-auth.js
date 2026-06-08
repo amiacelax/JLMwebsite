@@ -43,6 +43,13 @@
       hwPerMonth: null,
       videoIncluded: false,
     },
+    pending: {
+      id: "pending",
+      name: "No plan yet",
+      price: null,
+      hwPerMonth: null,
+      videoIncluded: false,
+    },
   };
 
   const VIDEO_RESPONSE_ADDON_PRICE = 15;
@@ -117,6 +124,29 @@
 
   function enrichSession(data) {
     if (!data?.username) return null;
+
+    if (data.source === "server") {
+      const tier = data.tier || "pending";
+      const tierMeta = TIERS[tier] || TIERS.pending;
+      const accountLabel = data.accountLabel || "homework_only";
+      const videoResponseUnlock =
+        tier === "tier3" || Boolean(data.videoResponseUnlock);
+      return {
+        username: data.username,
+        displayName: data.displayName || data.username,
+        email: data.email || "",
+        role: data.role || "student",
+        accountLabel,
+        accountLabelDisplay: ACCOUNT_LABELS[accountLabel] || accountLabel,
+        tier,
+        tierDisplay: tierMeta.name,
+        courses: Array.isArray(data.courses) ? data.courses : [],
+        videoResponseUnlock,
+        source: "server",
+        loggedInAt: data.loggedInAt || Date.now(),
+      };
+    }
+
     const account = ACCOUNTS[data.username];
     if (!account) return null;
 
@@ -131,12 +161,15 @@
     return {
       username: data.username,
       displayName: data.displayName || account.displayName || data.username,
+      email: data.email || "",
       role: data.role || account.role || "student",
       accountLabel,
       accountLabelDisplay: ACCOUNT_LABELS[accountLabel] || accountLabel,
       tier,
       tierDisplay: tierMeta.name,
+      courses: Array.isArray(data.courses) ? data.courses : [],
       videoResponseUnlock,
+      source: "local",
       loggedInAt: data.loggedInAt || Date.now(),
     };
   }
@@ -191,7 +224,7 @@
     return TIERS[s.tier] || TIERS.tier1;
   }
 
-  function login(username, password, remember) {
+  function loginLocal(username, password, remember) {
     const key = normalizeUsername(username);
     const account = ACCOUNTS[key];
     if (!account || password !== account.password) {
@@ -213,6 +246,69 @@
 
     persistSession(session, remember);
     return { ok: true, session };
+  }
+
+  function login(username, password, remember) {
+    return loginLocal(username, password, remember);
+  }
+
+  async function loginAsync(username, password, remember) {
+    const local = loginLocal(username, password, remember);
+    if (local.ok) return local;
+
+    const key = normalizeUsername(username);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: key, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Invalid username or password." };
+      }
+      const session = enrichSession({
+        ...data.session,
+        loggedInAt: Date.now(),
+      });
+      if (!session) {
+        return { ok: false, error: "Could not start session." };
+      }
+      persistSession(session, remember);
+      return { ok: true, session };
+    } catch {
+      return { ok: false, error: "Could not reach the server. Try again." };
+    }
+  }
+
+  async function signupAsync(payload, remember) {
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Could not create account." };
+      }
+      const session = enrichSession({
+        ...data.session,
+        loggedInAt: Date.now(),
+      });
+      if (!session) {
+        return { ok: false, error: "Account created but session failed." };
+      }
+      persistSession(session, remember);
+      return { ok: true, session };
+    } catch {
+      return { ok: false, error: "Could not reach the server. Try again." };
+    }
+  }
+
+  function hasActiveSubscription(session) {
+    const s = session || getSession();
+    return Boolean(s && s.tier && s.tier !== "pending");
   }
 
   function logout() {
@@ -281,6 +377,9 @@
     getSession,
     isAuthenticated,
     login,
+    loginAsync,
+    signupAsync,
+    hasActiveSubscription,
     logout,
     requireAuth,
     redirectIfAuthenticated,
