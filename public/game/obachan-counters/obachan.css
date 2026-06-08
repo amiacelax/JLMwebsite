@@ -1,0 +1,183 @@
+.obc-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, "Noto Sans JP", sans-serif;
+  background: #0f1520;
+  color: #e8ecf4;
+}
+
+.obc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.obc-header__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.obc-header__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: #9aa8bc;
+}
+
+.obc-header__back {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #67c4eb;
+  text-decoration: none;
+}
+
+.obc-header__back:hover {
+  text-decoration: underline;
+}
+
+.obc-main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.obc-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.obc-hud__label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa8bc;
+}
+
+.obc-hud__value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.obc-toast {
+  margin: 0 0 0.65rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: rgba(103, 196, 235, 0.15);
+  border: 1px solid rgba(103, 196, 235, 0.35);
+}
+
+.obc-toast--ok {
+  background: rgba(72, 187, 120, 0.15);
+  border-color: rgba(72, 187, 120, 0.4);
+}
+
+.obc-toast--miss {
+  background: rgba(232, 93, 44, 0.12);
+  border-color: rgba(232, 93, 44, 0.35);
+}
+
+.obc-stage-wrap {
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+#obc-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.obc-callout {
+  position: absolute;
+  top: 0.65rem;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 8rem;
+  padding: 0.45rem 0.85rem 0.55rem;
+  text-align: center;
+  background: #fff;
+  color: #111;
+  border: 3px solid #111;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.obc-callout__speaker {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.obc-callout__text {
+  margin: 0.15rem 0 0;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.obc-help {
+  margin: 0.85rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #9aa8bc;
+}
+
+.obc-help--memo {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.obc-help kbd {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.obc-controls {
+  margin-top: 1rem;
+}
+
+.obc-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 0.65rem 1.25rem;
+  cursor: pointer;
+}
+
+.obc-btn--primary {
+  background: #e85d2c;
+  color: #fff;
+}
+
+.obc-btn--primary:hover {
+  filter: brightness(1.08);
+}

@@ -1,0 +1,441 @@
+.otsu-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  background: linear-gradient(165deg, #fff8f0 0%, #ffe8d6 45%, #ffd4b8 100%);
+  color: #2a2438;
+}
+
+.otsu-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(42, 36, 56, 0.08);
+}
+
+.otsu-header__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.otsu-header__sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: #6b5f7a;
+}
+
+.otsu-header__back {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #c45c26;
+  text-decoration: none;
+}
+
+.otsu-header__back:hover {
+  text-decoration: underline;
+}
+
+.otsu-main {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2.5rem;
+}
+
+.otsu-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+  color: #6b5f7a;
+}
+
+.otsu-hud strong {
+  color: #2a2438;
+  font-size: 1rem;
+}
+
+.otsu-toast {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(42, 36, 56, 0.1);
+  box-shadow: 0 4px 16px rgba(42, 36, 56, 0.06);
+}
+
+.otsu-toast--ok {
+  color: #1d6b42;
+  border-color: rgba(29, 107, 66, 0.25);
+}
+
+.otsu-toast--miss {
+  color: #a33b2d;
+  border-color: rgba(163, 59, 45, 0.25);
+}
+
+.otsu-stage {
+  position: relative;
+  min-height: 280px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 12px 40px rgba(42, 36, 56, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.otsu-scene {
+  position: relative;
+  min-height: 280px;
+  padding: 1.25rem 1rem 1rem;
+}
+
+.otsu-scene--home {
+  background: linear-gradient(180deg, #a8d8ff 0%, #dff3ff 38%, #f5e6d3 38%, #e8d4bc 100%);
+}
+
+.otsu-sky {
+  position: absolute;
+  inset: 0 0 62%;
+  background: linear-gradient(180deg, #8ec8ff, #cce9ff);
+}
+
+.otsu-house {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  width: 140px;
+  height: 110px;
+}
+
+.otsu-house__roof {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 78px solid transparent;
+  border-right: 78px solid transparent;
+  border-bottom: 48px solid #c45c26;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.08));
+}
+
+.otsu-house__body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 72px;
+  background: #fff5e8;
+  border-radius: 4px 4px 0 0;
+  border: 2px solid rgba(42, 36, 56, 0.12);
+}
+
+.otsu-house__door {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 48px;
+  background: #8b5a3c;
+  border-radius: 4px 4px 0 0;
+}
+
+.otsu-characters {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2.5rem;
+  padding: 0 1rem;
+}
+
+.otsu-char {
+  position: relative;
+  width: 56px;
+  height: 120px;
+  margin: 0;
+}
+
+.otsu-char__hair--mom {
+  position: absolute;
+  top: 0;
+  left: 8px;
+  width: 40px;
+  height: 28px;
+  background: #3d2914;
+  border-radius: 20px 20px 8px 8px;
+}
+
+.otsu-char__hair--child {
+  position: absolute;
+  top: 2px;
+  left: 10px;
+  width: 36px;
+  height: 22px;
+  background: #2a2438;
+  border-radius: 18px 18px 6px 6px;
+}
+
+.otsu-char__face {
+  position: absolute;
+  top: 22px;
+  left: 12px;
+  width: 32px;
+  height: 32px;
+  background: #ffd8bf;
+  border-radius: 50%;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.otsu-char__face::before,
+.otsu-char__face::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  width: 4px;
+  height: 4px;
+  background: #2a2438;
+  border-radius: 50%;
+}
+
+.otsu-char__face::before {
+  left: 8px;
+}
+
+.otsu-char__face::after {
+  right: 8px;
+}
+
+.otsu-char__body--mom {
+  position: absolute;
+  top: 52px;
+  left: 6px;
+  width: 44px;
+  height: 56px;
+  background: #e85d6a;
+  border-radius: 16px 16px 8px 8px;
+}
+
+.otsu-char__body--child {
+  position: absolute;
+  top: 54px;
+  left: 8px;
+  width: 40px;
+  height: 48px;
+  background: #4a9fd8;
+  border-radius: 14px 14px 8px 8px;
+}
+
+.otsu-char__bag {
+  position: absolute;
+  right: -8px;
+  bottom: 18px;
+  width: 22px;
+  height: 26px;
+  background: #f0b429;
+  border-radius: 4px 4px 8px 8px;
+  border: 2px solid rgba(42, 36, 56, 0.15);
+}
+
+.otsu-scene--shop {
+  background: linear-gradient(180deg, #fff9f2, #f5ebe0);
+  padding-top: 2.5rem;
+}
+
+.otsu-shop-sign {
+  position: absolute;
+  top: 0.85rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.35rem 1.1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #fff;
+  background: #c45c26;
+  border-radius: 8px;
+  box-shadow: 0 4px 0 #8f3f18;
+}
+
+.otsu-shelf {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 400px) {
+  .otsu-shelf {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.otsu-item {
+  appearance: none;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.85rem 0.5rem 0.75rem;
+  font: inherit;
+  text-align: center;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 0 rgba(42, 36, 56, 0.08),
+    0 8px 20px rgba(42, 36, 56, 0.06);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.otsu-item:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 6px 0 rgba(42, 36, 56, 0.08),
+    0 12px 24px rgba(42, 36, 56, 0.1);
+}
+
+.otsu-item:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 0 rgba(42, 36, 56, 0.08);
+}
+
+.otsu-item__icon {
+  font-size: 2.25rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+
+.otsu-item__label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2a2438;
+}
+
+.otsu-item__reading {
+  font-size: 0.6875rem;
+  color: #8a7f96;
+}
+
+.otsu-scene--success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: linear-gradient(165deg, #e8f8ef, #fff8f0);
+  min-height: 280px;
+}
+
+.otsu-success__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1d6b42;
+}
+
+.otsu-success__sub {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  color: #6b5f7a;
+}
+
+.otsu-dialogue {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem 1.1rem;
+  background: #fff;
+  border-radius: 18px;
+  border: 2px solid rgba(42, 36, 56, 0.08);
+  box-shadow: 0 8px 28px rgba(42, 36, 56, 0.08);
+  position: relative;
+}
+
+.otsu-dialogue::before {
+  content: "";
+  position: absolute;
+  top: -10px;
+  left: 2rem;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-left: 2px solid rgba(42, 36, 56, 0.08);
+  border-top: 2px solid rgba(42, 36, 56, 0.08);
+  transform: rotate(45deg);
+}
+
+.otsu-dialogue__speaker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c45c26;
+}
+
+.otsu-dialogue__ja {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.otsu-dialogue__sub {
+  margin: 0.45rem 0 0;
+  font-size: 0.8125rem;
+  color: #6b5f7a;
+  line-height: 1.45;
+}
+
+.otsu-dialogue__btn {
+  margin-top: 0.75rem;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #c45c26;
+  color: #fff;
+  cursor: pointer;
+}
+
+.otsu-controls {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.otsu-btn {
+  appearance: none;
+  border: 1px solid rgba(42, 36, 56, 0.15);
+  border-radius: 999px;
+  padding: 0.5rem 1.1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.7);
+  color: #2a2438;
+  cursor: pointer;
+}
+
+.otsu-btn:hover {
+  background: #fff;
+}

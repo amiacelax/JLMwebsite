@@ -790,6 +790,7 @@
       promo: document.getElementById("hw-teacher-promo"),
       birthdays: document.getElementById("hw-teacher-birthdays"),
       harris: document.getElementById("hw-teacher-harris"),
+      gamelab: document.getElementById("hw-teacher-gamelab"),
     };
 
     function activate(name) {
@@ -830,7 +831,8 @@
         saved === "submissions" ||
         saved === "promo" ||
         saved === "birthdays" ||
-        saved === "harris"
+        saved === "harris" ||
+        saved === "gamelab"
       ) {
         initial = saved;
       }

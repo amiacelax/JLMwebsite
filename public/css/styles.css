@@ -3199,6 +3199,50 @@ body.hw-role-teacher #hw-teacher-hub {
   word-break: break-all;
 }
 
+.hw-gamelab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hw-gamelab-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-gamelab-item--hidden {
+  opacity: 0.88;
+  border-style: dashed;
+}
+
+.hw-gamelab-item__main {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.hw-gamelab-item__title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hw-gamelab-item__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
 .hw-teacher-tabs {
   display: flex;
   flex-wrap: wrap;

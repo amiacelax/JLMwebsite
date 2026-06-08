@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="おばあちゃん Counter Toss — teacher-only prototype">
+  <title>おばあちゃん Counter Toss — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/game/obachan-counters/obachan.css">
+</head>
+<body class="obc-body">
+  <header class="obc-header">
+    <div>
+      <h1 class="obc-header__title">おばあちゃん Counter Toss</h1>
+      <p class="obc-header__sub">聞こえた数だけ Space を押して投げる！</p>
+    </div>
+    <a class="obc-header__back" href="/homework/platform.html">← Teacher hub</a>
+  </header>
+
+  <main class="obc-main">
+    <div class="obc-hud" aria-live="polite">
+      <div class="obc-hud__item">
+        <span class="obc-hud__label">Score</span>
+        <span class="obc-hud__value" id="obc-score">0</span>
+      </div>
+      <div class="obc-hud__item">
+        <span class="obc-hud__label">Streak</span>
+        <span class="obc-hud__value" id="obc-streak">0</span>
+      </div>
+      <div class="obc-hud__item">
+        <span class="obc-hud__label">Throws</span>
+        <span class="obc-hud__value" id="obc-throws">0 / —</span>
+      </div>
+    </div>
+
+    <p class="obc-toast" id="obc-toast" role="status" aria-live="assertive" hidden></p>
+
+    <div class="obc-stage-wrap">
+      <canvas id="obc-canvas" width="480" height="360" aria-label="Counter toss game"></canvas>
+      <div class="obc-callout" id="obc-callout" hidden>
+        <p class="obc-callout__speaker">孫</p>
+        <p class="obc-callout__text" id="obc-callout-text">３人！</p>
+      </div>
+    </div>
+
+    <p class="obc-help">
+      Side character yells a counter (e.g. <strong>５冊！</strong>) — press <kbd>Space</kbd> that many times to throw.
+      Max <strong>5</strong>. Style: simple pixel + Sonic-style road. Speed: Paperboy-ish.
+    </p>
+    <p class="obc-help obc-help--memo">
+      <strong>Memo — future mode:</strong> Catch items the おばあちゃん throws at you (same counter callouts, reversed role).
+    </p>
+
+    <div class="obc-controls">
+      <button type="button" class="obc-btn obc-btn--primary" id="obc-start">Start / Restart</button>
+    </div>
+  </main>
+
+  <script src="/game/obachan-counters/obachan.js" defer></script>
+</body>
+</html>

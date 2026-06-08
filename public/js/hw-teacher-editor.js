@@ -16,7 +16,10 @@
 
   const FALLBACK_ASSIGNMENTS = {
     joshs: [{ id: "joshs-naitoikenai", title: "～ないといけない", students: ["joshs"] }],
-    benm: [{ id: "2026-05-22-ben-m", title: "～がほしい vs ～に～たい・～がたい", students: ["benm"] }],
+    benm: [
+      { id: "2026-06-05-ben-m", title: "形容詞の過去・否定 ＋ ほしい · どうだった？", students: ["benm"] },
+      { id: "2026-05-22-ben-m", title: "～がほしい vs ～に～たい・～がたい", students: ["benm"] },
+    ],
     deme: [{ id: "2026-05-22-deme", title: "～がほしい vs ～に～たい・～がたい", students: ["deme"] }],
   };
 

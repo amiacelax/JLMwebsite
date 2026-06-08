@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="はじめてのおつかい — teacher-only prototype">
+  <title>はじめてのおつかい — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/game/otsukai/otsukai.css">
+</head>
+<body class="otsu-body">
+  <header class="otsu-header">
+    <div>
+      <h1 class="otsu-header__title">はじめてのおつかい</h1>
+      <p class="otsu-header__sub">My First Errand</p>
+    </div>
+    <a class="otsu-header__back" href="/homework/platform.html">← Teacher hub</a>
+  </header>
+
+  <main class="otsu-main">
+    <div class="otsu-hud" aria-live="polite">
+      <span class="otsu-hud__score">Score <strong id="otsu-score">0</strong></span>
+      <span class="otsu-hud__step">Errand <strong id="otsu-step">1</strong> / <span id="otsu-total">—</span></span>
+    </div>
+
+    <p class="otsu-toast" id="otsu-toast" role="status" hidden></p>
+
+    <section class="otsu-stage" id="otsu-stage" aria-live="polite">
+      <div class="otsu-scene otsu-scene--home" id="otsu-scene-home">
+        <div class="otsu-sky" aria-hidden="true"></div>
+        <div class="otsu-house" aria-hidden="true">
+          <div class="otsu-house__roof"></div>
+          <div class="otsu-house__body"></div>
+          <div class="otsu-house__door"></div>
+        </div>
+        <div class="otsu-characters">
+          <figure class="otsu-char otsu-char--mom" aria-hidden="true">
+            <div class="otsu-char__hair otsu-char__hair--mom"></div>
+            <div class="otsu-char__face"></div>
+            <div class="otsu-char__body otsu-char__body--mom"></div>
+          </figure>
+          <figure class="otsu-char otsu-char--child" aria-hidden="true">
+            <div class="otsu-char__hair otsu-char__hair--child"></div>
+            <div class="otsu-char__face"></div>
+            <div class="otsu-char__body otsu-char__body--child"></div>
+            <div class="otsu-char__bag"></div>
+          </figure>
+        </div>
+      </div>
+
+      <div class="otsu-scene otsu-scene--shop" id="otsu-scene-shop" hidden>
+        <div class="otsu-shop-sign" aria-hidden="true">みせ</div>
+        <div class="otsu-shelf" id="otsu-shelf" role="group" aria-label="Shop items"></div>
+      </div>
+
+      <div class="otsu-scene otsu-scene--success" id="otsu-scene-success" hidden>
+        <p class="otsu-success__title">おかいもの、できた！</p>
+        <p class="otsu-success__sub" id="otsu-success-text">Mom is happy.</p>
+      </div>
+    </section>
+
+    <div class="otsu-dialogue" id="otsu-dialogue">
+      <p class="otsu-dialogue__speaker" id="otsu-speaker">ママ</p>
+      <p class="otsu-dialogue__ja" id="otsu-line-ja">——</p>
+      <p class="otsu-dialogue__sub" id="otsu-line-sub"></p>
+      <button type="button" class="otsu-dialogue__btn" id="otsu-advance" hidden>つぎへ</button>
+    </div>
+
+    <div class="otsu-controls">
+      <button type="button" class="otsu-btn" id="otsu-restart">はじめから</button>
+    </div>
+  </main>
+
+  <script src="/game/otsukai/otsukai.js" defer></script>
+</body>
+</html>
