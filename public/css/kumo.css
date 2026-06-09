@@ -45,7 +45,309 @@ main.obc-main > *:not(.section-kumo) {
   -webkit-user-drag: none;
   will-change: translate;
   animation: kumo-scroll-right 600s linear infinite;
-  animation-delay: var(--kumo-scroll-delay, 0s);
+  animation-delay: calc(var(--kumo-scroll-delay, 0s) + var(--kumo-scroll-phase, 0s));
+}
+
+.section-kumo--v0 {
+  --kumo-scroll-phase: 0s;
+}
+
+.section-kumo--v1 {
+  --kumo-scroll-phase: -150s;
+}
+
+.section-kumo--v2 {
+  --kumo-scroll-phase: -300s;
+}
+
+.section-kumo--v3 {
+  --kumo-scroll-phase: -450s;
+}
+
+/* About Me — full sky, offset phase, distinct layout from hero */
+.section-kumo--about {
+  --kumo-scroll-phase: -420s;
+}
+
+.section-kumo--about .section-kumo__w1 {
+  top: 2%;
+  left: 6%;
+  opacity: 0.36;
+}
+
+.section-kumo--about .section-kumo__w2 {
+  top: 16%;
+  left: 28%;
+  opacity: 0.3;
+}
+
+.section-kumo--about .section-kumo__w3 {
+  top: 6%;
+  right: 4%;
+  opacity: 0.34;
+}
+
+.section-kumo--about .section-kumo__w4 {
+  top: 44%;
+  left: 4%;
+  opacity: 0.32;
+}
+
+.section-kumo--about .section-kumo__w5 {
+  top: 34%;
+  right: 8%;
+  opacity: 0.33;
+}
+
+.section-kumo--about .section-kumo__w6 {
+  bottom: 28%;
+  left: 24%;
+  opacity: 0.28;
+}
+
+.section-kumo--about .section-kumo__w7 {
+  bottom: 12%;
+  right: 2%;
+  opacity: 0.31;
+}
+
+.section-kumo--about .section-kumo__w8 {
+  bottom: 6%;
+  left: 52%;
+  opacity: 0.26;
+}
+
+/* Services — dense bottom band on first paint */
+.section-kumo--services {
+  --kumo-scroll-phase: -255s;
+}
+
+.section-kumo--services .section-kumo__w1 {
+  top: 2%;
+  opacity: 0.24;
+}
+
+.section-kumo--services .section-kumo__w2 {
+  top: 8%;
+  opacity: 0.2;
+}
+
+.section-kumo--services .section-kumo__w3 {
+  top: 5%;
+  opacity: 0.22;
+}
+
+.section-kumo--services .section-kumo__w4 {
+  top: auto;
+  bottom: 42%;
+  left: 0;
+  opacity: 0.3;
+}
+
+.section-kumo--services .section-kumo__w5 {
+  top: auto;
+  bottom: 34%;
+  right: 4%;
+  opacity: 0.28;
+}
+
+.section-kumo--services .section-kumo__w6 {
+  bottom: 26%;
+  left: 10%;
+  opacity: 0.32;
+}
+
+.section-kumo--services .section-kumo__w7 {
+  bottom: 17%;
+  right: 0;
+  opacity: 0.3;
+}
+
+.section-kumo--services .section-kumo__w8 {
+  bottom: 8%;
+  left: 48%;
+  opacity: 0.28;
+}
+
+.section-kumo--services .section-kumo__b1 {
+  bottom: 38%;
+  left: 22%;
+  width: min(18rem, 42vw);
+  transform: rotate(-8deg);
+  opacity: 0.26;
+  --kumo-scroll-delay: -95s;
+}
+
+.section-kumo--services .section-kumo__b2 {
+  bottom: 22%;
+  left: 58%;
+  width: min(20rem, 46vw);
+  transform: scaleX(-1) rotate(5deg);
+  opacity: 0.29;
+  --kumo-scroll-delay: -185s;
+}
+
+.section-kumo--services .section-kumo__b3 {
+  bottom: 12%;
+  left: 2%;
+  width: min(16rem, 38vw);
+  transform: rotate(10deg);
+  opacity: 0.27;
+  --kumo-scroll-delay: -275s;
+}
+
+.section-kumo--services .section-kumo__b4 {
+  bottom: 6%;
+  right: 8%;
+  width: min(18rem, 42vw);
+  transform: rotate(-5deg);
+  opacity: 0.25;
+  --kumo-scroll-delay: -365s;
+}
+
+/* Contact — dense left column on first paint */
+.section-kumo--contact {
+  --kumo-scroll-phase: -330s;
+}
+
+.section-kumo--contact .section-kumo__w1 {
+  top: 3%;
+  left: 0;
+  opacity: 0.34;
+}
+
+.section-kumo--contact .section-kumo__w2 {
+  top: 18%;
+  left: 4%;
+  opacity: 0.3;
+}
+
+.section-kumo--contact .section-kumo__w3 {
+  top: 7%;
+  right: 3%;
+  opacity: 0.2;
+}
+
+.section-kumo--contact .section-kumo__w4 {
+  top: 36%;
+  left: 0;
+  opacity: 0.32;
+}
+
+.section-kumo--contact .section-kumo__w5 {
+  top: 48%;
+  right: 6%;
+  opacity: 0.18;
+}
+
+.section-kumo--contact .section-kumo__w6 {
+  top: auto;
+  bottom: 38%;
+  left: 6%;
+  opacity: 0.3;
+}
+
+.section-kumo--contact .section-kumo__w7 {
+  bottom: 22%;
+  left: 0;
+  opacity: 0.28;
+}
+
+.section-kumo--contact .section-kumo__w8 {
+  bottom: 8%;
+  left: 24%;
+  opacity: 0.26;
+}
+
+.section-kumo--contact .section-kumo__c1 {
+  top: 28%;
+  left: 18%;
+  width: min(20rem, 44vw);
+  transform: rotate(7deg);
+  opacity: 0.28;
+  --kumo-scroll-delay: -105s;
+}
+
+.section-kumo--contact .section-kumo__c2 {
+  top: 48%;
+  left: 0;
+  width: min(22rem, 48vw);
+  transform: scaleX(-1) rotate(-4deg);
+  opacity: 0.3;
+  --kumo-scroll-delay: -195s;
+}
+
+.section-kumo--contact .section-kumo__c3 {
+  top: 64%;
+  left: 8%;
+  width: min(18rem, 40vw);
+  transform: rotate(-9deg);
+  opacity: 0.27;
+  --kumo-scroll-delay: -285s;
+}
+
+.section-kumo--contact .section-kumo__c4 {
+  bottom: 26%;
+  left: 28%;
+  width: min(16rem, 36vw);
+  transform: rotate(5deg);
+  opacity: 0.25;
+  --kumo-scroll-delay: -375s;
+}
+
+/* Variant density — hide a couple clouds so sections don't feel identical */
+.section-kumo--v1 .section-kumo__w2,
+.section-kumo--v1 .section-kumo__w7 {
+  display: none;
+}
+
+.section-kumo--v2 .section-kumo__w4,
+.section-kumo--v2 .section-kumo__w8 {
+  display: none;
+}
+
+.section-kumo--v3 .section-kumo__w3,
+.section-kumo--v3 .section-kumo__w6 {
+  display: none;
+}
+
+/* Variant placement tweaks */
+.section-kumo--v1 .section-kumo__w1 {
+  top: 8%;
+}
+
+.section-kumo--v1 .section-kumo__w5 {
+  top: 26%;
+}
+
+.section-kumo--v2 .section-kumo__w1 {
+  top: 1%;
+  left: 8%;
+}
+
+.section-kumo--v2 .section-kumo__w3 {
+  top: 10%;
+}
+
+.section-kumo--v2 .section-kumo__w5 {
+  top: 38%;
+}
+
+.section-kumo--v3 .section-kumo__w1 {
+  top: 5%;
+  left: 12%;
+}
+
+.section-kumo--v3 .section-kumo__w4 {
+  top: 42%;
+}
+
+.section-kumo--v3 .section-kumo__w5 {
+  top: 28%;
+}
+
+.section-kumo--v3 .section-kumo__w7 {
+  bottom: 14%;
 }
 
 @keyframes kumo-scroll-right {
@@ -68,8 +370,8 @@ main.obc-main > *:not(.section-kumo) {
 
 .section-kumo--wallpaper .section-kumo__w2 {
   top: 7%;
-  left: 36%;
-  width: min(24rem, 56vw);
+  left: 42%;
+  width: min(22rem, 52vw);
   transform: rotate(9deg);
   opacity: 0.22;
   --kumo-scroll-delay: -75s;
@@ -85,27 +387,27 @@ main.obc-main > *:not(.section-kumo) {
 }
 
 .section-kumo--wallpaper .section-kumo__w4 {
-  top: 36%;
-  left: -2%;
-  width: min(26rem, 60vw);
+  top: 42%;
+  left: -4%;
+  width: min(24rem, 56vw);
   transform: scaleX(-1) rotate(-4deg);
   opacity: 0.26;
   --kumo-scroll-delay: -225s;
 }
 
 .section-kumo--wallpaper .section-kumo__w5 {
-  top: 32%;
-  right: -1%;
-  width: min(28rem, 64vw);
+  top: 24%;
+  right: -2%;
+  width: min(26rem, 58vw);
   transform: rotate(-7deg);
   opacity: 0.3;
   --kumo-scroll-delay: -300s;
 }
 
 .section-kumo--wallpaper .section-kumo__w6 {
-  bottom: 22%;
-  left: 18%;
-  width: min(22rem, 52vw);
+  bottom: 26%;
+  left: 8%;
+  width: min(20rem, 48vw);
   transform: rotate(11deg);
   opacity: 0.2;
   --kumo-scroll-delay: -375s;
@@ -121,9 +423,9 @@ main.obc-main > *:not(.section-kumo) {
 }
 
 .section-kumo--wallpaper .section-kumo__w8 {
-  bottom: 4%;
-  left: 42%;
-  width: min(20rem, 48vw);
+  bottom: 5%;
+  left: 54%;
+  width: min(18rem, 42vw);
   transform: rotate(-10deg);
   opacity: 0.18;
   --kumo-scroll-delay: -525s;
@@ -160,8 +462,39 @@ main.obc-main > *:not(.section-kumo) {
 
   .section-kumo__img {
     opacity: 0.44;
-    width: min(30rem, 92vw) !important;
+    width: min(24rem, 74vw) !important;
   }
+
+  .section-kumo--about .section-kumo__w2 { top: 20%; left: 4%; }
+  .section-kumo--about .section-kumo__w4 { top: 48%; left: 0; }
+  .section-kumo--about .section-kumo__w5 { top: 38%; right: 0; }
+  .section-kumo--about .section-kumo__w6 { bottom: 32%; left: 10%; }
+  .section-kumo--about .section-kumo__w8 { bottom: 8%; left: 58%; }
+
+  .section-kumo--services .section-kumo__img,
+  .section-kumo--contact .section-kumo__img {
+    width: min(20rem, 66vw) !important;
+  }
+
+  .section-kumo--services .section-kumo__w4 { bottom: 44%; left: -2%; }
+  .section-kumo--services .section-kumo__w5 { bottom: 36%; right: 0; }
+  .section-kumo--services .section-kumo__w6 { bottom: 28%; left: 4%; }
+  .section-kumo--services .section-kumo__w7 { bottom: 19%; right: -2%; }
+  .section-kumo--services .section-kumo__w8 { bottom: 10%; left: 52%; }
+  .section-kumo--services .section-kumo__b1 { bottom: 40%; left: 14%; }
+  .section-kumo--services .section-kumo__b2 { bottom: 24%; left: 62%; }
+  .section-kumo--services .section-kumo__b3 { bottom: 14%; left: 0; }
+  .section-kumo--services .section-kumo__b4 { bottom: 7%; right: 4%; }
+
+  .section-kumo--contact .section-kumo__w2 { top: 20%; }
+  .section-kumo--contact .section-kumo__w4 { top: 40%; }
+  .section-kumo--contact .section-kumo__w6 { bottom: 40%; left: 2%; }
+  .section-kumo--contact .section-kumo__w7 { bottom: 24%; }
+  .section-kumo--contact .section-kumo__w8 { bottom: 10%; left: 30%; }
+  .section-kumo--contact .section-kumo__c1 { top: 30%; left: 12%; }
+  .section-kumo--contact .section-kumo__c2 { top: 52%; }
+  .section-kumo--contact .section-kumo__c3 { top: 68%; left: 4%; }
+  .section-kumo--contact .section-kumo__c4 { bottom: 28%; left: 34%; }
 
   .section-kumo--wallpaper .section-kumo__w1 { opacity: 0.4; }
   .section-kumo--wallpaper .section-kumo__w2 { opacity: 0.34; }
@@ -174,6 +507,40 @@ main.obc-main > *:not(.section-kumo) {
 
   [data-theme="light"] .section-kumo__img {
     opacity: 0.38;
+  }
+
+  .section-kumo--about .section-kumo__w1 { opacity: 0.46; }
+  .section-kumo--about .section-kumo__w2 { opacity: 0.4; }
+  .section-kumo--about .section-kumo__w3 { opacity: 0.44; }
+  .section-kumo--about .section-kumo__w4 { opacity: 0.42; }
+  .section-kumo--about .section-kumo__w5 { opacity: 0.43; }
+  .section-kumo--about .section-kumo__w6 { opacity: 0.36; }
+  .section-kumo--about .section-kumo__w7 { opacity: 0.4; }
+  .section-kumo--about .section-kumo__w8 { opacity: 0.34; }
+
+  .section-kumo--services .section-kumo__w4,
+  .section-kumo--services .section-kumo__w5,
+  .section-kumo--services .section-kumo__w6,
+  .section-kumo--services .section-kumo__w7,
+  .section-kumo--services .section-kumo__w8,
+  .section-kumo--services .section-kumo__b1,
+  .section-kumo--services .section-kumo__b2,
+  .section-kumo--services .section-kumo__b3,
+  .section-kumo--services .section-kumo__b4 {
+    opacity: 0.38;
+  }
+
+  .section-kumo--contact .section-kumo__w1,
+  .section-kumo--contact .section-kumo__w2,
+  .section-kumo--contact .section-kumo__w4,
+  .section-kumo--contact .section-kumo__w6,
+  .section-kumo--contact .section-kumo__w7,
+  .section-kumo--contact .section-kumo__w8,
+  .section-kumo--contact .section-kumo__c1,
+  .section-kumo--contact .section-kumo__c2,
+  .section-kumo--contact .section-kumo__c3,
+  .section-kumo--contact .section-kumo__c4 {
+    opacity: 0.4;
   }
 
   .service-card,

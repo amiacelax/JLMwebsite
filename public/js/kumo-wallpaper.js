@@ -23,20 +23,69 @@
     ["3", "w8"],
   ];
 
-  function createKumoWallpaper(mirror) {
+  const VARIANT_COUNT = 4;
+
+  const SERVICES_EXTRA_CLOUDS = [
+    ["2", "b1"],
+    ["4", "b2"],
+    ["1", "b3"],
+    ["3", "b4"],
+  ];
+
+  const CONTACT_EXTRA_CLOUDS = [
+    ["3", "c1"],
+    ["1", "c2"],
+    ["4", "c3"],
+    ["2", "c4"],
+  ];
+
+  function cloudsForVariant(variant) {
+    const shift = ((variant % VARIANT_COUNT) + VARIANT_COUNT) % VARIANT_COUNT;
+    return CLOUDS.map(([_, pos], i) => {
+      const [num] = CLOUDS[(i + shift * 2) % CLOUDS.length];
+      return [num, pos];
+    });
+  }
+
+  function variantForSection(section, index) {
+    if (section.id === "about") return "about";
+    if (section.id === "services") return "services";
+    if (section.id === "contact") return "contact";
+    return "v" + (((index % VARIANT_COUNT) + VARIANT_COUNT) % VARIANT_COUNT);
+  }
+
+  function shuffleForVariant(variantKey) {
+    if (variantKey === "about") return 3;
+    if (variantKey === "services") return 2;
+    if (variantKey === "contact") return 1;
+    return Number(variantKey.replace("v", "")) || 0;
+  }
+
+  function addCloud(wrap, num, pos) {
+    const img = document.createElement("img");
+    img.className = "section-kumo__img section-kumo__" + pos;
+    img.src = "/images/kumo-" + num + ".png";
+    img.alt = "";
+    img.decoding = "async";
+    wrap.appendChild(img);
+  }
+
+  function createKumoWallpaper(variantKey) {
     const wrap = document.createElement("div");
-    wrap.className = "section-kumo section-kumo--wallpaper";
-    if (mirror) wrap.classList.add("section-kumo--mirror");
+    wrap.className = "section-kumo section-kumo--wallpaper section-kumo--" + variantKey;
     wrap.setAttribute("aria-hidden", "true");
 
-    CLOUDS.forEach(([num, pos]) => {
-      const img = document.createElement("img");
-      img.className = "section-kumo__img section-kumo__" + pos;
-      img.src = "/images/kumo-" + num + ".png";
-      img.alt = "";
-      img.decoding = "async";
-      wrap.appendChild(img);
+    cloudsForVariant(shuffleForVariant(variantKey)).forEach(([num, pos]) => {
+      addCloud(wrap, num, pos);
     });
+
+    if (variantKey === "services") {
+      SERVICES_EXTRA_CLOUDS.forEach(([num, pos]) => addCloud(wrap, num, pos));
+    }
+
+    if (variantKey === "contact") {
+      CONTACT_EXTRA_CLOUDS.forEach(([num, pos]) => addCloud(wrap, num, pos));
+    }
 
     return wrap;
   }
@@ -45,8 +94,8 @@
     return Boolean(el.querySelector(":scope > .section-kumo"));
   }
 
-  function insertKumo(section, mirror) {
-    const kumo = createKumoWallpaper(mirror);
+  function insertKumo(section, variantKey) {
+    const kumo = createKumoWallpaper(variantKey);
     const heroBg = section.querySelector(":scope > .hero__bg");
     if (heroBg) {
       heroBg.insertAdjacentElement("afterend", kumo);
@@ -88,7 +137,7 @@
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     collectTargets().forEach((section, index) => {
-      insertKumo(section, index % 2 === 1);
+      insertKumo(section, variantForSection(section, index));
     });
   }
 
