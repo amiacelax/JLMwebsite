@@ -90,6 +90,25 @@
 
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
+  const contactDiscordLink = document.getElementById("contact-discord-link");
+
+  function resolveDiscordProfileUrl(raw) {
+    const value = String(raw || "").trim();
+    if (!value) return "";
+
+    const fromUrl = value.match(/discord\.com\/users\/(\d{17,20})/i);
+    if (fromUrl) return `https://discord.com/users/${fromUrl[1]}`;
+
+    if (/^\d{17,20}$/.test(value)) return `https://discord.com/users/${value}`;
+
+    return /^https?:\/\//i.test(value) ? value : "";
+  }
+
+  if (contactDiscordLink) {
+    const profileUrl = resolveDiscordProfileUrl(window.JLM_DISCORD_PROFILE_URL);
+    if (profileUrl) contactDiscordLink.href = profileUrl;
+  }
+
   /* Theme toggle */
   function getTheme() {
     return html.getAttribute("data-theme") || "dark";

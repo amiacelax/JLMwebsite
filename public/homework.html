@@ -14,7 +14,7 @@
     (function () {
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.setAttribute('data-theme', 'dark');
     })();
   </script>
 </head>
@@ -61,12 +61,30 @@
       <div class="container container--wide">
         <div class="section__header section__header--center">
           <p class="section__eyebrow">Homework Hub</p>
-          <h1 class="section__title">Homework hub</h1>
-          <p class="section__desc">Custom assignments tied to <em>your</em> lessons — fillable in the browser or printable. Built from what we actually covered, not generic worksheets.</p>
-          <p class="section__desc">Pitch accent checker coming soon.</p>
+          <h1 class="section__title">Smarter Homework = Stronger Motivation</h1>
+          <p class="section__desc">Handcrafted homework that keeps you motivated</p>
         </div>
 
-        <div class="hw-login-inlay-wrap">
+        <div class="hw-login-hero">
+          <div class="hw-login-hero__bg" aria-hidden="true">
+            <div class="hw-login-hero__video">
+              <video
+                class="hw-login-hero__media"
+                src="/media/hw-login-bg.mp4?v=2"
+                poster="/media/hw-login-bg-poster.jpg"
+                autoplay
+                muted
+                loop
+                playsinline
+                webkit-playsinline
+                preload="auto"
+                aria-hidden="true"
+                tabindex="-1"
+              ></video>
+            </div>
+            <div class="hw-login-hero__scrim"></div>
+          </div>
+          <div class="hw-login-inlay-wrap">
           <div class="hw-login-inlay" aria-label="Account access">
             <div class="hw-auth-tabs" role="tablist" aria-label="Account">
               <button type="button" class="hw-auth-tabs__btn is-active" role="tab" id="hw-auth-tab-login" aria-selected="true" aria-controls="hw-auth-panel-login" data-auth-tab="login">Log in</button>
@@ -124,80 +142,89 @@
               <button type="button" class="btn btn--ghost btn--full" id="hw-landing-logout">Log out</button>
             </div>
           </div>
+          </div>
         </div>
 
-        <!-- Paywall / marketing (visible when logged out) -->
         <div id="hw-gate" class="hw-gate">
-          <div class="hw-about subpage-notes subpage-notes--wide">
-            <h2>What is Homework Hub?</h2>
-            <p>A subscription for learners who want expert-made homework and language advice without booking a full private lesson every week. After each lesson recording, you get short practice that matches what we did — plus access to your lesson video when it’s ready.</p>
-            <ul>
-              <li>Homework drafted from your lesson (AI-assisted, <strong>always reviewed by JD</strong> before you see it)</li>
-              <li>Fill-in-the-blank style sheets in the browser — type answers like a PDF form</li>
-              <li>Account types: <strong>Current Student</strong> (private-lesson students) or <strong>Homework Only</strong></li>
-              <li>Three paid tiers — Basic, Premium, and Unlimited — plus a <strong>Student Special Tier</strong> for current students</li>
-              <li>Video responses on Unlimited; optional <strong>$15/mo</strong> add-on on other tiers</li>
-              <li>Discord ping when homework and YouTube lesson links are ready</li>
-            </ul>
-          </div>
+          <details class="hw-about-details">
+            <summary>What is Homework Hub?</summary>
+            <div class="hw-about-details__body">
+              <p>A subscription for learners who want expert-made homework and language advice without booking a full private lesson every week. After each lesson recording, you get short practice that matches what we did — plus access to your lesson video when it’s ready.</p>
+              <ul>
+                <li>Homework drafted from your lesson (AI-assisted, <strong>always reviewed by JD</strong> before you see it)</li>
+                <li>Fill-in-the-blank style sheets in the browser — type answers like a PDF form</li>
+                <li>Account types: <strong>Current Student</strong> (private-lesson students) or <strong>Homework Only</strong></li>
+                <li>Three paid tiers — Basic, Premium, and Unlimited — plus a <strong>Student Special Tier</strong> for current students</li>
+                <li>Video responses on Unlimited; optional <strong>$15/mo</strong> add-on on other tiers</li>
+                <li>Discord ping when homework and YouTube lesson links are ready</li>
+                <li>Pitch accent checker coming soon</li>
+              </ul>
+            </div>
+          </details>
 
           <h2 class="hw-plans-heading">Choose your tier</h2>
-          <div class="hw-plans">
-            <article class="hw-plan">
-              <p class="hw-plan__price"><span class="hw-plan__amount">$5</span><span class="hw-plan__period">/mo</span></p>
-              <h3 class="hw-plan__title">Basic (Tier 1)</h3>
-              <p class="hw-plan__desc">Homework Hub for <strong>Homework Only</strong> subscribers.</p>
-              <ul class="hw-plan__features">
-                <li>2 HW assignments / month</li>
-                <li>Direct feedback and advice from JD</li>
-                <li>Browser + print-friendly sheets</li>
-                <li>Video responses: +$15/mo add-on</li>
-              </ul>
-              <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub">Subscribe — $5/mo</a>
-            </article>
-            <article class="hw-plan hw-plan--featured">
-              <p class="hw-plan__badge">Popular</p>
-              <p class="hw-plan__price"><span class="hw-plan__amount">$15</span><span class="hw-plan__period">/4 weeks</span></p>
-              <h3 class="hw-plan__title">Premium (Tier 2)</h3>
-              <p class="hw-plan__desc">Steady pace — about one assignment per week.</p>
-              <ul class="hw-plan__features">
-                <li>4 HW assignments / month</li>
-                <li>Direct feedback and advice from JD</li>
-                <li>Free access to all games</li>
-                <li>Video responses: +$15 / 4 weeks add-on</li>
-              </ul>
-              <button type="button" class="btn btn--primary btn--full" data-hw-checkout="premium">Subscribe — Premium</button>
-              <button type="button" class="btn btn--ghost btn--full hw-plan__addon" data-hw-checkout="video-feedback">Add video feedback — $15 / 4 weeks</button>
-            </article>
-            <article class="hw-plan">
-              <p class="hw-plan__price"><span class="hw-plan__amount">$99</span><span class="hw-plan__period">/mo</span></p>
-              <h3 class="hw-plan__title">Unlimited (Tier 3)</h3>
-              <p class="hw-plan__desc">Video responses included on every assignment.</p>
-              <ul class="hw-plan__features">
-                <li>Personalized video responses (included)</li>
-                <li>4 HW assignments / month</li>
-                <li>Direct feedback and advice from JD</li>
-                <li>Free access to all games</li>
-              </ul>
-              <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub">Subscribe — $99/mo</a>
-            </article>
+          <div class="hw-breakdown-grid hw-breakdown-grid--landing">
+            <div class="hw-breakdown-column">
+              <article class="hw-breakdown-card">
+                <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+                <h3>Basic</h3>
+                <ul class="hw-breakdown-card__list">
+                  <li>HW assignment every other week</li>
+                  <li>General written feedback/advice</li>
+                  <li>Phone or print — works either way</li>
+                  <li>Limited learning game access</li>
+                </ul>
+              </article>
+              <div class="hw-breakdown-column__upgrade" role="note">
+                Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+              </div>
+            </div>
+            <div class="hw-breakdown-column">
+              <article class="hw-breakdown-card hw-breakdown-card--featured">
+                <p class="hw-breakdown-card__badge">Popular</p>
+                <p class="hw-breakdown-card__price">$15<span>/mo</span></p>
+                <h3>Premium</h3>
+                <ul class="hw-breakdown-card__list">
+                  <li>HW assignments <u>every week</u> (written/audio/video)</li>
+                  <li><u>Extensive</u> written feedback/advice</li>
+                  <li>Feedback within <u>24 hours</u></li>
+                  <li>Phone or print — works either way</li>
+                  <li>Full learning game access</li>
+                  <li>Private Discord access</li>
+                </ul>
+              </article>
+              <div class="hw-breakdown-column__upgrade" role="note">
+                Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+              </div>
+            </div>
+            <div class="hw-breakdown-column">
+              <article class="hw-breakdown-card hw-breakdown-card--included">
+                <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
+                <p class="hw-breakdown-card__price">$99<span>/mo</span></p>
+                <h3>Unlimited</h3>
+                <ul class="hw-breakdown-card__list">
+                  <li><u>Unlimited</u> assignments per month</li>
+                  <li>Extensive <u>video feedback</u> responses and advice</li>
+                  <li><u>24/7 messaging with JD</u> for your questions</li>
+                  <li>Phone or print — works either way</li>
+                  <li>Full access to learning games and beta versions</li>
+                  <li>Private Discord access</li>
+                </ul>
+              </article>
+            </div>
           </div>
 
-          <aside class="hw-extra">
-            <h2>Current students — Student Special Tier</h2>
-            <p>If you take private lessons with JD, ask about <strong>Student Special Tier</strong>. You can add <strong>weekly homework for $5/month</strong> on top of your lesson plan. Video responses are available as a <strong>$15/mo</strong> add-on, or included on Unlimited.</p>
+          <div class="hw-subscribe-cta-wrap">
+            <button type="button" class="btn btn--primary hw-subscribe-cta" data-hw-subscribe-open>Subscribe</button>
+          </div>
+
+          <aside class="hw-student-special" aria-label="Student Special Tier">
+            <p class="hw-student-special__eyebrow">Already take lessons with JD?</p>
+            <h2 class="hw-student-special__title">Student Special Tier — <span class="hw-student-special__price">$5/mo</span></h2>
+            <p class="hw-student-special__desc">Current private-lesson students get <strong>Premium-level Homework Hub</strong> — weekly assignments, extensive feedback, full games, and Discord access — for just <strong>$5/month</strong> on top of your lesson plan.</p>
+            <a class="btn btn--ghost btn--sm hw-student-special__link" href="/#contact" data-service="Homework Hub">Ask about Student Special Tier</a>
           </aside>
 
-          <details class="hw-pipeline">
-            <summary>How the backend will work (for subscribers)</summary>
-            <ol>
-              <li>Lesson recorded (OBS) → AI transcribes &amp; drafts short HW</li>
-              <li>Draft sent to JD on Discord for corrections</li>
-              <li>Approved HW + lesson posted to your account</li>
-              <li>Discord DM: homework ready + YouTube lesson link</li>
-            </ol>
-            <p class="hw-pipeline__note">Clips for social and full YouTube uploads use the same recording with separate rules — that automation comes in a later phase.</p>
-          </details>
         </div>
 
         <p class="subpage-back">
@@ -207,6 +234,71 @@
     </section>
   </main>
 
+  <div class="hw-breakdown-modal hw-subscribe-modal" id="hw-subscribe-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-subscribe-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-subscribe-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-subscribe-close aria-label="Close tier picker">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-subscribe-title">Choose your tier</h2>
+      <div class="hw-breakdown-grid">
+        <div class="hw-breakdown-column">
+          <article class="hw-breakdown-card">
+            <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+            <h3>Basic</h3>
+            <ul class="hw-breakdown-card__list">
+              <li>HW assignment every other week</li>
+              <li>General written feedback/advice</li>
+              <li>Phone or print — works either way</li>
+              <li>Limited learning game access</li>
+            </ul>
+          </article>
+          <div class="hw-breakdown-column__upgrade" role="note">
+            Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+          </div>
+          <a class="btn btn--primary btn--full hw-breakdown-column__cta" href="/#contact" data-service="Homework Hub" data-hw-subscribe-close>Subscribe — Basic</a>
+        </div>
+        <div class="hw-breakdown-column">
+          <article class="hw-breakdown-card hw-breakdown-card--featured">
+            <p class="hw-breakdown-card__badge">Popular</p>
+            <p class="hw-breakdown-card__price">$15<span>/mo</span></p>
+            <h3>Premium</h3>
+            <ul class="hw-breakdown-card__list">
+              <li>HW assignments <u>every week</u> (written/audio/video)</li>
+              <li><u>Extensive</u> written feedback/advice</li>
+              <li>Feedback within <u>24 hours</u></li>
+              <li>Phone or print — works either way</li>
+              <li>Full learning game access</li>
+              <li>Private Discord access</li>
+            </ul>
+          </article>
+          <div class="hw-breakdown-column__upgrade" role="note">
+            Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+          </div>
+          <button type="button" class="btn btn--primary btn--full hw-breakdown-column__cta" data-hw-checkout="premium">Subscribe — Premium</button>
+        </div>
+        <div class="hw-breakdown-column">
+          <article class="hw-breakdown-card hw-breakdown-card--included">
+            <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
+            <p class="hw-breakdown-card__price">$99<span>/mo</span></p>
+            <h3>Unlimited</h3>
+            <ul class="hw-breakdown-card__list">
+              <li><u>Unlimited</u> assignments per month</li>
+              <li>Extensive <u>video feedback</u> responses and advice</li>
+              <li><u>24/7 messaging with JD</u> for your questions</li>
+              <li>Phone or print — works either way</li>
+              <li>Full access to learning games and beta versions</li>
+              <li>Private Discord access</li>
+            </ul>
+          </article>
+          <a class="btn btn--primary btn--full hw-breakdown-column__cta" href="/#contact" data-service="Homework Hub" data-hw-subscribe-close>Subscribe — Unlimited</a>
+        </div>
+      </div>
+      <div class="hw-breakdown-modal__actions">
+        <button class="btn btn--ghost" type="button" data-hw-subscribe-close>Close</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="container site-footer__inner">
       <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
@@ -215,6 +307,8 @@
 
   <script src="/js/hw-auth.js"></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
+  <script src="/js/hw-subscribe.js" defer></script>
+  <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-login.js?v=20260613" defer></script>
 </body>

@@ -1,0 +1,175 @@
+/* Gold kumo (Japanese cloud) wallpaper — site-wide */
+
+.hero,
+.section,
+.subpage-hero,
+.site-footer,
+main.game-main,
+main.lhn-main,
+main.ttt-main,
+main.otsu-main,
+main.obc-main {
+  position: relative;
+  overflow: hidden;
+}
+
+.section > .container,
+.hero > .container,
+.subpage-hero > .container,
+.site-footer > .container,
+main.game-main > *:not(.section-kumo),
+main.lhn-main > *:not(.section-kumo),
+main.ttt-main > *:not(.section-kumo),
+main.otsu-main > *:not(.section-kumo),
+main.obc-main > *:not(.section-kumo) {
+  position: relative;
+  z-index: 1;
+}
+
+.section-kumo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.section-kumo__img {
+  position: absolute;
+  display: block;
+  width: min(32rem, 72vw);
+  height: auto;
+  opacity: 0.34;
+  filter: saturate(1.05);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.section-kumo--wallpaper .section-kumo__w1 {
+  top: 3%;
+  left: 1%;
+  width: min(30rem, 68vw);
+  transform: rotate(-6deg);
+  opacity: 0.3;
+}
+
+.section-kumo--wallpaper .section-kumo__w2 {
+  top: 7%;
+  left: 36%;
+  width: min(24rem, 56vw);
+  transform: rotate(9deg);
+  opacity: 0.22;
+}
+
+.section-kumo--wallpaper .section-kumo__w3 {
+  top: 4%;
+  right: 1%;
+  width: min(28rem, 64vw);
+  transform: rotate(4deg);
+  opacity: 0.32;
+}
+
+.section-kumo--wallpaper .section-kumo__w4 {
+  top: 36%;
+  left: -2%;
+  width: min(26rem, 60vw);
+  transform: scaleX(-1) rotate(-4deg);
+  opacity: 0.26;
+}
+
+.section-kumo--wallpaper .section-kumo__w5 {
+  top: 32%;
+  right: -1%;
+  width: min(28rem, 64vw);
+  transform: rotate(-7deg);
+  opacity: 0.3;
+}
+
+.section-kumo--wallpaper .section-kumo__w6 {
+  bottom: 22%;
+  left: 18%;
+  width: min(22rem, 52vw);
+  transform: rotate(11deg);
+  opacity: 0.2;
+}
+
+.section-kumo--wallpaper .section-kumo__w7 {
+  bottom: 8%;
+  right: 6%;
+  width: min(30rem, 68vw);
+  transform: scaleX(-1) rotate(5deg);
+  opacity: 0.28;
+}
+
+.section-kumo--wallpaper .section-kumo__w8 {
+  bottom: 4%;
+  left: 42%;
+  width: min(20rem, 48vw);
+  transform: rotate(-10deg);
+  opacity: 0.18;
+}
+
+.section-kumo--mirror {
+  transform: scaleX(-1);
+}
+
+[data-theme="light"] .section-kumo__img {
+  opacity: 0.28;
+  filter: brightness(0) saturate(100%) invert(13%) sepia(29%) saturate(1875%)
+    hue-rotate(186deg) brightness(92%) contrast(88%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-kumo {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-kumo {
+    z-index: 1;
+  }
+
+  .section > .container,
+  .hero > .container,
+  .subpage-hero > .container,
+  .site-footer > .container,
+  main.game-main > *:not(.section-kumo),
+  main.lhn-main > *:not(.section-kumo),
+  main.ttt-main > *:not(.section-kumo),
+  main.otsu-main > *:not(.section-kumo),
+  main.obc-main > *:not(.section-kumo) {
+    z-index: 2;
+  }
+
+  .section-kumo__img {
+    opacity: 0.44;
+    width: min(30rem, 92vw) !important;
+  }
+
+  .section-kumo--wallpaper .section-kumo__w1 { opacity: 0.4; }
+  .section-kumo--wallpaper .section-kumo__w2 { opacity: 0.34; }
+  .section-kumo--wallpaper .section-kumo__w3 { opacity: 0.42; }
+  .section-kumo--wallpaper .section-kumo__w4 { opacity: 0.38; }
+  .section-kumo--wallpaper .section-kumo__w5 { opacity: 0.4; }
+  .section-kumo--wallpaper .section-kumo__w6 { opacity: 0.32; }
+  .section-kumo--wallpaper .section-kumo__w7 { opacity: 0.36; }
+  .section-kumo--wallpaper .section-kumo__w8 { opacity: 0.3; }
+
+  [data-theme="light"] .section-kumo__img {
+    opacity: 0.38;
+  }
+
+  .service-card,
+  .hero__cta-card,
+  .hw-gate,
+  .hw-student-special,
+  .course-card,
+  .contact-form,
+  .contact__discord,
+  .btn,
+  .nav__pill,
+  .promo-modal__dialog {
+    background-color: color-mix(in srgb, var(--color-bg-card) 90%, transparent);
+  }
+}

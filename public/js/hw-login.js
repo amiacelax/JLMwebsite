@@ -125,4 +125,33 @@
     HwAuth.logout();
     window.location.reload();
   });
+
+  const loginVideo = document.querySelector(".hw-login-hero__media");
+  if (loginVideo) {
+    loginVideo.muted = true;
+    loginVideo.defaultMuted = true;
+    loginVideo.setAttribute("playsinline", "");
+    loginVideo.setAttribute("webkit-playsinline", "");
+
+    const tryPlay = () => {
+      const attempt = loginVideo.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch(() => {});
+      }
+    };
+
+    tryPlay();
+    loginVideo.addEventListener("loadeddata", tryPlay);
+    loginVideo.addEventListener("canplay", tryPlay);
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) tryPlay();
+        },
+        { threshold: 0.15 }
+      );
+      observer.observe(loginVideo);
+    }
+  }
 })();

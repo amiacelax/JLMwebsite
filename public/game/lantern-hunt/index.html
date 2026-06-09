@@ -8,7 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/kumo.css">
   <link rel="stylesheet" href="/game/lantern-hunt/lantern.css">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
 </head>
 <body class="lhn-body lhn-body--learning">
   <header class="lhn-header">
@@ -78,5 +86,6 @@
   </main>
 
   <script src="/game/lantern-hunt/lantern.js" defer></script>
+  <script src="/js/kumo-wallpaper.js" defer></script>
 </body>
 </html>

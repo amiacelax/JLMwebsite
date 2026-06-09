@@ -82,6 +82,17 @@
   }
 
   function handleCheckoutClick(event, productId) {
+    const checkoutUrl = buildCheckoutUrl(productId, global.HwAuth?.getSession?.());
+    if (isPlaceholderUrl(PRODUCTS[productId]?.url)) {
+      event.preventDefault();
+      if (global.CoursesComingSoon?.open) {
+        global.CoursesComingSoon.open();
+        return;
+      }
+      global.alert("Coming soon!");
+      return;
+    }
+
     const session = global.HwAuth?.getSession?.();
     if (!session) {
       event.preventDefault();
@@ -89,9 +100,12 @@
       return;
     }
 
-    const checkoutUrl = buildCheckoutUrl(productId, session);
     if (!checkoutUrl) {
       event.preventDefault();
+      if (global.CoursesComingSoon?.open) {
+        global.CoursesComingSoon.open();
+        return;
+      }
       global.alert(
         "Checkout for “" +
           (PRODUCTS[productId]?.label || productId) +

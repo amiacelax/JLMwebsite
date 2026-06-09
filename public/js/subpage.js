@@ -11,7 +11,8 @@
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
   themeToggle?.addEventListener("click", () => {
-    const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    const current = html.getAttribute("data-theme") || "dark";
+    const next = current === "dark" ? "light" : "dark";
     html.setAttribute("data-theme", next);
     localStorage.setItem("theme", next);
   });

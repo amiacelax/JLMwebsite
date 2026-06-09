@@ -15,7 +15,7 @@
     (function () {
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.setAttribute('data-theme', 'dark');
       HwAuth.requireAuth('/homework.html');
       var s = HwAuth.getSession();
       if (s && s.role === 'teacher') {
@@ -449,6 +449,7 @@
     </div>
   </footer>
 
+  <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-worksheet.js?v=20260622" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>

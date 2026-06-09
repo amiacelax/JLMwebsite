@@ -14,7 +14,7 @@
     (function () {
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-      else if (window.matchMedia('(prefers-color-scheme: light)').matches) document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.setAttribute('data-theme', 'dark');
     })();
   </script>
 </head>
@@ -139,7 +139,7 @@
             </div>
           </article>
         </div>
-        <button type="button" class="pricing-banner pricing-banner--link courses-bundle-banner" data-hw-checkout="course-bundle">
+        <button type="button" class="pricing-banner pricing-banner--link courses-bundle-banner" data-hw-checkout="course-bundle" data-coming-soon>
           <div class="pricing-banner__content">
             <span class="pricing-banner__price">$349</span>
             <div>
@@ -156,6 +156,28 @@
     </section>
   </main>
 
+  <div class="coming-soon-modal" id="coming-soon-modal" hidden>
+    <div class="coming-soon-modal__backdrop" data-coming-soon-close aria-hidden="true"></div>
+    <div class="coming-soon-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="coming-soon-title">
+      <button class="coming-soon-modal__close" type="button" data-coming-soon-close aria-label="Close">×</button>
+      <div class="coming-soon-modal__icon" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <p class="coming-soon-modal__eyebrow">Courses</p>
+      <h2 class="coming-soon-modal__title" id="coming-soon-title">Coming soon!</h2>
+      <p class="coming-soon-modal__desc">Each course is being polished before launch — Kansai-ben, job interviews, and the full bundle are on the way. Check back soon, or message JD if you want a heads-up when they drop.</p>
+      <form id="coming-soon-email-form" class="coming-soon-modal__form" novalidate>
+        <label class="visually-hidden" for="coming-soon-email">Email</label>
+        <input type="email" id="coming-soon-email" name="email" required placeholder="you@example.com" autocomplete="email">
+        <button class="btn btn--primary btn--full" type="submit" id="coming-soon-email-submit">Get notified</button>
+      </form>
+      <p id="coming-soon-email-status" class="coming-soon-modal__status" role="status" aria-live="polite"></p>
+      <div class="coming-soon-modal__actions">
+        <button class="btn btn--ghost" type="button" data-coming-soon-close>Close</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="container site-footer__inner">
       <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
@@ -163,7 +185,9 @@
   </footer>
 
   <script src="/js/hw-auth.js"></script>
+  <script src="/js/courses-coming-soon.js" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
+  <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
 </body>
 </html>

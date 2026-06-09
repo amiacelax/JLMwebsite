@@ -2,3 +2,5 @@
 videos/
 *.mov
 *.mp4
+!media/hw-login-bg.mp4
+!media/hw-login-bg-poster.jpg
