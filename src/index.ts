@@ -40,9 +40,11 @@ import {
   type TeacherIdeaImageDeletePayload,
   saveHomeworkOnlineSubmission,
   saveHomeworkPhotoSubmission,
+  saveHomeworkVideoSubmission,
   listHomeworkSubmissions,
   getHomeworkSubmission,
   loadHomeworkSubmissionPhoto,
+  loadHomeworkSubmissionVideo,
   savePromoSignup,
   listPromoSignups,
   savePromoSignupTeacher,
@@ -51,6 +53,7 @@ import {
   type PromoSignupDeletePayload,
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
+  type HomeworkVideoSubmitInput,
 } from "./homework-kv";
 import {
   createUserAccount,
@@ -893,8 +896,8 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({
         success: true,
         message: discordOk
-          ? "Photo sent! JD can see it in Discord and on the teacher hub."
-          : "Photo saved on the teacher hub.",
+          ? "Homework sent! JD can see it in Discord now."
+          : "Homework sent! JD can see it on the teacher hub.",
       });
     }
 
@@ -917,12 +920,132 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
 
     return jsonResponse({
       success: true,
-      message: "Photo sent! JD can see it in Discord.",
+      message: "Homework sent! JD can see it in Discord now.",
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("homework-photo-upload failed:", detail);
     return jsonResponse({ error: "Photo upload failed. Please try again later." }, 500);
+  }
+}
+
+async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  try {
+    const form = await request.formData();
+    const username = String(form.get("username") || "").trim();
+    const displayName = String(form.get("displayName") || username).trim();
+    const assignmentId = String(form.get("assignmentId") || "video-homework").trim();
+    const lessonName = String(form.get("lessonName") || assignmentId).trim();
+    const file = form.get("video");
+
+    if (!username) return jsonResponse({ error: "Username is required." }, 400);
+    if (!isUploadedFile(file)) return jsonResponse({ error: "Video is required." }, 400);
+    if (!file.type.startsWith("video/")) {
+      return jsonResponse({ error: "Please upload a video file." }, 400);
+    }
+    if (file.size > 24 * 1024 * 1024) {
+      return jsonResponse({ error: "Video must be under 24 MB." }, 400);
+    }
+
+    const videoMeta: HomeworkVideoSubmitInput = {
+      username,
+      displayName,
+      assignmentId,
+      lessonName,
+    };
+
+    let stored = false;
+    try {
+      await saveHomeworkVideoSubmission(videoMeta, file, env);
+      stored = true;
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 400);
+      }
+      if (code === "VIDEO_TYPE") {
+        return jsonResponse({ error: "Please upload a video file." }, 400);
+      }
+      if (code === "VIDEO_TOO_LARGE") {
+        return jsonResponse({ error: "Video must be under 24 MB." }, 400);
+      }
+      if (code !== "KV_NOT_CONFIGURED") {
+        console.error("homework-video store failed:", err);
+      }
+    }
+
+    const webhook = resolveHomeworkWebhook(env);
+    let discordOk = false;
+    if (webhook) {
+      const safeName = safeKeyPart(file.name, "homework-video.webm");
+      const channelError = await getWebhookChannelMismatch(
+        webhook.url,
+        webhook.channelId,
+        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+      );
+      if (channelError) {
+        console.warn("homework-video channel check:", channelError);
+      }
+
+      const text = [
+        webhook.usedFallback
+          ? "[Homework video — posted via site webhook until HW webhook is set]"
+          : null,
+        `Video homework — ${displayName}`,
+        "",
+        `Student: ${displayName} (${username})`,
+        `Assignment: ${lessonName}`,
+        `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+      ]
+        .filter((line) => line != null)
+        .join("\n");
+      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+      discordOk = result.ok;
+      if (!result.ok) {
+        console.error("Homework video Discord error", result.status, result.detail);
+      }
+    } else {
+      console.error("homework-video: no Discord webhook configured");
+    }
+
+    if (stored) {
+      return jsonResponse({
+        success: true,
+        message: discordOk
+          ? "Homework sent! JD can see it in Discord now."
+          : "Homework sent! JD can see it on the teacher hub.",
+      });
+    }
+
+    if (!webhook) {
+      return jsonResponse(
+        {
+          error:
+            "Video upload is not set up on the server yet. Ask JD to enable homework storage.",
+        },
+        503
+      );
+    }
+
+    if (!discordOk) {
+      return jsonResponse(
+        { error: "Could not send video. Please try again in a few minutes." },
+        502
+      );
+    }
+
+    return jsonResponse({
+      success: true,
+      message: "Homework sent! JD can see it in Discord now.",
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("homework-video-upload failed:", detail);
+    return jsonResponse({ error: "Video upload failed. Please try again later." }, 500);
   }
 }
 
@@ -1471,6 +1594,42 @@ async function handleStudentBirthdays(request: Request, env: Env): Promise<Respo
   return jsonResponse({ birthdays });
 }
 
+async function handleHomeworkSubmissionVideo(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const id = url.searchParams.get("id") || "";
+    const loaded = await loadHomeworkSubmissionVideo(teacherUsername, id, env);
+    if (!loaded) return jsonResponse({ error: "Video not found." }, 404);
+
+    return new Response(loaded.body, {
+      status: 200,
+      headers: {
+        "Content-Type": loaded.mimeType,
+        "Cache-Control": "private, max-age=3600",
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    console.error("homework-submission video failed:", err);
+    return jsonResponse({ error: "Could not load video." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissionPhoto(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1551,8 +1710,16 @@ export default {
       return handleHomeworkSubmissionPhoto(request, env);
     }
 
+    if (url.pathname === "/api/homework-submissions/video") {
+      return handleHomeworkSubmissionVideo(request, env);
+    }
+
     if (url.pathname === "/api/homework-photo-upload") {
       return handleHomeworkPhotoUpload(request, env);
+    }
+
+    if (url.pathname === "/api/homework-video-upload") {
+      return handleHomeworkVideoUpload(request, env);
     }
 
     if (url.pathname === "/api/homework-generate") {

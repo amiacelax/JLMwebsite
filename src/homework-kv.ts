@@ -857,9 +857,19 @@ const SUBMISSIONS_INDEX = "submissions-index";
 const submissionKey = (id: string) => `submission:${id}`;
 const submissionPhotoKey = (id: string) => `submission-photo:${id}`;
 const submissionPhotoMetaKey = (id: string) => `submission-photo-meta:${id}`;
+const submissionVideoKey = (id: string) => `submission-video:${id}`;
+const submissionVideoMetaKey = (id: string) => `submission-video-meta:${id}`;
 
 const SUBMISSION_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
 const SUBMISSION_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const SUBMISSION_VIDEO_MAX_BYTES = 24 * 1024 * 1024;
+const SUBMISSION_VIDEO_TYPES = new Set([
+  "video/webm",
+  "video/mp4",
+  "video/quicktime",
+  "video/x-matroska",
+  "video/ogg",
+]);
 
 export interface HomeworkAnswerRow {
   label?: string;
@@ -876,9 +886,15 @@ export interface HomeworkSubmissionPhoto {
   name?: string;
 }
 
+export interface HomeworkSubmissionVideo {
+  id: string;
+  mimeType: string;
+  name?: string;
+}
+
 export interface HomeworkSubmission {
   id: string;
-  type: "online" | "photo";
+  type: "online" | "photo" | "video";
   username: string;
   displayName: string;
   assignmentId: string;
@@ -890,6 +906,7 @@ export interface HomeworkSubmission {
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
   photo?: HomeworkSubmissionPhoto;
+  video?: HomeworkSubmissionVideo;
   submittedAt: string;
 }
 
@@ -913,6 +930,13 @@ export interface HomeworkPhotoSubmitInput {
   lessonName?: string;
 }
 
+export interface HomeworkVideoSubmitInput {
+  username?: string;
+  displayName?: string;
+  assignmentId?: string;
+  lessonName?: string;
+}
+
 function isKnownStudent(username: string | undefined): boolean {
   const user = String(username || "")
     .trim()
@@ -928,6 +952,11 @@ function makeSubmissionId(): string {
 function makeSubmissionPhotoId(): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `subimg-${Date.now()}-${rand}`;
+}
+
+function makeSubmissionVideoId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `subvid-${Date.now()}-${rand}`;
 }
 
 async function readSubmissionsIndex(kv: KVNamespace): Promise<string[]> {
@@ -959,6 +988,30 @@ async function storeSubmissionPhoto(
   await kv.put(submissionPhotoKey(id), buffer);
   await kv.put(
     submissionPhotoMetaKey(id),
+    JSON.stringify({
+      mimeType,
+      name: String(file.name || "").trim() || undefined,
+      size: buffer.byteLength,
+      createdAt: new Date().toISOString(),
+    })
+  );
+
+  return { id, mimeType, name: String(file.name || "").trim() || undefined };
+}
+
+async function storeSubmissionVideo(
+  kv: KVNamespace,
+  file: File
+): Promise<HomeworkSubmissionVideo> {
+  const mimeType = String(file.type || "").trim().toLowerCase();
+  if (!SUBMISSION_VIDEO_TYPES.has(mimeType)) throw new Error("VIDEO_TYPE");
+  if (file.size > SUBMISSION_VIDEO_MAX_BYTES) throw new Error("VIDEO_TOO_LARGE");
+
+  const id = makeSubmissionVideoId();
+  const buffer = await file.arrayBuffer();
+  await kv.put(submissionVideoKey(id), buffer);
+  await kv.put(
+    submissionVideoMetaKey(id),
     JSON.stringify({
       mimeType,
       name: String(file.name || "").trim() || undefined,
@@ -1047,6 +1100,35 @@ export async function saveHomeworkPhotoSubmission(
   return { id: submission.id, photoId: photo.id };
 }
 
+export async function saveHomeworkVideoSubmission(
+  data: HomeworkVideoSubmitInput,
+  file: File,
+  env: KvEnv
+): Promise<{ id: string; videoId: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+
+  const video = await storeSubmissionVideo(kv, file);
+  const submission: HomeworkSubmission = {
+    id: makeSubmissionId(),
+    type: "video",
+    username,
+    displayName: String(data.displayName || username).trim() || username,
+    assignmentId: String(data.assignmentId || "video-homework").trim() || "video-homework",
+    lessonName: String(data.lessonName || "").trim() || undefined,
+    video,
+    submittedAt: new Date().toISOString(),
+  };
+
+  await writeSubmission(kv, submission);
+  return { id: submission.id, videoId: video.id };
+}
+
 export async function listHomeworkSubmissions(
   env: KvEnv,
   opts?: { student?: string }
@@ -1108,6 +1190,30 @@ export async function loadHomeworkSubmissionPhoto(
 
   const metaRaw = await kv.get(submissionPhotoMetaKey(id));
   const body = await kv.get(submissionPhotoKey(id), "arrayBuffer");
+  if (!metaRaw || !body) return null;
+
+  try {
+    const meta = JSON.parse(metaRaw) as { mimeType?: string };
+    return { body, mimeType: meta.mimeType || "application/octet-stream" };
+  } catch {
+    return null;
+  }
+}
+
+export async function loadHomeworkSubmissionVideo(
+  teacherUsername: string | undefined,
+  videoId: string,
+  env: KvEnv
+): Promise<{ body: ArrayBuffer; mimeType: string } | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(videoId || "").trim();
+  if (!id) return null;
+
+  const metaRaw = await kv.get(submissionVideoMetaKey(id));
+  const body = await kv.get(submissionVideoKey(id), "arrayBuffer");
   if (!metaRaw || !body) return null;
 
   try {

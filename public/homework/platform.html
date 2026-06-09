@@ -375,13 +375,74 @@
 
             <section class="hw-platform-card hw-grid-upload">
               <h2 class="hw-platform-card__title">Upload your work</h2>
-              <p class="hw-platform-card__desc">Finished on printed paper? Take a picture and send it to JD in Discord for feedback.</p>
-              <form class="hw-photo-upload" id="hw-photo-upload-form">
-                <label class="hw-photo-upload__label" for="hw-photo-file">Homework photo</label>
-                <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment" required>
-                <button type="submit" class="btn btn--ghost btn--full">Upload homework photo</button>
-                <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
-              </form>
+              <p class="hw-platform-card__desc">Submit printed homework as a photo, or record a video when an assignment asks for it.</p>
+
+              <div class="hw-work-upload">
+                <div class="hw-work-upload__block">
+                  <h3 class="hw-work-upload__heading">Photo</h3>
+                  <p class="hw-work-upload__hint">For printed homework — upload a file or snap a picture.</p>
+                  <form class="hw-photo-upload" id="hw-photo-upload-form">
+                    <label class="hw-photo-upload__label" for="hw-photo-file">Upload a photo</label>
+                    <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment">
+
+                    <p class="hw-photo-upload__or" aria-hidden="true">or</p>
+
+                    <div class="hw-photo-capture" id="hw-photo-capture">
+                      <p class="hw-photo-upload__label" id="hw-photo-capture-label">Take a photo with your camera</p>
+                      <div class="hw-photo-capture__idle" id="hw-photo-capture-idle">
+                        <button type="button" class="btn btn--ghost btn--full" id="hw-photo-open-camera">Open camera</button>
+                      </div>
+                      <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
+                        <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
+                        <div class="hw-photo-capture__actions">
+                          <button type="button" class="btn btn--primary btn--full" id="hw-photo-capture-btn">Capture photo</button>
+                          <button type="button" class="btn btn--ghost btn--full" id="hw-photo-cancel-camera">Cancel</button>
+                        </div>
+                      </div>
+                      <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
+                        <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
+                        <button type="button" class="btn btn--ghost btn--full" id="hw-photo-retake">Retake</button>
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn btn--ghost btn--full" id="hw-photo-upload-submit">Upload photo</button>
+                    <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+                  </form>
+                </div>
+
+                <div class="hw-work-upload__block">
+                  <h3 class="hw-work-upload__heading">Video</h3>
+                  <p class="hw-work-upload__hint">For speaking or video assignments — upload a clip or record one here (up to 3 min, 24 MB).</p>
+                  <form class="hw-video-upload" id="hw-video-upload-form">
+                    <label class="hw-photo-upload__label" for="hw-video-file">Upload a video</label>
+                    <input class="hw-photo-upload__input" type="file" id="hw-video-file" name="video" accept="video/*">
+
+                    <p class="hw-photo-upload__or" aria-hidden="true">or</p>
+
+                    <div class="hw-video-capture" id="hw-video-capture">
+                      <p class="hw-photo-upload__label" id="hw-video-capture-label">Record a video</p>
+                      <div class="hw-video-capture__idle" id="hw-video-capture-idle">
+                        <button type="button" class="btn btn--ghost btn--full" id="hw-video-start-recording">Start recording</button>
+                      </div>
+                      <div class="hw-video-capture__live" id="hw-video-capture-live" hidden>
+                        <video class="hw-photo-capture__video" id="hw-video-capture-preview-live" playsinline muted autoplay aria-labelledby="hw-video-capture-label"></video>
+                        <p class="hw-video-capture__timer" id="hw-video-recording-timer" aria-live="polite">0:00</p>
+                        <div class="hw-photo-capture__actions">
+                          <button type="button" class="btn btn--primary btn--full" id="hw-video-stop-recording">Stop recording</button>
+                          <button type="button" class="btn btn--ghost btn--full" id="hw-video-cancel-recording">Cancel</button>
+                        </div>
+                      </div>
+                      <div class="hw-video-capture__preview" id="hw-video-capture-preview" hidden>
+                        <video class="hw-video-capture__playback" id="hw-video-capture-playback" playsinline controls aria-label="Recorded video preview"></video>
+                        <button type="button" class="btn btn--ghost btn--full" id="hw-video-retake">Record again</button>
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn btn--ghost btn--full" id="hw-video-upload-submit">Upload video</button>
+                    <p class="hw-photo-upload__status" id="hw-video-upload-status" role="status" aria-live="polite"></p>
+                  </form>
+                </div>
+              </div>
             </section>
 
             <article class="course-card course-card--locked hw-addon-card hw-grid-video" id="hw-video-response-card" tabindex="0">
@@ -455,10 +516,10 @@
   <script src="/js/hw-teacher-editor.js?v=20260622" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
-  <script src="/js/hw-teacher-submissions.js?v=20260609" defer></script>
+  <script src="/js/hw-teacher-submissions.js?v=20260605c" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260614" defer></script>
+  <script src="/js/hw-platform.js?v=20260605c" defer></script>
 </body>
 </html>

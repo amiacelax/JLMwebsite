@@ -27,7 +27,6 @@
   const scheduleWeekPrev = document.getElementById("lesson-scheduler-week-prev");
   const scheduleWeekNext = document.getElementById("lesson-scheduler-week-next");
   const scheduleWeekRange = document.getElementById("lesson-scheduler-week-range");
-  const scheduleShareLink = document.getElementById("lesson-scheduler-share-link");
   const messageField = document.getElementById("message");
   let lastFocusedBeforeModal = null;
   let selectedScheduleDateIndex = 0;
@@ -455,11 +454,6 @@
     setScheduleShareUrl(true);
     if (scheduleTimezone) {
       scheduleTimezone.textContent = "Timezone: " + timezoneLabel();
-    }
-    if (scheduleShareLink) {
-      const shareUrl = window.location.origin + SCHEDULE_SHARE_HASH;
-      scheduleShareLink.href = shareUrl;
-      scheduleShareLink.textContent = shareUrl;
     }
     updateScheduleWeekNav();
     renderScheduleDates();

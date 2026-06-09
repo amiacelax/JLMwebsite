@@ -40,6 +40,15 @@
     );
   }
 
+  function videoUrl(session, videoId) {
+    return (
+      "/api/homework-submissions/video?id=" +
+      encodeURIComponent(videoId) +
+      "&teacherUsername=" +
+      encodeURIComponent(session.username)
+    );
+  }
+
   function submissionSearchText(entry) {
     return [
       entry.displayName,
@@ -152,6 +161,14 @@
       img.loading = "lazy";
       link.appendChild(img);
       detail.appendChild(link);
+    } else if (entry.type === "video" && entry.video?.id) {
+      const video = document.createElement("video");
+      video.className = "hw-submission-detail__video";
+      video.src = videoUrl(session, entry.video.id);
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      detail.appendChild(video);
     } else {
       detail.append(
         renderAnswerSection("Section 1", entry.section1),
@@ -210,7 +227,7 @@
       const p = document.createElement("p");
       p.textContent = submissionsCache.length
         ? "No submissions match. Try another student or keyword."
-        : "No submissions stored yet. They appear here when students submit homework online or upload a photo.";
+        : "No submissions stored yet. They appear here when students submit homework online, upload a photo, or upload a video.";
       li.appendChild(p);
       list.appendChild(li);
       return;
@@ -234,7 +251,8 @@
       const type = document.createElement("span");
       type.className =
         "hw-submissions-item__type hw-submissions-item__type--" + (entry.type || "online");
-      type.textContent = entry.type === "photo" ? "Photo" : "Online";
+      type.textContent =
+        entry.type === "photo" ? "Photo" : entry.type === "video" ? "Video" : "Online";
 
       top.append(date, type);
 
@@ -247,7 +265,9 @@
       sub.textContent =
         entry.type === "photo"
           ? "Printed homework · " + entry.assignmentId
-          : answerCount(entry) + " answer" + (answerCount(entry) === 1 ? "" : "s") + " · " + entry.assignmentId;
+          : entry.type === "video"
+            ? "Video homework · " + entry.assignmentId
+            : answerCount(entry) + " answer" + (answerCount(entry) === 1 ? "" : "s") + " · " + entry.assignmentId;
 
       main.append(top, title, sub);
 

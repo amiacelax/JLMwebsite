@@ -625,6 +625,15 @@
     const form = document.getElementById("hw-photo-upload-form");
     const fileInput = document.getElementById("hw-photo-file");
     const status = document.getElementById("hw-photo-upload-status");
+    const startBtn = document.getElementById("hw-photo-open-camera");
+    const captureBtn = document.getElementById("hw-photo-capture-btn");
+    const cancelBtn = document.getElementById("hw-photo-cancel-camera");
+    const retakeBtn = document.getElementById("hw-photo-retake");
+    const idlePanel = document.getElementById("hw-photo-capture-idle");
+    const livePanel = document.getElementById("hw-photo-capture-live");
+    const previewPanel = document.getElementById("hw-photo-capture-preview");
+    const videoEl = document.getElementById("hw-photo-capture-video");
+    const previewImg = document.getElementById("hw-photo-capture-img");
     if (!form) return;
     form.dataset.assignmentId = activeAssignment?.id || "printed-homework";
     const photoMeta = activeAssignment
@@ -634,16 +643,179 @@
     if (form.dataset.bound === "true") return;
     form.dataset.bound = "true";
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const file = fileInput?.files?.[0];
-      if (!file) {
-        if (status) status.textContent = "Choose or take a photo first.";
+    let cameraStream = null;
+    let capturedBlob = null;
+    let previewObjectUrl = "";
+
+    function setStatus(message) {
+      if (status) status.textContent = message || "";
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+      }
+      if (videoEl) videoEl.srcObject = null;
+    }
+
+    function clearCapture() {
+      capturedBlob = null;
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = "";
+      }
+      if (previewImg) previewImg.removeAttribute("src");
+    }
+
+    function showCaptureIdle() {
+      stopCamera();
+      idlePanel?.removeAttribute("hidden");
+      livePanel?.setAttribute("hidden", "");
+      previewPanel?.setAttribute("hidden", "");
+    }
+
+    function showCaptureLive() {
+      idlePanel?.setAttribute("hidden", "");
+      livePanel?.removeAttribute("hidden");
+      previewPanel?.setAttribute("hidden", "");
+    }
+
+    function showCapturePreview() {
+      stopCamera();
+      idlePanel?.setAttribute("hidden", "");
+      livePanel?.setAttribute("hidden", "");
+      previewPanel?.removeAttribute("hidden");
+    }
+
+    function resetCaptureUi() {
+      clearCapture();
+      showCaptureIdle();
+    }
+
+    function resolvePhotoFile() {
+      const picked = fileInput?.files?.[0];
+      if (picked) return picked;
+      if (!capturedBlob) return null;
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      return new File([capturedBlob], `homework-camera-${stamp}.jpg`, {
+        type: capturedBlob.type || "image/jpeg",
+      });
+    }
+
+    async function openCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setStatus("Camera capture is not supported in this browser.");
         return;
       }
-      const submitBtn = form.querySelector('button[type="submit"]');
+      clearCapture();
+      if (fileInput) fileInput.value = "";
+      setStatus("");
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
+        if (videoEl) {
+          videoEl.srcObject = cameraStream;
+          await videoEl.play();
+        }
+        showCaptureLive();
+      } catch (err) {
+        stopCamera();
+        showCaptureIdle();
+        const name = err && err.name;
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setStatus("Camera access was blocked. Allow camera permission and try again.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("No camera found on this device.");
+        } else {
+          setStatus("Could not start camera. Try uploading a file instead.");
+        }
+      }
+    }
+
+    function capturePhoto() {
+      if (!videoEl || !cameraStream) return;
+      const width = videoEl.videoWidth;
+      const height = videoEl.videoHeight;
+      if (!width || !height) {
+        setStatus("Camera is still loading — wait a moment and try again.");
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setStatus("Could not capture photo. Try uploading a file instead.");
+        return;
+      }
+      ctx.drawImage(videoEl, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            setStatus("Could not capture photo. Try again.");
+            return;
+          }
+          clearCapture();
+          capturedBlob = blob;
+          previewObjectUrl = URL.createObjectURL(blob);
+          if (previewImg) previewImg.src = previewObjectUrl;
+          showCapturePreview();
+          setStatus("Photo captured — tap Upload homework photo when ready.");
+        },
+        "image/jpeg",
+        0.9
+      );
+    }
+
+    startBtn?.addEventListener("click", () => {
+      openCamera();
+    });
+
+    captureBtn?.addEventListener("click", () => {
+      capturePhoto();
+    });
+
+    cancelBtn?.addEventListener("click", () => {
+      resetCaptureUi();
+      setStatus("");
+    });
+
+    retakeBtn?.addEventListener("click", () => {
+      clearCapture();
+      openCamera();
+    });
+
+    fileInput?.addEventListener("change", () => {
+      if (fileInput.files?.[0]) {
+        resetCaptureUi();
+        setStatus("");
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopCamera();
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = resolvePhotoFile();
+      if (!file) {
+        setStatus("Choose a file or open the camera to capture a photo first.");
+        return;
+      }
+      const submitBtn = document.getElementById("hw-photo-upload-submit");
       if (submitBtn) submitBtn.disabled = true;
-      if (status) status.textContent = "Uploading photo…";
+      stopCamera();
+      setStatus("Uploading photo…");
 
       const body = new FormData();
       body.append("photo", file);
@@ -659,12 +831,326 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Upload failed.");
-        if (status) status.textContent = data.message || "Photo uploaded.";
+        setStatus(data.message || "Photo uploaded.");
         showToast("Photo uploaded");
         form.reset();
+        resetCaptureUi();
       } catch (err) {
-        if (status) status.textContent = (err && err.message) || "Upload failed.";
+        setStatus((err && err.message) || "Upload failed.");
         showToast("Photo upload failed");
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
+
+  function bindVideoUpload(activeAssignment) {
+    const form = document.getElementById("hw-video-upload-form");
+    const fileInput = document.getElementById("hw-video-file");
+    const status = document.getElementById("hw-video-upload-status");
+    const startBtn = document.getElementById("hw-video-start-recording");
+    const stopBtn = document.getElementById("hw-video-stop-recording");
+    const cancelBtn = document.getElementById("hw-video-cancel-recording");
+    const retakeBtn = document.getElementById("hw-video-retake");
+    const idlePanel = document.getElementById("hw-video-capture-idle");
+    const livePanel = document.getElementById("hw-video-capture-live");
+    const previewPanel = document.getElementById("hw-video-capture-preview");
+    const liveVideo = document.getElementById("hw-video-capture-preview-live");
+    const playbackVideo = document.getElementById("hw-video-capture-playback");
+    const timerEl = document.getElementById("hw-video-recording-timer");
+    if (!form) return;
+
+    const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
+    const MAX_VIDEO_MS = 3 * 60 * 1000;
+
+    form.dataset.assignmentId = activeAssignment?.id || "video-homework";
+    const videoMeta = activeAssignment
+      ? studentViewMeta(null, activeAssignment)
+      : { lessonName: "Video homework" };
+    form.dataset.lessonName = videoMeta.lessonName;
+    if (form.dataset.bound === "true") return;
+    form.dataset.bound = "true";
+
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordedBlob = null;
+    let recordedMimeType = "video/webm";
+    let previewObjectUrl = "";
+    let recordStartedAt = 0;
+    let recordTimerId = null;
+
+    function setStatus(message) {
+      if (status) status.textContent = message || "";
+    }
+
+    function pickRecorderMimeType() {
+      if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
+      const types = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+        "video/mp4",
+      ];
+      return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+    }
+
+    function extensionForMime(mimeType) {
+      if (mimeType.includes("mp4")) return "mp4";
+      return "webm";
+    }
+
+    function formatTimer(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const min = Math.floor(totalSec / 60);
+      const sec = totalSec % 60;
+      return min + ":" + String(sec).padStart(2, "0");
+    }
+
+    function stopTimer() {
+      if (recordTimerId) {
+        clearInterval(recordTimerId);
+        recordTimerId = null;
+      }
+    }
+
+    function stopStream() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+      if (liveVideo) liveVideo.srcObject = null;
+    }
+
+    function clearRecording() {
+      recordedBlob = null;
+      recordedChunks = [];
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = "";
+      }
+      if (playbackVideo) {
+        playbackVideo.removeAttribute("src");
+        playbackVideo.load();
+      }
+    }
+
+    function showIdle() {
+      stopStream();
+      stopTimer();
+      mediaRecorder = null;
+      idlePanel?.removeAttribute("hidden");
+      livePanel?.setAttribute("hidden", "");
+      previewPanel?.setAttribute("hidden", "");
+      if (timerEl) timerEl.textContent = "0:00";
+    }
+
+    function showLive() {
+      idlePanel?.setAttribute("hidden", "");
+      livePanel?.removeAttribute("hidden");
+      previewPanel?.setAttribute("hidden", "");
+    }
+
+    function showPreview() {
+      stopStream();
+      stopTimer();
+      idlePanel?.setAttribute("hidden", "");
+      livePanel?.setAttribute("hidden", "");
+      previewPanel?.removeAttribute("hidden");
+    }
+
+    function resetUi() {
+      clearRecording();
+      showIdle();
+    }
+
+    function resolveVideoFile() {
+      const picked = fileInput?.files?.[0];
+      if (picked) return picked;
+      if (!recordedBlob) return null;
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const ext = extensionForMime(recordedMimeType);
+      return new File([recordedBlob], `homework-video-${stamp}.${ext}`, {
+        type: recordedMimeType,
+      });
+    }
+
+    function finishRecording() {
+      if (!recordedChunks.length) {
+        setStatus("No video was recorded. Try again.");
+        resetUi();
+        return;
+      }
+      recordedBlob = new Blob(recordedChunks, { type: recordedMimeType });
+      if (recordedBlob.size > MAX_VIDEO_BYTES) {
+        setStatus("Recording is too large (max 24 MB). Record a shorter clip.");
+        resetUi();
+        return;
+      }
+      previewObjectUrl = URL.createObjectURL(recordedBlob);
+      if (playbackVideo) playbackVideo.src = previewObjectUrl;
+      showPreview();
+      setStatus("Video ready — tap Upload video when you're happy with it.");
+    }
+
+    async function startRecording() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setStatus("Video recording is not supported in this browser.");
+        return;
+      }
+      if (typeof MediaRecorder === "undefined") {
+        setStatus("Video recording is not supported in this browser. Upload a file instead.");
+        return;
+      }
+
+      clearRecording();
+      if (fileInput) fileInput.value = "";
+      setStatus("");
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "user" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: true,
+        });
+        if (liveVideo) {
+          liveVideo.srcObject = mediaStream;
+          await liveVideo.play();
+        }
+
+        recordedMimeType = pickRecorderMimeType() || "video/webm";
+        try {
+          mediaRecorder = new MediaRecorder(mediaStream, {
+            mimeType: recordedMimeType,
+            videoBitsPerSecond: 900000,
+            audioBitsPerSecond: 96000,
+          });
+        } catch {
+          try {
+            mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
+          } catch {
+            mediaRecorder = new MediaRecorder(mediaStream);
+          }
+        }
+        recordedMimeType = mediaRecorder.mimeType || recordedMimeType;
+        recordedChunks = [];
+        mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+        });
+        mediaRecorder.addEventListener("stop", finishRecording);
+        mediaRecorder.start(1000);
+        recordStartedAt = Date.now();
+        if (timerEl) timerEl.textContent = "0:00";
+        recordTimerId = setInterval(() => {
+          const elapsed = Date.now() - recordStartedAt;
+          if (timerEl) timerEl.textContent = formatTimer(elapsed);
+          if (elapsed >= MAX_VIDEO_MS) stopRecording();
+        }, 500);
+        showLive();
+      } catch (err) {
+        resetUi();
+        const name = err && err.name;
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setStatus("Camera/mic access was blocked. Allow permission and try again.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("No camera or microphone found on this device.");
+        } else {
+          setStatus("Could not start recording. Try uploading a video file instead.");
+        }
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      } else {
+        finishRecording();
+      }
+      stopStream();
+      stopTimer();
+    }
+
+    startBtn?.addEventListener("click", () => {
+      startRecording();
+    });
+
+    stopBtn?.addEventListener("click", () => {
+      stopRecording();
+    });
+
+    cancelBtn?.addEventListener("click", () => {
+      recordedChunks = [];
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.onstop = null;
+        try {
+          mediaRecorder.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+      resetUi();
+      setStatus("");
+    });
+
+    retakeBtn?.addEventListener("click", () => {
+      clearRecording();
+      startRecording();
+    });
+
+    fileInput?.addEventListener("change", () => {
+      if (fileInput.files?.[0]) {
+        resetUi();
+        setStatus("");
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && mediaRecorder && mediaRecorder.state === "recording") {
+        stopRecording();
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = resolveVideoFile();
+      if (!file) {
+        setStatus("Choose a video file or record one first.");
+        return;
+      }
+      if (file.size > MAX_VIDEO_BYTES) {
+        setStatus("Video must be under 24 MB.");
+        return;
+      }
+
+      const submitBtn = document.getElementById("hw-video-upload-submit");
+      if (submitBtn) submitBtn.disabled = true;
+      stopRecording();
+      setStatus("Uploading video…");
+
+      const body = new FormData();
+      body.append("video", file);
+      body.append("username", session.username || "");
+      body.append("displayName", session.displayName || session.username || "");
+      body.append("assignmentId", form.dataset.assignmentId || "video-homework");
+      body.append("lessonName", form.dataset.lessonName || "Video homework");
+
+      try {
+        const res = await fetch("/api/homework-video-upload", {
+          method: "POST",
+          body,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Upload failed.");
+        setStatus(data.message || "Video uploaded.");
+        showToast("Video uploaded");
+        form.reset();
+        resetUi();
+      } catch (err) {
+        setStatus((err && err.message) || "Upload failed.");
+        showToast("Video upload failed");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
@@ -965,6 +1451,7 @@
     setLessonLinks(active, catalog);
     renderVideoResponseCard(catalog);
     bindPhotoUpload(active);
+    bindVideoUpload(active);
 
     if (!active || !mount) {
       if (heading) heading.textContent = "Current homework";

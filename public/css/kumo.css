@@ -43,6 +43,18 @@ main.obc-main > *:not(.section-kumo) {
   filter: saturate(1.05);
   user-select: none;
   -webkit-user-drag: none;
+  will-change: translate;
+  animation: kumo-scroll-right 120s linear infinite;
+  animation-delay: var(--kumo-scroll-delay, 0s);
+}
+
+@keyframes kumo-scroll-right {
+  from {
+    translate: -120vw 0;
+  }
+  to {
+    translate: 120vw 0;
+  }
 }
 
 .section-kumo--wallpaper .section-kumo__w1 {
@@ -51,6 +63,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(30rem, 68vw);
   transform: rotate(-6deg);
   opacity: 0.3;
+  --kumo-scroll-delay: 0s;
 }
 
 .section-kumo--wallpaper .section-kumo__w2 {
@@ -59,6 +72,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(24rem, 56vw);
   transform: rotate(9deg);
   opacity: 0.22;
+  --kumo-scroll-delay: -15s;
 }
 
 .section-kumo--wallpaper .section-kumo__w3 {
@@ -67,6 +81,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(28rem, 64vw);
   transform: rotate(4deg);
   opacity: 0.32;
+  --kumo-scroll-delay: -30s;
 }
 
 .section-kumo--wallpaper .section-kumo__w4 {
@@ -75,6 +90,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(26rem, 60vw);
   transform: scaleX(-1) rotate(-4deg);
   opacity: 0.26;
+  --kumo-scroll-delay: -45s;
 }
 
 .section-kumo--wallpaper .section-kumo__w5 {
@@ -83,6 +99,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(28rem, 64vw);
   transform: rotate(-7deg);
   opacity: 0.3;
+  --kumo-scroll-delay: -60s;
 }
 
 .section-kumo--wallpaper .section-kumo__w6 {
@@ -91,6 +108,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(22rem, 52vw);
   transform: rotate(11deg);
   opacity: 0.2;
+  --kumo-scroll-delay: -75s;
 }
 
 .section-kumo--wallpaper .section-kumo__w7 {
@@ -99,6 +117,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(30rem, 68vw);
   transform: scaleX(-1) rotate(5deg);
   opacity: 0.28;
+  --kumo-scroll-delay: -90s;
 }
 
 .section-kumo--wallpaper .section-kumo__w8 {
@@ -107,10 +126,7 @@ main.obc-main > *:not(.section-kumo) {
   width: min(20rem, 48vw);
   transform: rotate(-10deg);
   opacity: 0.18;
-}
-
-.section-kumo--mirror {
-  transform: scaleX(-1);
+  --kumo-scroll-delay: -105s;
 }
 
 [data-theme="light"] .section-kumo__img {
