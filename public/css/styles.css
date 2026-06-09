@@ -1368,6 +1368,24 @@ body.is-modal-open {
   margin: 0 0 0.75rem;
 }
 
+.lesson-scheduler-modal__share {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.lesson-scheduler-modal__share-link {
+  color: var(--color-brand-blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lesson-scheduler-modal__share-link:hover {
+  text-decoration: underline;
+}
+
 .lesson-scheduler-modal__timezone {
   margin: 0 0 1.25rem;
   font-size: 0.85rem;
@@ -1384,6 +1402,50 @@ body.is-modal-open {
   color: var(--color-text);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.lesson-scheduler-week-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.lesson-scheduler-week-nav__label-wrap .lesson-scheduler-modal__label {
+  margin-bottom: 0.15rem;
+}
+
+.lesson-scheduler-week-nav__range {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.lesson-scheduler-week-nav__btn {
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition), opacity var(--transition);
+}
+
+.lesson-scheduler-week-nav__btn:hover:not(:disabled) {
+  border-color: var(--color-brand-blue);
+  color: var(--color-brand-blue);
+  background: var(--color-brand-blue-soft);
+}
+
+.lesson-scheduler-week-nav__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .lesson-scheduler-date-grid,
@@ -1743,22 +1805,30 @@ body.is-modal-open {
 .contact-schedule-link__button {
   display: inline-flex;
   align-items: center;
-  padding: 0.38rem 0.9rem;
-  border: 1px solid var(--color-border);
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border: none;
   border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--color-brand-blue);
+  color: #0b1a2e;
   font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  box-shadow: 0 2px 14px var(--color-brand-blue-soft);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .contact-schedule-link__button:hover {
-  border-color: var(--color-green);
-  color: var(--color-green);
-  background: var(--color-green-soft);
+  background: color-mix(in srgb, var(--color-brand-blue) 88%, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--color-brand-blue) 45%, transparent);
+}
+
+.contact-schedule-link__button:focus-visible {
+  outline: 2px solid var(--color-brand-blue);
+  outline-offset: 2px;
 }
 
 /* Footer */

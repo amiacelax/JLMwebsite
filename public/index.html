@@ -291,7 +291,7 @@
               <label for="message">Message</label>
               <textarea id="message" name="message" rows="5" required placeholder="Tell me about your Japanese goals…"></textarea>
               <p class="contact-schedule-link">
-                <button class="contact-schedule-link__button" type="button" data-schedule-open>Check availability</button>
+                <a class="contact-schedule-link__button" href="#availability" data-schedule-open>Check availability</a>
               </p>
             </div>
             <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
@@ -402,11 +402,19 @@
       <button class="lesson-scheduler-modal__close" type="button" data-schedule-close aria-label="Close availability">×</button>
       <p class="section__eyebrow">Availability</p>
       <h2 class="lesson-scheduler-modal__title" id="lesson-scheduler-title">Pick a time</h2>
-      <p class="lesson-scheduler-modal__desc">Choose from the next 7 days, then pick an available time slot. Availability is based on Japan time and converted below into your local timezone. Japanese Sundays are unavailable; Thursdays vary.</p>
+      <p class="lesson-scheduler-modal__desc">Browse by week, pick a date, then choose a time slot. Times are based on Japan time and converted to your local timezone below. Japanese Sundays are unavailable; Thursdays vary.</p>
+      <p class="lesson-scheduler-modal__share">Share with students: <a class="lesson-scheduler-modal__share-link" id="lesson-scheduler-share-link" href="#availability"></a></p>
       <p class="lesson-scheduler-modal__timezone" id="lesson-scheduler-timezone" aria-live="polite"></p>
 
       <div class="lesson-scheduler-modal__group">
-        <h3 class="lesson-scheduler-modal__label">Date</h3>
+        <div class="lesson-scheduler-week-nav">
+          <button class="lesson-scheduler-week-nav__btn" type="button" id="lesson-scheduler-week-prev" aria-label="Previous week" disabled>←</button>
+          <div class="lesson-scheduler-week-nav__label-wrap">
+            <h3 class="lesson-scheduler-modal__label">Date</h3>
+            <p class="lesson-scheduler-week-nav__range" id="lesson-scheduler-week-range" aria-live="polite"></p>
+          </div>
+          <button class="lesson-scheduler-week-nav__btn" type="button" id="lesson-scheduler-week-next" aria-label="Next week">→</button>
+        </div>
         <div class="lesson-scheduler-date-grid" id="lesson-scheduler-dates" aria-label="Available dates"></div>
       </div>
 

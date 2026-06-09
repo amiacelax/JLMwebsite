@@ -24,10 +24,17 @@
   const scheduleTimezone = document.getElementById("lesson-scheduler-timezone");
   const scheduleSelected = document.getElementById("lesson-scheduler-selected");
   const scheduleUseBtn = document.getElementById("lesson-scheduler-use");
+  const scheduleWeekPrev = document.getElementById("lesson-scheduler-week-prev");
+  const scheduleWeekNext = document.getElementById("lesson-scheduler-week-next");
+  const scheduleWeekRange = document.getElementById("lesson-scheduler-week-range");
+  const scheduleShareLink = document.getElementById("lesson-scheduler-share-link");
   const messageField = document.getElementById("message");
   let lastFocusedBeforeModal = null;
   let selectedScheduleDateIndex = 0;
   let selectedScheduleSlot = null;
+  let scheduleWeekOffset = 0;
+  const SCHEDULE_SHARE_HASH = "#availability";
+  const SCHEDULE_SHARE_PATH = "/availability";
 
   const JAPAN_TIMEZONE = "Asia/Tokyo";
   const JAPAN_WEEKLY_AVAILABILITY = {
@@ -217,10 +224,29 @@
     return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
   }
 
-  function buildScheduleDays() {
+  function scheduleShareRequested() {
+    const path = window.location.pathname.replace(/\/$/, "") || "/";
+    return window.location.hash === SCHEDULE_SHARE_HASH || path === SCHEDULE_SHARE_PATH;
+  }
+
+  function setScheduleShareUrl(active) {
+    const base = window.location.pathname + window.location.search;
+    if (active) {
+      if (window.location.hash !== SCHEDULE_SHARE_HASH) {
+        history.pushState({ schedule: true }, "", SCHEDULE_SHARE_HASH);
+      }
+      return;
+    }
+    if (window.location.hash === SCHEDULE_SHARE_HASH) {
+      history.replaceState(null, "", base || "/");
+    }
+  }
+
+  function buildScheduleDays(weekOffset) {
     const todayJapan = japanDateParts(new Date());
+    const weekStart = (weekOffset || 0) * 7;
     return Array.from({ length: 7 }, (_, offset) => {
-      const parts = addJapanDays(todayJapan, offset);
+      const parts = addJapanDays(todayJapan, weekStart + offset);
       const weekday = japanWeekday(parts);
       const availability = JAPAN_WEEKLY_AVAILABILITY[weekday] || JAPAN_WEEKLY_AVAILABILITY[0];
       const slots = availability.slots.map(([start, end]) => {
@@ -291,7 +317,9 @@
       return;
     }
 
-    const day = buildScheduleDays()[selectedScheduleDateIndex] || buildScheduleDays()[0];
+    const day =
+      buildScheduleDays(scheduleWeekOffset)[selectedScheduleDateIndex] ||
+      buildScheduleDays(scheduleWeekOffset)[0];
 
     if (!day.slots.length) {
       const btn = document.createElement("button");
@@ -339,10 +367,34 @@
     updateScheduleSelected();
   }
 
+  function updateScheduleWeekNav() {
+    const todayJapan = japanDateParts(new Date());
+    const weekStart = scheduleWeekOffset * 7;
+    const startParts = addJapanDays(todayJapan, weekStart);
+    const endParts = addJapanDays(todayJapan, weekStart + 6);
+    if (scheduleWeekRange) {
+      scheduleWeekRange.textContent =
+        formatScheduleDate(dateFromJapanTime(startParts, 12, 0)) +
+        " – " +
+        formatScheduleDate(dateFromJapanTime(endParts, 12, 0));
+    }
+    if (scheduleWeekPrev) scheduleWeekPrev.disabled = scheduleWeekOffset <= 0;
+  }
+
+  function changeScheduleWeek(delta) {
+    const next = scheduleWeekOffset + delta;
+    if (next < 0) return;
+    scheduleWeekOffset = next;
+    selectedScheduleDateIndex = 0;
+    selectedScheduleSlot = null;
+    updateScheduleWeekNav();
+    renderScheduleDates();
+  }
+
   function renderScheduleDates() {
     if (!scheduleDateOptions) return;
     scheduleDateOptions.innerHTML = "";
-    const scheduleDays = buildScheduleDays();
+    const scheduleDays = buildScheduleDays(scheduleWeekOffset);
     scheduleDays.forEach((day, index) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -364,10 +416,11 @@
     renderScheduleSlots();
   }
 
-  function closeSchedule() {
+  function closeSchedule(fromHashChange) {
     if (!scheduleModal || scheduleModal.hidden) return;
     scheduleModal.hidden = true;
     updateModalBodyState();
+    if (!fromHashChange) setScheduleShareUrl(false);
     if (lastFocusedBeforeModal instanceof HTMLElement) {
       lastFocusedBeforeModal.focus();
     }
@@ -380,9 +433,16 @@
     selectedScheduleSlot = null;
     scheduleModal.hidden = false;
     updateModalBodyState();
+    setScheduleShareUrl(true);
     if (scheduleTimezone) {
       scheduleTimezone.textContent = "Timezone: " + timezoneLabel();
     }
+    if (scheduleShareLink) {
+      const shareUrl = window.location.origin + SCHEDULE_SHARE_HASH;
+      scheduleShareLink.href = shareUrl;
+      scheduleShareLink.textContent = shareUrl;
+    }
+    updateScheduleWeekNav();
     renderScheduleDates();
     scheduleModal.querySelector("[data-schedule-close]")?.focus();
   }
@@ -467,19 +527,35 @@
   });
 
   scheduleOpenBtns.forEach((btn) => {
-    btn.addEventListener("click", openSchedule);
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeMenu();
+      openSchedule();
+    });
   });
 
   scheduleCloseBtns.forEach((btn) => {
-    btn.addEventListener("click", closeSchedule);
+    btn.addEventListener("click", () => closeSchedule(false));
   });
 
   scheduleUseBtn?.addEventListener("click", useSelectedSchedule);
+
+  scheduleWeekPrev?.addEventListener("click", () => changeScheduleWeek(-1));
+  scheduleWeekNext?.addEventListener("click", () => changeScheduleWeek(1));
+
+  window.addEventListener("hashchange", () => {
+    if (scheduleShareRequested()) {
+      if (scheduleModal?.hidden) openSchedule();
+      return;
+    }
+    if (scheduleModal && !scheduleModal.hidden) closeSchedule(true);
+  });
 
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (e) => {
       const id = link.getAttribute("href");
       if (!id || id === "#" || id === "#top") return;
+      if (id === SCHEDULE_SHARE_HASH) return;
       const target = document.querySelector(id);
       if (!target) return;
       e.preventDefault();
@@ -489,6 +565,13 @@
       history.replaceState(null, "", id);
     });
   });
+
+  if (scheduleShareRequested()) {
+    if (window.location.pathname.replace(/\/$/, "") === SCHEDULE_SHARE_PATH) {
+      history.replaceState({ schedule: true }, "", SCHEDULE_SHARE_HASH);
+    }
+    openSchedule();
+  }
 
   document.querySelector(".nav__brand")?.addEventListener("click", (e) => {
     e.preventDefault();
