@@ -87,6 +87,8 @@
   const TA_FINDS_PER_ROUND = 5;
   const TA_INTER_ROUND_SEC = 5;
   const MIN_DIST = 92;
+  /** Lantern sits this many px above the fingertip on touch (thumb-length). */
+  const MOBILE_LANTERN_OFFSET_PX = 72;
 
   /** words on board, seconds added on correct, seconds removed on wrong */
   const TA_ROUND_RULES = [
@@ -640,12 +642,21 @@
       glow.style.setProperty("--lhn-y", ly + "%");
       glow.style.setProperty("--lhn-radius", r);
     }
+    if (stage) {
+      stage.style.setProperty("--lhn-x", lx + "%");
+      stage.style.setProperty("--lhn-y", ly + "%");
+    }
   }
 
-  function pointerToPercent(clientX, clientY) {
+  function pointerToPercent(clientX, clientY, options) {
+    options = options || {};
     const rect = stage.getBoundingClientRect();
+    let yPx = clientY - rect.top;
+    if (options.aboveFinger) {
+      yPx -= MOBILE_LANTERN_OFFSET_PX;
+    }
     const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
+    const y = (yPx / rect.height) * 100;
     return {
       x: Math.max(6, Math.min(94, x)),
       y: Math.max(10, Math.min(90, y)),
@@ -1034,14 +1045,26 @@
 
   function onPointerMove(e) {
     if (!stage) return;
-    const p = pointerToPercent(e.clientX, e.clientY);
-    setLantern(p.x, p.y);
+    const isTouch = e.pointerType === "touch";
+    const finger = pointerToPercent(e.clientX, e.clientY);
+    const lantern = isTouch
+      ? pointerToPercent(e.clientX, e.clientY, { aboveFinger: true })
+      : finger;
+    setLantern(lantern.x, lantern.y);
+    if (isTouch) {
+      stage.classList.add("lhn-stage--touch");
+      stage.style.setProperty("--lhn-fx", finger.x + "%");
+      stage.style.setProperty("--lhn-fy", finger.y + "%");
+    } else {
+      stage.classList.remove("lhn-stage--touch");
+    }
     pointerInside = true;
     stage.classList.add("lhn-stage--lit");
   }
 
   function onPointerLeave() {
     pointerInside = false;
+    stage?.classList.remove("lhn-stage--touch");
     if (!playing) stage.classList.remove("lhn-stage--lit");
   }
 
