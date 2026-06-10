@@ -122,6 +122,70 @@ body.lhn-body {
   cursor: not-allowed;
 }
 
+.lhn-settings {
+  margin: 0.65rem 0 0.5rem;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: #1a2236;
+  border: 1px solid #2a3550;
+}
+
+.lhn-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lhn-toggle__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lhn-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #3d4a6b;
+  transition: background 0.2s ease;
+}
+
+.lhn-toggle__track::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: #c5cee0;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.lhn-toggle__input:checked + .lhn-toggle__track {
+  background: rgba(255, 183, 77, 0.55);
+}
+
+.lhn-toggle__input:checked + .lhn-toggle__track::after {
+  transform: translateX(1.15rem);
+  background: #ffcc80;
+}
+
+.lhn-toggle__input:focus-visible + .lhn-toggle__track {
+  outline: 2px solid rgba(255, 183, 77, 0.65);
+  outline-offset: 2px;
+}
+
+.lhn-toggle__label {
+  font-size: 0.875rem;
+  color: #c5cee0;
+}
+
 .lhn-hud {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

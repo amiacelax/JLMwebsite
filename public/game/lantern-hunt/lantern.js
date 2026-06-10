@@ -123,11 +123,13 @@
   const findPanel = document.getElementById("lhn-find-panel");
   const headerSubEl = document.getElementById("lhn-header-sub");
   const modeButtons = [...document.querySelectorAll("[data-lhn-mode]")];
+  const hintsToggle = document.getElementById("lhn-hints-toggle");
   const clearEl = document.getElementById("lhn-clear");
   const fireworksEl = document.getElementById("lhn-fireworks");
   const clearScoreEl = document.getElementById("lhn-clear-score");
 
   let gameMode = "learning";
+  let hintsEnabled = false;
   let gameClear = false;
   let taRound = 1;
   let taFindsInRound = 0;
@@ -155,6 +157,43 @@
 
   function isTimeAttack() {
     return gameMode === "timeAttack";
+  }
+
+  const HINTS_STORAGE_KEY = "lhn-hints-enabled";
+
+  function loadHintsPreference() {
+    try {
+      const stored = localStorage.getItem(HINTS_STORAGE_KEY);
+      if (stored === "1") hintsEnabled = true;
+      else if (stored === "0") hintsEnabled = false;
+    } catch (_) {}
+    if (hintsToggle) hintsToggle.checked = hintsEnabled;
+  }
+
+  function saveHintsPreference() {
+    try {
+      localStorage.setItem(HINTS_STORAGE_KEY, hintsEnabled ? "1" : "0");
+    } catch (_) {}
+  }
+
+  function wordHintText(item) {
+    return item.reading + " — " + item.en;
+  }
+
+  function applyWordHint(el, item) {
+    if (hintsEnabled) el.title = wordHintText(item);
+    else el.removeAttribute("title");
+  }
+
+  function updateWordHints() {
+    roundChoices.forEach((entry) => applyWordHint(entry.el, entry.item));
+  }
+
+  function setHintsEnabled(enabled) {
+    hintsEnabled = Boolean(enabled);
+    if (hintsToggle) hintsToggle.checked = hintsEnabled;
+    updateWordHints();
+    saveHintsPreference();
   }
 
   function shuffled(list) {
@@ -598,7 +637,7 @@
       btn.style.left = p.x + "%";
       btn.style.top = p.y + "%";
       btn.dataset.word = p.item.word;
-      btn.title = p.item.reading + " — " + p.item.en;
+      applyWordHint(btn, p.item);
       btn.setAttribute("aria-label", p.item.word);
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -943,6 +982,9 @@
     beginRound(freshRun);
   });
 
+  hintsToggle?.addEventListener("change", () => setHintsEnabled(hintsToggle.checked));
+
   updateModeUi();
+  loadHintsPreference();
   resetGame();
 })();
