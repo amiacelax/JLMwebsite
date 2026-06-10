@@ -122,6 +122,13 @@ body.lhn-body {
   cursor: not-allowed;
 }
 
+.lhn-mode__note {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  color: #6b7a99;
+  line-height: 1.4;
+}
+
 .lhn-settings {
   margin: 0.65rem 0 0.5rem;
   padding: 0.8rem;

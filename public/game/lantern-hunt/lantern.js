@@ -3,8 +3,8 @@
  * Learning: no timer, 3 lives.
  * Time attack: 14 rounds, 5 finds per round, scaling board size and timer bonuses.
  */
-(function () {
-  const WORDS = [
+(function (global) {
+  const DEMO_WORDS = [
     { word: "来る", reading: "くる", en: "to come" },
     { word: "来ます", reading: "きます", en: "to come (polite)" },
     { word: "行く", reading: "いく", en: "to go" },
@@ -123,12 +123,14 @@
   const findPanel = document.getElementById("lhn-find-panel");
   const headerSubEl = document.getElementById("lhn-header-sub");
   const modeButtons = [...document.querySelectorAll("[data-lhn-mode]")];
+  const studySetButtons = [...document.querySelectorAll("[data-lhn-studyset]")];
   const hintsToggle = document.getElementById("lhn-hints-toggle");
   const clearEl = document.getElementById("lhn-clear");
   const fireworksEl = document.getElementById("lhn-fireworks");
   const clearScoreEl = document.getElementById("lhn-clear-score");
 
   let gameMode = "learning";
+  let studySet = "demo";
   let hintsEnabled = false;
   let gameClear = false;
   let taRound = 1;
@@ -160,6 +162,94 @@
   }
 
   const HINTS_STORAGE_KEY = "lhn-hints-enabled";
+  const STUDY_SET_STORAGE_KEY = "lhn-study-set";
+
+  /** Keep only the reading used in this word (never show kunyomi/on'yomi pairs). */
+  function sanitizeReading(reading) {
+    return String(reading || "")
+      .split(/\s*[／/]\s*/)[0]
+      .trim();
+  }
+
+  function sanitizeWordList(words) {
+    return (words || []).map((item) => ({
+      word: item.word,
+      reading: sanitizeReading(item.reading),
+      en: item.en,
+    }));
+  }
+
+  function studySetLabel() {
+    return studySet === "n5" ? "JLPT N5 words" : "Demo words";
+  }
+
+  function getWords() {
+    if (studySet === "n5") {
+      const list = global.LanternWordsN5;
+      if (!Array.isArray(list) || !list.length) return sanitizeWordList(DEMO_WORDS);
+      return sanitizeWordList(list);
+    }
+    return sanitizeWordList(DEMO_WORDS);
+  }
+
+  function warnIfN5Missing() {
+    const toast = document.getElementById("lhn-toast");
+    if (!toast) return;
+    const missing = studySet === "n5" && (!global.LanternWordsN5 || !global.LanternWordsN5.length);
+    if (missing) {
+      toast.hidden = false;
+      toast.className = "lhn-toast lhn-toast--info";
+      toast.textContent = "JLPT N5 list did not load — hard refresh the page.";
+    } else if (toast.textContent.includes("JLPT N5 list")) {
+      toast.hidden = true;
+      toast.textContent = "";
+    }
+  }
+
+  function loadStudySetPreference() {
+    try {
+      const stored = localStorage.getItem(STUDY_SET_STORAGE_KEY);
+      if (stored === "demo" || stored === "n5") studySet = stored;
+    } catch (_) {}
+  }
+
+  function saveStudySetPreference() {
+    try {
+      localStorage.setItem(STUDY_SET_STORAGE_KEY, studySet);
+    } catch (_) {}
+  }
+
+  function updateFindLabel() {
+    const label = document.querySelector(".lhn-find__label");
+    if (label) label.textContent = "Find this word";
+  }
+
+  function settingsLocked() {
+    return (playing || Boolean(advanceTimer) || taBetweenRounds) && !gameOver;
+  }
+
+  function updateStudySetUi() {
+    studySetButtons.forEach((btn) => {
+      const pressed = btn.getAttribute("data-lhn-studyset") === studySet;
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+      btn.disabled = settingsLocked();
+    });
+    const note = document.getElementById("lhn-studyset-note");
+    if (note) {
+      note.textContent = studySetLabel() + " · " + getWords().length + " entries";
+    }
+    warnIfN5Missing();
+    updateFindLabel();
+  }
+
+  function setStudySet(set) {
+    if (set !== "demo" && set !== "n5") return;
+    if (set === studySet) return;
+    studySet = set;
+    saveStudySetPreference();
+    updateStudySetUi();
+    resetGame();
+  }
 
   function loadHintsPreference() {
     try {
@@ -177,7 +267,7 @@
   }
 
   function wordHintText(item) {
-    return item.reading + " — " + item.en;
+    return sanitizeReading(item.reading) + " — " + item.en;
   }
 
   function applyWordHint(el, item) {
@@ -220,18 +310,19 @@
   }
 
   function pickRoundSet(choiceCount) {
+    const words = getWords();
     const count = Math.max(2, choiceCount || CHOICES);
-    let targetPool = WORDS.filter((item) => !usedAnswersSession.has(wordKey(item)));
+    let targetPool = words.filter((item) => !usedAnswersSession.has(wordKey(item)));
     if (targetPool.length === 0) {
       usedAnswersSession.clear();
-      targetPool = [...WORDS];
+      targetPool = [...words];
     }
     const target = targetPool[Math.floor(Math.random() * targetPool.length)];
     usedAnswersSession.add(wordKey(target));
 
     const choices = [];
     const usedEn = new Set();
-    const pool = shuffled(WORDS);
+    const pool = shuffled(words);
 
     for (const item of pool) {
       if (choices.length >= count) break;
@@ -240,7 +331,7 @@
       choices.push(item);
     }
     while (choices.length < count) {
-      const item = pool.find((w) => !choices.includes(w)) || WORDS[choices.length % WORDS.length];
+      const item = pool.find((w) => !choices.includes(w)) || words[choices.length % words.length];
       if (!choices.includes(item)) choices.push(item);
       else break;
     }
@@ -296,12 +387,14 @@
     modeButtons.forEach((btn) => {
       const pressed = btn.getAttribute("data-lhn-mode") === gameMode;
       btn.setAttribute("aria-pressed", pressed ? "true" : "false");
-      btn.disabled = (playing || Boolean(advanceTimer) || taBetweenRounds) && !gameOver;
+      btn.disabled = settingsLocked();
     });
+    updateStudySetUi();
     if (headerSubEl) {
+      const setName = studySetLabel();
       headerSubEl.textContent = isLearning()
-        ? "Shine your lantern · find the word · 3 lives"
-        : "Time attack · 14 rounds · 5 finds per round";
+        ? setName + " · find the word · 3 lives"
+        : setName + " · time attack · 14 rounds";
     }
     updateTaHeaderSub();
     renderHearts(-1);
@@ -972,6 +1065,10 @@
     btn.addEventListener("click", () => setMode(btn.getAttribute("data-lhn-mode") || "learning"));
   });
 
+  studySetButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setStudySet(btn.getAttribute("data-lhn-studyset") || "demo"));
+  });
+
   actionBtn?.addEventListener("click", () => {
     if (playing || advanceTimer) return;
     if (gameOver) resetGame();
@@ -984,7 +1081,8 @@
 
   hintsToggle?.addEventListener("change", () => setHintsEnabled(hintsToggle.checked));
 
+  loadStudySetPreference();
   updateModeUi();
   loadHintsPreference();
   resetGame();
-})();
+})(typeof window !== "undefined" ? window : globalThis);

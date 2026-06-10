@@ -71,6 +71,15 @@
       <p class="lhn-find__sub" id="lhn-find-sub">Press New game when you are ready</p>
     </div>
 
+    <section class="lhn-mode" aria-labelledby="lhn-studyset-heading">
+      <h2 class="lhn-mode__heading" id="lhn-studyset-heading">Study set</h2>
+      <div class="lhn-mode__options" role="group" aria-label="Study set">
+        <button type="button" class="lhn-mode__btn" data-lhn-studyset="demo" aria-pressed="true">Demo</button>
+        <button type="button" class="lhn-mode__btn" data-lhn-studyset="n5" aria-pressed="false">JLPT N5 words</button>
+      </div>
+      <p class="lhn-mode__note" id="lhn-studyset-note">Demo words · 70 entries</p>
+    </section>
+
     <section class="lhn-mode" aria-labelledby="lhn-mode-heading">
       <h2 class="lhn-mode__heading" id="lhn-mode-heading">Mode</h2>
       <div class="lhn-mode__options" role="group" aria-label="Game mode">
@@ -94,7 +103,8 @@
 
   </main>
 
-  <script src="/game/lantern-hunt/lantern.js?v=20260633" defer></script>
+  <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260636" defer></script>
+  <script src="/game/lantern-hunt/lantern.js?v=20260636" defer></script>
   <script src="/js/kumo-wallpaper.js" defer></script>
 </body>
 </html>
