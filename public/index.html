@@ -8,7 +8,7 @@
   <title>Japanese Language Mentor — Learn Japanese with JD</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+JP:wght@400;600&family=Yomogi&family=Klee+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Serif+JP:wght@400;600&family=Yomogi&family=Klee+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
   <script>
     (function () {
@@ -26,7 +26,10 @@
     <nav class="nav container" aria-label="Main navigation">
       <a class="nav__brand" href="#top">
         <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
-        <span class="nav__brand-text">Japanese Language Mentor</span>
+        <span class="nav__brand-text brand-wordmark">
+          <span class="brand-wordmark__line brand-wordmark__line--primary">Japanese</span>
+          <span class="brand-wordmark__line brand-wordmark__line--secondary">Language Mentor</span>
+        </span>
       </a>
 
       <div class="nav__toolbar">
@@ -156,14 +159,27 @@
             </div>
           </div>
         </div>
-        <div class="meet__body">
-          <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free consultation">Free Consultation</a>
-          <p class="about__lead">
-            Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan. I help students go beyond grammar drills to build real, practical Japanese.
-          </p>
-          <p>
-            Whether you're preparing for the JLPT, planning a move to Japan, or just want to hold a natural conversation, I tailor every lesson to your goals — drawing on years of hands-on experience in both languages and cultures.
-          </p>
+        <div class="meet__body-wrap">
+          <div class="meet__body">
+            <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free consultation">Free Consultation</a>
+            <p class="about__lead">
+              Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan. I help students go beyond grammar drills to build real, practical Japanese.
+            </p>
+            <p>
+              Whether you're preparing for the JLPT, planning a move to Japan, or just want to hold a natural conversation, I tailor every lesson to your goals — drawing on years of hands-on experience in both languages and cultures.
+            </p>
+          </div>
+          <aside class="meet__logo" aria-hidden="true">
+            <img
+              class="meet__logo-img"
+              src="/images/jlm-logo-white.png"
+              alt=""
+              width="400"
+              height="500"
+              loading="lazy"
+              decoding="async"
+            >
+          </aside>
         </div>
       </div>
     </section>
@@ -276,6 +292,17 @@
               </span>
               <span class="contact__discord-note">Opens my Discord profile — add me or send a message</span>
             </a>
+            <aside class="contact__logo" aria-hidden="true">
+              <img
+                class="contact__logo-img"
+                src="/images/jlm-logo-white.png"
+                alt=""
+                width="400"
+                height="500"
+                loading="lazy"
+                decoding="async"
+              >
+            </aside>
           </div>
           <form class="contact-form" id="contact-form" novalidate>
             <div class="form-group">
@@ -300,14 +327,16 @@
             <div class="form-group">
               <label for="message">Message</label>
               <textarea id="message" name="message" rows="5" required placeholder="Tell me about your Japanese goals…"></textarea>
+            </div>
+            <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
+            <div class="contact-form__actions">
+              <button class="btn btn--primary contact-form__submit" type="submit" id="submit-btn">
+                Send Message
+              </button>
               <p class="contact-schedule-link">
                 <a class="contact-schedule-link__button" href="#availability" data-schedule-open>Check availability</a>
               </p>
             </div>
-            <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
-            <button class="btn btn--primary btn--full" type="submit" id="submit-btn">
-              Send Message
-            </button>
           </form>
         </div>
       </div>
@@ -456,7 +485,10 @@
     <div class="container site-footer__inner">
       <div class="site-footer__brand">
         <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
-        <span>Japanese Language Mentor</span>
+        <span class="brand-wordmark">
+          <span class="brand-wordmark__line brand-wordmark__line--primary">Japanese</span>
+          <span class="brand-wordmark__line brand-wordmark__line--secondary">Language Mentor</span>
+        </span>
       </div>
       <p class="site-footer__tagline">It takes <em>more than a textbook</em> to learn Japanese.</p>
       <nav class="site-footer__links" aria-label="Footer navigation">
