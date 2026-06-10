@@ -4001,6 +4001,29 @@ button.course-card__status:disabled {
   color: color-mix(in srgb, #fff 52%, transparent);
 }
 
+.hw-builder__block--drag-over {
+  outline: 2px solid color-mix(in srgb, #fff 70%, transparent);
+  outline-offset: 2px;
+}
+
+.hw-builder__block--dragging {
+  opacity: 0.55;
+}
+
+.hw-builder__block-drag {
+  flex-shrink: 0;
+  padding: 0 0.2rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: color-mix(in srgb, #fff 75%, transparent);
+  cursor: grab;
+  user-select: none;
+}
+
+.hw-builder__block-drag:active {
+  cursor: grabbing;
+}
+
 .hw-builder__block-head {
   display: flex;
   flex-wrap: wrap;
@@ -4138,22 +4161,35 @@ button.course-card__status:disabled {
 /* Student worksheet — video & audio blocks */
 .hw-audio-player {
   margin: 0 0 1rem;
-  padding: 0.75rem;
+  padding: 0.5rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  max-width: 100%;
 }
 
 .hw-audio-player__el {
+  display: block;
   width: 100%;
-  margin-bottom: 0.35rem;
+  max-width: 28rem;
+  height: 2.25rem;
+  margin: 0;
 }
 
 .hw-audio-player__hint,
 .hw-audio-player__missing {
-  margin: 0;
+  margin: 0.35rem 0 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-open-topic {
+  margin: 0 0 0.5rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text);
 }
 
 .hw-video-prompt {
@@ -4166,22 +4202,87 @@ button.course-card__status:disabled {
 }
 
 .hw-video-prompt__text {
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.65rem;
   font-family: "Noto Sans JP", Inter, sans-serif;
   font-size: 1rem;
   line-height: 1.5;
 }
 
-.hw-video-prompt__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+.hw-video-prompt__recorder {
+  margin-top: 0.25rem;
 }
 
 .hw-video-prompt__note {
-  font-size: 0.75rem;
+  margin: 0;
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-video-inline__idle,
+.hw-video-inline__live,
+.hw-video-inline__preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hw-video-inline__live-video {
+  width: 100%;
+  max-width: 16rem;
+  max-height: 9rem;
+  border-radius: var(--radius-sm);
+  background: #000;
+  object-fit: cover;
+}
+
+.hw-video-inline__playback {
+  width: 100%;
+  max-width: 20rem;
+  max-height: 11rem;
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+
+.hw-video-inline__timer {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-video-inline__preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.hw-video-inline__status {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-builder__field-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: color-mix(in srgb, #fff 88%, transparent);
+}
+
+.hw-builder__field--compact {
+  margin-bottom: 0;
+}
+
+.hw-builder__field--compact-area {
+  min-height: 2.5rem;
+  margin-bottom: 0;
 }
 
 .hw-worksheet--authoring .hw-author-text {
@@ -5786,6 +5887,37 @@ button.hw-tense-pill {
   width: 100%;
   min-width: 12em;
   box-sizing: border-box;
+}
+
+.hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__line {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__content {
+  display: block;
+  width: 100%;
+}
+
+.hw-blank-wrap--listen {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+}
+
+input.hw-blank.hw-blank--listen {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
 }
 
 .hw-blank-wrap--multiline {

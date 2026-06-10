@@ -92,7 +92,44 @@
 
   function listenItem(n) {
     const id = "listen-" + n;
-    return { id, parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
+    return { id, parts: [{ type: "blank", name: id, wide: true }] };
+  }
+
+  function getGrammarBlankPart(block) {
+    return (block.parts || []).find((p) => p.type === "blank") || null;
+  }
+
+  function grammarTextAroundBlank(block) {
+    const parts = block.parts || [];
+    const blankIdx = parts.findIndex((p) => p.type === "blank");
+    if (blankIdx < 0) return { before: "", after: "" };
+    const before = parts
+      .slice(0, blankIdx)
+      .filter((p) => p.type === "text")
+      .map((p) => p.value || "")
+      .join("");
+    const after = parts
+      .slice(blankIdx + 1)
+      .filter((p) => p.type === "text")
+      .map((p) => p.value || "")
+      .join("");
+    return { before, after };
+  }
+
+  function syncGrammarParts(block, before, after) {
+    let blank =
+      getGrammarBlankPart(block) ||
+      {
+        type: "blank",
+        name: block.id,
+        wide: true,
+        answer: "",
+        hint: { dictionary: "", conjugation: "plain" },
+      };
+    block.parts = [];
+    if (String(before || "").trim()) block.parts.push({ type: "text", value: before.trim() });
+    block.parts.push(blank);
+    if (String(after || "").trim()) block.parts.push({ type: "text", value: after.trim() });
   }
 
   function createBlock(type, index) {
@@ -110,13 +147,13 @@
           ],
         };
       case "open-line":
-        return { id, type, parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
+        return { id, type, topic: "", parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
       case "video-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
       case "audio-clip":
         return { id, type, audioUrl: "" };
       case "listen-line":
-        return { id, type, parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
+        return { id, type, parts: [{ type: "blank", name: id, wide: true }] };
       default:
         return null;
     }
@@ -159,6 +196,7 @@
           blocks.push({
             id: item.id || uid("blk"),
             type: "open-line",
+            topic: item.topic || "",
             parts: JSON.parse(JSON.stringify(item.parts || [])),
           });
         } else if (sec.mode === "audio-listening") {
@@ -281,6 +319,8 @@
 
   function blockToOpenItem(block, index) {
     const out = { id: block.id || "open-" + (index + 1), parts: [] };
+    const topic = String(block.topic || "").trim();
+    if (topic) out.topic = topic;
     (block.parts || []).forEach((part) => {
       if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true, multiline: true };
@@ -293,7 +333,16 @@
   }
 
   function blockToListenItem(block, index) {
-    return blockToOpenItem(block, index);
+    const out = { id: block.id || "listen-" + (index + 1), parts: [] };
+    (block.parts || []).forEach((part) => {
+      if (part.type === "blank") {
+        const blank = { type: "blank", name: part.name || out.id, wide: true };
+        const answer = String(part.answer || "").trim();
+        if (answer) blank.answer = answer;
+        out.parts.push(blank);
+      }
+    });
+    return out;
   }
 
   /**
@@ -305,6 +354,7 @@
     let state = { templateType: "custom", blocks: [] };
     let previewOpen = false;
     const DRAG_TYPE = "application/x-hw-block-type";
+    const REORDER_TYPE = "application/x-hw-block-reorder";
 
     mount.innerHTML = "";
     const root = document.createElement("div");
@@ -327,7 +377,7 @@
     palette.className = "hw-builder__palette";
     palette.innerHTML =
       '<h4 class="hw-builder__palette-title">Blocks</h4>' +
-      '<p class="hw-builder__palette-hint">Click or drag a block onto the canvas. Mix any types in any order.</p>';
+      '<p class="hw-builder__palette-hint">Click or drag blocks onto the canvas. Use ⠿ on a block to reorder.</p>';
 
     const paletteList = document.createElement("div");
     paletteList.className = "hw-builder__palette-list";
@@ -404,11 +454,25 @@
       notifyChange();
     }
 
+    function reorderBlock(fromIndex, toIndex) {
+      if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+      if (fromIndex >= state.blocks.length || toIndex >= state.blocks.length) return;
+      const [block] = state.blocks.splice(fromIndex, 1);
+      state.blocks.splice(toIndex, 0, block);
+      renderCanvas();
+      notifyChange();
+    }
+
+    function isCanvasDrag(dataTransfer) {
+      const types = Array.from(dataTransfer.types || []);
+      return types.includes(DRAG_TYPE) || types.includes(REORDER_TYPE);
+    }
+
     function bindDropZone(el) {
       el.addEventListener("dragover", (e) => {
-        if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+        if (!isCanvasDrag(e.dataTransfer)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
+        e.dataTransfer.dropEffect = e.dataTransfer.types.includes(REORDER_TYPE) ? "move" : "copy";
         el.classList.add("hw-builder__drop-zone--over");
       });
       el.addEventListener("dragleave", (e) => {
@@ -417,8 +481,40 @@
       el.addEventListener("drop", (e) => {
         e.preventDefault();
         el.classList.remove("hw-builder__drop-zone--over");
+        const reorderFrom = e.dataTransfer.getData(REORDER_TYPE);
+        if (reorderFrom !== "") {
+          const from = parseInt(reorderFrom, 10);
+          if (!Number.isNaN(from)) reorderBlock(from, state.blocks.length - 1);
+          return;
+        }
         const type = e.dataTransfer.getData(DRAG_TYPE);
         if (type) addBlock(type);
+      });
+    }
+
+    function bindBlockDropTarget(el, index) {
+      el.addEventListener("dragover", (e) => {
+        if (!isCanvasDrag(e.dataTransfer)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = e.dataTransfer.types.includes(REORDER_TYPE) ? "move" : "copy";
+        el.classList.add("hw-builder__block--drag-over");
+      });
+      el.addEventListener("dragleave", (e) => {
+        if (!el.contains(e.relatedTarget)) el.classList.remove("hw-builder__block--drag-over");
+      });
+      el.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove("hw-builder__block--drag-over");
+        const reorderFrom = e.dataTransfer.getData(REORDER_TYPE);
+        if (reorderFrom !== "") {
+          const from = parseInt(reorderFrom, 10);
+          if (!Number.isNaN(from) && from !== index) reorderBlock(from, index);
+          return;
+        }
+        const type = e.dataTransfer.getData(DRAG_TYPE);
+        if (type) addBlock(type, index);
       });
     }
 
@@ -431,6 +527,26 @@
 
       const head = document.createElement("div");
       head.className = "hw-builder__block-head";
+
+      const dragHandle = document.createElement("span");
+      dragHandle.className = "hw-builder__block-drag";
+      dragHandle.draggable = true;
+      dragHandle.title = "Drag to reorder";
+      dragHandle.setAttribute("aria-label", "Drag to reorder block");
+      dragHandle.textContent = "⠿";
+      dragHandle.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData(REORDER_TYPE, String(index));
+        e.dataTransfer.effectAllowed = "move";
+        el.classList.add("hw-builder__block--dragging");
+      });
+      dragHandle.addEventListener("dragend", () => {
+        el.classList.remove("hw-builder__block--dragging");
+        canvas.querySelectorAll(".hw-builder__block--drag-over").forEach((node) => {
+          node.classList.remove("hw-builder__block--drag-over");
+        });
+      });
+      head.appendChild(dragHandle);
+
       const typeLabel = PALETTE.find((p) => p.type === block.type)?.label || block.type;
       const label = document.createElement("span");
       label.className = "hw-builder__block-type";
@@ -452,6 +568,8 @@
       head.appendChild(removeBtn);
       el.appendChild(head);
 
+      bindBlockDropTarget(el, index);
+
       if (block.type === "video-prompt") {
         const prompt = document.createElement("textarea");
         prompt.className = "hw-builder__field hw-builder__field--area";
@@ -472,7 +590,7 @@
         audioLabel.textContent = "Audio clip URL or file path";
         const audioInput = document.createElement("input");
         audioInput.type = "url";
-        audioInput.className = "hw-builder__field";
+        audioInput.className = "hw-builder__field hw-builder__field--compact";
         audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
         audioInput.value = block.audioUrl || "";
         audioInput.addEventListener("input", () => {
@@ -481,6 +599,123 @@
         });
         audioLabel.appendChild(audioInput);
         el.appendChild(audioLabel);
+        return el;
+      }
+
+      if (block.type === "open-line") {
+        const topicLabel = document.createElement("label");
+        topicLabel.className = "hw-builder__audio-label";
+        topicLabel.textContent = "Topic / question for the student";
+        const topicInput = document.createElement("textarea");
+        topicInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
+        topicInput.rows = 2;
+        topicInput.placeholder = "e.g. Describe your weekend using ～たことがある";
+        topicInput.value = block.topic || "";
+        topicInput.addEventListener("input", () => {
+          block.topic = topicInput.value;
+          notifyChange();
+        });
+        topicLabel.appendChild(topicInput);
+        el.appendChild(topicLabel);
+      }
+
+      if (block.type === "grammar-line") {
+        const partsWrap = document.createElement("div");
+        partsWrap.className = "hw-builder__parts";
+        const { before, after } = grammarTextAroundBlank(block);
+        const blankPart =
+          getGrammarBlankPart(block) ||
+          {
+            type: "blank",
+            name: block.id,
+            wide: true,
+            answer: "",
+            hint: { dictionary: "", conjugation: "plain" },
+          };
+
+        const beforeLabel = document.createElement("label");
+        beforeLabel.className = "hw-builder__field-label";
+        beforeLabel.textContent = "Before the blank";
+        const beforeInput = document.createElement("input");
+        beforeInput.type = "text";
+        beforeInput.className = "hw-builder__field hw-builder__field--jp";
+        beforeInput.placeholder = "Text that comes before the blank";
+        beforeInput.value = before;
+        beforeInput.addEventListener("input", () => {
+          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          notifyChange();
+        });
+        beforeLabel.appendChild(beforeInput);
+        partsWrap.appendChild(beforeLabel);
+
+        const answerInput = document.createElement("input");
+        answerInput.type = "text";
+        answerInput.className = "hw-builder__field";
+        answerInput.placeholder = "Answer key (optional)";
+        answerInput.value = blankPart.answer || "";
+        answerInput.addEventListener("input", () => {
+          blankPart.answer = answerInput.value;
+          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          notifyChange();
+        });
+        partsWrap.appendChild(answerInput);
+
+        const hintRow = document.createElement("div");
+        hintRow.className = "hw-builder__hint-row";
+        const dictInput = document.createElement("input");
+        dictInput.type = "text";
+        dictInput.className = "hw-builder__field hw-builder__field--sm";
+        dictInput.placeholder = "Dictionary form (e.g. いく)";
+        dictInput.value = blankPart.hint?.dictionary || "";
+        dictInput.addEventListener("input", () => {
+          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
+          blankPart.hint.dictionary = dictInput.value;
+          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          notifyChange();
+        });
+        const conjInput = document.createElement("input");
+        conjInput.type = "text";
+        conjInput.className = "hw-builder__field hw-builder__field--sm";
+        conjInput.placeholder = "Conjugation";
+        conjInput.value = blankPart.hint?.conjugation || "plain";
+        conjInput.addEventListener("input", () => {
+          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
+          blankPart.hint.conjugation = conjInput.value;
+          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          notifyChange();
+        });
+        hintRow.append(dictInput, conjInput);
+        partsWrap.appendChild(hintRow);
+
+        const afterLabel = document.createElement("label");
+        afterLabel.className = "hw-builder__field-label";
+        afterLabel.textContent = "After the blank";
+        const afterInput = document.createElement("input");
+        afterInput.type = "text";
+        afterInput.className = "hw-builder__field hw-builder__field--jp";
+        afterInput.placeholder = "Text that comes after the blank";
+        afterInput.value = after;
+        afterInput.addEventListener("input", () => {
+          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          notifyChange();
+        });
+        afterLabel.appendChild(afterInput);
+        partsWrap.appendChild(afterLabel);
+
+        const negLabel = document.createElement("label");
+        negLabel.className = "hw-builder__check";
+        const neg = document.createElement("input");
+        neg.type = "checkbox";
+        neg.checked = Boolean(block.negative);
+        neg.addEventListener("change", () => {
+          block.negative = neg.checked;
+          renderCanvas();
+          notifyChange();
+        });
+        negLabel.append(neg, document.createTextNode(" Negative form"));
+        partsWrap.appendChild(negLabel);
+
+        el.appendChild(partsWrap);
         return el;
       }
 
@@ -503,62 +738,15 @@
           const blankInput = document.createElement("input");
           blankInput.type = "text";
           blankInput.className = "hw-builder__field";
-          blankInput.placeholder =
-            block.type === "grammar-line"
-              ? "Answer key (optional)"
-              : part.multiline
-                ? "Model response (optional)"
-                : "Answer key (optional)";
+          blankInput.placeholder = part.multiline ? "Model response (optional)" : "Answer key (optional)";
           blankInput.value = part.answer || "";
           blankInput.addEventListener("input", () => {
             part.answer = blankInput.value;
             notifyChange();
           });
           partsWrap.appendChild(blankInput);
-
-          if (block.type === "grammar-line" && !part.multiline) {
-            const hintRow = document.createElement("div");
-            hintRow.className = "hw-builder__hint-row";
-            const dictInput = document.createElement("input");
-            dictInput.type = "text";
-            dictInput.className = "hw-builder__field hw-builder__field--sm";
-            dictInput.placeholder = "Dictionary form (e.g. いく)";
-            dictInput.value = part.hint?.dictionary || "";
-            dictInput.addEventListener("input", () => {
-              part.hint = part.hint || { dictionary: "", conjugation: "plain" };
-              part.hint.dictionary = dictInput.value;
-              notifyChange();
-            });
-            const conjInput = document.createElement("input");
-            conjInput.type = "text";
-            conjInput.className = "hw-builder__field hw-builder__field--sm";
-            conjInput.placeholder = "Conjugation";
-            conjInput.value = part.hint?.conjugation || "plain";
-            conjInput.addEventListener("input", () => {
-              part.hint = part.hint || { dictionary: "", conjugation: "plain" };
-              part.hint.conjugation = conjInput.value;
-              notifyChange();
-            });
-            hintRow.append(dictInput, conjInput);
-            partsWrap.appendChild(hintRow);
-          }
         }
       });
-
-      if (block.type === "grammar-line") {
-        const negLabel = document.createElement("label");
-        negLabel.className = "hw-builder__check";
-        const neg = document.createElement("input");
-        neg.type = "checkbox";
-        neg.checked = Boolean(block.negative);
-        neg.addEventListener("change", () => {
-          block.negative = neg.checked;
-          renderCanvas();
-          notifyChange();
-        });
-        negLabel.append(neg, document.createTextNode(" Negative form"));
-        partsWrap.appendChild(negLabel);
-      }
 
       el.appendChild(partsWrap);
       return el;

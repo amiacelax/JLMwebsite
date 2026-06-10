@@ -1476,7 +1476,15 @@
         "Fill in the blanks, then Submit homework. JD will review your answers on Discord.";
     }
 
-    const form = HwWorksheet.render(mount, assignment);
+    const form = HwWorksheet.render(mount, assignment, {
+      studentMeta: {
+        username: session.username || "",
+        displayName: session.displayName || session.username || "",
+        assignmentId: assignment.id || active.id,
+        lessonName:
+          assignment.lessonName || assignment.title || active.lessonName || active.title || active.id,
+      },
+    });
     const saveMeta = {
       ...assignment,
       id: assignment.id || active.id,

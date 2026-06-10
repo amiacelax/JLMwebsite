@@ -940,6 +940,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     const displayName = String(form.get("displayName") || username).trim();
     const assignmentId = String(form.get("assignmentId") || "video-homework").trim();
     const lessonName = String(form.get("lessonName") || assignmentId).trim();
+    const promptLabel = String(form.get("promptLabel") || "").trim();
     const file = form.get("video");
 
     if (!username) return jsonResponse({ error: "Username is required." }, 400);
@@ -999,6 +1000,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
         "",
         `Student: ${displayName} (${username})`,
         `Assignment: ${lessonName}`,
+        promptLabel ? `Prompt: ${promptLabel}` : null,
         `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
       ]
         .filter((line) => line != null)

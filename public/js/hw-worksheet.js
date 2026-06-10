@@ -199,21 +199,31 @@
   function renderBlankWithHint(part, options) {
     options = options || {};
     const wrap = document.createElement("span");
-    wrap.className = "hw-blank-wrap" + (part.multiline ? " hw-blank-wrap--multiline" : "");
+    const listenStyle = Boolean(options.listenStyle);
+    wrap.className =
+      "hw-blank-wrap" +
+      (part.multiline && !listenStyle ? " hw-blank-wrap--multiline" : "") +
+      (listenStyle ? " hw-blank-wrap--listen" : "");
 
     let field;
-    if (part.multiline) {
+    if (listenStyle) {
+      field = document.createElement("input");
+      field.type = "text";
+      field.className = "hw-blank hw-blank--wide hw-blank--listen";
+      field.setAttribute("aria-label", "What you heard");
+    } else if (part.multiline) {
       field = document.createElement("textarea");
       field.rows = 6;
       field.className = "hw-blank hw-blank--wide hw-blank--open";
+      field.setAttribute("aria-label", "Your response");
     } else {
       field = document.createElement("input");
       field.type = "text";
       field.className = "hw-blank" + (part.wide ? " hw-blank--wide" : "");
+      field.setAttribute("aria-label", "Answer");
     }
     field.name = part.name;
     field.autocomplete = "off";
-    field.setAttribute("aria-label", part.multiline ? "Your response" : "Answer");
     if (!options.omitAnswers && part.variants) {
       field.dataset.variants = JSON.stringify(part.variants);
     }
@@ -416,7 +426,8 @@
     return wrap;
   }
 
-  function renderVideoRecordCue(item, index) {
+  function renderVideoRecordCue(item, index, renderOptions) {
+    renderOptions = renderOptions || {};
     const wrap = document.createElement("div");
     wrap.className = "hw-video-prompt";
     wrap.dataset.itemId = item.id || "";
@@ -426,20 +437,27 @@
     prompt.textContent = item.prompt || "Answer this question on video.";
     wrap.appendChild(prompt);
 
-    const actions = document.createElement("div");
-    actions.className = "hw-video-prompt__actions";
-    const link = document.createElement("a");
-    link.className = "btn btn--ghost btn--sm hw-video-prompt__btn";
-    link.href = "#hw-work-upload";
-    link.textContent = item.recordLabel || "Record your answer";
-    link.setAttribute("aria-label", "Go to video upload to record your answer for prompt " + (index + 1));
-    actions.appendChild(link);
+    const recorderMount = document.createElement("div");
+    recorderMount.className = "hw-video-prompt__recorder";
+    wrap.appendChild(recorderMount);
 
-    const note = document.createElement("span");
-    note.className = "hw-video-prompt__note";
-    note.textContent = "Use the Video section on this page to upload or record.";
-    actions.appendChild(note);
-    wrap.appendChild(actions);
+    if (renderOptions.preview) {
+      recorderMount.innerHTML =
+        '<p class="hw-video-prompt__note">Students record and send their answer here.</p>';
+    } else if (renderOptions.studentMeta && global.HwVideoInline?.mount) {
+      global.HwVideoInline.mount(recorderMount, {
+        username: renderOptions.studentMeta.username,
+        displayName: renderOptions.studentMeta.displayName,
+        assignmentId: renderOptions.studentMeta.assignmentId,
+        lessonName: renderOptions.studentMeta.lessonName,
+        promptId: item.id || "vid-" + (index + 1),
+        promptLabel: item.prompt || "",
+      });
+    } else {
+      recorderMount.innerHTML =
+        '<p class="hw-video-prompt__note">Sign in as a student to record here, or use the Video section below.</p>';
+    }
+
     return wrap;
   }
 
@@ -482,11 +500,24 @@
     const content = document.createElement(openBlock ? "div" : "span");
     content.className = "hw-worksheet__content";
 
+    if (openBlock && item.topic) {
+      const topicEl = document.createElement("p");
+      topicEl.className = "hw-open-topic";
+      topicEl.textContent = item.topic;
+      content.appendChild(topicEl);
+      content.dataset.topic = item.topic;
+    }
+
     (item.parts || []).forEach((part) => {
       if (part.type === "text") {
         content.appendChild(renderTextPart(part));
       } else if (part.type === "blank") {
-        content.appendChild(renderBlankWithHint(part, { omitAnswers: true }));
+        content.appendChild(
+          renderBlankWithHint(part, {
+            omitAnswers: true,
+            listenStyle: sectionMode === "audio-listening",
+          })
+        );
       } else if (part.type === "hint") {
         /* legacy: hint after blank in JSON — attach below previous blank if possible */
         const wraps = content.querySelectorAll(".hw-blank-wrap");
@@ -510,7 +541,7 @@
     return line;
   }
 
-  function renderSection(form, section, interactive, authoring) {
+  function renderSection(form, section, interactive, authoring, renderOptions) {
     const wrap = document.createElement("div");
     wrap.className = "hw-worksheet__section";
     wrap.dataset.sectionId = section.id || "";
@@ -565,7 +596,7 @@
     (section.items || []).forEach((item, i) => {
       if (section.mode === "video-response") {
         if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i));
-        else wrap.appendChild(renderVideoRecordCue(item, i));
+        else wrap.appendChild(renderVideoRecordCue(item, i, renderOptions));
         return;
       }
       if (authoring) {
@@ -743,7 +774,7 @@
     form.appendChild(meta);
 
     (prepared.sections || []).forEach((section) => {
-      form.appendChild(renderSection(form, section, interactive, authoring));
+      form.appendChild(renderSection(form, section, interactive, authoring, options));
     });
 
 
@@ -937,13 +968,15 @@
       secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
         if (!el.name || el.hasAttribute("data-section-audio-url") || el.hasAttribute("data-video-prompt")) return;
         const student = el.value.trim();
+        const contentEl = el.closest(".hw-worksheet__content");
+        const topic = contentEl?.dataset?.topic || "";
         const row = {
           name: el.name,
           label:
             mode === "context-blank" || mode === "audio-listening"
               ? (mode === "audio-listening" ? "Listen " : "QUESTION ") + (LABELS[idx] || String(idx + 1))
               : LABELS[idx] || String(idx + 1),
-          prompt: promptForBlank(form, el.name),
+          prompt: topic || promptForBlank(form, el.name),
           student,
           completed: completedSentenceForBlank(form, el.name, student),
         };
