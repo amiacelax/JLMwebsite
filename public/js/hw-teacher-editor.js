@@ -13,6 +13,7 @@
   let catalogStudentProfiles = {};
   let editingAssignmentId = null;
   let editorOptions = null;
+  let worksheetBuilder = null;
 
   const FALLBACK_ASSIGNMENTS = {
     joshs: [{ id: "joshs-naitoikenai", title: "～ないといけない", students: ["joshs"] }],
@@ -335,20 +336,37 @@
         : "Will add this worksheet to " + student + "’s hub.";
     }
 
-    function renderSheet() {
-      const meta = readMakerMeta(makerForm);
-      if (!meta.grammarPoint) meta.grammarPoint = "Homework";
-      const assignment = buildEmptyAssignment(meta);
+    function ensureBuilder() {
+      if (worksheetBuilder || !global.HwWorksheetBuilder?.mount || !makerMount) return worksheetBuilder;
       makerMount.innerHTML = "";
-      const form = global.HwWorksheet.render(makerMount, assignment, { authoring: true });
-      if (form) {
-        form.dataset.assignmentId = assignment.id;
-        form.dataset.title = assignment.title;
+      worksheetBuilder = global.HwWorksheetBuilder.mount(makerMount, {
+        getTitle: () => readMakerMeta(makerForm).grammarPoint || "Homework",
+        onChange: () => {
+          if (worksheetBuilder?.isPreviewOpen?.()) {
+            worksheetBuilder.showPreview(readMakerMeta(makerForm).grammarPoint || "Homework");
+          }
+        },
+      });
+      makerMount.dataset.builderReady = "true";
+      return worksheetBuilder;
+    }
+
+    function renderSheet(templateKey) {
+      const builder = ensureBuilder();
+      if (!builder) return;
+      if (templateKey && global.HwWorksheetBuilder?.TEMPLATES?.[templateKey]) {
+        builder.applyTemplate(templateKey);
+      } else if (!builder.getState?.().blocks?.length) {
+        builder.applyTemplate("blank");
       }
+      clearEditMode();
     }
 
     function loadIntoEditor(assignment, catalogEntry) {
-      if (!assignment || !global.HwWorksheet?.render) return;
+      if (!assignment) return;
+      const builder = ensureBuilder();
+      if (!builder) return;
+
       editingAssignmentId = assignment.id || catalogEntry?.id || null;
 
       const grammarInput = makerForm.querySelector('[name="grammarPoint"]');
@@ -356,12 +374,7 @@
         grammarInput.value = assignment.title || catalogEntry?.title || "";
       }
 
-      makerMount.innerHTML = "";
-      const form = global.HwWorksheet.render(makerMount, assignment, { authoring: true });
-      if (form) {
-        form.dataset.assignmentId = editingAssignmentId || "";
-        form.dataset.title = assignment.title || "";
-      }
+      builder.loadAssignment(assignment);
 
       if (makerEditSelect && editingAssignmentId) {
         makerEditSelect.value = editingAssignmentId;
@@ -376,8 +389,8 @@
     async function loadAssignmentById(id) {
       if (!id) {
         clearEditMode();
-        renderSheet();
-        setMakerStatus("New blank sheet — fill in and save to library.");
+        renderSheet("blank");
+        setMakerStatus("Blank canvas — add a section or pick a template, then save.");
         return;
       }
       setMakerStatus("Loading " + id + "…");
@@ -392,12 +405,28 @@
       }
     }
 
-    function validateSection1(assignment) {
-      return (
-        assignment.sections?.[0]?.items?.filter((item) =>
-          (item.parts || []).some((p) => p.type === "blank" && p.answer)
-        ).length || 0
-      );
+    function validateWorksheet(assignment) {
+      if (!assignment?.sections?.length) return false;
+
+      const grammar = assignment.sections.find((s) => s.mode === "grammar-blank");
+      if (grammar) {
+        const graded =
+          grammar.items?.filter((item) =>
+            (item.parts || []).some((p) => p.type === "blank" && p.answer)
+          ).length || 0;
+        if (graded > 0) return true;
+      }
+
+      const video = assignment.sections.find((s) => s.mode === "video-response");
+      if (video?.items?.length) return true;
+
+      const listening = assignment.sections.find((s) => s.mode === "audio-listening");
+      if (listening?.items?.length) return true;
+
+      const context = assignment.sections.find((s) => s.mode === "context-blank");
+      if (context?.items?.length) return true;
+
+      return false;
     }
 
     async function saveWorksheetToLibrary(isUpdate) {
@@ -413,13 +442,19 @@
         return;
       }
 
-      const worksheetForm = makerMount.querySelector("#hw-worksheet-form");
-      if (!worksheetForm || !global.HwWorksheet?.assignmentFromAuthoringForm) {
-        setMakerStatus("Worksheet not ready.", true);
+      const builder = ensureBuilder();
+      if (!builder?.toAssignment) {
+        setMakerStatus("Worksheet builder not ready.", true);
         return;
       }
 
-      const assignment = global.HwWorksheet.assignmentFromAuthoringForm(worksheetForm);
+      const assignment = builder.toAssignment({
+        id:
+          isUpdate && editingAssignmentId
+            ? editingAssignmentId
+            : makeWorksheetId(meta.grammarPoint),
+        title: meta.grammarPoint,
+      });
       assignment.id =
         isUpdate && editingAssignmentId
           ? editingAssignmentId
@@ -427,8 +462,11 @@
       assignment.title = meta.grammarPoint;
       assignment.status = "draft";
 
-      if (!validateSection1(assignment)) {
-        setMakerStatus("Section 1 needs at least one answer filled in.", true);
+      if (!validateWorksheet(assignment)) {
+        setMakerStatus(
+          "Add at least one block with content — grammar answer key, video prompt, or listening line.",
+          true
+        );
         return;
       }
 
@@ -522,9 +560,9 @@
           summary: entry.summary || "Homework: " + (assignment.title || worksheetId),
         };
 
-        if (!validateSection1(assignment)) {
+        if (!validateWorksheet(assignment)) {
           setPublishStatus(
-            "This worksheet needs at least one Section 1 answer — edit it in Worksheet maker first.",
+            "This worksheet needs content — add blocks in Worksheet maker first.",
             true
           );
           return;
@@ -621,25 +659,22 @@
         if (makerEditSelect.value) loadAssignmentById(makerEditSelect.value);
         else {
           clearEditMode();
-          renderSheet();
+          renderSheet("blank");
         }
       });
 
       makerForm.querySelector('[name="grammarPoint"]')?.addEventListener("input", () => {
-        const form = makerMount.querySelector("#hw-worksheet-form");
         const gp = readMakerMeta(makerForm).grammarPoint;
-        if (form) {
-          form.dataset.title = gp;
-          const titleEl = form.querySelector(".hw-worksheet__meta-title");
-          if (titleEl) titleEl.textContent = gp || "Homework";
+        if (worksheetBuilder?.isPreviewOpen?.()) {
+          worksheetBuilder.showPreview(gp || "Homework");
         }
       });
 
       makerResetBtn?.addEventListener("click", (e) => {
         e.preventDefault();
         clearEditMode();
-        renderSheet();
-        setMakerStatus("New blank sheet.");
+        renderSheet("blank");
+        setMakerStatus("Blank canvas — add a section or pick a template, then save.");
         showToast("New sheet");
       });
 
@@ -655,7 +690,7 @@
           setMakerStatus("Load a worksheet first, or save a new one.", true);
           return;
         }
-        if (!editingAssignmentId || !makerMount.querySelector("#hw-worksheet-form")) {
+        if (!editingAssignmentId || !worksheetBuilder) {
           await loadAssignmentById(id);
         }
         if (!editingAssignmentId) return;
@@ -722,10 +757,11 @@
     }
 
     updateMakerEditUI();
-    if (!makerMount.querySelector("#hw-worksheet-form")) {
-      renderSheet();
+    ensureBuilder();
+    if (!worksheetBuilder?.getState?.().blocks?.length) {
+      renderSheet("blank");
     }
-    setMakerStatus("Draft a worksheet below, then save to the library.");
+    setMakerStatus("Blank canvas — click or drag blocks to build your sheet.");
 
     ensureCatalogLoaded().then(() => {
       populateWorksheetSelect(makerEditSelect);
@@ -770,13 +806,13 @@
       grammarInput.value = assignment.title || catalogEntry?.title || "";
     }
 
-    if (global.HwWorksheet?.render) {
-      mount.innerHTML = "";
-      const form = global.HwWorksheet.render(mount, assignment, { authoring: true });
-      if (form) {
-        form.dataset.assignmentId = editingAssignmentId || "";
-        form.dataset.title = assignment.title || "";
+    if (global.HwWorksheetBuilder?.mount) {
+      if (!worksheetBuilder) {
+        worksheetBuilder = global.HwWorksheetBuilder.mount(mount, {
+          getTitle: () => assignment.title || "",
+        });
       }
+      worksheetBuilder.loadAssignment(assignment);
     }
 
     const editSelect = document.getElementById("hw-teacher-maker-edit-select");

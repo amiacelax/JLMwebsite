@@ -475,6 +475,62 @@ body.is-nav-open {
   display: block;
 }
 
+.hero__title-line--decipher {
+  min-height: 1.12em;
+}
+
+.hero-decipher {
+  display: inline-block;
+  vertical-align: top;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+.hero-decipher__flip {
+  display: inline-grid;
+}
+
+.hero-decipher__face {
+  grid-area: 1 / 1;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.hero-decipher__face--jp {
+  font-family: "Noto Sans JP", var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  animation: hero-text-dissolve-out 1.6s ease-in-out 1.75s forwards;
+}
+
+.hero-decipher__face--en {
+  opacity: 0;
+  visibility: hidden;
+  animation: hero-text-dissolve-in 1.6s ease-in-out 1.75s forwards;
+}
+
+@keyframes hero-text-dissolve-out {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes hero-text-dissolve-in {
+  from {
+    opacity: 0;
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 .hero__title-line--accent em {
   font-style: normal;
   color: var(--color-accent-hover);
@@ -2465,6 +2521,18 @@ body.subpage--platform .hw-platform-bar {
     box-shadow: none !important;
   }
 
+  .hero-decipher__face--jp {
+    animation: none;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .hero-decipher__face--en {
+    animation: none;
+    opacity: 1;
+    visibility: visible;
+  }
+
   .hero__title-line--accent em::after {
     animation: none;
     transform: scaleX(1);
@@ -3666,6 +3734,454 @@ button.course-card__status:disabled {
 
 .hw-teacher-worksheet {
   margin-top: 0.5rem;
+}
+
+/* Worksheet drag-and-drop builder */
+.hw-builder__toolbar {
+  margin-bottom: 1rem;
+}
+
+.hw-builder__toolbar-label,
+.hw-builder__palette-title {
+  margin: 0 0 0.45rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hw-builder__templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.hw-builder__template-btn {
+  padding: 0.45rem 0.75rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.hw-builder__template-btn:hover {
+  border-color: var(--color-accent, #c45c3e);
+  background: var(--color-bg);
+}
+
+.hw-builder__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.hw-builder__layout {
+  display: grid;
+  grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .hw-builder__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hw-builder__palette {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.hw-builder__palette-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-builder__palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.hw-builder__palette-block {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  cursor: grab;
+  user-select: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.hw-builder__palette-block:active {
+  cursor: grabbing;
+}
+
+.hw-builder__palette-block[class*="hw-builder__palette-block--"] {
+  border-style: solid;
+  border-left-width: 4px;
+}
+
+.hw-builder__palette-block[class*="hw-builder__palette-block--"]:hover {
+  filter: brightness(1.06);
+}
+
+.hw-builder__palette-block--grammar-line {
+  border-color: #9a422f;
+  border-left-color: #7a3526;
+  background: color-mix(in srgb, #c45c3e 94%, #1a0c08);
+}
+
+.hw-builder__palette-block--open-line {
+  border-color: #247a5f;
+  border-left-color: #1b5f4a;
+  background: color-mix(in srgb, #2d8a6e 94%, #081a14);
+}
+
+.hw-builder__palette-block--video-prompt {
+  border-color: #3d6699;
+  border-left-color: #2f5078;
+  background: color-mix(in srgb, #4a7ab8 94%, #0a1424);
+}
+
+.hw-builder__palette-block--listen-line {
+  border-color: #6649a3;
+  border-left-color: #523a82;
+  background: color-mix(in srgb, #7c5cbf 94%, #120c20);
+}
+
+.hw-builder__palette-block--audio-clip {
+  border-color: #5a4a8a;
+  border-left-color: #453a6e;
+  background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
+}
+
+.hw-builder__palette-block--audio-clip .hw-builder__palette-block-label,
+.hw-builder__palette-block--audio-clip .hw-builder__palette-block-hint {
+  color: #fff;
+}
+
+.hw-builder__palette-block--grammar-line .hw-builder__palette-block-label,
+.hw-builder__palette-block--grammar-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--open-line .hw-builder__palette-block-label,
+.hw-builder__palette-block--open-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--video-prompt .hw-builder__palette-block-label,
+.hw-builder__palette-block--video-prompt .hw-builder__palette-block-hint,
+.hw-builder__palette-block--listen-line .hw-builder__palette-block-label,
+.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint {
+  color: #fff;
+}
+
+.hw-builder__palette-block-label {
+  display: block;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-builder__palette-block-hint {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.hw-builder__palette-block--grammar-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--open-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--video-prompt .hw-builder__palette-block-hint,
+.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint {
+  opacity: 0.88;
+}
+
+.hw-builder__canvas-wrap {
+  min-height: 12rem;
+}
+
+.hw-builder__canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.hw-builder__block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hw-builder__canvas-hint {
+  margin: 0;
+  padding: 1.25rem 0.5rem;
+  text-align: center;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.hw-builder__block {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.hw-builder__block[class*="hw-builder__block--"] {
+  color: #fff;
+}
+
+.hw-builder__block--grammar-line {
+  border-color: #9a422f;
+  background: color-mix(in srgb, #c45c3e 94%, #1a0c08);
+}
+
+.hw-builder__block--open-line {
+  border-color: #247a5f;
+  background: color-mix(in srgb, #2d8a6e 94%, #081a14);
+}
+
+.hw-builder__block--video-prompt {
+  border-color: #3d6699;
+  background: color-mix(in srgb, #4a7ab8 94%, #0a1424);
+}
+
+.hw-builder__block--audio-clip {
+  border-color: #5a4a8a;
+  background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
+}
+
+.hw-builder__block--listen-line {
+  border-color: #6649a3;
+  background: color-mix(in srgb, #7c5cbf 94%, #120c20);
+}
+
+.hw-builder__block--negative {
+  border-color: #9a3d3d;
+  background: color-mix(in srgb, #c44e4e 94%, #1a0808);
+}
+
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__block-type,
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__audio-label,
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__check {
+  color: #fff;
+}
+
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__remove-btn {
+  color: color-mix(in srgb, #fff 88%, transparent);
+}
+
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__field {
+  background: color-mix(in srgb, #000 32%, transparent);
+  border-color: color-mix(in srgb, #fff 24%, transparent);
+  color: #fff;
+}
+
+.hw-builder__block[class*="hw-builder__block--"] .hw-builder__field::placeholder {
+  color: color-mix(in srgb, #fff 52%, transparent);
+}
+
+.hw-builder__block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.hw-builder__block-type {
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.hw-builder__drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.hw-builder__drop-zone--over {
+  border-color: var(--color-accent, #c45c3e);
+  color: var(--color-accent, #c45c3e);
+  background: color-mix(in srgb, var(--color-accent, #c45c3e) 8%, var(--color-bg));
+}
+
+.hw-builder__drop-zone-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.hw-builder__remove-btn {
+  margin-left: auto;
+  padding: 0.15rem 0.4rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.hw-builder__field {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.hw-builder__field--jp {
+  font-family: "Noto Sans JP", Inter, sans-serif;
+}
+
+.hw-builder__field--area {
+  resize: vertical;
+  min-height: 3rem;
+  line-height: 1.45;
+}
+
+.hw-builder__field--sm {
+  flex: 1;
+  min-width: 6rem;
+  margin-bottom: 0;
+}
+
+.hw-builder__audio-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-builder__parts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hw-builder__hint-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hw-builder__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.hw-builder__video-chip {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #4a7ab8;
+  border-radius: var(--radius-sm);
+}
+
+.hw-builder__preview .hw-worksheet {
+  margin-top: 0;
+}
+
+/* Student worksheet — video & audio blocks */
+.hw-audio-player {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.hw-audio-player__el {
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+
+.hw-audio-player__hint,
+.hw-audio-player__missing {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-video-prompt {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid #4a7ab8;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.hw-video-prompt__text {
+  margin: 0 0 0.55rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.hw-video-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hw-video-prompt__note {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .hw-worksheet--authoring .hw-author-text {

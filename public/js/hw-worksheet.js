@@ -394,6 +394,75 @@
     return line;
   }
 
+  function renderAudioPlayer(section) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-audio-player";
+    const url = String(section.audioUrl || "").trim();
+    if (!url) {
+      wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip not set yet.</p>';
+      return wrap;
+    }
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.className = "hw-audio-player__el";
+    audio.src = url;
+    audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
+    wrap.appendChild(audio);
+    const hint = document.createElement("p");
+    hint.className = "hw-audio-player__hint";
+    hint.textContent = "Play the clip as many times as you need, then write what you hear below.";
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
+  function renderVideoRecordCue(item, index) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-video-prompt";
+    wrap.dataset.itemId = item.id || "";
+
+    const prompt = document.createElement("p");
+    prompt.className = "hw-video-prompt__text";
+    prompt.textContent = item.prompt || "Answer this question on video.";
+    wrap.appendChild(prompt);
+
+    const actions = document.createElement("div");
+    actions.className = "hw-video-prompt__actions";
+    const link = document.createElement("a");
+    link.className = "btn btn--ghost btn--sm hw-video-prompt__btn";
+    link.href = "#hw-work-upload";
+    link.textContent = item.recordLabel || "Record your answer";
+    link.setAttribute("aria-label", "Go to video upload to record your answer for prompt " + (index + 1));
+    actions.appendChild(link);
+
+    const note = document.createElement("span");
+    note.className = "hw-video-prompt__note";
+    note.textContent = "Use the Video section on this page to upload or record.";
+    actions.appendChild(note);
+    wrap.appendChild(actions);
+    return wrap;
+  }
+
+  function renderAuthorVideoItem(item, index) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-worksheet__line hw-worksheet__line--author hw-worksheet__line--video";
+    wrap.dataset.itemId = item.id || "vid-" + (index + 1);
+
+    const label = document.createElement("span");
+    label.className = "hw-worksheet__label";
+    label.textContent = "Video " + (index + 1);
+    wrap.appendChild(label);
+
+    const prompt = document.createElement("textarea");
+    prompt.className = "hw-blank hw-blank--wide hw-blank--open hw-author-video-prompt";
+    prompt.rows = 2;
+    prompt.value = item.prompt || "";
+    prompt.setAttribute("data-video-prompt", "1");
+    prompt.setAttribute("aria-label", "Video prompt " + (index + 1));
+    wrap.appendChild(prompt);
+    return wrap;
+  }
+
   function renderLine(item, index, sectionMode) {
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
     const line = document.createElement(openBlock ? "div" : "p");
@@ -475,7 +544,30 @@
       wrap.appendChild(intro);
     }
 
+    if (section.mode === "audio-listening" && !authoring) {
+      wrap.appendChild(renderAudioPlayer(section));
+    }
+
+    if (section.mode === "audio-listening" && authoring) {
+      const audioLabel = document.createElement("label");
+      audioLabel.className = "hw-author-audio-url";
+      audioLabel.textContent = "Audio clip URL";
+      const audioInput = document.createElement("input");
+      audioInput.type = "url";
+      audioInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      audioInput.value = section.audioUrl || "";
+      audioInput.setAttribute("data-section-audio-url", "1");
+      audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
+      audioLabel.appendChild(audioInput);
+      wrap.appendChild(audioLabel);
+    }
+
     (section.items || []).forEach((item, i) => {
+      if (section.mode === "video-response") {
+        if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i));
+        else wrap.appendChild(renderVideoRecordCue(item, i));
+        return;
+      }
       if (authoring) {
         wrap.appendChild(renderAuthorLine(item, i, section.mode));
       } else {
@@ -514,8 +606,27 @@
         section.tenseBubbles = ["Now-Later", "Past"];
         section.activeTense = "Now-Later";
       }
+      if (section.mode === "audio-listening") {
+        const audioUrl = secEl.querySelector("[data-section-audio-url]")?.value?.trim();
+        if (audioUrl) section.audioUrl = audioUrl;
+      }
+
+      if (section.mode === "video-response") {
+        secEl.querySelectorAll(".hw-worksheet__line--video").forEach((lineEl, index) => {
+          const prompt = lineEl.querySelector("[data-video-prompt]")?.value?.trim();
+          if (!prompt) return;
+          section.items.push({
+            id: lineEl.dataset.itemId || "vid-" + (index + 1),
+            prompt,
+            recordLabel: "Record your answer",
+          });
+        });
+        assignment.sections.push(section);
+        return;
+      }
 
       secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl, index) => {
+        if (lineEl.classList.contains("hw-worksheet__line--video")) return;
         const item = { id: lineEl.dataset.itemId || "item-" + (index + 1), parts: [] };
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
@@ -607,8 +718,8 @@
       escapeHtml(prepared.title || "Homework") +
       "</p>" +
       (authoring
-        ? '<p class="hw-worksheet__meta-hint">Teacher: type each sentence and an optional answer key in the blank (not shown to students). Section 1 has five lines; Section 2 has three open lines.</p>'
-        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. JD will review your work.</p>');
+        ? '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>'
+        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record in the Video section. JD will review your work.</p>');
     metaTop.appendChild(metaText);
     const grammarSection = (prepared.sections || []).find((s) => s.mode === "grammar-blank");
     const variantControlsInteractive = !options.preview && hasVariants;
@@ -805,17 +916,32 @@
     const section1 = [];
     const section2 = [];
 
+    const videoPrompts = [];
+    const listening = [];
+
     form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
       const mode = secEl.dataset.mode || "";
       let idx = 0;
+
+      if (mode === "video-response") {
+        secEl.querySelectorAll(".hw-video-prompt").forEach((promptEl, vi) => {
+          videoPrompts.push({
+            label: "Video " + (vi + 1),
+            prompt: promptEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "",
+            student: "(submitted via video upload)",
+          });
+        });
+        return;
+      }
+
       secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
-        if (!el.name) return;
+        if (!el.name || el.hasAttribute("data-section-audio-url") || el.hasAttribute("data-video-prompt")) return;
         const student = el.value.trim();
         const row = {
           name: el.name,
           label:
-            mode === "context-blank"
-              ? "QUESTION " + (LABELS[idx] || String(idx + 1))
+            mode === "context-blank" || mode === "audio-listening"
+              ? (mode === "audio-listening" ? "Listen " : "QUESTION ") + (LABELS[idx] || String(idx + 1))
               : LABELS[idx] || String(idx + 1),
           prompt: promptForBlank(form, el.name),
           student,
@@ -823,6 +949,9 @@
         };
         if (mode === "grammar-blank") {
           section1.push(row);
+          idx += 1;
+        } else if (mode === "audio-listening") {
+          listening.push(row);
           idx += 1;
         } else {
           section2.push(row);
@@ -833,6 +962,8 @@
     return {
       section1,
       section2,
+      videoPrompts,
+      listening,
       score: { correct: 0, total: 0 },
     };
   }

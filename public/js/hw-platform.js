@@ -1196,7 +1196,7 @@
     if (!global.HwTeacherEditor) return;
     const mount = document.getElementById("hw-teacher-maker-mount");
     if (!mount) return;
-    if (mount.querySelector("#hw-worksheet-form")) return;
+    if (mount.querySelector(".hw-builder") || mount.dataset.builderReady === "true") return;
     HwTeacherEditor.init({
       showToast,
       fetchAssignmentJson,
