@@ -452,40 +452,7 @@
 
             <section class="hw-platform-card hw-platform-card--compact hw-grid-upload">
               <h2 class="hw-platform-card__title">Upload your work</h2>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Photo for printed sheets · video when an assignment asks for it.</p>
-
-              <details class="hw-upload-fold" open>
-                <summary class="hw-upload-fold__summary">
-                  <span class="hw-upload-fold__label">Photo</span>
-                  <span class="hw-upload-fold__meta">Printed homework</span>
-                </summary>
-                <div class="hw-upload-fold__body">
-                  <form class="hw-photo-upload hw-photo-upload--compact" id="hw-photo-upload-form">
-                    <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" aria-label="Choose a photo file">
-                    <div class="hw-photo-capture" id="hw-photo-capture">
-                      <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
-                      <div class="hw-photo-capture__idle" id="hw-photo-capture-idle">
-                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-open-camera">Open camera</button>
-                      </div>
-                      <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
-                        <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
-                        <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
-                          <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
-                          <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
-                        </div>
-                      </div>
-                      <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
-                        <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
-                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-retake">Retake</button>
-                      </div>
-                    </div>
-                    <div class="hw-upload-fold__actions">
-                      <button type="submit" class="btn btn--primary btn--sm" id="hw-photo-upload-submit">Upload photo</button>
-                    </div>
-                    <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
-                  </form>
-                </div>
-              </details>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Video for speaking assignments · photo for printed sheets.</p>
 
               <details class="hw-upload-fold">
                 <summary class="hw-upload-fold__summary">
@@ -517,6 +484,39 @@
                       <button type="submit" class="btn btn--primary btn--sm" id="hw-video-upload-submit">Upload video</button>
                     </div>
                     <p class="hw-photo-upload__status" id="hw-video-upload-status" role="status" aria-live="polite"></p>
+                  </form>
+                </div>
+              </details>
+
+              <details class="hw-upload-fold">
+                <summary class="hw-upload-fold__summary">
+                  <span class="hw-upload-fold__label">Photo</span>
+                  <span class="hw-upload-fold__meta">Printed homework</span>
+                </summary>
+                <div class="hw-upload-fold__body">
+                  <form class="hw-photo-upload hw-photo-upload--compact" id="hw-photo-upload-form">
+                    <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" aria-label="Choose a photo file">
+                    <div class="hw-photo-capture" id="hw-photo-capture">
+                      <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
+                      <div class="hw-photo-capture__idle" id="hw-photo-capture-idle">
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-open-camera">Open camera</button>
+                      </div>
+                      <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
+                        <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
+                        <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                          <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
+                          <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
+                        </div>
+                      </div>
+                      <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
+                        <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-retake">Retake</button>
+                      </div>
+                    </div>
+                    <div class="hw-upload-fold__actions">
+                      <button type="submit" class="btn btn--primary btn--sm" id="hw-photo-upload-submit">Upload photo</button>
+                    </div>
+                    <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
                   </form>
                 </div>
               </details>
