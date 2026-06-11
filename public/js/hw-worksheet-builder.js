@@ -5,7 +5,7 @@
   const LABELS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
 
   const PALETTE = [
-    { type: "grammar-line", label: "Blank sentence", hint: "Sentence with a fill-in blank" },
+    { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
     { type: "audio-clip", label: "Audio clip", hint: "Short clip students can replay" },
@@ -99,6 +99,8 @@
     return (block.parts || []).find((p) => p.type === "blank") || null;
   }
 
+  const GRAMMAR_BLANK_PATTERN = /\{([^}]*)\}/;
+
   function grammarTextAroundBlank(block) {
     const parts = block.parts || [];
     const blankIdx = parts.findIndex((p) => p.type === "blank");
@@ -116,7 +118,16 @@
     return { before, after };
   }
 
-  function syncGrammarParts(block, before, after) {
+  function grammarSentenceFromBlock(block) {
+    const { before, after } = grammarTextAroundBlank(block);
+    const blank = getGrammarBlankPart(block);
+    const answer = blank?.answer || "";
+    return before + "{" + answer + "}" + after;
+  }
+
+  function syncGrammarPartsFromSentence(block, sentence) {
+    const raw = String(sentence ?? "");
+    const match = raw.match(GRAMMAR_BLANK_PATTERN);
     let blank =
       getGrammarBlankPart(block) ||
       {
@@ -126,10 +137,38 @@
         answer: "",
         hint: { dictionary: "", conjugation: "plain" },
       };
+
+    if (!match) {
+      blank.answer = "";
+      syncGrammarParts(block, raw, "", blank);
+      return;
+    }
+
+    const answer = String(match[1] ?? "").trim();
+    blank.answer = answer;
+    syncGrammarParts(
+      block,
+      raw.slice(0, match.index),
+      raw.slice(match.index + match[0].length),
+      blank
+    );
+  }
+
+  function syncGrammarParts(block, before, after, blankPart) {
+    const blank =
+      blankPart ||
+      getGrammarBlankPart(block) ||
+      {
+        type: "blank",
+        name: block.id,
+        wide: true,
+        answer: "",
+        hint: { dictionary: "", conjugation: "plain" },
+      };
     block.parts = [];
-    if (String(before || "").trim()) block.parts.push({ type: "text", value: before.trim() });
+    if (before) block.parts.push({ type: "text", value: before });
     block.parts.push(blank);
-    if (String(after || "").trim()) block.parts.push({ type: "text", value: after.trim() });
+    if (after) block.parts.push({ type: "text", value: after });
   }
 
   function createBlock(type, index) {
@@ -622,7 +661,6 @@
       if (block.type === "grammar-line") {
         const partsWrap = document.createElement("div");
         partsWrap.className = "hw-builder__parts";
-        const { before, after } = grammarTextAroundBlank(block);
         const blankPart =
           getGrammarBlankPart(block) ||
           {
@@ -633,44 +671,37 @@
             hint: { dictionary: "", conjugation: "plain" },
           };
 
-        const beforeLabel = document.createElement("label");
-        beforeLabel.className = "hw-builder__field-label";
-        beforeLabel.textContent = "Before the blank";
-        const beforeInput = document.createElement("input");
-        beforeInput.type = "text";
-        beforeInput.className = "hw-builder__field hw-builder__field--jp";
-        beforeInput.placeholder = "Text that comes before the blank";
-        beforeInput.value = before;
-        beforeInput.addEventListener("input", () => {
-          syncGrammarParts(block, beforeInput.value, afterInput.value);
+        const sentenceLabel = document.createElement("label");
+        sentenceLabel.className = "hw-builder__field-label";
+        sentenceLabel.textContent = "Sentence";
+        const sentenceInput = document.createElement("textarea");
+        sentenceInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
+        sentenceInput.rows = 2;
+        sentenceInput.placeholder = "どうだった？レッスンはちょっと{難しかった}。";
+        sentenceInput.value = grammarSentenceFromBlock(block);
+        sentenceInput.addEventListener("input", () => {
+          syncGrammarPartsFromSentence(block, sentenceInput.value);
           notifyChange();
         });
-        beforeLabel.appendChild(beforeInput);
-        partsWrap.appendChild(beforeLabel);
+        sentenceLabel.appendChild(sentenceInput);
+        partsWrap.appendChild(sentenceLabel);
 
-        const answerInput = document.createElement("input");
-        answerInput.type = "text";
-        answerInput.className = "hw-builder__field";
-        answerInput.placeholder = "Answer key (optional)";
-        answerInput.value = blankPart.answer || "";
-        answerInput.addEventListener("input", () => {
-          blankPart.answer = answerInput.value;
-          syncGrammarParts(block, beforeInput.value, afterInput.value);
-          notifyChange();
-        });
-        partsWrap.appendChild(answerInput);
+        const sentenceHint = document.createElement("p");
+        sentenceHint.className = "hw-builder__inline-hint";
+        sentenceHint.textContent = "Put {answer} where the blank goes. Use {} if you do not need an answer key.";
+        partsWrap.appendChild(sentenceHint);
 
         const hintRow = document.createElement("div");
         hintRow.className = "hw-builder__hint-row";
         const dictInput = document.createElement("input");
         dictInput.type = "text";
         dictInput.className = "hw-builder__field hw-builder__field--sm";
-        dictInput.placeholder = "Dictionary form (e.g. いく)";
+        dictInput.placeholder = "Dictionary form (e.g. むずかしい)";
         dictInput.value = blankPart.hint?.dictionary || "";
         dictInput.addEventListener("input", () => {
           blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
           blankPart.hint.dictionary = dictInput.value;
-          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          syncGrammarPartsFromSentence(block, sentenceInput.value);
           notifyChange();
         });
         const conjInput = document.createElement("input");
@@ -681,26 +712,11 @@
         conjInput.addEventListener("input", () => {
           blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
           blankPart.hint.conjugation = conjInput.value;
-          syncGrammarParts(block, beforeInput.value, afterInput.value);
+          syncGrammarPartsFromSentence(block, sentenceInput.value);
           notifyChange();
         });
         hintRow.append(dictInput, conjInput);
         partsWrap.appendChild(hintRow);
-
-        const afterLabel = document.createElement("label");
-        afterLabel.className = "hw-builder__field-label";
-        afterLabel.textContent = "After the blank";
-        const afterInput = document.createElement("input");
-        afterInput.type = "text";
-        afterInput.className = "hw-builder__field hw-builder__field--jp";
-        afterInput.placeholder = "Text that comes after the blank";
-        afterInput.value = after;
-        afterInput.addEventListener("input", () => {
-          syncGrammarParts(block, beforeInput.value, afterInput.value);
-          notifyChange();
-        });
-        afterLabel.appendChild(afterInput);
-        partsWrap.appendChild(afterLabel);
 
         const negLabel = document.createElement("label");
         negLabel.className = "hw-builder__check";

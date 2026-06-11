@@ -4746,6 +4746,13 @@ button.course-card__status:disabled {
   color: color-mix(in srgb, #fff 88%, transparent);
 }
 
+.hw-builder__inline-hint {
+  margin: -0.15rem 0 0.65rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
 .hw-builder__field--compact {
   margin-bottom: 0;
 }

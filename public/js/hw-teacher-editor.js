@@ -409,12 +409,12 @@
       if (!assignment?.sections?.length) return false;
 
       const grammar = assignment.sections.find((s) => s.mode === "grammar-blank");
-      if (grammar) {
-        const graded =
-          grammar.items?.filter((item) =>
-            (item.parts || []).some((p) => p.type === "blank" && p.answer)
-          ).length || 0;
-        if (graded > 0) return true;
+      if (
+        grammar?.items?.some((item) =>
+          (item.parts || []).some((p) => p.type === "blank")
+        )
+      ) {
+        return true;
       }
 
       const video = assignment.sections.find((s) => s.mode === "video-response");
@@ -464,7 +464,7 @@
 
       if (!validateWorksheet(assignment)) {
         setMakerStatus(
-          "Add at least one block with content — grammar answer key, video prompt, or listening line.",
+          "Add at least one block with content — blank sentence, video prompt, or listening line.",
           true
         );
         return;
