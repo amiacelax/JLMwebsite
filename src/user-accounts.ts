@@ -11,6 +11,8 @@ const RESERVED_USERNAMES = new Set([
   "joshs",
   "deme",
   "ivan",
+  "noplan",
+  "benc",
   "admin",
   "teacher",
   "support",
@@ -204,4 +206,38 @@ export async function loginUserAccount(
   if (!ok) throw new Error("INVALID_CREDENTIALS");
 
   return { session: toAuthSession(account) };
+}
+
+export async function deleteUserAccount(
+  username: string,
+  env: KvEnv
+): Promise<{ username: string; deleted: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const normalized = normalizeUsername(username);
+  if (!normalized) throw new Error("USERNAME_REQUIRED");
+
+  const raw = await kv.get(userKey(normalized));
+  if (!raw) return { username: normalized, deleted: false };
+
+  let account: UserAccount;
+  try {
+    account = JSON.parse(raw) as UserAccount;
+  } catch {
+    throw new Error("INVALID_ACCOUNT");
+  }
+
+  await kv.delete(userKey(normalized));
+  if (account.email) {
+    await kv.delete(userEmailKey(normalizeEmail(account.email)));
+  }
+
+  const ids = await readUsersIndex(kv);
+  await writeUsersIndex(
+    kv,
+    ids.filter((id) => id !== normalized)
+  );
+
+  return { username: normalized, deleted: true };
 }

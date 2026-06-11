@@ -154,6 +154,12 @@
   let rafId = 0;
   let usedAnswersSession = new Set();
   let advanceTimer = null;
+  let touchGesture = null;
+
+  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const TAP_MAX_MS = 280;
+  const TAP_MAX_MOVE_PX = 14;
+  const HOLD_LANTERN_MS = 180;
 
   function isLearning() {
     return gameMode === "learning";
@@ -745,6 +751,7 @@
       btn.setAttribute("aria-label", p.item.word);
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (isCoarsePointer) return;
         onWordClick(btn, p.item);
       });
       wordsEl.appendChild(btn);
@@ -1019,6 +1026,7 @@
 
   function resetGame() {
     stopTimers();
+    clearTouchGesture();
     playing = false;
     gameOver = false;
     gameClear = false;
@@ -1040,12 +1048,26 @@
     updateHud();
     updateActionButton();
     updateModeUi();
-    if (stageHint) stageHint.textContent = "Move mouse or finger to light the dark";
+    if (stageHint) {
+      stageHint.textContent = isCoarsePointer
+        ? "Hold to shine · tap a lit word"
+        : "Move mouse or finger to light the dark";
+    }
   }
 
-  function onPointerMove(e) {
+  function clearTouchGesture() {
+    if (!touchGesture) return;
+    if (touchGesture.holdTimer) clearTimeout(touchGesture.holdTimer);
+    if (stage && touchGesture.captured) {
+      try {
+        stage.releasePointerCapture(touchGesture.pointerId);
+      } catch (_) {}
+    }
+    touchGesture = null;
+  }
+
+  function applyLanternFromPointer(e, isTouch) {
     if (!stage) return;
-    const isTouch = e.pointerType === "touch";
     const finger = pointerToPercent(e.clientX, e.clientY);
     const lantern = isTouch
       ? pointerToPercent(e.clientX, e.clientY, { aboveFinger: true })
@@ -1060,23 +1082,109 @@
     }
     pointerInside = true;
     stage.classList.add("lhn-stage--lit");
+    if (playing) updateReveal();
+  }
+
+  function enterTouchLanternMode(e) {
+    if (!touchGesture || touchGesture.mode === "lantern") return;
+    touchGesture.mode = "lantern";
+    if (touchGesture.holdTimer) {
+      clearTimeout(touchGesture.holdTimer);
+      touchGesture.holdTimer = null;
+    }
+    if (stage && !touchGesture.captured) {
+      try {
+        stage.setPointerCapture(e.pointerId);
+        touchGesture.captured = true;
+      } catch (_) {}
+    }
+    applyLanternFromPointer(e, true);
+  }
+
+  function trySelectWordAtPoint(clientX, clientY) {
+    if (!playing) return;
+    const hit = document.elementFromPoint(clientX, clientY);
+    const btn = hit?.closest?.(".lhn-word");
+    if (!btn || btn.classList.contains("lhn-word--fading")) return;
+    if (!btn.classList.contains("lhn-word--ready")) return;
+    const entry = roundChoices.find((w) => w.el === btn);
+    if (entry) onWordClick(btn, entry.item);
+  }
+
+  function onPointerDown(e) {
+    if (!stage || !playing) return;
+    if (e.pointerType === "touch") {
+      clearTouchGesture();
+      touchGesture = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startTime: Date.now(),
+        mode: "pending",
+        captured: false,
+        holdTimer: setTimeout(() => enterTouchLanternMode(e), HOLD_LANTERN_MS),
+      };
+      return;
+    }
+    applyLanternFromPointer(e, false);
+  }
+
+  function onPointerMove(e) {
+    if (!stage) return;
+    if (e.pointerType === "touch") {
+      if (!touchGesture || e.pointerId !== touchGesture.pointerId) return;
+      const moved = Math.hypot(e.clientX - touchGesture.startX, e.clientY - touchGesture.startY);
+      if (touchGesture.mode === "pending" && moved > TAP_MAX_MOVE_PX) {
+        enterTouchLanternMode(e);
+      }
+      if (touchGesture.mode === "lantern") {
+        applyLanternFromPointer(e, true);
+      }
+      return;
+    }
+    applyLanternFromPointer(e, false);
+  }
+
+  function onPointerUp(e) {
+    if (!stage) return;
+    if (e.pointerType === "touch" && touchGesture && e.pointerId === touchGesture.pointerId) {
+      const elapsed = Date.now() - touchGesture.startTime;
+      const moved = Math.hypot(e.clientX - touchGesture.startX, e.clientY - touchGesture.startY);
+      const wasTap =
+        touchGesture.mode === "pending" && elapsed < TAP_MAX_MS && moved < TAP_MAX_MOVE_PX;
+      clearTouchGesture();
+      if (wasTap) trySelectWordAtPoint(e.clientX, e.clientY);
+      onPointerLeave();
+      return;
+    }
+    if (e.pointerType !== "touch") applyLanternFromPointer(e, false);
   }
 
   function onPointerLeave() {
     pointerInside = false;
     stage?.classList.remove("lhn-stage--touch");
-    if (!playing) stage.classList.remove("lhn-stage--lit");
+    if (!playing) stage?.classList.remove("lhn-stage--lit");
   }
 
-  stage?.addEventListener("pointerenter", onPointerMove);
-  stage?.addEventListener("pointermove", onPointerMove);
-  stage?.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "touch") stage.setPointerCapture(e.pointerId);
-    onPointerMove(e);
+  stage?.addEventListener("pointerenter", (e) => {
+    if (e.pointerType === "touch") return;
+    applyLanternFromPointer(e, false);
   });
-  stage?.addEventListener("pointerup", onPointerMove);
-  stage?.addEventListener("pointerleave", onPointerLeave);
-  stage?.addEventListener("pointercancel", onPointerLeave);
+  stage?.addEventListener("pointermove", onPointerMove);
+  stage?.addEventListener("pointerdown", onPointerDown);
+  stage?.addEventListener("pointerup", onPointerUp);
+  stage?.addEventListener("pointerleave", (e) => {
+    if (e.pointerType === "touch") return;
+    onPointerLeave();
+  });
+  stage?.addEventListener("pointercancel", (e) => {
+    if (e.pointerType === "touch") {
+      clearTouchGesture();
+      onPointerLeave();
+      return;
+    }
+    onPointerLeave();
+  });
 
   window.addEventListener("resize", () => {
     lightRadius = measureLightRadius();

@@ -57,6 +57,7 @@ import {
 } from "./homework-kv";
 import {
   createUserAccount,
+  deleteUserAccount,
   loginUserAccount,
   type SignupInput,
   type LoginInput,
@@ -507,6 +508,43 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
     }
     console.error("auth signup failed:", err);
     return jsonResponse({ error: "Could not create account." }, 500);
+  }
+}
+
+async function handleAuthDeleteAccount(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Unauthorized." }, 403);
+  }
+
+  try {
+    const data = (await request.json()) as { username?: string };
+    const result = await deleteUserAccount(String(data.username || ""), env);
+    return jsonResponse({
+      success: true,
+      username: result.username,
+      deleted: result.deleted,
+      message: result.deleted ? "Account deleted." : "Account not found.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
+    }
+    if (code === "USERNAME_REQUIRED") {
+      return jsonResponse({ error: "Username is required." }, 400);
+    }
+    console.error("auth delete failed:", err);
+    return jsonResponse({ error: "Could not delete account." }, 500);
   }
 }
 
@@ -1682,6 +1720,10 @@ export default {
 
     if (url.pathname === "/api/auth/login") {
       return handleAuthLogin(request, env);
+    }
+
+    if (url.pathname === "/api/auth/delete-account") {
+      return handleAuthDeleteAccount(request, env);
     }
 
     if (url.pathname === "/api/promo-signup") {

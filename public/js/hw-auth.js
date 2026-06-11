@@ -102,6 +102,14 @@
       tier: "student_special",
       videoResponseUnlock: false,
     },
+    noplan: {
+      password: "demo",
+      displayName: "No Plan",
+      role: "student",
+      accountLabel: "homework_only",
+      tier: "pending",
+      videoResponseUnlock: false,
+    },
   };
 
   function normalizeUsername(raw) {

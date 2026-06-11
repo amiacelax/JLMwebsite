@@ -77,10 +77,70 @@
   <main id="main" class="subpage__main">
     <section class="section">
       <div class="container container--wide">
-        <div class="section__header">
+        <div class="section__header section__header--platform">
           <p class="section__eyebrow">Homework Hub</p>
           <h1 class="section__title" id="hw-hub-title">Your hub</h1>
           <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
+          <div class="hw-hub-tier-pick" id="hw-hub-tier-pick" hidden>
+            <div class="hw-hub-tier-grid" role="group" aria-label="Choose a homework plan">
+              <article class="course-card course-card--locked hw-hub-tier-plan" data-hw-tier-plan="basic" data-hw-tier-detail="basic" tabindex="0">
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Basic</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Homework every other week with written feedback.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="basic" aria-label="View Basic plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: five dollars per month">$5<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" data-hw-tier-plan="premium" data-hw-tier-detail="premium" tabindex="0">
+                <p class="hw-hub-tier-plan__badge">Popular</p>
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Premium</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Weekly homework, extensive feedback, and full game access.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="premium" aria-label="View Premium plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: fifteen dollars per month">$15<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--video" data-hw-tier-plan="unlimited" data-hw-tier-detail="unlimited" tabindex="0">
+                <p class="hw-hub-tier-plan__badge hw-hub-tier-plan__badge--video">Video</p>
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Unlimited</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Unlimited assignments with video feedback from JD.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="unlimited" aria-label="View Unlimited plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: ninety-nine dollars per month">$99<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--addon" id="hw-hub-video-card" tabindex="0">
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Video response</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
+                <div class="course-card__footer" id="hw-hub-video-footer"></div>
+              </article>
+            </div>
+          </div>
         </div>
 
         <!-- Teacher hub: tabs + panels -->
@@ -369,98 +429,102 @@
         <!-- Everything below here is student-only (hidden for teachers) -->
         <div id="hw-platform-student-only">
           <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
-            <section class="hw-platform-card hw-grid-lesson">
-              <h2 class="hw-platform-card__title">Your most recent lesson</h2>
-              <p class="hw-platform-card__desc" id="hw-lesson-meta">YouTube — full lesson recording.</p>
-              <a class="btn btn--ghost btn--full" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
-              <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
-            </section>
+            <div class="hw-grid-stack" id="hw-grid-stack">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
+                <div class="hw-lesson-actions">
+                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+                  <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
+                </div>
+              </section>
 
-            <section class="hw-platform-card hw-grid-upload">
+              <article class="course-card course-card--locked hw-addon-card hw-addon-card--compact hw-grid-video" id="hw-video-response-card" tabindex="0">
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Video response</h2>
+                <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
+                <div class="course-card__footer" id="hw-video-response-footer"></div>
+              </article>
+            </div>
+
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-upload">
               <h2 class="hw-platform-card__title">Upload your work</h2>
-              <p class="hw-platform-card__desc">Submit printed homework as a photo, or record a video when an assignment asks for it.</p>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Photo for printed sheets · video when an assignment asks for it.</p>
 
-              <div class="hw-work-upload">
-                <div class="hw-work-upload__block">
-                  <h3 class="hw-work-upload__heading">Photo</h3>
-                  <p class="hw-work-upload__hint">For printed homework — upload a file or snap a picture.</p>
-                  <form class="hw-photo-upload" id="hw-photo-upload-form">
-                    <label class="hw-photo-upload__label" for="hw-photo-file">Upload a photo</label>
-                    <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" capture="environment">
-
-                    <p class="hw-photo-upload__or" aria-hidden="true">or</p>
-
+              <details class="hw-upload-fold" open>
+                <summary class="hw-upload-fold__summary">
+                  <span class="hw-upload-fold__label">Photo</span>
+                  <span class="hw-upload-fold__meta">Printed homework</span>
+                </summary>
+                <div class="hw-upload-fold__body">
+                  <form class="hw-photo-upload hw-photo-upload--compact" id="hw-photo-upload-form">
+                    <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" aria-label="Choose a photo file">
                     <div class="hw-photo-capture" id="hw-photo-capture">
-                      <p class="hw-photo-upload__label" id="hw-photo-capture-label">Take a photo with your camera</p>
+                      <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
                       <div class="hw-photo-capture__idle" id="hw-photo-capture-idle">
-                        <button type="button" class="btn btn--ghost btn--full" id="hw-photo-open-camera">Open camera</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-open-camera">Open camera</button>
                       </div>
                       <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
                         <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
-                        <div class="hw-photo-capture__actions">
-                          <button type="button" class="btn btn--primary btn--full" id="hw-photo-capture-btn">Capture photo</button>
-                          <button type="button" class="btn btn--ghost btn--full" id="hw-photo-cancel-camera">Cancel</button>
+                        <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                          <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
+                          <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
                         </div>
                       </div>
                       <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
                         <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
-                        <button type="button" class="btn btn--ghost btn--full" id="hw-photo-retake">Retake</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-retake">Retake</button>
                       </div>
                     </div>
-
-                    <button type="submit" class="btn btn--ghost btn--full" id="hw-photo-upload-submit">Upload photo</button>
+                    <div class="hw-upload-fold__actions">
+                      <button type="submit" class="btn btn--primary btn--sm" id="hw-photo-upload-submit">Upload photo</button>
+                    </div>
                     <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
                   </form>
                 </div>
+              </details>
 
-                <div class="hw-work-upload__block">
-                  <h3 class="hw-work-upload__heading">Video</h3>
-                  <p class="hw-work-upload__hint">For speaking or video assignments — upload a clip or record one here (up to 3 min, 24 MB).</p>
-                  <form class="hw-video-upload" id="hw-video-upload-form">
-                    <label class="hw-photo-upload__label" for="hw-video-file">Upload a video</label>
-                    <input class="hw-photo-upload__input" type="file" id="hw-video-file" name="video" accept="video/*">
-
-                    <p class="hw-photo-upload__or" aria-hidden="true">or</p>
-
+              <details class="hw-upload-fold">
+                <summary class="hw-upload-fold__summary">
+                  <span class="hw-upload-fold__label">Video</span>
+                  <span class="hw-upload-fold__meta">Up to 3 min</span>
+                </summary>
+                <div class="hw-upload-fold__body">
+                  <form class="hw-video-upload hw-video-upload--compact" id="hw-video-upload-form">
+                    <input class="hw-photo-upload__input" type="file" id="hw-video-file" name="video" accept="video/*" aria-label="Choose a video file">
                     <div class="hw-video-capture" id="hw-video-capture">
-                      <p class="hw-photo-upload__label" id="hw-video-capture-label">Record a video</p>
+                      <p class="hw-photo-upload__label" id="hw-video-capture-label" hidden>Recording preview</p>
                       <div class="hw-video-capture__idle" id="hw-video-capture-idle">
-                        <button type="button" class="btn btn--ghost btn--full" id="hw-video-start-recording">Start recording</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-video-start-recording">Record video</button>
                       </div>
                       <div class="hw-video-capture__live" id="hw-video-capture-live" hidden>
                         <video class="hw-photo-capture__video" id="hw-video-capture-preview-live" playsinline muted autoplay aria-labelledby="hw-video-capture-label"></video>
                         <p class="hw-video-capture__timer" id="hw-video-recording-timer" aria-live="polite">0:00</p>
-                        <div class="hw-photo-capture__actions">
-                          <button type="button" class="btn btn--primary btn--full" id="hw-video-stop-recording">Stop recording</button>
-                          <button type="button" class="btn btn--ghost btn--full" id="hw-video-cancel-recording">Cancel</button>
+                        <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                          <button type="button" class="btn btn--primary btn--sm" id="hw-video-stop-recording">Stop</button>
+                          <button type="button" class="btn btn--ghost btn--sm" id="hw-video-cancel-recording">Cancel</button>
                         </div>
                       </div>
                       <div class="hw-video-capture__preview" id="hw-video-capture-preview" hidden>
                         <video class="hw-video-capture__playback" id="hw-video-capture-playback" playsinline controls aria-label="Recorded video preview"></video>
-                        <button type="button" class="btn btn--ghost btn--full" id="hw-video-retake">Record again</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-video-retake">Record again</button>
                       </div>
                     </div>
-
-                    <button type="submit" class="btn btn--ghost btn--full" id="hw-video-upload-submit">Upload video</button>
+                    <div class="hw-upload-fold__actions">
+                      <button type="submit" class="btn btn--primary btn--sm" id="hw-video-upload-submit">Upload video</button>
+                    </div>
                     <p class="hw-photo-upload__status" id="hw-video-upload-status" role="status" aria-live="polite"></p>
                   </form>
                 </div>
-              </div>
+              </details>
             </section>
 
-            <article class="course-card course-card--locked hw-addon-card hw-grid-video" id="hw-video-response-card" tabindex="0">
-              <span class="course-card__lock" aria-hidden="true">
-                <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-              </span>
-              <h2 class="course-card__title">Video response</h2>
-              <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
-              <div class="course-card__footer" id="hw-video-response-footer"></div>
-            </article>
-
-            <section class="hw-platform-card hw-grid-assignments" id="hw-current-assignment-card">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
               <h2 class="hw-platform-card__title">Current assignment</h2>
-              <p class="hw-platform-card__desc">Your latest homework from JD, ready to fill in below.</p>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
               <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
               <div class="hw-current-assignment__pills">
                 <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Homework Online</a>
@@ -505,6 +569,60 @@
     </section>
   </main>
 
+  <div class="hw-breakdown-modal hw-tier-detail-modal" id="hw-tier-detail-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-tier-detail-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-tier-detail-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-tier-detail-close aria-label="Close plan details">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-tier-detail-title">Plan details</h2>
+
+      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+        <h3>Basic</h3>
+        <ul class="hw-breakdown-card__list">
+          <li>HW assignment every other week</li>
+          <li>General written feedback/advice</li>
+          <li>Phone or print — works either way</li>
+          <li>Limited learning game access</li>
+        </ul>
+        <div class="hw-breakdown-column__upgrade" role="note">
+          Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+        </div>
+      </article>
+
+      <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-premium" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge">Popular</p>
+        <p class="hw-breakdown-card__price">$15<span>/mo</span></p>
+        <h3>Premium</h3>
+        <ul class="hw-breakdown-card__list">
+          <li>HW assignments <u>every week</u> (written/audio/video)</li>
+          <li><u>Extensive</u> written feedback/advice</li>
+          <li>Feedback within <u>24 hours</u></li>
+          <li>Phone or print — works either way</li>
+          <li>Full learning game access</li>
+          <li>Private Discord access</li>
+        </ul>
+        <div class="hw-breakdown-column__upgrade" role="note">
+          Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
+        </div>
+      </article>
+
+      <article class="hw-breakdown-card hw-breakdown-card--included hw-tier-detail-panel" id="hw-tier-detail-unlimited" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video</p>
+        <p class="hw-breakdown-card__price">$99<span>/mo</span></p>
+        <h3>Unlimited</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Unlimited</u> assignments per month</li>
+          <li>Extensive <u>video feedback</u> responses and advice</li>
+          <li><u>24/7 messaging with JD</u> for your questions</li>
+          <li>Phone or print — works either way</li>
+          <li>Full access to learning games and beta versions</li>
+          <li>Private Discord access</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+
   <div id="hw-platform-toast" class="hw-platform-toast" role="status" aria-live="polite"></div>
 
   <footer class="site-footer">
@@ -525,6 +643,6 @@
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260630" defer></script>
+  <script src="/js/hw-platform.js?v=20260642" defer></script>
 </body>
 </html>

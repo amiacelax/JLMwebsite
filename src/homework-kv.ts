@@ -56,8 +56,10 @@ interface KvEnv {
 
 const TEACHER_DEFAULT = "jlm";
 
-/** Must match student accounts in public/js/hw-auth.js */
-const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan"]);
+/** Legacy demo students + teacher publish list (public/js/hw-auth.js ACCOUNTS). */
+const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan", "noplan"]);
+
+const userAccountKey = (username: string) => `user-account:${username}`;
 
 function isTeacher(username: string | undefined, env: KvEnv): boolean {
   const allowed = (env.HW_TEACHER_USER || TEACHER_DEFAULT).toLowerCase();
@@ -937,11 +939,17 @@ export interface HomeworkVideoSubmitInput {
   lessonName?: string;
 }
 
-function isKnownStudent(username: string | undefined): boolean {
+async function isKnownStudent(
+  username: string | undefined,
+  kv: KVNamespace
+): Promise<boolean> {
   const user = String(username || "")
     .trim()
     .toLowerCase();
-  return STUDENT_ACCOUNTS.has(user);
+  if (!user) return false;
+  if (STUDENT_ACCOUNTS.has(user)) return true;
+  const account = await kv.get(userAccountKey(user));
+  return Boolean(account);
 }
 
 function makeSubmissionId(): string {
@@ -1042,7 +1050,7 @@ export async function saveHomeworkOnlineSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const assignmentId = String(data.assignmentId || "").trim();
   if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
@@ -1082,7 +1090,7 @@ export async function saveHomeworkPhotoSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const photo = await storeSubmissionPhoto(kv, file);
   const submission: HomeworkSubmission = {
@@ -1111,7 +1119,7 @@ export async function saveHomeworkVideoSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!isKnownStudent(username)) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const video = await storeSubmissionVideo(kv, file);
   const submission: HomeworkSubmission = {

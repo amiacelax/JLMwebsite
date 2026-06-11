@@ -33,13 +33,135 @@
     badges.append(labelPill, tierPill);
   }
 
-  function renderPendingNotice() {
-    if (isTeacher || session.tier !== "pending") return;
-    const desc = document.getElementById("hw-hub-desc");
-    if (desc) {
-      desc.textContent =
-        "Your account is ready. Pick a homework plan on the Homework page, or unlock courses from Courses — checkout uses your login.";
+  const TIER_DETAIL_TITLES = {
+    basic: "Basic — what’s included",
+    premium: "Premium — what’s included",
+    unlimited: "Unlimited — what’s included",
+  };
+
+  const HUB_PLAN_TIERS = {
+    basic: "tier1",
+    premium: "tier2",
+    unlimited: "tier3",
+  };
+
+  const HUB_PLAN_STATUS_LOCKED =
+    '<span class="course-card__status-text course-card__status-text--locked">Locked</span>' +
+    '<span class="course-card__status-text course-card__status-text--unlock">Details</span>';
+
+  let tierDetailBound = false;
+
+  function bindTierDetailModal() {
+    if (tierDetailBound) return;
+    const modal = document.getElementById("hw-tier-detail-modal");
+    const pick = document.getElementById("hw-hub-tier-pick");
+    if (!modal) return;
+    tierDetailBound = true;
+
+    const title = document.getElementById("hw-tier-detail-title");
+    const panels = modal.querySelectorAll("[data-tier-detail-panel]");
+    const closeEls = modal.querySelectorAll("[data-hw-tier-detail-close]");
+    let lastFocus = null;
+
+    function closeModal() {
+      if (modal.hidden) return;
+      modal.hidden = true;
+      document.body.classList.remove("is-modal-open");
+      panels.forEach((panel) => {
+        panel.hidden = true;
+      });
+      if (lastFocus instanceof HTMLElement) lastFocus.focus();
+      lastFocus = null;
     }
+
+    function openModal(tierId) {
+      const panel = document.getElementById("hw-tier-detail-" + tierId);
+      if (!panel) return;
+      lastFocus = document.activeElement;
+      panels.forEach((el) => {
+        el.hidden = el !== panel;
+      });
+      if (title) title.textContent = TIER_DETAIL_TITLES[tierId] || "Plan details";
+      modal.hidden = false;
+      document.body.classList.add("is-modal-open");
+      global.HwCheckout?.bindCheckoutControls?.(modal);
+      modal.querySelector("[data-hw-tier-detail-close]")?.focus();
+    }
+
+    pick?.querySelectorAll("[data-hw-tier-detail]").forEach((el) => {
+      el.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const tierId = el.getAttribute("data-hw-tier-detail") || "";
+        const card = el.closest("[data-hw-tier-plan]");
+        if (card?.classList.contains("hw-hub-tier-plan--current")) return;
+        openModal(tierId);
+      });
+    });
+
+    pick?.querySelectorAll("[data-hw-tier-plan][data-hw-tier-detail]").forEach((card) => {
+      card.addEventListener("click", () => {
+        if (card.classList.contains("hw-hub-tier-plan--current")) return;
+        if (card.id === "hw-hub-video-card") return;
+        openModal(card.getAttribute("data-hw-tier-detail") || "");
+      });
+    });
+
+    closeEls.forEach((el) => el.addEventListener("click", closeModal));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+  }
+
+  function renderHubTierPlans() {
+    const pick = document.getElementById("hw-hub-tier-pick");
+    if (!pick || pick.hidden) return;
+
+    const currentTier = session.tier;
+    pick.querySelectorAll("[data-hw-tier-plan]").forEach((card) => {
+      if (card.id === "hw-hub-video-card") return;
+
+      const planId = card.getAttribute("data-hw-tier-plan");
+      const planTier = planId ? HUB_PLAN_TIERS[planId] : null;
+      const isCurrent = Boolean(planTier && currentTier === planTier);
+      const statusBtn = card.querySelector("[data-hw-tier-plan-status]");
+
+      card.classList.toggle("course-card--locked", !isCurrent);
+      card.classList.toggle("hw-hub-tier-plan--current", isCurrent);
+
+      if (statusBtn) {
+        if (isCurrent) {
+          statusBtn.disabled = true;
+          statusBtn.innerHTML =
+            '<span class="course-card__status-text hw-hub-tier-plan__current">Current plan</span>';
+        } else {
+          statusBtn.disabled = false;
+          statusBtn.innerHTML = HUB_PLAN_STATUS_LOCKED;
+        }
+      }
+    });
+  }
+
+  function renderPendingNotice() {
+    if (isTeacher) return;
+    const pick = document.getElementById("hw-hub-tier-pick");
+    const desc = document.getElementById("hw-hub-desc");
+    const stackVideo = document.getElementById("hw-video-response-card");
+    const pending = session.tier === "pending";
+
+    if (pick) {
+      pick.hidden = !pending;
+      if (pending) {
+        bindTierDetailModal();
+        renderHubTierPlans();
+        global.HwCheckout?.bindCheckoutControls?.(pick);
+      }
+    }
+
+    if (stackVideo) stackVideo.hidden = pending;
+
+    if (!pending || !desc) return;
+    desc.textContent =
+      "Your account is ready — pick a plan below to unlock homework. Checkout uses your login.";
   }
 
   function bindWeeklyUpgradeCard() {
@@ -120,9 +242,15 @@
   }
 
   function renderVideoResponseCard(catalog) {
-    const card = document.getElementById("hw-video-response-card");
+    const pending = session.tier === "pending";
+    const useHubRow = pending;
+    const card = document.getElementById(
+      useHubRow ? "hw-hub-video-card" : "hw-video-response-card"
+    );
     const desc = document.getElementById("hw-video-response-desc");
-    const footer = document.getElementById("hw-video-response-footer");
+    const footer = document.getElementById(
+      useHubRow ? "hw-hub-video-footer" : "hw-video-response-footer"
+    );
     if (!footer) return;
     footer.replaceChildren();
 
@@ -156,7 +284,10 @@
     card?.classList.remove("hw-addon-card--active");
     price.textContent = "$" + HwAuth.VIDEO_RESPONSE_ADDON_PRICE;
 
-    if (HwAuth.canOfferVideoUnlock(session)) {
+    const canSubscribeVideo =
+      HwAuth.canOfferVideoUnlock(session) || session.tier === "pending";
+
+    if (canSubscribeVideo) {
       if (desc) desc.textContent = VIDEO_RESPONSE_DESC;
       const videoPaypal =
         global.HwCheckout?.buildCheckoutUrl?.("video-feedback", session) ||
