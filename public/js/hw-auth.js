@@ -102,6 +102,14 @@
       tier: "student_special",
       videoResponseUnlock: false,
     },
+    benc: {
+      password: "jelly",
+      displayName: "benc",
+      role: "student",
+      accountLabel: "homework_only",
+      tier: "pending",
+      videoResponseUnlock: false,
+    },
     noplan: {
       password: "demo",
       displayName: "No Plan",
@@ -319,6 +327,13 @@
     return Boolean(s && s.tier && s.tier !== "pending");
   }
 
+  /** Homework hub games — open for all student and homework-only accounts. */
+  function hasGameHubAccess(session) {
+    const s = session || getSession();
+    if (!s || s.role !== "student") return false;
+    return s.accountLabel === "homework_only" || s.accountLabel === "current_student";
+  }
+
   function logout() {
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
@@ -388,6 +403,7 @@
     loginAsync,
     signupAsync,
     hasActiveSubscription,
+    hasGameHubAccess,
     logout,
     requireAuth,
     redirectIfAuthenticated,

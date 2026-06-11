@@ -57,7 +57,7 @@ interface KvEnv {
 const TEACHER_DEFAULT = "jlm";
 
 /** Legacy demo students + teacher publish list (public/js/hw-auth.js ACCOUNTS). */
-const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan", "noplan"]);
+const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan", "benc", "noplan"]);
 
 const userAccountKey = (username: string) => `user-account:${username}`;
 

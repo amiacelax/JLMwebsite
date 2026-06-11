@@ -28,7 +28,11 @@
 
     const tierPill = document.createElement("span");
     tierPill.className = "hw-account-badge hw-account-badge--tier";
-    tierPill.textContent = session.tierDisplay || HwAuth.getTierMeta(session)?.name || "—";
+    tierPill.textContent =
+      HwAuth.TIERS[HUB_CURRENT_PLAN_TIER]?.name ||
+      session.tierDisplay ||
+      HwAuth.getTierMeta(session)?.name ||
+      "—";
 
     badges.append(labelPill, tierPill);
   }
@@ -45,11 +49,16 @@
     unlimited: "tier3",
   };
 
+  /** Stub until teacher-assigned plans ship — every student hub shows Basic as current. */
+  const HUB_CURRENT_PLAN_TIER = "tier1";
+
   const HUB_PLAN_STATUS_LOCKED =
     '<span class="course-card__status-text course-card__status-text--locked">Locked</span>' +
     '<span class="course-card__status-text course-card__status-text--unlock">Details</span>';
 
   let tierDetailBound = false;
+  /** @type {((tierId: string) => void) | null} */
+  let openHubTierDetail = null;
 
   function bindTierDetailModal() {
     if (tierDetailBound) return;
@@ -88,6 +97,8 @@
       modal.querySelector("[data-hw-tier-detail-close]")?.focus();
     }
 
+    openHubTierDetail = openModal;
+
     pick?.querySelectorAll("[data-hw-tier-detail]").forEach((el) => {
       el.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -116,7 +127,7 @@
     const pick = document.getElementById("hw-hub-tier-pick");
     if (!pick || pick.hidden) return;
 
-    const currentTier = session.tier;
+    const currentTier = HUB_CURRENT_PLAN_TIER;
     pick.querySelectorAll("[data-hw-tier-plan]").forEach((card) => {
       if (card.id === "hw-hub-video-card") return;
 
@@ -141,27 +152,57 @@
     });
   }
 
-  function renderPendingNotice() {
+  function renderStudentHubHeader() {
     if (isTeacher) return;
     const pick = document.getElementById("hw-hub-tier-pick");
     const desc = document.getElementById("hw-hub-desc");
     const stackVideo = document.getElementById("hw-video-response-card");
-    const pending = session.tier === "pending";
 
     if (pick) {
-      pick.hidden = !pending;
-      if (pending) {
-        bindTierDetailModal();
-        renderHubTierPlans();
-        global.HwCheckout?.bindCheckoutControls?.(pick);
-      }
+      pick.hidden = false;
+      bindTierDetailModal();
+      renderHubTierPlans();
+      global.HwCheckout?.bindCheckoutControls?.(pick);
     }
 
-    if (stackVideo) stackVideo.hidden = pending;
+    if (stackVideo) stackVideo.hidden = true;
 
-    if (!pending || !desc) return;
-    desc.textContent =
-      "Your account is ready — pick a plan below to unlock homework. Checkout uses your login.";
+    if (desc) {
+      desc.textContent =
+        "Assignments and lesson links from your recordings show up here. Upgrade your plan below when you are ready.";
+    }
+  }
+
+  const HUB_GAMES = [
+    { label: "Village prototype", href: "/game/" },
+    { label: "Tic Tac Toe", href: "/game/tictactoe-past/" },
+    { label: "Lantern Word Hunt", href: "/game/lantern-hunt/" },
+  ];
+
+  function renderGamesHubCard() {
+    const card = document.getElementById("hw-games-hub-card");
+    const footer = document.getElementById("hw-games-hub-footer");
+    if (!card || !footer) return;
+
+    footer.replaceChildren();
+
+    if (!HwAuth.hasGameHubAccess(session)) {
+      card.hidden = true;
+      return;
+    }
+
+    card.hidden = false;
+    card.classList.remove("course-card--locked");
+
+    HUB_GAMES.forEach((game) => {
+      const link = document.createElement("a");
+      link.className = "hw-games-hub-btn";
+      link.href = game.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = game.label;
+      footer.append(link);
+    });
   }
 
   function bindWeeklyUpgradeCard() {
@@ -242,8 +283,7 @@
   }
 
   function renderVideoResponseCard(catalog) {
-    const pending = session.tier === "pending";
-    const useHubRow = pending;
+    const useHubRow = !isTeacher;
     const card = document.getElementById(
       useHubRow ? "hw-hub-video-card" : "hw-video-response-card"
     );
@@ -285,7 +325,9 @@
     price.textContent = "$" + HwAuth.VIDEO_RESPONSE_ADDON_PRICE;
 
     const canSubscribeVideo =
-      HwAuth.canOfferVideoUnlock(session) || session.tier === "pending";
+      useHubRow ||
+      HwAuth.canOfferVideoUnlock(session) ||
+      session.tier === "pending";
 
     if (canSubscribeVideo) {
       if (desc) desc.textContent = VIDEO_RESPONSE_DESC;
@@ -1644,7 +1686,8 @@
       setTimeout(ensureTeacherEditorMounted, 0);
     } else {
       renderAccountBar();
-      renderPendingNotice();
+      renderStudentHubHeader();
+      renderGamesHubCard();
       bindWeeklyUpgradeCard();
       loadStudentHub();
       window.addEventListener("hashchange", loadStudentHub);
