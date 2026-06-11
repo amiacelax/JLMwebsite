@@ -1442,7 +1442,6 @@
     const panels = {
       account: document.getElementById("hw-teacher-account"),
       maker: document.getElementById("hw-teacher-maker"),
-      homework: document.getElementById("hw-teacher-homework"),
       library: document.getElementById("hw-teacher-library"),
       ideas: document.getElementById("hw-teacher-ideas"),
       submissions: document.getElementById("hw-teacher-submissions"),
@@ -1481,9 +1480,10 @@
     let initial = "maker";
     try {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
-      if (
+      if (saved === "homework") {
+        initial = "account";
+      } else if (
         saved === "maker" ||
-        saved === "homework" ||
         saved === "account" ||
         saved === "library" ||
         saved === "ideas" ||

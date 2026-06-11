@@ -147,7 +147,6 @@
         <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
           <div class="hw-teacher-tabs" role="tablist" aria-label="Teacher hub sections">
             <button type="button" class="hw-teacher-tabs__btn is-active" role="tab" id="hw-teacher-tab-maker" aria-selected="true" aria-controls="hw-teacher-maker" data-teacher-tab="maker">Worksheet maker</button>
-            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-homework" aria-selected="false" aria-controls="hw-teacher-homework" data-teacher-tab="homework">Homework</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
@@ -160,7 +159,7 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
             <h2 class="hw-platform-card__title">Worksheet maker</h2>
-            <p class="hw-platform-card__desc">Build a worksheet without tying it to a student. Save to the library, then send it from the Homework tab.</p>
+            <p class="hw-platform-card__desc">Build a worksheet without tying it to a student. Save to the library, then send it from Student info.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-maker-form">
               <div class="hw-teacher-meta__grid">
@@ -199,9 +198,43 @@
             <div class="hw-teacher-worksheet" id="hw-teacher-maker-mount" aria-label="Worksheet builder"></div>
           </section>
 
-          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-homework" role="tabpanel" aria-labelledby="hw-teacher-tab-homework" hidden>
-            <h2 class="hw-platform-card__title">Homework — send to student</h2>
-            <p class="hw-platform-card__desc">Pick a saved worksheet and which student should see it on their hub. This does not change the worksheet in the library.</p>
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
+            <h2 class="hw-platform-card__title">Student info</h2>
+            <p class="hw-platform-card__desc">Lesson links, playlists, and homework publishing for each student’s hub.</p>
+
+            <form class="hw-teacher-meta" id="hw-teacher-account-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field">
+                  Student id
+                  <select name="studentUsername" id="hw-teacher-account-student" required>
+                    <option value="joshs">joshs — Josh S</option>
+                    <option value="benm">benm — Ben M</option>
+                    <option value="deme">deme — Deme</option>
+                    <option value="ivan">ivan — Ivan</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Lesson playlist
+                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…" required>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Latest lesson — YouTube (optional override)
+                  <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
+                </label>
+                <p class="hw-teacher-account-note">The <strong>last</strong> video in the playlist becomes the student’s “Watch lesson” link (refreshes about every hour). Add each new lesson at the <strong>bottom</strong> of the playlist. Override only if the feed can’t read a private playlist.</p>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
+              </div>
+              <p class="hw-maker-status" id="hw-teacher-account-status" role="status" aria-live="polite">
+                Pick a student, paste links, then save.
+              </p>
+            </form>
+
+            <div class="hw-teacher-panel-split" aria-hidden="true"></div>
+
+            <h3 class="hw-teacher-panel-subtitle">Homework — send to student</h3>
+            <p class="hw-platform-card__desc hw-platform-card__desc--tight">Pick a saved worksheet and which student should see it on their hub. This does not change the worksheet in the library.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-publish-form">
               <div class="hw-teacher-meta__grid">
@@ -232,43 +265,9 @@
             </form>
           </section>
 
-          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
-            <h2 class="hw-platform-card__title">Student info</h2>
-            <p class="hw-platform-card__desc">Latest lesson link and lesson playlist for a student’s hub. Save here without publishing homework.</p>
-
-            <form class="hw-teacher-meta" id="hw-teacher-account-form">
-              <div class="hw-teacher-meta__grid">
-                <label class="hw-maker-field">
-                  Student id
-                  <select name="studentUsername" id="hw-teacher-account-student" required>
-                    <option value="joshs">joshs — Josh S</option>
-                    <option value="benm">benm — Ben M</option>
-                    <option value="deme">deme — Deme</option>
-                    <option value="ivan">ivan — Ivan</option>
-                  </select>
-                </label>
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Lesson playlist
-                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…" required>
-                </label>
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Latest lesson — YouTube (optional override)
-                  <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
-                </label>
-                <p class="hw-teacher-account-note">The <strong>last</strong> video in the playlist becomes the student’s “Watch lesson” link (refreshes about every hour). Add each new lesson at the <strong>bottom</strong> of the playlist. Override only if the feed can’t read a private playlist.</p>
-              </div>
-              <div class="hw-teacher-meta__actions">
-                <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
-              </div>
-              <p class="hw-maker-status" id="hw-teacher-account-status" role="status" aria-live="polite">
-                Pick a student, paste links, then save.
-              </p>
-            </form>
-          </section>
-
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-library" id="hw-teacher-library" role="tabpanel" aria-labelledby="hw-teacher-tab-library" hidden>
             <h2 class="hw-platform-card__title">Worksheet library</h2>
-            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from Homework.</p>
+            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from Student info.</p>
             <label class="hw-library-search-label" for="hw-library-search">Search</label>
             <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
             <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
