@@ -8,7 +8,7 @@
   <title>Homework Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Zen+Kurenaido&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
   <script>
     (function () {
@@ -70,9 +70,9 @@
 
         <div class="hw-login-hero">
           <div class="hw-login-hero__bg" aria-hidden="true">
-            <div class="hw-login-hero__video"></div>
             <div class="hw-login-hero__scrim"></div>
           </div>
+          <p class="hw-login-hero__words" id="hw-login-hero-words" aria-hidden="true"></p>
           <div class="hw-login-inlay-wrap">
           <div class="hw-login-inlay" aria-label="Account access">
             <div class="hw-auth-tabs" role="tablist" aria-label="Account">
@@ -99,7 +99,6 @@
                   </div>
                   <button type="submit" class="hw-login-inlay__submit">Log in</button>
                   <p id="hw-login-error" class="hw-login-inlay__error" hidden role="alert"></p>
-                  <p class="hw-login-inlay__note">Create an account before subscribing or buying a course.</p>
                 </form>
               </div>
 
@@ -299,6 +298,7 @@
   <script src="/js/hw-subscribe.js" defer></script>
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-login-words.js" defer></script>
   <script src="/js/hw-login.js?v=20260639" defer></script>
 </body>
 </html>
