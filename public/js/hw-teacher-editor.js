@@ -97,7 +97,9 @@
 
   function readMakerMeta(form) {
     const grammarPoint = String(
-      form.querySelector('[name="grammarPoint"]')?.value || ""
+      document.getElementById("hw-teacher-maker-grammar")?.value ||
+        form?.querySelector('[name="grammarPoint"]')?.value ||
+        ""
     ).trim();
     return { grammarPoint };
   }
@@ -247,12 +249,16 @@
     const makerForm = document.getElementById("hw-teacher-maker-form");
     const makerMount = document.getElementById("hw-teacher-maker-mount");
     const makerStatusEl = document.getElementById("hw-teacher-maker-status");
-    const makerSaveBtn = document.getElementById("hw-teacher-maker-save-btn");
-    const makerUpdateBtn = document.getElementById("hw-teacher-maker-update-btn");
-    const makerResetBtn = document.getElementById("hw-teacher-maker-reset-btn");
-    const makerEditSelect = document.getElementById("hw-teacher-maker-edit-select");
-    const makerSaveBar = document.getElementById("hw-teacher-maker-save-bar");
-    const makerEditingNote = document.getElementById("hw-teacher-maker-editing-note");
+    let makerEditSelect = null;
+    let makerUpdateBtn = null;
+    let makerDeleteBtn = null;
+    let makerEditingNote = null;
+    let makerSendStudent = null;
+    let makerSendBtn = null;
+    let makerPreviewBtn = null;
+    let makerDockStatusEl = null;
+    let makerDockHintEl = null;
+    let makerDockReady = false;
 
     const publishForm = document.getElementById("hw-teacher-publish-form");
     const publishStudent = document.getElementById("hw-teacher-publish-student");
@@ -303,14 +309,178 @@
       accountStatusEl.classList.toggle("hw-maker-status--error", !!isError);
     }
 
+    function setMakerDockStatus(msg, isError) {
+      if (!makerDockStatusEl) return;
+      makerDockStatusEl.textContent = msg;
+      makerDockStatusEl.classList.toggle("hw-maker-status--error", !!isError);
+    }
+
+    function getMakerWorksheetId() {
+      const builder = worksheetBuilder;
+      const explicit = String(
+        editingAssignmentId ||
+          makerEditSelect?.value ||
+          builder?.getCanvasAssignmentId?.() ||
+          ""
+      ).trim();
+      if (explicit) return explicit;
+
+      const meta = readMakerMeta(makerForm);
+      const hasBlocks = (builder?.getState?.().blocks?.length || 0) > 0;
+      if (hasBlocks && meta.grammarPoint) {
+        return makeWorksheetId(meta.grammarPoint);
+      }
+      return "";
+    }
+
+    function afterWorksheetSavedLocally(assignmentId) {
+      editingAssignmentId = assignmentId;
+      if (makerEditSelect) makerEditSelect.value = assignmentId;
+      updateMakerEditUI();
+      updateMakerDockHint();
+      updatePublishHint();
+      populateWorksheetSelect(makerEditSelect, assignmentId);
+      populatePublishWorksheetSelect(publishWorksheet, assignmentId);
+    }
+
+    function updateMakerDockHint() {
+      if (!makerDockHintEl || !makerSendStudent) return;
+      const student = String(makerSendStudent.value || "").toLowerCase();
+      const id = getMakerWorksheetId();
+      if (!student) {
+        makerDockHintEl.textContent = "Pick a student, then send this sheet.";
+        return;
+      }
+      if (!id) {
+        makerDockHintEl.textContent = "Add a title and at least one block, then send.";
+        return;
+      }
+      const entry = getCatalogEntry(id);
+      const assigned = (entry?.students || []).some(
+        (s) => String(s).toLowerCase() === student
+      );
+      makerDockHintEl.textContent = assigned
+        ? "Already on " + student + "'s hub — send again to refresh."
+        : "Will send “" + id + "” to " + student + ".";
+    }
+
     function updateMakerEditUI() {
       const isEdit = Boolean(editingAssignmentId);
-      if (makerSaveBtn) makerSaveBtn.hidden = isEdit;
-      if (makerSaveBar) makerSaveBar.hidden = !isEdit;
-      if (makerEditingNote && isEdit) {
-        makerEditingNote.textContent =
-          "Editing “" + editingAssignmentId + "” — change the worksheet below, then update.";
+      if (makerUpdateBtn) makerUpdateBtn.hidden = !isEdit;
+      if (makerDeleteBtn) makerDeleteBtn.hidden = !isEdit;
+      if (makerEditingNote) {
+        makerEditingNote.textContent = isEdit
+          ? "Editing “" + editingAssignmentId + "”"
+          : "New sheet — send to a student to save it.";
       }
+      updateMakerDockHint();
+    }
+
+    function populateMakerDockStudents() {
+      if (!makerSendStudent) return;
+      const keep = makerSendStudent.value;
+      const accounts = getStudentAccounts();
+      const students = accounts.length ? accounts : DEFAULT_STUDENTS;
+      const existing = new Set(
+        Array.from(makerSendStudent.options).map((o) => o.value).filter(Boolean)
+      );
+      students.forEach((a) => {
+        if (existing.has(a.username)) return;
+        const opt = document.createElement("option");
+        opt.value = a.username;
+        opt.textContent = a.username + (a.displayName ? " — " + a.displayName : "");
+        makerSendStudent.appendChild(opt);
+      });
+      if (keep) makerSendStudent.value = keep;
+    }
+
+    function updateMakerPreviewBtn(isOpen) {
+      if (!makerPreviewBtn) return;
+      makerPreviewBtn.textContent = isOpen ? "Back to editor" : "Student preview";
+      makerPreviewBtn.setAttribute("aria-pressed", isOpen ? "true" : "false");
+    }
+
+    function setupMakerDock() {
+      const slot = document.getElementById("hw-teacher-maker-dock");
+      if (!slot || makerDockReady) return;
+      makerDockReady = true;
+
+      slot.innerHTML =
+        '<div class="hw-builder__dock-section hw-builder__dock-section--library">' +
+        '<h5 class="hw-builder__dock-heading">Library</h5>' +
+        '<p class="hw-builder__dock-note" id="hw-teacher-maker-editing-note">New sheet — send to a student to save it.</p>' +
+        '<div class="hw-builder__dock-actions">' +
+        '<button type="button" class="btn hw-btn--save" id="hw-teacher-maker-update-btn" hidden>Update saved</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-teacher-maker-delete-btn" hidden>Delete worksheet</button>' +
+        "</div></div>" +
+        '<div class="hw-builder__dock-section hw-builder__dock-section--send">' +
+        '<h5 class="hw-builder__dock-heading">Send to student</h5>' +
+        '<label class="hw-builder__dock-field">Student' +
+        '<select id="hw-teacher-maker-send-student" aria-label="Student to send homework to">' +
+        '<option value="">— Choose student —</option>' +
+        "</select></label>" +
+        '<button type="button" class="btn btn--ghost btn--sm hw-builder__dock-preview" id="hw-teacher-maker-preview-btn">Student preview</button>' +
+        '<button type="button" class="btn btn--primary btn--sm hw-builder__dock-send" id="hw-teacher-maker-send-btn">Send to hub</button>' +
+        '<p class="hw-builder__dock-hint" id="hw-teacher-maker-dock-hint">Sends the open worksheet — also saves it to your library.</p>' +
+        '<p class="hw-builder__dock-status" id="hw-teacher-maker-dock-status" role="status" aria-live="polite"></p>' +
+        "</div>";
+
+      makerUpdateBtn = document.getElementById("hw-teacher-maker-update-btn");
+      makerDeleteBtn = document.getElementById("hw-teacher-maker-delete-btn");
+      makerEditingNote = document.getElementById("hw-teacher-maker-editing-note");
+      makerSendStudent = document.getElementById("hw-teacher-maker-send-student");
+      makerPreviewBtn = document.getElementById("hw-teacher-maker-preview-btn");
+      makerSendBtn = document.getElementById("hw-teacher-maker-send-btn");
+      makerDockStatusEl = document.getElementById("hw-teacher-maker-dock-status");
+      makerDockHintEl = document.getElementById("hw-teacher-maker-dock-hint");
+
+      populateMakerDockStudents();
+      updateMakerEditUI();
+      setMakerDockStatus("");
+
+      makerSendStudent?.addEventListener("change", updateMakerDockHint);
+
+      makerUpdateBtn?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const id = editingAssignmentId || makerEditSelect?.value;
+        if (!id) {
+          setMakerStatus("Load a saved worksheet first.", true);
+          return;
+        }
+        if (!editingAssignmentId || !worksheetBuilder) {
+          await loadAssignmentById(id);
+        }
+        if (!editingAssignmentId) return;
+        saveWorksheetToLibrary();
+      });
+
+      makerDeleteBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        deleteWorksheetFromLibrary();
+      });
+
+      makerSendBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        publishWorksheetToStudent({
+          student: makerSendStudent?.value,
+          worksheetId: getMakerWorksheetId(),
+          setStatus: setMakerDockStatus,
+          sendBtn: makerSendBtn,
+        });
+      });
+
+      makerPreviewBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        const builder = worksheetBuilder;
+        if (!builder) return;
+        if (builder.isPreviewOpen?.()) {
+          builder.hidePreview();
+          return;
+        }
+        builder.showPreview(readMakerMeta(makerForm).grammarPoint || "Homework");
+      });
+
+      updateMakerPreviewBtn(false);
     }
 
     function clearEditMode() {
@@ -356,8 +526,32 @@
       publishHint.textContent = hint;
     }
 
+    function bindMakerEditSelect() {
+      makerEditSelect = document.getElementById("hw-teacher-maker-edit-select");
+      if (!makerEditSelect || makerEditSelect.dataset.bound === "true") return;
+      makerEditSelect.dataset.bound = "true";
+
+      makerEditSelect.addEventListener("focus", async () => {
+        await ensureCatalogLoaded();
+        populateWorksheetSelect(makerEditSelect, makerEditSelect.value);
+      });
+
+      makerEditSelect.addEventListener("change", () => {
+        if (makerEditSelect.value) loadAssignmentById(makerEditSelect.value);
+        else {
+          clearEditMode();
+          const grammarInput = document.getElementById("hw-teacher-maker-grammar");
+          if (grammarInput) grammarInput.value = "";
+          renderSheet("blank");
+          setMakerStatus("New blank sheet — add a title and blocks, then send to save.");
+        }
+        updateMakerDockHint();
+      });
+    }
+
     function ensureBuilder() {
       if (worksheetBuilder || !global.HwWorksheetBuilder?.mount || !makerMount) return worksheetBuilder;
+      makerDockReady = false;
       makerMount.innerHTML = "";
       worksheetBuilder = global.HwWorksheetBuilder.mount(makerMount, {
         getTitle: () => readMakerMeta(makerForm).grammarPoint || "Homework",
@@ -366,9 +560,16 @@
             worksheetBuilder.showPreview(readMakerMeta(makerForm).grammarPoint || "Homework");
           }
           updatePublishHint();
+          updateMakerDockHint();
         },
+        onPreviewChange: updateMakerPreviewBtn,
       });
       makerMount.dataset.builderReady = "true";
+      bindMakerEditSelect();
+      if (makerEditSelect && editingAssignmentId) {
+        makerEditSelect.value = editingAssignmentId;
+      }
+      setupMakerDock();
       return worksheetBuilder;
     }
 
@@ -390,7 +591,7 @@
 
       editingAssignmentId = assignment.id || catalogEntry?.id || null;
 
-      const grammarInput = makerForm.querySelector('[name="grammarPoint"]');
+      const grammarInput = document.getElementById("hw-teacher-maker-grammar");
       if (grammarInput) {
         grammarInput.value = assignment.title || catalogEntry?.title || "";
       }
@@ -411,7 +612,7 @@
       if (!id) {
         clearEditMode();
         renderSheet("blank");
-        setMakerStatus("Blank canvas — add a section or pick a template, then save.");
+        setMakerStatus("New blank sheet — add a title and blocks, then send to save.");
         return;
       }
       setMakerStatus("Loading " + id + "…");
@@ -450,7 +651,12 @@
       return false;
     }
 
-    async function saveWorksheetToLibrary(isUpdate) {
+    async function saveWorksheetToLibrary() {
+      if (!editingAssignmentId) {
+        setMakerStatus("Load a saved worksheet first, or send to a student to save a new one.", true);
+        return;
+      }
+
       const meta = readMakerMeta(makerForm);
       if (!meta.grammarPoint) {
         setMakerStatus("Enter a grammar point / title.", true);
@@ -470,16 +676,10 @@
       }
 
       const assignment = builder.toAssignment({
-        id:
-          isUpdate && editingAssignmentId
-            ? editingAssignmentId
-            : makeWorksheetId(meta.grammarPoint),
+        id: editingAssignmentId,
         title: meta.grammarPoint,
       });
-      assignment.id =
-        isUpdate && editingAssignmentId
-          ? editingAssignmentId
-          : makeWorksheetId(meta.grammarPoint);
+      assignment.id = editingAssignmentId;
       assignment.title = meta.grammarPoint;
       assignment.status = "draft";
 
@@ -501,9 +701,8 @@
         summary: "Worksheet: " + meta.grammarPoint,
       };
 
-      const activeBtn = isUpdate ? makerUpdateBtn : makerSaveBtn;
-      if (activeBtn) activeBtn.disabled = true;
-      setMakerStatus((isUpdate ? "Updating " : "Saving ") + assignment.id + "…");
+      if (makerUpdateBtn) makerUpdateBtn.disabled = true;
+      setMakerStatus("Updating " + assignment.id + "…");
 
       try {
         const res = await fetch("/api/homework-save-worksheet", {
@@ -518,20 +717,71 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Save failed.");
 
-        editingAssignmentId = assignment.id;
-        if (makerEditSelect) makerEditSelect.value = assignment.id;
-        updateMakerEditUI();
-        populateWorksheetSelect(makerEditSelect, assignment.id);
-        populatePublishWorksheetSelect(publishWorksheet, assignment.id);
+        afterWorksheetSavedLocally(assignment.id);
 
-        setMakerStatus(data.message || "Saved to library.");
-        showToast(isUpdate ? "Worksheet updated" : "Saved to library");
-        if (options.onWorksheetSaved) options.onWorksheetSaved(assignment.id);
+        setMakerStatus(data.message || "Worksheet updated.");
+        showToast("Worksheet updated");
+        if (options.onWorksheetSaved) await options.onWorksheetSaved(assignment.id);
       } catch (err) {
         setMakerStatus((err && err.message) || "Could not save.", true);
-        showToast("Save failed");
+        showToast("Update failed");
       } finally {
-        if (activeBtn) activeBtn.disabled = false;
+        if (makerUpdateBtn) makerUpdateBtn.disabled = false;
+      }
+    }
+
+    async function deleteWorksheetFromLibrary() {
+      const id = editingAssignmentId || makerEditSelect?.value;
+      if (!id) {
+        setMakerStatus("Load a saved worksheet to delete.", true);
+        return;
+      }
+
+      const session = getTeacherSession();
+      if (!session || session.role !== "teacher") {
+        setMakerStatus("Teacher login required.", true);
+        return;
+      }
+
+      const title =
+        (getCatalogEntry(id)?.title || makerForm.querySelector('[name="grammarPoint"]')?.value || id).trim();
+      const ok = window.confirm(
+        'Delete “' +
+          id +
+          '”' +
+          (title && title !== id ? " (" + title + ")" : "") +
+          " from the library?\n\nStudents will no longer see this saved copy on their hub. This can't be undone."
+      );
+      if (!ok) return;
+
+      if (makerDeleteBtn) makerDeleteBtn.disabled = true;
+      setMakerStatus("Deleting “" + id + "”…");
+
+      try {
+        const res = await fetch("/api/homework-delete-worksheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherUsername: session.username,
+            worksheetId: id,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Delete failed.");
+
+        clearEditMode();
+        renderSheet("blank");
+        setMakerStatus(data.message || "Deleted “" + id + "”.");
+        showToast("Worksheet deleted");
+        populateWorksheetSelect(makerEditSelect, "");
+        populatePublishWorksheetSelect(publishWorksheet, "");
+        if (options.onWorksheetDeleted) await options.onWorksheetDeleted(id);
+        else if (options.onWorksheetSaved) await options.onWorksheetSaved();
+      } catch (err) {
+        setMakerStatus((err && err.message) || "Could not delete.", true);
+        showToast("Delete failed");
+      } finally {
+        if (makerDeleteBtn) makerDeleteBtn.disabled = false;
       }
     }
 
@@ -568,12 +818,17 @@
       const canvasId = builder?.getCanvasAssignmentId?.() || null;
       const meta = readMakerMeta(makerForm);
       const hasBlocks = (builder?.getState?.().blocks?.length || 0) > 0;
+      const derivedId = meta.grammarPoint ? makeWorksheetId(meta.grammarPoint) : "";
+      const isNewUnsavedCanvas =
+        hasBlocks && !editingAssignmentId && !makerSelectId && !canvasId;
       const useLiveBuilder =
         builder?.toAssignment &&
         hasBlocks &&
-        (editingAssignmentId === worksheetId ||
+        (isNewUnsavedCanvas ||
+          editingAssignmentId === worksheetId ||
           makerSelectId === worksheetId ||
-          canvasId === worksheetId);
+          canvasId === worksheetId ||
+          (derivedId && worksheetId === derivedId));
 
       if (useLiveBuilder) {
         const assignment = builder.toAssignment({
@@ -588,34 +843,51 @@
       return { assignment, usedLiveBuilder: false, entry };
     }
 
-    async function publishWorksheetToStudent() {
-      const student = String(publishStudent?.value || "")
+    async function publishWorksheetToStudent(publishOpts) {
+      publishOpts = publishOpts || {};
+      const setStatus =
+        publishOpts.setStatus ||
+        function (msg, isError) {
+          setPublishStatus(msg, isError);
+        };
+      const activeSendBtn = publishOpts.sendBtn || publishSendBtn;
+
+      const student = String(
+        publishOpts.student !== undefined ? publishOpts.student : publishStudent?.value || ""
+      )
         .trim()
         .toLowerCase();
-      const worksheetId = String(publishWorksheet?.value || "").trim();
+      let worksheetId = String(
+        publishOpts.worksheetId !== undefined
+          ? publishOpts.worksheetId
+          : publishWorksheet?.value || ""
+      ).trim();
+      if (!worksheetId) {
+        worksheetId = getMakerWorksheetId();
+      }
 
       if (!student) {
-        setPublishStatus("Choose a student to publish to.", true);
+        setStatus("Choose a student to publish to.", true);
         return;
       }
       if (!worksheetId) {
-        setPublishStatus("Choose a worksheet from the library.", true);
+        setStatus("Add a grammar point / title and at least one block, then send.", true);
         return;
       }
       if (!isStudentAccount(student)) {
-        setPublishStatus('Unknown student id "' + student + '".', true);
+        setStatus('Unknown student id "' + student + '".', true);
         return;
       }
 
       const session = getTeacherSession();
       if (!session || session.role !== "teacher") {
-        setPublishStatus("Teacher login required.", true);
+        setStatus("Teacher login required.", true);
         return;
       }
 
       const media = readAccountMedia(accountForm);
-      if (publishSendBtn) publishSendBtn.disabled = true;
-      setPublishStatus("Sending “" + worksheetId + "” to " + student + "…");
+      if (activeSendBtn) activeSendBtn.disabled = true;
+      setStatus("Sending “" + worksheetId + "” to " + student + "…");
 
       try {
         const resolved = await resolveAssignmentForPublish(worksheetId);
@@ -625,7 +897,7 @@
         assignment.id = worksheetId;
 
         if (!validateWorksheet(assignment)) {
-          setPublishStatus(
+          setStatus(
             "This worksheet needs content — add blocks in Worksheet maker first.",
             true
           );
@@ -633,8 +905,10 @@
         }
 
         if (resolved.usedLiveBuilder) {
-          setPublishStatus("Saving latest edits, then sending to " + student + "…");
+          setStatus("Saving to library, then sending to " + student + "…");
+          assignment.status = "draft";
           await persistAssignmentDraft(session, assignment, entry);
+          afterWorksheetSavedLocally(worksheetId);
         }
 
         const catalogEntry = {
@@ -664,18 +938,19 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Publish failed.");
 
-        setPublishStatus(
+        setStatus(
           (data.message || "Sent to " + student + "!") +
             " This is now their current homework on the hub."
         );
         showToast("Current homework set for " + student);
         updatePublishHint();
+        updateMakerDockHint();
         if (options.onPublished) await options.onPublished(worksheetId, student);
       } catch (err) {
-        setPublishStatus((err && err.message) || "Could not publish.", true);
+        setStatus((err && err.message) || "Could not publish.", true);
         showToast("Send failed");
       } finally {
-        if (publishSendBtn) publishSendBtn.disabled = false;
+        if (activeSendBtn) activeSendBtn.disabled = false;
       }
     }
 
@@ -734,52 +1009,15 @@
       makerForm.dataset.bound = "true";
       makerForm.addEventListener("submit", (e) => e.preventDefault());
 
-      makerEditSelect?.addEventListener("focus", async () => {
-        await ensureCatalogLoaded();
-        populateWorksheetSelect(makerEditSelect, makerEditSelect.value);
-      });
-
-      makerEditSelect?.addEventListener("change", () => {
-        if (makerEditSelect.value) loadAssignmentById(makerEditSelect.value);
-        else {
-          clearEditMode();
-          renderSheet("blank");
-        }
-      });
-
-      makerForm.querySelector('[name="grammarPoint"]')?.addEventListener("input", () => {
+      makerMount?.addEventListener("input", (e) => {
+        if (e.target?.id !== "hw-teacher-maker-grammar") return;
         const gp = readMakerMeta(makerForm).grammarPoint;
         if (worksheetBuilder?.isPreviewOpen?.()) {
           worksheetBuilder.showPreview(gp || "Homework");
         }
+        updateMakerDockHint();
       });
 
-      makerResetBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        clearEditMode();
-        renderSheet("blank");
-        setMakerStatus("Blank canvas — add a section or pick a template, then save.");
-        showToast("New sheet");
-      });
-
-      makerSaveBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        saveWorksheetToLibrary(false);
-      });
-
-      makerUpdateBtn?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const id = editingAssignmentId || makerEditSelect?.value;
-        if (!id) {
-          setMakerStatus("Load a worksheet first, or save a new one.", true);
-          return;
-        }
-        if (!editingAssignmentId || !worksheetBuilder) {
-          await loadAssignmentById(id);
-        }
-        if (!editingAssignmentId) return;
-        saveWorksheetToLibrary(true);
-      });
     }
 
     if (publishForm && publishForm.dataset.bound !== "true") {
@@ -808,7 +1046,10 @@
 
       publishSendBtn?.addEventListener("click", (e) => {
         e.preventDefault();
-        publishWorksheetToStudent();
+        publishWorksheetToStudent({
+          student: publishStudent?.value,
+          worksheetId: publishWorksheet?.value,
+        });
       });
     }
 
@@ -845,7 +1086,6 @@
     if (!worksheetBuilder?.getState?.().blocks?.length) {
       renderSheet("blank");
     }
-    setMakerStatus("Blank canvas — click or drag blocks to build your sheet.");
 
     ensureCatalogLoaded().then(() => {
       populateWorksheetSelect(makerEditSelect);
@@ -885,7 +1125,7 @@
     if (!mount || !assignment) return;
 
     editingAssignmentId = assignment.id || catalogEntry?.id || null;
-    const grammarInput = makerForm?.querySelector('[name="grammarPoint"]');
+    const grammarInput = document.getElementById("hw-teacher-maker-grammar");
     if (grammarInput) {
       grammarInput.value = assignment.title || catalogEntry?.title || "";
     }
@@ -900,15 +1140,16 @@
     }
 
     const editSelect = document.getElementById("hw-teacher-maker-edit-select");
-    const saveBar = document.getElementById("hw-teacher-maker-save-bar");
-    const saveBtn = document.getElementById("hw-teacher-maker-save-btn");
+    const updateBtn = document.getElementById("hw-teacher-maker-update-btn");
+    const deleteBtn = document.getElementById("hw-teacher-maker-delete-btn");
     const editingNote = document.getElementById("hw-teacher-maker-editing-note");
     if (editSelect && editingAssignmentId) editSelect.value = editingAssignmentId;
-    if (saveBtn) saveBtn.hidden = Boolean(editingAssignmentId);
-    if (saveBar) saveBar.hidden = !editingAssignmentId;
-    if (editingNote && editingAssignmentId) {
-      editingNote.textContent =
-        "Editing “" + editingAssignmentId + "” — change the worksheet below, then update.";
+    if (updateBtn) updateBtn.hidden = !editingAssignmentId;
+    if (deleteBtn) deleteBtn.hidden = !editingAssignmentId;
+    if (editingNote) {
+      editingNote.textContent = editingAssignmentId
+        ? "Editing “" + editingAssignmentId + "”"
+        : "New sheet — send to a student to save it.";
     }
     populateWorksheetSelect(editSelect, editingAssignmentId);
   }

@@ -19,6 +19,7 @@ import {
   publishToStudentHub,
   saveStudentProfile,
   saveWorksheetDraft,
+  deleteWorksheetFromLibrary,
   loadPublishedAssignment,
   listTeacherIdeas,
   listTeacherIdeaTags,
@@ -34,6 +35,7 @@ import {
   type PublishPayload,
   type StudentProfilePayload,
   type SaveWorksheetPayload,
+  type DeleteWorksheetPayload,
   type TeacherIdeaPayload,
   type TeacherIdeaDeletePayload,
   type TeacherIdeaTagPayload,
@@ -1229,6 +1231,47 @@ async function handleHomeworkSaveWorksheet(request: Request, env: Env): Promise<
   }
 }
 
+async function handleHomeworkDeleteWorksheet(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as DeleteWorksheetPayload;
+    const result = await deleteWorksheetFromLibrary(data, env);
+    return jsonResponse({
+      success: true,
+      message: `Deleted worksheet “${result.id}” from the library.`,
+      id: result.id,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED" || code === "INVALID_ID") {
+      return jsonResponse({ error: "Worksheet id is required." }, 400);
+    }
+    if (code === "NOT_IN_LIBRARY") {
+      return jsonResponse(
+        {
+          error:
+            "This worksheet is not in your saved library (it may be a built-in sheet). Only maker-saved sheets can be deleted here.",
+        },
+        404
+      );
+    }
+    console.error("homework-delete-worksheet failed:", err);
+    return jsonResponse({ error: "Could not delete worksheet." }, 500);
+  }
+}
+
 async function handleHomeworkStudentProfile(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1794,6 +1837,10 @@ export default {
 
     if (url.pathname === "/api/homework-save-worksheet") {
       return handleHomeworkSaveWorksheet(request, env);
+    }
+
+    if (url.pathname === "/api/homework-delete-worksheet") {
+      return handleHomeworkDeleteWorksheet(request, env);
     }
 
     if (url.pathname === "/api/teacher-ideas") {

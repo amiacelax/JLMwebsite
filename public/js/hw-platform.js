@@ -1402,6 +1402,18 @@
           /* ignore */
         }
       },
+      onWorksheetDeleted: async function () {
+        catalogCache = null;
+        try {
+          catalogCache = await fetchCatalog();
+          HwTeacherEditor.refreshCatalog(
+            catalogCache.assignments || [],
+            catalogCache.studentProfiles || {}
+          );
+        } catch {
+          /* ignore */
+        }
+      },
       onPublished: async function (id, studentUsername) {
         catalogCache = null;
         try {

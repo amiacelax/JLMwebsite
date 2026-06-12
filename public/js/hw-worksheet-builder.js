@@ -467,12 +467,17 @@
     const toolbar = document.createElement("div");
     toolbar.className = "hw-builder__toolbar";
     toolbar.innerHTML =
-      '<p class="hw-builder__toolbar-label">Start from a template</p>' +
-      '<div class="hw-builder__templates" role="group" aria-label="Worksheet templates"></div>' +
-      '<div class="hw-builder__toolbar-actions">' +
-      '<button type="button" class="btn btn--ghost btn--sm" data-builder-preview>Student preview</button>' +
-      '<button type="button" class="btn btn--ghost btn--sm" data-builder-back hidden>Edit layout</button>' +
-      "</div>";
+      '<div class="hw-builder__toolbar-row">' +
+      '<label class="hw-builder__toolbar-field">' +
+      '<span class="hw-builder__toolbar-label">Start from a template</span>' +
+      '<select class="hw-builder__toolbar-select" data-builder-template aria-label="Worksheet template">' +
+      '<option value="">— Choose template —</option>' +
+      "</select></label>" +
+      '<label class="hw-builder__toolbar-field hw-builder__toolbar-field--sm hw-builder__toolbar-field--end">' +
+      '<span class="hw-builder__toolbar-label">Load worksheet</span>' +
+      '<select class="hw-builder__toolbar-select hw-builder__toolbar-select--sm" id="hw-teacher-maker-edit-select" aria-label="Choose worksheet to edit">' +
+      '<option value="">— New blank sheet —</option>' +
+      "</select></label></div>";
 
     const layout = document.createElement("div");
     layout.className = "hw-builder__layout";
@@ -507,12 +512,23 @@
     });
     palette.appendChild(paletteList);
 
+    const dockSlot = document.createElement("div");
+    dockSlot.className = "hw-builder__dock";
+    dockSlot.id = "hw-teacher-maker-dock";
+    palette.appendChild(dockSlot);
+
     const canvasWrap = document.createElement("div");
     canvasWrap.className = "hw-builder__canvas-wrap";
+
+    const titleField = document.createElement("label");
+    titleField.className = "hw-builder__title-field hw-maker-field";
+    titleField.innerHTML =
+      'Grammar point / title<input type="text" name="grammarPoint" id="hw-teacher-maker-grammar" placeholder="Enter title here" autocomplete="off">';
+
     const canvas = document.createElement("div");
     canvas.className = "hw-builder__canvas";
     canvas.setAttribute("aria-label", "Worksheet blocks");
-    canvasWrap.appendChild(canvas);
+    canvasWrap.append(titleField, canvas);
 
     const previewMount = document.createElement("div");
     previewMount.className = "hw-builder__preview";
@@ -533,18 +549,25 @@
       '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="duplicate">Duplicate below</button>';
     root.appendChild(ctxMenu);
 
-    const templateRow = toolbar.querySelector(".hw-builder__templates");
+    const templateSelect = toolbar.querySelector("[data-builder-template]");
     TEMPLATE_ORDER.forEach((key) => {
       const t = TEMPLATES[key];
       if (!t) return;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "hw-builder__template-btn";
-      btn.dataset.template = key;
-      btn.textContent = t.label;
-      btn.addEventListener("click", () => applyTemplate(key));
-      templateRow.appendChild(btn);
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = t.label;
+      templateSelect.appendChild(opt);
     });
+    templateSelect?.addEventListener("change", () => {
+      const key = templateSelect.value;
+      if (!key) return;
+      applyTemplate(key);
+      templateSelect.value = "";
+    });
+
+    function notifyPreviewChange() {
+      if (options.onPreviewChange) options.onPreviewChange(previewOpen);
+    }
 
     function notifyChange() {
       if (options.onChange) options.onChange();
@@ -1101,8 +1124,8 @@
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      toolbar.querySelector("[data-builder-back]").hidden = true;
-      toolbar.querySelector("[data-builder-preview]").hidden = false;
+      titleField.hidden = false;
+      notifyPreviewChange();
       renderCanvas();
       notifyChange();
     }
@@ -1134,8 +1157,8 @@
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      toolbar.querySelector("[data-builder-back]").hidden = true;
-      toolbar.querySelector("[data-builder-preview]").hidden = false;
+      titleField.hidden = false;
+      notifyPreviewChange();
       renderCanvas();
       notifyChange();
     }
@@ -1148,22 +1171,18 @@
       previewOpen = true;
       previewMount.hidden = false;
       canvas.hidden = true;
-      toolbar.querySelector("[data-builder-back]").hidden = false;
-      toolbar.querySelector("[data-builder-preview]").hidden = true;
+      titleField.hidden = true;
+      notifyPreviewChange();
+      previewMount.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
     function hidePreview() {
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      toolbar.querySelector("[data-builder-back]").hidden = true;
-      toolbar.querySelector("[data-builder-preview]").hidden = false;
+      titleField.hidden = false;
+      notifyPreviewChange();
     }
-
-    toolbar.querySelector("[data-builder-preview]")?.addEventListener("click", () => {
-      showPreview(options.getTitle?.() || "Preview");
-    });
-    toolbar.querySelector("[data-builder-back]")?.addEventListener("click", hidePreview);
 
     applyTemplate("blank");
 

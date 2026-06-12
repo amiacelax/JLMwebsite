@@ -51,6 +51,11 @@ export interface SaveWorksheetPayload {
   catalogEntry: Record<string, unknown>;
 }
 
+export interface DeleteWorksheetPayload {
+  teacherUsername?: string;
+  worksheetId?: string;
+}
+
 interface KvEnv {
   HOMEWORK_KV?: KVNamespace;
   HW_TEACHER_USER?: string;
@@ -285,6 +290,40 @@ export async function saveWorksheetDraft(
   }
 
   return { id, updated };
+}
+
+/** Remove a teacher-saved worksheet from KV (library / published copies). */
+export async function deleteWorksheetFromLibrary(
+  data: DeleteWorksheetPayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.worksheetId || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+  if (!/^[a-z0-9-]+$/i.test(id)) throw new Error("INVALID_ID");
+
+  const hasCatalog = await kv.get(catalogKey(id));
+  const hasAssignment = await kv.get(assignmentKey(id));
+  if (!hasCatalog && !hasAssignment) throw new Error("NOT_IN_LIBRARY");
+
+  await kv.delete(catalogKey(id));
+  await kv.delete(assignmentKey(id));
+
+  const index = await readIndex(kv);
+  await writeIndex(
+    kv,
+    index.filter((entry) => entry !== id)
+  );
+
+  for (const student of STUDENT_ACCOUNTS) {
+    const current = await kv.get(studentCurrentHomeworkKey(student));
+    if (current === id) await kv.delete(studentCurrentHomeworkKey(student));
+  }
+
+  return { id };
 }
 
 export async function loadPublishedCatalogEntries(kv: KVNamespace): Promise<Record<string, unknown>[]> {

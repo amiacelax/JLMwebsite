@@ -159,42 +159,16 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
             <h2 class="hw-platform-card__title">Worksheet maker</h2>
-            <p class="hw-platform-card__desc">Build a worksheet without tying it to a student. Save to the library, then send it from Student info.</p>
+            <p class="hw-platform-card__desc">Build a worksheet, then send to students from the panel below the blocks list — sending saves it to your library.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-maker-form">
-              <div class="hw-teacher-meta__grid">
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Grammar point / title
-                  <input type="text" name="grammarPoint" id="hw-teacher-maker-grammar" placeholder="～ないといけない" required>
-                </label>
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Load worksheet
-                  <span class="hw-teacher-edit-row">
-                    <select id="hw-teacher-maker-edit-select" aria-label="Choose worksheet to edit">
-                      <option value="">— New blank sheet —</option>
-                    </select>
-                  </span>
-                  <span class="hw-teacher-edit-hint">Choosing a worksheet loads it below. Saved sheets use a neutral id (e.g. sheet-naitoikenai).</span>
-                </label>
-              </div>
-              <div class="hw-teacher-meta__actions">
-                <button type="button" class="btn btn--ghost" id="hw-teacher-maker-reset-btn">New blank sheet</button>
-                <button type="button" class="btn btn--primary" id="hw-teacher-maker-save-btn">Save to library</button>
-              </div>
               <p class="hw-maker-status" id="hw-teacher-maker-status" role="status" aria-live="polite">
-                Fill in the worksheet below, then save to the library.
+                Fill in the worksheet below, then send to a student to save it.
               </p>
             </form>
 
-            <div class="hw-teacher-save-bar" id="hw-teacher-maker-save-bar" hidden>
-              <p class="hw-teacher-save-bar__text" id="hw-teacher-maker-editing-note">
-                Edit the worksheet below, then save your changes.
-              </p>
-              <button type="button" class="btn btn--primary" id="hw-teacher-maker-update-btn">Update saved worksheet</button>
-            </div>
-
             <h3 class="hw-maker-preview-heading">Build your worksheet</h3>
-            <p class="hw-maker-preview-hint">Pick a template or stack blocks in any order. Click or drag from the left — save when ready, then use Student preview.</p>
+            <p class="hw-maker-preview-hint">Pick a template or stack blocks from the left. Preview or send from the panel below the blocks list.</p>
             <div class="hw-teacher-worksheet" id="hw-teacher-maker-mount" aria-label="Worksheet builder"></div>
           </section>
 
@@ -666,14 +640,14 @@
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-video-inline.js?v=20260630" defer></script>
   <script src="/js/hw-worksheet.js?v=20260652" defer></script>
-  <script src="/js/hw-worksheet-builder.js?v=20260650" defer></script>
-  <script src="/js/hw-teacher-editor.js?v=20260646" defer></script>
+  <script src="/js/hw-worksheet-builder.js?v=20260662" defer></script>
+  <script src="/js/hw-teacher-editor.js?v=20260661" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
   <script src="/js/hw-teacher-submissions.js?v=20260605c" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260646" defer></script>
+  <script src="/js/hw-platform.js?v=20260653" defer></script>
 </body>
 </html>
