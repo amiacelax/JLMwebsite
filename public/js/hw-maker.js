@@ -54,7 +54,7 @@
     if (dictionary) {
       blank.hint = {
         dictionary,
-        conjugation: conjugation || "plain",
+        conjugation: conjugation || "Now-later",
       };
     }
     parts.push(blank);
@@ -96,8 +96,6 @@
           instructions:
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
           mode: "grammar-blank",
-          tenseBubbles: ["Now-Later", "Past"],
-          activeTense: "Now-Later",
           items: parseLines(section1Text, "grammar-blank", "s1"),
         },
         {

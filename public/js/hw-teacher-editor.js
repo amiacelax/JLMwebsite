@@ -47,7 +47,7 @@
           name: id,
           wide: true,
           answer: "",
-          hint: { dictionary: "", conjugation: "plain" },
+          hint: { dictionary: "", conjugation: "Now-later" },
         },
       ],
     };
@@ -79,8 +79,6 @@
           instructions:
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
           mode: "grammar-blank",
-          tenseBubbles: ["Now-Later", "Past"],
-          activeTense: "Now-Later",
           items: [1, 2, 3, 4, 5].map(grammarItem),
         },
         {

@@ -25,8 +25,6 @@
           title: "Section 1 — Grammar point",
           instructions:
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
-          tenseBubbles: ["Now-Later", "Past"],
-          activeTense: "Now-Later",
           items: [1, 2, 3, 4, 5].map((n) => grammarItem(n)),
         },
         {
@@ -69,13 +67,37 @@
     return prefix + "-" + Math.random().toString(36).slice(2, 9);
   }
 
+  function normalizeGrammarBlock(block, fallbackRegister) {
+    block.register = block.register || fallbackRegister || "casual";
+    block.past = Boolean(block.past);
+    block.negative = Boolean(block.negative);
+    const blank = getGrammarBlankPart(block);
+    if (blank?.hint) {
+      if (blank.hint.conjugation) {
+        blank.hint.conjugation = global.HwWorksheet?.normalizeHintConjugation
+          ? global.HwWorksheet.normalizeHintConjugation(blank.hint.conjugation)
+          : blank.hint.conjugation === "plain"
+            ? "Now-later"
+            : blank.hint.conjugation;
+      } else {
+        blank.hint.conjugation = "Now-later";
+      }
+      const c = blank.hint.conjugation;
+      if (c === "かった" || c === "past" || c === "Past") {
+        block.past = true;
+        blank.hint.conjugation = "Now-later";
+      }
+    }
+    return block;
+  }
+
   function grammarItem(n) {
     const id = "s1-" + n;
     return {
       id,
       parts: [
         { type: "text", value: "" },
-        { type: "blank", name: id, wide: true, answer: "", hint: { dictionary: "", conjugation: "plain" } },
+        { type: "blank", name: id, wide: true, answer: "", hint: { dictionary: "", conjugation: "Now-later" } },
       ],
     };
   }
@@ -135,7 +157,7 @@
         name: block.id,
         wide: true,
         answer: "",
-        hint: { dictionary: "", conjugation: "plain" },
+        hint: { dictionary: "", conjugation: "Now-later" },
       };
 
     if (!match) {
@@ -163,7 +185,7 @@
         name: block.id,
         wide: true,
         answer: "",
-        hint: { dictionary: "", conjugation: "plain" },
+        hint: { dictionary: "", conjugation: "Now-later" },
       };
     block.parts = [];
     if (before) block.parts.push({ type: "text", value: before });
@@ -176,15 +198,17 @@
     const id = uid("blk");
     switch (type) {
       case "grammar-line":
-        return {
+        return normalizeGrammarBlock({
           id,
           type,
+          register: "casual",
+          past: false,
           negative: false,
           parts: [
             { type: "text", value: "" },
-            { type: "blank", name: id, wide: true, answer: "", hint: { dictionary: "", conjugation: "plain" } },
+            { type: "blank", name: id, wide: true, answer: "", hint: { dictionary: "", conjugation: "Now-later" } },
           ],
-        };
+        });
       case "open-line":
         return { id, type, topic: "", parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
       case "video-prompt":
@@ -210,7 +234,7 @@
       .replace(/"/g, "&quot;");
   }
 
-  function sectionsToBlocks(sections) {
+  function sectionsToBlocks(sections, assignmentRegister) {
     const blocks = [];
     (sections || []).forEach((sec) => {
       if (sec.mode === "audio-listening") {
@@ -225,12 +249,19 @@
             recordLabel: item.recordLabel || "Record your answer",
           });
         } else if (sec.mode === "grammar-blank") {
-          blocks.push({
-            id: item.id || uid("blk"),
-            type: "grammar-line",
-            negative: Boolean(item.negative),
-            parts: JSON.parse(JSON.stringify(item.parts || [])),
-          });
+          blocks.push(
+            normalizeGrammarBlock(
+              {
+                id: item.id || uid("blk"),
+                type: "grammar-line",
+                register: item.register || assignmentRegister || "casual",
+                past: Boolean(item.past),
+                negative: Boolean(item.negative),
+                parts: JSON.parse(JSON.stringify(item.parts || [])),
+              },
+              assignmentRegister
+            )
+          );
         } else if (sec.mode === "context-blank") {
           blocks.push({
             id: item.id || uid("blk"),
@@ -281,8 +312,6 @@
           mode: "grammar-blank",
           title: "",
           instructions: "",
-          tenseBubbles: ["Now-Later", "Past"],
-          activeTense: "Now-Later",
           items: [],
         };
         while (i < blocks.length && blocks[i].type === "grammar-line") {
@@ -339,6 +368,8 @@
   function blockToGrammarItem(block, index) {
     const out = { id: block.id || "item-" + (index + 1), parts: [] };
     if (block.negative) out.negative = true;
+    if (block.past) out.past = true;
+    if (block.register === "polite") out.register = "polite";
     (block.parts || []).forEach((part) => {
       if (part.type === "text") {
         const value = String(part.value || "").trim();
@@ -348,7 +379,7 @@
         const answer = String(part.answer || "").trim();
         if (answer) blank.answer = answer;
         if (part.hint?.dictionary) {
-          blank.hint = { dictionary: part.hint.dictionary, conjugation: part.hint.conjugation || "plain" };
+          blank.hint = { dictionary: part.hint.dictionary, conjugation: part.hint.conjugation || "Now-later" };
         }
         out.parts.push(blank);
       }
@@ -562,7 +593,8 @@
       el.className =
         "hw-builder__block hw-builder__block--" +
         block.type +
-        (block.negative ? " hw-builder__block--negative" : "");
+        (block.negative ? " hw-builder__block--negative" : "") +
+        (block.past ? " hw-builder__block--past" : "");
 
       const head = document.createElement("div");
       head.className = "hw-builder__block-head";
@@ -596,6 +628,13 @@
         const badge = document.createElement("span");
         badge.className = "hw-negative-badge";
         badge.textContent = "NEGATIVE";
+        head.appendChild(badge);
+      }
+
+      if (block.past) {
+        const badge = document.createElement("span");
+        badge.className = "hw-past-badge";
+        badge.textContent = "PAST";
         head.appendChild(badge);
       }
 
@@ -668,7 +707,7 @@
             name: block.id,
             wide: true,
             answer: "",
-            hint: { dictionary: "", conjugation: "plain" },
+            hint: { dictionary: "", conjugation: "Now-later" },
           };
 
         const sentenceLabel = document.createElement("label");
@@ -699,24 +738,58 @@
         dictInput.placeholder = "Dictionary form (e.g. むずかしい)";
         dictInput.value = blankPart.hint?.dictionary || "";
         dictInput.addEventListener("input", () => {
-          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
+          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "Now-later" };
           blankPart.hint.dictionary = dictInput.value;
           syncGrammarPartsFromSentence(block, sentenceInput.value);
           notifyChange();
         });
-        const conjInput = document.createElement("input");
-        conjInput.type = "text";
-        conjInput.className = "hw-builder__field hw-builder__field--sm";
-        conjInput.placeholder = "Conjugation";
-        conjInput.value = blankPart.hint?.conjugation || "plain";
-        conjInput.addEventListener("input", () => {
-          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "plain" };
-          blankPart.hint.conjugation = conjInput.value;
+
+        const tenseSelect = document.createElement("select");
+        tenseSelect.className = "hw-builder__field hw-builder__field--sm hw-builder__tense-select";
+        tenseSelect.setAttribute("aria-label", "Tense");
+        const tenseOptions = global.HwWorksheet?.HINT_TENSE_OPTIONS || [
+          { value: "Now-later", label: "Now-later" },
+          { value: "～たい", label: "～たい" },
+          { value: "てform", label: "てform" },
+        ];
+        const normalizeTense = global.HwWorksheet?.normalizeHintConjugation || ((v) => v || "Now-later");
+        const currentTense = normalizeTense(blankPart.hint?.conjugation);
+        const knownValues = tenseOptions.map((o) => o.value);
+        const allTenseOptions = tenseOptions.slice();
+        if (currentTense && !knownValues.includes(currentTense)) {
+          allTenseOptions.push({ value: currentTense, label: currentTense });
+        }
+        allTenseOptions.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.textContent = opt.label;
+          if (opt.value === currentTense) option.selected = true;
+          tenseSelect.appendChild(option);
+        });
+        tenseSelect.addEventListener("change", () => {
+          blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "Now-later" };
+          blankPart.hint.conjugation = tenseSelect.value;
           syncGrammarPartsFromSentence(block, sentenceInput.value);
           notifyChange();
         });
-        hintRow.append(dictInput, conjInput);
+        hintRow.append(dictInput, tenseSelect);
         partsWrap.appendChild(hintRow);
+
+        const markerRow = document.createElement("div");
+        markerRow.className = "hw-builder__marker-row";
+
+        const pastLabel = document.createElement("label");
+        pastLabel.className = "hw-builder__check";
+        const past = document.createElement("input");
+        past.type = "checkbox";
+        past.checked = Boolean(block.past);
+        past.addEventListener("change", () => {
+          block.past = past.checked;
+          renderCanvas();
+          notifyChange();
+        });
+        pastLabel.append(past, document.createTextNode(" Past tense"));
+        markerRow.appendChild(pastLabel);
 
         const negLabel = document.createElement("label");
         negLabel.className = "hw-builder__check";
@@ -729,7 +802,37 @@
           notifyChange();
         });
         negLabel.append(neg, document.createTextNode(" Negative form"));
-        partsWrap.appendChild(negLabel);
+        markerRow.appendChild(negLabel);
+        partsWrap.appendChild(markerRow);
+
+        const registerRow = document.createElement("div");
+        registerRow.className = "hw-builder__register-row";
+        const registerLabel = document.createElement("span");
+        registerLabel.className = "hw-builder__register-label";
+        registerLabel.textContent = "Register";
+        registerRow.appendChild(registerLabel);
+
+        const registerSwitch = document.createElement("div");
+        registerSwitch.className = "hw-builder__register-switch";
+        registerSwitch.setAttribute("role", "group");
+        registerSwitch.setAttribute("aria-label", "Plain or polite");
+        ["casual", "polite"].forEach((key) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className =
+            "hw-builder__register-opt hw-builder__register-opt--" +
+            key +
+            ((block.register || "casual") === key ? " is-active" : "");
+          btn.textContent = key === "casual" ? "Casual" : "Polite";
+          btn.addEventListener("click", () => {
+            block.register = key;
+            renderCanvas();
+            notifyChange();
+          });
+          registerSwitch.appendChild(btn);
+        });
+        registerRow.appendChild(registerSwitch);
+        partsWrap.appendChild(registerRow);
 
         el.appendChild(partsWrap);
         return el;
@@ -840,7 +943,7 @@
       const data = assignment || {};
       state = {
         templateType: data.templateType || "custom",
-        blocks: sectionsToBlocks(data.sections || []),
+        blocks: sectionsToBlocks(data.sections || [], data.register),
       };
       previewOpen = false;
       previewMount.hidden = true;

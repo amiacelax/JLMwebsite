@@ -4,11 +4,35 @@
 (function (global) {
   const LABELS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
 
+  const HINT_TENSE_OPTIONS = [
+    { value: "Now-later", label: "Now-later" },
+    { value: "～たい", label: "～たい" },
+    { value: "てform", label: "てform" },
+    { value: "Let's", label: "Let's Form" },
+    { value: "Direct command", label: "Direct command" },
+    { value: "～ている", label: "～ている" },
+    { value: "conditional (～たら)", label: "conditional (～たら)" },
+    { value: "ば", label: "Conditional (ば)" },
+    { value: "potential", label: "Potential" },
+    { value: "passive", label: "Passive" },
+    { value: "causative", label: "Causative" },
+  ];
+
+  const DEFAULT_HINT_TENSE = "Now-later";
+
+  function normalizeHintConjugation(value) {
+    const c = String(value || "").trim();
+    if (!c || c === "plain") return DEFAULT_HINT_TENSE;
+    if (c === "たい") return "～たい";
+    if (c === "て" || c === "Te-form") return "てform";
+    return c;
+  }
+
   function formatHint(hint) {
     if (!hint) return "";
     const d = hint.dictionary || "—";
-    const c = hint.conjugation;
-    if (!c || c === "たい" || c === "plain" || c === "ない") return "（" + d + "）";
+    const c = normalizeHintConjugation(hint.conjugation);
+    if (!c || c === "ない") return "（" + d + "）";
     return "（" + d + "・" + c + "）";
   }
 
@@ -244,6 +268,33 @@
     return badge;
   }
 
+  function renderPastBadge() {
+    const badge = document.createElement("span");
+    badge.className = "hw-past-badge";
+    badge.textContent = "PAST";
+    badge.setAttribute("aria-label", "Answer must be past tense");
+    return badge;
+  }
+
+  function renderRegisterBadge(register) {
+    const key = register === "polite" ? "polite" : "casual";
+    const badge = document.createElement("span");
+    badge.className = "hw-register-badge hw-register-badge--" + key;
+    badge.textContent = key === "polite" ? "POLITE" : "CASUAL";
+    badge.setAttribute("aria-label", "Use " + (key === "polite" ? "polite" : "casual") + " speech");
+    return badge;
+  }
+
+  function renderGrammarPills(item) {
+    const row = document.createElement("span");
+    row.className = "hw-line-pills";
+    row.setAttribute("aria-hidden", "true");
+    row.appendChild(renderRegisterBadge(item.register || "casual"));
+    if (item.negative) row.appendChild(renderNegativeBadge());
+    if (item.past) row.appendChild(renderPastBadge());
+    return row;
+  }
+
   function renderQuestionBadge() {
     const badge = document.createElement("span");
     badge.className = "hw-question-badge";
@@ -307,6 +358,45 @@
     return input;
   }
 
+  function renderAuthorTenseSelect(part) {
+    const select = document.createElement("select");
+    select.className = "hw-author-hint hw-author-hint--tense";
+    select.setAttribute("data-hint-tense", part.name);
+    const current = normalizeHintConjugation(part.hint?.conjugation);
+    const values = HINT_TENSE_OPTIONS.map((o) => o.value);
+    const options = HINT_TENSE_OPTIONS.slice();
+    if (current && !values.includes(current)) {
+      options.push({ value: current, label: current });
+    }
+    options.forEach((opt) => {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      if (opt.value === current) option.selected = true;
+      select.appendChild(option);
+    });
+    return select;
+  }
+
+  function renderAuthorRegisterSwitch(activeRegister) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-author-register";
+    wrap.setAttribute("role", "group");
+    wrap.setAttribute("aria-label", "Plain or polite");
+    ["casual", "polite"].forEach((key) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "hw-author-register__opt hw-author-register__opt--" +
+        key +
+        (key === (activeRegister || "casual") ? " is-active" : "");
+      btn.dataset.register = key;
+      btn.textContent = key === "casual" ? "Casual" : "Polite";
+      wrap.appendChild(btn);
+    });
+    return wrap;
+  }
+
   function renderAuthorBlank(part, showHints) {
     const wrap = document.createElement("span");
     wrap.className = "hw-blank-wrap";
@@ -338,13 +428,8 @@
       dict.placeholder = "dictionary (e.g. いく)";
       dict.setAttribute("data-hint-dict", part.name);
       dict.value = part.hint?.dictionary || "";
-      const conj = document.createElement("input");
-      conj.type = "text";
-      conj.className = "hw-author-hint";
-      conj.placeholder = "conjugation";
-      conj.setAttribute("data-hint-conj", part.name);
-      conj.value = part.hint?.conjugation || "plain";
-      hintRow.append(dict, conj);
+      hintRow.appendChild(dict);
+      hintRow.appendChild(renderAuthorTenseSelect(part));
       wrap.appendChild(hintRow);
     }
 
@@ -379,6 +464,18 @@
     });
 
     if (sectionMode === "grammar-blank") {
+      const markerRow = document.createElement("span");
+      markerRow.className = "hw-author-markers";
+
+      const pastLabel = document.createElement("label");
+      pastLabel.className = "hw-author-marker-label";
+      const past = document.createElement("input");
+      past.type = "checkbox";
+      past.className = "hw-author-past";
+      past.checked = Boolean(item.past);
+      pastLabel.append(past, document.createTextNode(" Past"));
+      markerRow.appendChild(pastLabel);
+
       const negLabel = document.createElement("label");
       negLabel.className = "hw-author-marker-label";
       const neg = document.createElement("input");
@@ -386,7 +483,10 @@
       neg.className = "hw-author-negative";
       neg.checked = Boolean(item.negative);
       negLabel.append(neg, document.createTextNode(" Negative"));
-      content.appendChild(negLabel);
+      markerRow.appendChild(negLabel);
+
+      content.appendChild(markerRow);
+      content.appendChild(renderAuthorRegisterSwitch(item.register || "casual"));
     }
 
     if (sectionMode === "context-blank") {
@@ -512,12 +612,15 @@
       if (part.type === "text") {
         content.appendChild(renderTextPart(part));
       } else if (part.type === "blank") {
-        content.appendChild(
-          renderBlankWithHint(part, {
-            omitAnswers: true,
-            listenStyle: sectionMode === "audio-listening",
-          })
-        );
+        const blankWrap = renderBlankWithHint(part, {
+          omitAnswers: true,
+          listenStyle: sectionMode === "audio-listening",
+        });
+        if (sectionMode === "grammar-blank") {
+          const field = blankWrap.querySelector(".hw-blank");
+          if (field) field.after(renderGrammarPills(item));
+        }
+        content.appendChild(blankWrap);
       } else if (part.type === "hint") {
         /* legacy: hint after blank in JSON — attach below previous blank if possible */
         const wraps = content.querySelectorAll(".hw-blank-wrap");
@@ -527,10 +630,6 @@
         }
       }
     });
-
-    if (item.negative) {
-      content.appendChild(renderNegativeBadge());
-    }
 
     if (item.question) {
       content.appendChild(renderQuestionBadge());
@@ -554,17 +653,6 @@
     heading.className = "hw-worksheet__section-title";
     heading.textContent = section.title;
     head.appendChild(heading);
-
-    const tenseAtMeta = form?.dataset.hwTenseAtMeta === "1";
-    if (section.tenseBubbles && section.tenseBubbles.length && interactive && !tenseAtMeta) {
-      const tense =
-        (form && form.dataset.hwTense) || section.activeTense || section.tenseBubbles[0];
-      head.appendChild(renderTenseBubbles(form, section, tense, true));
-    } else if (section.tenseBubbles && section.tenseBubbles.length && !tenseAtMeta) {
-      head.appendChild(
-        renderTenseBubbles(form, section, section.activeTense || section.tenseBubbles[0], false)
-      );
-    }
 
     wrap.appendChild(head);
 
@@ -634,8 +722,7 @@
         items: [],
       };
       if (section.mode === "grammar-blank") {
-        section.tenseBubbles = ["Now-Later", "Past"];
-        section.activeTense = "Now-Later";
+        /* per-item past / register / tense — no section-level tense switch */
       }
       if (section.mode === "audio-listening") {
         const audioUrl = secEl.querySelector("[data-section-audio-url]")?.value?.trim();
@@ -662,6 +749,12 @@
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
         }
+        if (lineEl.querySelector(".hw-author-past")?.checked) {
+          item.past = true;
+        }
+        const activeRegister = lineEl.querySelector(".hw-author-register__opt.is-active")?.dataset
+          .register;
+        if (activeRegister === "polite") item.register = "polite";
         if (lineEl.querySelector(".hw-author-question")?.checked) {
           item.question = true;
         }
@@ -688,8 +781,8 @@
               .querySelector('[data-hint-dict="' + name + '"]')
               ?.value.trim();
             const conj =
-              content.querySelector('[data-hint-conj="' + name + '"]')?.value.trim() ||
-              "plain";
+              content.querySelector('[data-hint-tense="' + name + '"]')?.value.trim() ||
+              DEFAULT_HINT_TENSE;
             if (dict && section.mode === "grammar-blank") {
               part.hint = { dictionary: dict, conjugation: conj };
             }
@@ -739,7 +832,6 @@
     const metaTop = document.createElement("div");
     metaTop.className = "hw-worksheet__meta-top";
 
-    const hasVariants = false;
     const interactive = false;
 
     const metaText = document.createElement("div");
@@ -752,23 +844,6 @@
         ? '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>'
         : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record in the Video section. JD will review your work.</p>');
     metaTop.appendChild(metaText);
-    const grammarSection = (prepared.sections || []).find((s) => s.mode === "grammar-blank");
-    const variantControlsInteractive = !options.preview && hasVariants;
-
-    if (variantControlsInteractive) {
-      form.dataset.hwRegister = form.dataset.hwRegister || prepared.register || "casual";
-      form.dataset.hwTense = form.dataset.hwTense || "Now-Later";
-      const controls = document.createElement("div");
-      controls.className = "hw-worksheet__meta-controls";
-      controls.appendChild(renderRegisterPills(form, form.dataset.hwRegister, true));
-      if (grammarSection?.tenseBubbles?.length) {
-        form.dataset.hwTenseAtMeta = "1";
-        controls.appendChild(
-          renderTenseBubbles(form, grammarSection, form.dataset.hwTense, true)
-        );
-      }
-      metaTop.appendChild(controls);
-    }
 
     meta.appendChild(metaTop);
     form.appendChild(meta);
@@ -1036,8 +1111,7 @@
       assignmentId: meta.assignmentId,
       lessonName: meta.lessonName,
       title: meta.title,
-      register: form.dataset.hwRegister || meta.register,
-      tense: form.dataset.hwTense || "Now-Later",
+      register: meta.register || "casual",
       section1,
       section2,
     };
@@ -1047,6 +1121,9 @@
     render,
     printBlank,
     formatHint,
+    HINT_TENSE_OPTIONS,
+    DEFAULT_HINT_TENSE,
+    normalizeHintConjugation,
     checkHomework,
     collectHomeworkAnswers,
     renderCheckResults,
