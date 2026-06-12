@@ -1155,7 +1155,13 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
 
   try {
     const data = (await request.json()) as PublishPayload;
-    const result = await publishToStudentHub(data, env);
+    const sheetId = String(data.assignment?.id || data.catalogEntry?.id || "").trim();
+    const staticCatalog = await loadStaticCatalog(env);
+    const staticEntry = (staticCatalog.assignments || []).find((e) => String(e.id) === sheetId);
+    const staticStudents = ((staticEntry as { students?: string[] } | undefined)?.students || [])
+      .map((s) => String(s).toLowerCase())
+      .filter(Boolean);
+    const result = await publishToStudentHub(data, env, { staticStudents });
     const origin = new URL(request.url).origin;
     return jsonResponse({
       success: true,

@@ -422,7 +422,7 @@
   async function fetchAssignmentJson(id) {
     try {
       const res = await fetch(
-        "/api/homework-assignment?id=" + encodeURIComponent(id),
+        "/api/homework-assignment?id=" + encodeURIComponent(id) + "&_=" + Date.now(),
         { cache: "no-store" }
       );
       if (res.ok) {
@@ -1386,7 +1386,9 @@
         if (global.HwAuth && typeof global.HwAuth.isStudentAccount === "function") {
           return global.HwAuth.isStudentAccount(username);
         }
-        return ["joshs", "benm", "deme", "ivan"].includes(String(username || "").toLowerCase());
+        return ["joshs", "benm", "deme", "ivan", "benc", "noplan"].includes(
+          String(username || "").toLowerCase()
+        );
       },
       onWorksheetSaved: async function () {
         catalogCache = null;
@@ -1400,7 +1402,7 @@
           /* ignore */
         }
       },
-      onPublished: async function (id) {
+      onPublished: async function (id, studentUsername) {
         catalogCache = null;
         try {
           catalogCache = await fetchCatalog();
@@ -1411,6 +1413,13 @@
           if (id) {
             const publishSelect = document.getElementById("hw-teacher-publish-worksheet");
             if (publishSelect) publishSelect.value = id;
+          }
+          if (studentUsername && id) {
+            const entry = (catalogCache.assignments || []).find((e) => e.id === id);
+            const assigned = (entry?.students || []).includes(studentUsername);
+            if (!assigned) {
+              showToast("Publish may not have linked — try sending again");
+            }
           }
         } catch {
           /* ignore */
@@ -1468,6 +1477,9 @@
       }
       if (name === "ideas" && global.HwTeacherIdeas?.reloadIfNeeded) {
         HwTeacherIdeas.reloadIfNeeded();
+      }
+      if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
+        global.HwTeacherEditor.syncPublishPicker();
       }
     }
 
@@ -1593,6 +1605,10 @@
     }
   }
 
+  function assignmentRecencyKey(entry) {
+    return String(entry?.publishedAt || entry?.date || entry?.id || "");
+  }
+
   async function loadStudentHub() {
     document.body.classList.add("hw-role-student");
 
@@ -1615,10 +1631,15 @@
 
     const user = session.username;
     const mine = (catalog.assignments || []).filter((a) => (a.students || []).includes(user));
-    mine.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    mine.sort((a, b) => assignmentRecencyKey(b).localeCompare(assignmentRecencyKey(a)));
 
     const hashId = window.location.hash.replace(/^#hw-/, "");
-    const active = mine.find((a) => a.id === hashId) || mine[0] || null;
+    const currentId = catalog.studentProfiles?.[user]?.currentHomeworkId;
+    const active =
+      (hashId && mine.find((a) => a.id === hashId)) ||
+      (currentId && mine.find((a) => a.id === currentId)) ||
+      mine[0] ||
+      null;
 
     renderCurrentAssignmentCard(mine, active?.id);
     setLessonLinks(active, catalog);
@@ -1691,6 +1712,12 @@
       bindWeeklyUpgradeCard();
       loadStudentHub();
       window.addEventListener("hashchange", loadStudentHub);
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted) loadStudentHub();
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") loadStudentHub();
+      });
     }
   }
 

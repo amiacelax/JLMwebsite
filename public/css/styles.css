@@ -4330,6 +4330,43 @@ button.course-card__status:disabled {
   line-height: 1.4;
 }
 
+.hw-builder__ctx-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 10rem;
+  padding: 0.3rem 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+}
+
+.hw-builder__ctx-item {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.9rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.hw-builder__ctx-item:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.hw-builder__ctx-item:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.hw-builder__ctx-item[hidden] {
+  display: none;
+}
+
 .hw-builder__palette-list {
   display: flex;
   flex-direction: column;
@@ -4728,7 +4765,8 @@ button.course-card__status:disabled {
   background: #a78bfa;
 }
 
-.hw-builder__block--past {
+.hw-builder__block--past,
+.hw-builder__block--tense {
   border-color: #b8860b;
   background: color-mix(in srgb, #d4a017 94%, #1a1408);
 }
@@ -4809,6 +4847,47 @@ button.course-card__status:disabled {
   border-radius: var(--radius-md);
   background: var(--color-surface);
   max-width: 100%;
+}
+
+.hw-audio-player--inline {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.hw-listen-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-sizing: border-box;
+}
+
+.hw-listen-card .hw-blank-wrap--listen {
+  max-width: none;
+  width: 100%;
+}
+
+.hw-builder__parts--listen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hw-builder__audio-preview {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  height: 2.25rem;
+  margin: 0;
 }
 
 .hw-audio-player__el {
@@ -6472,11 +6551,29 @@ button.hw-tense-pill {
 }
 
 .hw-worksheet__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.35rem 0.65rem;
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+  align-items: start;
   margin: 0 0 1.15rem;
+}
+
+.hw-worksheet__line-num {
+  grid-column: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 0.12rem;
+}
+
+.hw-worksheet__line > .hw-worksheet__content {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.hw-worksheet__line:not(:has(.hw-worksheet__line-num)) > .hw-worksheet__content {
+  grid-column: 1 / -1;
 }
 
 .hw-negative-badge {
@@ -6495,7 +6592,8 @@ button.hw-tense-pill {
   white-space: nowrap;
 }
 
-.hw-past-badge {
+.hw-past-badge,
+.hw-tense-badge {
   display: inline-block;
   vertical-align: middle;
   margin-left: 0.35rem;
@@ -6551,13 +6649,14 @@ button.hw-tense-pill {
   gap: 0.15rem;
   align-self: stretch;
   justify-content: center;
-  margin-top: 0.1rem;
+  margin-top: 0.42rem;
   line-height: 1;
 }
 
 .hw-line-pills .hw-register-badge,
 .hw-line-pills .hw-negative-badge,
-.hw-line-pills .hw-past-badge {
+.hw-line-pills .hw-past-badge,
+.hw-line-pills .hw-tense-badge {
   margin-left: 0;
   padding: 0.06rem 0.32rem;
   font-size: 0.5rem;
@@ -6581,13 +6680,44 @@ button.hw-tense-pill {
   white-space: nowrap;
 }
 
-.hw-worksheet__label {
-  display: inline-block;
-  min-width: 1.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+.hw-item-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 0.4rem;
   font-family: Inter, sans-serif;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: #e8f4fc;
+  background: linear-gradient(155deg, #3d7ab5 0%, #245a8a 55%, #1a4468 100%);
+  border: 1px solid color-mix(in srgb, #7ec8f0 35%, transparent);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.hw-item-num--builder {
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
+  border-radius: 0.4rem;
+}
+
+[data-theme="light"] .hw-item-num {
+  color: #f4f9fd;
+  background: linear-gradient(155deg, #4a8fc8 0%, #2d6fa3 55%, #1f5680 100%);
+  border-color: color-mix(in srgb, #5ba3d9 50%, transparent);
+  box-shadow:
+    0 1px 2px rgba(30, 60, 90, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .hw-blank {
@@ -6595,15 +6725,17 @@ button.hw-tense-pill {
   font-size: inherit;
   line-height: inherit;
   border: none;
-  border-bottom: 2px solid var(--color-accent);
   background: var(--color-green-soft);
   color: var(--color-text);
   padding: 0.1rem 0.35rem;
   margin: 0 0.15rem;
   min-width: 6em;
   max-width: 100%;
-  border-radius: 0.4rem 0.4rem 0.2rem 0.2rem;
+  border-radius: 0.4rem;
   vertical-align: baseline;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-green) 24%, transparent),
+    0 0 10px color-mix(in srgb, var(--color-green) 18%, transparent);
 }
 
 .hw-blank--wide {
@@ -6619,12 +6751,6 @@ button.hw-tense-pill {
   width: 100%;
   min-width: 12em;
   box-sizing: border-box;
-}
-
-.hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__line {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.35rem;
 }
 
 .hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__content {
@@ -6658,11 +6784,6 @@ input.hw-blank.hw-blank--listen {
   margin: 0.5rem 0 0;
 }
 
-.hw-worksheet__line--open-response {
-  flex-direction: column;
-  align-items: stretch;
-}
-
 .hw-worksheet__line--open-response .hw-worksheet__content {
   display: block;
   width: 100%;
@@ -6682,9 +6803,11 @@ textarea.hw-blank.hw-blank--open {
 }
 
 .hw-blank:focus {
-  outline: 2px solid var(--color-green);
-  outline-offset: 2px;
+  outline: none;
   background: var(--color-bg);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-green) 55%, transparent),
+    0 0 14px color-mix(in srgb, var(--color-green) 32%, transparent);
 }
 
 .hw-worksheet__actions {
@@ -6703,21 +6826,27 @@ textarea.hw-blank.hw-blank--open {
 }
 
 .hw-blank--correct {
-  border-bottom-color: #00b894;
   background: rgba(0, 184, 148, 0.15);
   color: var(--color-text);
+  box-shadow:
+    0 0 0 1px #00b894,
+    0 0 12px rgba(0, 184, 148, 0.32);
 }
 
 .hw-blank--wrong {
   color: #f0bcbc;
-  border-bottom-color: rgba(232, 160, 160, 0.75);
   background: rgba(120, 70, 90, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(232, 160, 160, 0.75),
+    0 0 12px rgba(200, 80, 80, 0.28);
 }
 
 [data-theme="light"] .hw-blank--wrong {
   color: #9e3a3a;
-  border-bottom-color: #d48989;
   background: rgba(231, 120, 120, 0.12);
+  box-shadow:
+    0 0 0 1px #d48989,
+    0 0 12px rgba(231, 120, 120, 0.22);
 }
 
 @media (max-width: 767px) {
@@ -6733,11 +6862,8 @@ textarea.hw-blank.hw-blank--open {
   }
 
   .hw-worksheet__line {
-    display: block;
-  }
-
-  .hw-worksheet__label {
-    margin-right: 0.35rem;
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+    column-gap: 0.5rem;
   }
 
   .hw-blank {
@@ -6985,15 +7111,18 @@ textarea.hw-blank.hw-blank--open {
     page-break-inside: avoid;
   }
 
-  body.hw-print-active .hw-worksheet__label {
-    color: #5c6478 !important;
+  body.hw-print-active .hw-item-num {
+    color: #fff !important;
+    background: #3d6f9c !important;
+    border: 1px solid #2d5578 !important;
+    box-shadow: none !important;
   }
 
   body.hw-print-active .hw-blank {
     background: #f4faf6 !important;
     border: none !important;
-    border-bottom: 2px solid #0d7a4f !important;
-    border-radius: 0.35rem 0.35rem 0.15rem 0.15rem !important;
+    border-radius: 0.35rem !important;
+    box-shadow: 0 0 0 1px #b8dcc8 !important;
     color: transparent !important;
     min-height: 1.35em !important;
   }
@@ -7009,7 +7138,8 @@ textarea.hw-blank.hw-blank--open {
     border: 1px solid #8e0000 !important;
   }
 
-  body.hw-print-active .hw-past-badge {
+  body.hw-print-active .hw-past-badge,
+  body.hw-print-active .hw-tense-badge {
     color: #1a1208 !important;
     background: #e67e22 !important;
     border: 1px solid #c0650f !important;

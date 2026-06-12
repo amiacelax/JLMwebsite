@@ -12,6 +12,7 @@ export interface CatalogFile {
       youtubeUrl?: string;
       lessonPlaylistUrl?: string;
       reviewPlaylistUrl?: string;
+      currentHomeworkId?: string;
     }
   >;
   assignments?: Record<string, unknown>[];
@@ -22,6 +23,7 @@ const assignmentKey = (id: string) => `assignment:${id}`;
 const catalogKey = (id: string) => `catalog:${id}`;
 const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
 const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
+const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
   `student:${username}:playlist-latest:${playlistId}`;
 
@@ -137,7 +139,8 @@ export async function saveStudentProfile(
 
 export async function publishToStudentHub(
   data: PublishPayload,
-  env: KvEnv
+  env: KvEnv,
+  options?: { staticStudents?: string[] }
 ): Promise<{ id: string; studentUrl: string; updated: boolean }> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
@@ -167,8 +170,20 @@ export async function publishToStudentHub(
     } catch {
       /* use [student] */
     }
+  } else {
+    const fromStatic = (options?.staticStudents || [])
+      .map((s) => String(s).toLowerCase())
+      .filter(Boolean);
+    if (fromStatic.length) {
+      students = [...new Set([...fromStatic, student])];
+    }
   }
   catalogEntry.students = students;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (!catalogEntry.date) catalogEntry.date = today;
+  catalogEntry.publishedAt = new Date().toISOString();
+  assignment.date = assignment.date || catalogEntry.date;
 
   await applyStudentMedia(kv, student, {
     youtubeUrl:
@@ -185,6 +200,7 @@ export async function publishToStudentHub(
 
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
   await kv.put(catalogKey(id), JSON.stringify(catalogEntry));
+  await kv.put(studentCurrentHomeworkKey(student), id);
 
   const index = await readIndex(kv);
   const updated = index.includes(id);
@@ -211,9 +227,46 @@ export async function saveWorksheetDraft(
   if (!id) throw new Error("ID_REQUIRED");
 
   catalogEntry.id = id;
-  catalogEntry.students = [];
   assignment.id = id;
   assignment.status = assignment.status || "draft";
+
+  const existingRaw = await kv.get(catalogKey(id));
+  if (existingRaw) {
+    try {
+      const existing = JSON.parse(existingRaw) as {
+        students?: string[];
+        date?: string;
+        publishedAt?: string;
+        youtubeUrl?: string;
+        lessonName?: string;
+        summary?: string;
+        forSale?: boolean;
+        salePrice?: number;
+      };
+      const prevStudents = (existing.students || []).map((s) => String(s).toLowerCase()).filter(Boolean);
+      if (prevStudents.length) catalogEntry.students = prevStudents;
+      if (!catalogEntry.date && existing.date) catalogEntry.date = existing.date;
+      if (!catalogEntry.publishedAt && existing.publishedAt) {
+        catalogEntry.publishedAt = existing.publishedAt;
+      }
+      if (!catalogEntry.youtubeUrl && existing.youtubeUrl) {
+        catalogEntry.youtubeUrl = existing.youtubeUrl;
+      }
+      if (!catalogEntry.lessonName && existing.lessonName) {
+        catalogEntry.lessonName = existing.lessonName;
+      }
+      if (!catalogEntry.summary && existing.summary) catalogEntry.summary = existing.summary;
+      if (catalogEntry.forSale === undefined && existing.forSale !== undefined) {
+        catalogEntry.forSale = existing.forSale;
+      }
+      if (catalogEntry.salePrice === undefined && existing.salePrice !== undefined) {
+        catalogEntry.salePrice = existing.salePrice;
+      }
+    } catch {
+      /* keep incoming catalog entry */
+    }
+  }
+  if (!Array.isArray(catalogEntry.students)) catalogEntry.students = [];
 
   const title = String(catalogEntry.title || assignment.title || id).trim();
   if (title) {
@@ -374,6 +427,15 @@ export async function mergeCatalog(
         const key = String(user).toLowerCase();
         await applyKvStudentMedia(key, merged.studentProfiles![key] || {});
       }
+    }
+
+    for (const student of STUDENT_ACCOUNTS) {
+      const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(student));
+      if (!currentHomeworkId) continue;
+      merged.studentProfiles![student] = {
+        ...(merged.studentProfiles![student] || {}),
+        currentHomeworkId,
+      };
     }
 
     for (const [key, profile] of Object.entries(merged.studentProfiles || {})) {

@@ -2,14 +2,11 @@
  * Flat-block worksheet builder — blocks are worksheet functions, not section types.
  */
 (function (global) {
-  const LABELS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
-
   const PALETTE = [
     { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
-    { type: "audio-clip", label: "Audio clip", hint: "Short clip students can replay" },
-    { type: "listen-line", label: "Audio transcript", hint: "Write what they hear" },
+    { type: "listen-line", label: "Audio listening", hint: "Clip + transcript" },
   ];
 
   const TEMPLATE_ORDER = ["blank", "grammar", "application", "listening"];
@@ -55,7 +52,7 @@
         {
           mode: "audio-listening",
           title: "Listening practice",
-          instructions: "Play the clip, then write the words you hear in each box.",
+          instructions: "Play each clip, then write what you hear in the box below it.",
           audioUrl: "",
           items: [1, 2, 3].map((n) => listenItem(n)),
         },
@@ -69,26 +66,27 @@
 
   function normalizeGrammarBlock(block, fallbackRegister) {
     block.register = block.register || fallbackRegister || "casual";
-    block.past = Boolean(block.past);
     block.negative = Boolean(block.negative);
     const blank = getGrammarBlankPart(block);
-    if (blank?.hint) {
-      if (blank.hint.conjugation) {
-        blank.hint.conjugation = global.HwWorksheet?.normalizeHintConjugation
-          ? global.HwWorksheet.normalizeHintConjugation(blank.hint.conjugation)
-          : blank.hint.conjugation === "plain"
-            ? "Now-later"
-            : blank.hint.conjugation;
-      } else {
-        blank.hint.conjugation = "Now-later";
-      }
-      const c = blank.hint.conjugation;
-      if (c === "かった" || c === "past" || c === "Past") {
-        block.past = true;
-        blank.hint.conjugation = "Now-later";
-      }
+    if (blank) {
+      blank.hint = blank.hint || { dictionary: "", conjugation: "Now-later" };
+      blank.hint.conjugation = global.HwWorksheet?.normalizeHintConjugation
+        ? global.HwWorksheet.normalizeHintConjugation(blank.hint.conjugation)
+        : blank.hint.conjugation === "plain"
+          ? "Now-later"
+          : blank.hint.conjugation || "Now-later";
+    }
+    if (block.past) {
+      if (blank) blank.hint.conjugation = "Past";
+      delete block.past;
     }
     return block;
+  }
+
+  function blockTense(block) {
+    return global.HwWorksheet?.getGrammarBlankTense
+      ? global.HwWorksheet.getGrammarBlankTense(block)
+      : "Now-later";
   }
 
   function grammarItem(n) {
@@ -114,7 +112,36 @@
 
   function listenItem(n) {
     const id = "listen-" + n;
-    return { id, parts: [{ type: "blank", name: id, wide: true }] };
+    return { id, audioUrl: "", parts: [{ type: "blank", name: id, wide: true }] };
+  }
+
+  function ensureListenBlock(block) {
+    block.audioUrl = String(block.audioUrl || "").trim();
+    if (!block.parts?.length) {
+      block.parts = [{ type: "blank", name: block.id, wide: true, answer: "" }];
+    }
+    return block;
+  }
+
+  /** Merge legacy audio-clip blocks into the following listen-line blocks. */
+  function normalizeBlocks(blocks) {
+    const out = [];
+    let sharedAudioUrl = "";
+    (blocks || []).forEach((block) => {
+      if (block.type === "audio-clip") {
+        sharedAudioUrl = String(block.audioUrl || "").trim();
+        return;
+      }
+      if (block.type === "listen-line") {
+        const next = ensureListenBlock({ ...block });
+        if (!next.audioUrl && sharedAudioUrl) next.audioUrl = sharedAudioUrl;
+        out.push(next);
+        return;
+      }
+      sharedAudioUrl = "";
+      out.push(block);
+    });
+    return out;
   }
 
   function getGrammarBlankPart(block) {
@@ -202,7 +229,6 @@
           id,
           type,
           register: "casual",
-          past: false,
           negative: false,
           parts: [
             { type: "text", value: "" },
@@ -213,10 +239,13 @@
         return { id, type, topic: "", parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
       case "video-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
-      case "audio-clip":
-        return { id, type, audioUrl: "" };
       case "listen-line":
-        return { id, type, parts: [{ type: "blank", name: id, wide: true }] };
+        return ensureListenBlock({
+          id,
+          type,
+          audioUrl: "",
+          parts: [{ type: "blank", name: id, wide: true, answer: "" }],
+        });
       default:
         return null;
     }
@@ -224,6 +253,22 @@
 
   function cloneBlocks(blocks) {
     return JSON.parse(JSON.stringify(blocks || []));
+  }
+
+  function duplicateBlockData(block) {
+    const oldId = block.id;
+    const copy = JSON.parse(JSON.stringify(block));
+    const newId = uid("blk");
+    copy.id = newId;
+    (copy.parts || []).forEach((part) => {
+      if (part.type === "blank" && part.name === oldId) {
+        part.name = newId;
+      }
+    });
+    if (copy.type === "grammar-line") {
+      normalizeGrammarBlock(copy);
+    }
+    return copy;
   }
 
   function escapeHtml(str) {
@@ -237,9 +282,8 @@
   function sectionsToBlocks(sections, assignmentRegister) {
     const blocks = [];
     (sections || []).forEach((sec) => {
-      if (sec.mode === "audio-listening") {
-        blocks.push({ id: uid("blk"), type: "audio-clip", audioUrl: sec.audioUrl || "" });
-      }
+      const sectionAudio =
+        sec.mode === "audio-listening" ? String(sec.audioUrl || "").trim() : "";
       (sec.items || []).forEach((item) => {
         if (sec.mode === "video-response") {
           blocks.push({
@@ -270,15 +314,18 @@
             parts: JSON.parse(JSON.stringify(item.parts || [])),
           });
         } else if (sec.mode === "audio-listening") {
-          blocks.push({
-            id: item.id || uid("blk"),
-            type: "listen-line",
-            parts: JSON.parse(JSON.stringify(item.parts || [])),
-          });
+          blocks.push(
+            ensureListenBlock({
+              id: item.id || uid("blk"),
+              type: "listen-line",
+              audioUrl: String(item.audioUrl || "").trim() || sectionAudio,
+              parts: JSON.parse(JSON.stringify(item.parts || [])),
+            })
+          );
         }
       });
     });
-    return blocks;
+    return normalizeBlocks(blocks);
   }
 
   function blocksToSections(blocks) {
@@ -287,24 +334,6 @@
 
     while (i < blocks.length) {
       const block = blocks[i];
-
-      if (block.type === "audio-clip") {
-        const sec = {
-          id: uid("sec"),
-          mode: "audio-listening",
-          title: "",
-          instructions: "",
-          audioUrl: String(block.audioUrl || "").trim(),
-          items: [],
-        };
-        i++;
-        while (i < blocks.length && blocks[i].type === "listen-line") {
-          sec.items.push(blockToListenItem(blocks[i], sec.items.length));
-          i++;
-        }
-        if (sec.audioUrl || sec.items.length) sections.push(sec);
-        continue;
-      }
 
       if (block.type === "grammar-line") {
         const sec = {
@@ -355,6 +384,7 @@
           sec.items.push(blockToListenItem(blocks[i], sec.items.length));
           i++;
         }
+        if (sec.items[0]?.audioUrl) sec.audioUrl = sec.items[0].audioUrl;
         if (sec.items.length) sections.push(sec);
         continue;
       }
@@ -368,7 +398,6 @@
   function blockToGrammarItem(block, index) {
     const out = { id: block.id || "item-" + (index + 1), parts: [] };
     if (block.negative) out.negative = true;
-    if (block.past) out.past = true;
     if (block.register === "polite") out.register = "polite";
     (block.parts || []).forEach((part) => {
       if (part.type === "text") {
@@ -404,6 +433,8 @@
 
   function blockToListenItem(block, index) {
     const out = { id: block.id || "listen-" + (index + 1), parts: [] };
+    const audioUrl = String(block.audioUrl || "").trim();
+    if (audioUrl) out.audioUrl = audioUrl;
     (block.parts || []).forEach((part) => {
       if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true };
@@ -423,6 +454,9 @@
     options = options || {};
     let state = { templateType: "custom", blocks: [] };
     let previewOpen = false;
+    let canvasAssignmentId = null;
+    let clipboardBlock = null;
+    let ctxTargetIndex = null;
     const DRAG_TYPE = "application/x-hw-block-type";
     const REORDER_TYPE = "application/x-hw-block-reorder";
 
@@ -447,7 +481,7 @@
     palette.className = "hw-builder__palette";
     palette.innerHTML =
       '<h4 class="hw-builder__palette-title">Blocks</h4>' +
-      '<p class="hw-builder__palette-hint">Click or drag blocks onto the canvas. Use ⠿ on a block to reorder.</p>';
+      '<p class="hw-builder__palette-hint">Click or drag blocks onto the canvas. Use ⠿ to reorder. Right-click a block to copy or paste.</p>';
 
     const paletteList = document.createElement("div");
     paletteList.className = "hw-builder__palette-list";
@@ -489,6 +523,16 @@
     root.append(toolbar, layout);
     mount.appendChild(root);
 
+    const ctxMenu = document.createElement("div");
+    ctxMenu.className = "hw-builder__ctx-menu";
+    ctxMenu.hidden = true;
+    ctxMenu.setAttribute("role", "menu");
+    ctxMenu.innerHTML =
+      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="copy">Copy block</button>' +
+      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="paste" disabled>Paste below</button>' +
+      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="duplicate">Duplicate below</button>';
+    root.appendChild(ctxMenu);
+
     const templateRow = toolbar.querySelector(".hw-builder__templates");
     TEMPLATE_ORDER.forEach((key) => {
       const t = TEMPLATES[key];
@@ -505,6 +549,101 @@
     function notifyChange() {
       if (options.onChange) options.onChange();
     }
+
+    function hideCtxMenu() {
+      ctxMenu.hidden = true;
+    }
+
+    function isEditableFieldTarget(target) {
+      return Boolean(target?.closest("input, textarea, select, button"));
+    }
+
+    function positionCtxMenu(clientX, clientY) {
+      ctxMenu.hidden = false;
+      const pad = 8;
+      const rect = ctxMenu.getBoundingClientRect();
+      let left = clientX;
+      let top = clientY;
+      if (left + rect.width > window.innerWidth - pad) {
+        left = Math.max(pad, window.innerWidth - rect.width - pad);
+      }
+      if (top + rect.height > window.innerHeight - pad) {
+        top = Math.max(pad, window.innerHeight - rect.height - pad);
+      }
+      ctxMenu.style.left = left + "px";
+      ctxMenu.style.top = top + "px";
+    }
+
+    function showCtxMenu(clientX, clientY, opts) {
+      opts = opts || {};
+      const copyBtn = ctxMenu.querySelector('[data-ctx="copy"]');
+      const pasteBtn = ctxMenu.querySelector('[data-ctx="paste"]');
+      const dupBtn = ctxMenu.querySelector('[data-ctx="duplicate"]');
+      copyBtn.hidden = !opts.canCopy;
+      dupBtn.hidden = !opts.canCopy;
+      pasteBtn.hidden = false;
+      pasteBtn.disabled = !clipboardBlock;
+      pasteBtn.textContent = opts.pasteLabel || "Paste below";
+      positionCtxMenu(clientX, clientY);
+    }
+
+    function copyBlock(index) {
+      const block = state.blocks[index];
+      if (!block) return;
+      clipboardBlock = JSON.parse(JSON.stringify(block));
+      ctxMenu.querySelector('[data-ctx="paste"]').disabled = false;
+    }
+
+    function pasteBlock(afterIndex) {
+      if (!clipboardBlock) return;
+      const block = duplicateBlockData(clipboardBlock);
+      const insertAt =
+        afterIndex === null || afterIndex === undefined
+          ? state.blocks.length
+          : Math.min(afterIndex + 1, state.blocks.length);
+      state.blocks.splice(insertAt, 0, block);
+      renderCanvas();
+      notifyChange();
+    }
+
+    function duplicateBlock(index) {
+      copyBlock(index);
+      pasteBlock(index);
+    }
+
+    function openBlockContextMenu(e, index) {
+      if (previewOpen || isEditableFieldTarget(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ctxTargetIndex = index;
+      showCtxMenu(e.clientX, e.clientY, { canCopy: true, pasteLabel: "Paste below" });
+    }
+
+    function openCanvasContextMenu(e) {
+      if (previewOpen || isEditableFieldTarget(e.target)) return;
+      if (!clipboardBlock) return;
+      e.preventDefault();
+      ctxTargetIndex = null;
+      showCtxMenu(e.clientX, e.clientY, { canCopy: false, pasteLabel: "Paste at end" });
+    }
+
+    ctxMenu.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-ctx]");
+      if (!btn || btn.disabled || btn.hidden) return;
+      e.preventDefault();
+      const action = btn.dataset.ctx;
+      if (action === "copy" && ctxTargetIndex !== null) copyBlock(ctxTargetIndex);
+      else if (action === "paste") pasteBlock(ctxTargetIndex);
+      else if (action === "duplicate" && ctxTargetIndex !== null) duplicateBlock(ctxTargetIndex);
+      hideCtxMenu();
+    });
+
+    document.addEventListener("click", hideCtxMenu);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") hideCtxMenu();
+    });
+    window.addEventListener("scroll", hideCtxMenu, true);
+    canvasWrap.addEventListener("contextmenu", openCanvasContextMenu);
 
     function addBlock(type, atIndex) {
       const block = createBlock(type, state.blocks.length);
@@ -589,15 +728,30 @@
     }
 
     function renderBlockEl(block, index) {
+      if (block.type === "audio-clip") {
+        block.type = "listen-line";
+        ensureListenBlock(block);
+      }
       const el = document.createElement("article");
       el.className =
         "hw-builder__block hw-builder__block--" +
         block.type +
         (block.negative ? " hw-builder__block--negative" : "") +
-        (block.past ? " hw-builder__block--past" : "");
+        (global.HwWorksheet?.tenseShouldShowPill?.(blockTense(block))
+          ? " hw-builder__block--tense"
+          : "");
+      el.dataset.blockIndex = String(index);
+
+      el.addEventListener("contextmenu", (e) => openBlockContextMenu(e, index));
 
       const head = document.createElement("div");
       head.className = "hw-builder__block-head";
+
+      const numBadge = document.createElement("span");
+      numBadge.className = "hw-item-num hw-item-num--builder";
+      numBadge.setAttribute("aria-label", "Block " + (index + 1));
+      numBadge.textContent = String(index + 1);
+      head.appendChild(numBadge);
 
       const dragHandle = document.createElement("span");
       dragHandle.className = "hw-builder__block-drag";
@@ -631,10 +785,11 @@
         head.appendChild(badge);
       }
 
-      if (block.past) {
+      const tense = blockTense(block);
+      if (global.HwWorksheet?.tenseShouldShowPill?.(tense)) {
         const badge = document.createElement("span");
-        badge.className = "hw-past-badge";
-        badge.textContent = "PAST";
+        badge.className = "hw-tense-badge";
+        badge.textContent = global.HwWorksheet.tensePillText(tense);
         head.appendChild(badge);
       }
 
@@ -662,7 +817,15 @@
         return el;
       }
 
-      if (block.type === "audio-clip") {
+      if (block.type === "listen-line") {
+        ensureListenBlock(block);
+        const blankPart =
+          (block.parts || []).find((p) => p.type === "blank") ||
+          { type: "blank", name: block.id, wide: true, answer: "" };
+
+        const partsWrap = document.createElement("div");
+        partsWrap.className = "hw-builder__parts hw-builder__parts--listen";
+
         const audioLabel = document.createElement("label");
         audioLabel.className = "hw-builder__audio-label";
         audioLabel.textContent = "Audio clip URL or file path";
@@ -673,10 +836,43 @@
         audioInput.value = block.audioUrl || "";
         audioInput.addEventListener("input", () => {
           block.audioUrl = audioInput.value.trim();
+          renderCanvas();
           notifyChange();
         });
         audioLabel.appendChild(audioInput);
-        el.appendChild(audioLabel);
+        partsWrap.appendChild(audioLabel);
+
+        if (block.audioUrl) {
+          const preview = document.createElement("audio");
+          preview.controls = true;
+          preview.preload = "none";
+          preview.className = "hw-builder__audio-preview";
+          preview.src = block.audioUrl;
+          preview.setAttribute("aria-label", "Preview audio clip");
+          partsWrap.appendChild(preview);
+        }
+
+        const transcriptLabel = document.createElement("label");
+        transcriptLabel.className = "hw-builder__field-label";
+        transcriptLabel.textContent = "Answer key (optional)";
+        const transcriptInput = document.createElement("input");
+        transcriptInput.type = "text";
+        transcriptInput.className = "hw-builder__field hw-builder__field--jp";
+        transcriptInput.placeholder = "What students should hear";
+        transcriptInput.value = blankPart.answer || "";
+        transcriptInput.addEventListener("input", () => {
+          blankPart.answer = transcriptInput.value;
+          notifyChange();
+        });
+        transcriptLabel.appendChild(transcriptInput);
+        partsWrap.appendChild(transcriptLabel);
+
+        const transcriptHint = document.createElement("p");
+        transcriptHint.className = "hw-builder__inline-hint";
+        transcriptHint.textContent = "Students get a player above and write what they hear below.";
+        partsWrap.appendChild(transcriptHint);
+
+        el.appendChild(partsWrap);
         return el;
       }
 
@@ -770,6 +966,7 @@
           blankPart.hint = blankPart.hint || { dictionary: "", conjugation: "Now-later" };
           blankPart.hint.conjugation = tenseSelect.value;
           syncGrammarPartsFromSentence(block, sentenceInput.value);
+          renderCanvas();
           notifyChange();
         });
         hintRow.append(dictInput, tenseSelect);
@@ -777,19 +974,6 @@
 
         const markerRow = document.createElement("div");
         markerRow.className = "hw-builder__marker-row";
-
-        const pastLabel = document.createElement("label");
-        pastLabel.className = "hw-builder__check";
-        const past = document.createElement("input");
-        past.type = "checkbox";
-        past.checked = Boolean(block.past);
-        past.addEventListener("change", () => {
-          block.past = past.checked;
-          renderCanvas();
-          notifyChange();
-        });
-        pastLabel.append(past, document.createTextNode(" Past tense"));
-        markerRow.appendChild(pastLabel);
 
         const negLabel = document.createElement("label");
         negLabel.className = "hw-builder__check";
@@ -909,6 +1093,7 @@
     function applyTemplate(key) {
       const t = TEMPLATES[key];
       if (!t) return;
+      canvasAssignmentId = null;
       state = {
         templateType: t.templateType,
         blocks: sectionsToBlocks(t.sections || []),
@@ -931,7 +1116,7 @@
         status: "draft",
         forSale: false,
         salePrice: 0.99,
-        sections: blocksToSections(state.blocks),
+        sections: blocksToSections(normalizeBlocks(state.blocks)),
       };
       if (global.HwWorksheet?.enrichGrammarVariants) {
         global.HwWorksheet.enrichGrammarVariants(assignment);
@@ -941,6 +1126,7 @@
 
     function loadAssignment(assignment) {
       const data = assignment || {};
+      canvasAssignmentId = data.id || null;
       state = {
         templateType: data.templateType || "custom",
         blocks: sectionsToBlocks(data.sections || [], data.register),
@@ -988,6 +1174,7 @@
       showPreview,
       hidePreview,
       getState: () => state,
+      getCanvasAssignmentId: () => canvasAssignmentId,
       isPreviewOpen: () => previewOpen,
     };
   }

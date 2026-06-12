@@ -2,10 +2,9 @@
  * Renders fillable homework from JSON (Section 1: grammar blank, Section 2: context blank).
  */
 (function (global) {
-  const LABELS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"];
-
   const HINT_TENSE_OPTIONS = [
     { value: "Now-later", label: "Now-later" },
+    { value: "Past", label: "Past" },
     { value: "～たい", label: "～たい" },
     { value: "てform", label: "てform" },
     { value: "Let's", label: "Let's Form" },
@@ -25,7 +24,47 @@
     if (!c || c === "plain") return DEFAULT_HINT_TENSE;
     if (c === "たい") return "～たい";
     if (c === "て" || c === "Te-form") return "てform";
+    if (c === "かった" || c === "past") return "Past";
     return c;
+  }
+
+  function getGrammarBlankTense(item) {
+    const blank = (item?.parts || []).find((p) => p.type === "blank");
+    let tense = normalizeHintConjugation(blank?.hint?.conjugation);
+    if ((!tense || tense === DEFAULT_HINT_TENSE) && item?.past) tense = "Past";
+    return tense;
+  }
+
+  function tenseShouldShowPill(tense) {
+    return Boolean(tense && tense !== DEFAULT_HINT_TENSE);
+  }
+
+  function tensePillText(tense) {
+    const opt = HINT_TENSE_OPTIONS.find((o) => o.value === tense);
+    return (opt?.label || tense).toUpperCase();
+  }
+
+  function createItemLabel(num) {
+    const label = document.createElement("span");
+    label.className = "hw-item-num";
+    label.setAttribute("aria-label", "Item " + num);
+    label.textContent = String(num);
+    return label;
+  }
+
+  function appendLineNumber(line, num) {
+    const col = document.createElement("span");
+    col.className = "hw-worksheet__line-num";
+    col.appendChild(createItemLabel(num));
+    line.appendChild(col);
+  }
+
+  function labelFromLineEl(el, mode, fallback) {
+    const line = el.closest(".hw-worksheet__line");
+    const num = line?.querySelector(".hw-item-num")?.textContent?.trim() || String(fallback);
+    if (mode === "audio-listening") return "Listen " + num;
+    if (mode === "context-blank") return "Question " + num;
+    return num;
   }
 
   function formatHint(hint) {
@@ -268,11 +307,12 @@
     return badge;
   }
 
-  function renderPastBadge() {
+  function renderTenseBadge(tense) {
+    const label = HINT_TENSE_OPTIONS.find((o) => o.value === tense)?.label || tense;
     const badge = document.createElement("span");
-    badge.className = "hw-past-badge";
-    badge.textContent = "PAST";
-    badge.setAttribute("aria-label", "Answer must be past tense");
+    badge.className = "hw-tense-badge";
+    badge.textContent = tensePillText(tense);
+    badge.setAttribute("aria-label", "Use " + label + " form");
     return badge;
   }
 
@@ -291,7 +331,8 @@
     row.setAttribute("aria-hidden", "true");
     row.appendChild(renderRegisterBadge(item.register || "casual"));
     if (item.negative) row.appendChild(renderNegativeBadge());
-    if (item.past) row.appendChild(renderPastBadge());
+    const tense = getGrammarBlankTense(item);
+    if (tenseShouldShowPill(tense)) row.appendChild(renderTenseBadge(tense));
     return row;
   }
 
@@ -436,7 +477,8 @@
     return wrap;
   }
 
-  function renderAuthorLine(item, index, sectionMode) {
+  function renderAuthorLine(item, index, sectionMode, lineOptions) {
+    lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
     const line = document.createElement(openBlock ? "div" : "p");
     line.className =
@@ -445,15 +487,26 @@
       (openBlock ? " hw-worksheet__line--open-response" : "");
     line.dataset.itemId = item.id || "item-" + (index + 1);
 
-    if (!openBlock) {
-      const label = document.createElement("span");
-      label.className = "hw-worksheet__label";
-      label.textContent = LABELS[index] || String(index + 1);
-      line.appendChild(label);
+    if (lineOptions.itemNum) {
+      appendLineNumber(line, lineOptions.itemNum);
     }
 
     const content = document.createElement(openBlock ? "div" : "span");
     content.className = "hw-worksheet__content";
+
+    if (sectionMode === "audio-listening") {
+      const audioLabel = document.createElement("label");
+      audioLabel.className = "hw-author-audio-url";
+      audioLabel.textContent = "Audio clip URL";
+      const audioInput = document.createElement("input");
+      audioInput.type = "url";
+      audioInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      audioInput.value = item.audioUrl || lineOptions.sectionAudioUrl || "";
+      audioInput.setAttribute("data-item-audio-url", "1");
+      audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
+      audioLabel.appendChild(audioInput);
+      content.appendChild(audioLabel);
+    }
 
     (item.parts || []).forEach((part) => {
       if (part.type === "text" || part.ruby) {
@@ -466,15 +519,6 @@
     if (sectionMode === "grammar-blank") {
       const markerRow = document.createElement("span");
       markerRow.className = "hw-author-markers";
-
-      const pastLabel = document.createElement("label");
-      pastLabel.className = "hw-author-marker-label";
-      const past = document.createElement("input");
-      past.type = "checkbox";
-      past.className = "hw-author-past";
-      past.checked = Boolean(item.past);
-      pastLabel.append(past, document.createTextNode(" Past"));
-      markerRow.appendChild(pastLabel);
 
       const negLabel = document.createElement("label");
       negLabel.className = "hw-author-marker-label";
@@ -504,11 +548,13 @@
     return line;
   }
 
-  function renderAudioPlayer(section) {
+  function renderAudioPlayer(url, options) {
+    options = options || {};
     const wrap = document.createElement("div");
-    wrap.className = "hw-audio-player";
-    const url = String(section.audioUrl || "").trim();
-    if (!url) {
+    wrap.className =
+      "hw-audio-player" + (options.inline ? " hw-audio-player--inline" : "");
+    const clipUrl = String(url || "").trim();
+    if (!clipUrl) {
       wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip not set yet.</p>';
       return wrap;
     }
@@ -516,18 +562,30 @@
     audio.controls = true;
     audio.preload = "metadata";
     audio.className = "hw-audio-player__el";
-    audio.src = url;
+    audio.src = clipUrl;
     audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
     wrap.appendChild(audio);
-    const hint = document.createElement("p");
-    hint.className = "hw-audio-player__hint";
-    hint.textContent = "Play the clip as many times as you need, then write what you hear below.";
-    wrap.appendChild(hint);
+    if (!options.inline) {
+      const hint = document.createElement("p");
+      hint.className = "hw-audio-player__hint";
+      hint.textContent =
+        "Play the clip as many times as you need, then write what you hear below.";
+      wrap.appendChild(hint);
+    }
     return wrap;
   }
 
   function renderVideoRecordCue(item, index, renderOptions) {
     renderOptions = renderOptions || {};
+    const videoLine = document.createElement("div");
+    videoLine.className = "hw-worksheet__line hw-worksheet__line--video";
+    if (renderOptions.itemNum) {
+      appendLineNumber(videoLine, renderOptions.itemNum);
+    }
+
+    const videoContent = document.createElement("div");
+    videoContent.className = "hw-worksheet__content";
+
     const wrap = document.createElement("div");
     wrap.className = "hw-video-prompt";
     wrap.dataset.itemId = item.id || "";
@@ -558,18 +616,23 @@
         '<p class="hw-video-prompt__note">Sign in as a student to record here, or use the Video section below.</p>';
     }
 
-    return wrap;
+    videoContent.appendChild(wrap);
+    videoLine.appendChild(videoContent);
+    return videoLine;
   }
 
-  function renderAuthorVideoItem(item, index) {
+  function renderAuthorVideoItem(item, index, lineOptions) {
+    lineOptions = lineOptions || {};
     const wrap = document.createElement("div");
     wrap.className = "hw-worksheet__line hw-worksheet__line--author hw-worksheet__line--video";
     wrap.dataset.itemId = item.id || "vid-" + (index + 1);
 
-    const label = document.createElement("span");
-    label.className = "hw-worksheet__label";
-    label.textContent = "Video " + (index + 1);
-    wrap.appendChild(label);
+    if (lineOptions.itemNum) {
+      appendLineNumber(wrap, lineOptions.itemNum);
+    }
+
+    const content = document.createElement("div");
+    content.className = "hw-worksheet__content";
 
     const prompt = document.createElement("textarea");
     prompt.className = "hw-blank hw-blank--wide hw-blank--open hw-author-video-prompt";
@@ -577,28 +640,37 @@
     prompt.value = item.prompt || "";
     prompt.setAttribute("data-video-prompt", "1");
     prompt.setAttribute("aria-label", "Video prompt " + (index + 1));
-    wrap.appendChild(prompt);
+    content.appendChild(prompt);
+    wrap.appendChild(content);
     return wrap;
   }
 
-  function renderLine(item, index, sectionMode) {
+  function renderLine(item, index, sectionMode, lineOptions) {
+    lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
     const line = document.createElement(openBlock ? "div" : "p");
     line.className =
       "hw-worksheet__line" +
       (item.negative ? " hw-worksheet__line--negative" : "") +
-      (openBlock ? " hw-worksheet__line--open-response" : "");
+      (openBlock ? " hw-worksheet__line--open-response" : "") +
+      (sectionMode === "audio-listening" ? " hw-worksheet__line--listen" : "");
     line.dataset.itemId = item.id || "";
 
-    if (!openBlock) {
-      const label = document.createElement("span");
-      label.className = "hw-worksheet__label";
-      label.textContent = LABELS[index] || String(index + 1);
-      line.appendChild(label);
+    if (lineOptions.itemNum) {
+      appendLineNumber(line, lineOptions.itemNum);
     }
 
     const content = document.createElement(openBlock ? "div" : "span");
     content.className = "hw-worksheet__content";
+
+    let listenCard = null;
+    if (sectionMode === "audio-listening") {
+      listenCard = document.createElement("div");
+      listenCard.className = "hw-listen-card";
+      const audioUrl = String(item.audioUrl || lineOptions.sectionAudioUrl || "").trim();
+      listenCard.appendChild(renderAudioPlayer(audioUrl, { inline: true }));
+      content.appendChild(listenCard);
+    }
 
     if (openBlock && item.topic) {
       const topicEl = document.createElement("p");
@@ -620,7 +692,7 @@
           const field = blankWrap.querySelector(".hw-blank");
           if (field) field.after(renderGrammarPills(item));
         }
-        content.appendChild(blankWrap);
+        (listenCard || content).appendChild(blankWrap);
       } else if (part.type === "hint") {
         /* legacy: hint after blank in JSON — attach below previous blank if possible */
         const wraps = content.querySelectorAll(".hw-blank-wrap");
@@ -663,34 +735,24 @@
       wrap.appendChild(intro);
     }
 
-    if (section.mode === "audio-listening" && !authoring) {
-      wrap.appendChild(renderAudioPlayer(section));
-    }
-
-    if (section.mode === "audio-listening" && authoring) {
-      const audioLabel = document.createElement("label");
-      audioLabel.className = "hw-author-audio-url";
-      audioLabel.textContent = "Audio clip URL";
-      const audioInput = document.createElement("input");
-      audioInput.type = "url";
-      audioInput.className = "hw-blank hw-blank--wide hw-author-audio";
-      audioInput.value = section.audioUrl || "";
-      audioInput.setAttribute("data-section-audio-url", "1");
-      audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
-      audioLabel.appendChild(audioInput);
-      wrap.appendChild(audioLabel);
-    }
+    const sectionAudioUrl =
+      section.mode === "audio-listening" ? String(section.audioUrl || "").trim() : "";
 
     (section.items || []).forEach((item, i) => {
+      const itemCounter = renderOptions.itemCounter;
+      if (itemCounter) itemCounter.value += 1;
+      const itemNum = itemCounter ? itemCounter.value : i + 1;
+      const lineOpts = { sectionAudioUrl, itemNum };
+
       if (section.mode === "video-response") {
-        if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i));
-        else wrap.appendChild(renderVideoRecordCue(item, i, renderOptions));
+        if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i, lineOpts));
+        else wrap.appendChild(renderVideoRecordCue(item, i, lineOpts));
         return;
       }
       if (authoring) {
-        wrap.appendChild(renderAuthorLine(item, i, section.mode));
+        wrap.appendChild(renderAuthorLine(item, i, section.mode, lineOpts));
       } else {
-        wrap.appendChild(renderLine(item, i, section.mode));
+        wrap.appendChild(renderLine(item, i, section.mode, lineOpts));
       }
     });
 
@@ -724,11 +786,6 @@
       if (section.mode === "grammar-blank") {
         /* per-item past / register / tense — no section-level tense switch */
       }
-      if (section.mode === "audio-listening") {
-        const audioUrl = secEl.querySelector("[data-section-audio-url]")?.value?.trim();
-        if (audioUrl) section.audioUrl = audioUrl;
-      }
-
       if (section.mode === "video-response") {
         secEl.querySelectorAll(".hw-worksheet__line--video").forEach((lineEl, index) => {
           const prompt = lineEl.querySelector("[data-video-prompt]")?.value?.trim();
@@ -746,11 +803,12 @@
       secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl, index) => {
         if (lineEl.classList.contains("hw-worksheet__line--video")) return;
         const item = { id: lineEl.dataset.itemId || "item-" + (index + 1), parts: [] };
+        if (section.mode === "audio-listening") {
+          const audioUrl = lineEl.querySelector("[data-item-audio-url]")?.value?.trim();
+          if (audioUrl) item.audioUrl = audioUrl;
+        }
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
-        }
-        if (lineEl.querySelector(".hw-author-past")?.checked) {
-          item.past = true;
         }
         const activeRegister = lineEl.querySelector(".hw-author-register__opt.is-active")?.dataset
           .register;
@@ -792,6 +850,10 @@
 
         if (item.parts.length) section.items.push(item);
       });
+
+      if (section.mode === "audio-listening" && section.items[0]?.audioUrl) {
+        section.audioUrl = section.items[0].audioUrl;
+      }
 
       assignment.sections.push(section);
     });
@@ -848,8 +910,11 @@
     meta.appendChild(metaTop);
     form.appendChild(meta);
 
+    const itemCounter = { value: 0 };
     (prepared.sections || []).forEach((section) => {
-      form.appendChild(renderSection(form, section, interactive, authoring, options));
+      form.appendChild(
+        renderSection(form, section, interactive, authoring, { ...options, itemCounter })
+      );
     });
 
 
@@ -1030,10 +1095,12 @@
       let idx = 0;
 
       if (mode === "video-response") {
-        secEl.querySelectorAll(".hw-video-prompt").forEach((promptEl, vi) => {
+        secEl.querySelectorAll(".hw-worksheet__line--video").forEach((promptEl, vi) => {
+          const num = promptEl.querySelector(".hw-item-num")?.textContent?.trim() || String(vi + 1);
           videoPrompts.push({
-            label: "Video " + (vi + 1),
-            prompt: promptEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "",
+            label: num,
+            prompt:
+              promptEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "",
             student: "(submitted via video upload)",
           });
         });
@@ -1041,16 +1108,20 @@
       }
 
       secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
-        if (!el.name || el.hasAttribute("data-section-audio-url") || el.hasAttribute("data-video-prompt")) return;
+        if (
+          !el.name ||
+          el.hasAttribute("data-section-audio-url") ||
+          el.hasAttribute("data-item-audio-url") ||
+          el.hasAttribute("data-video-prompt")
+        ) {
+          return;
+        }
         const student = el.value.trim();
         const contentEl = el.closest(".hw-worksheet__content");
         const topic = contentEl?.dataset?.topic || "";
         const row = {
           name: el.name,
-          label:
-            mode === "context-blank" || mode === "audio-listening"
-              ? (mode === "audio-listening" ? "Listen " : "QUESTION ") + (LABELS[idx] || String(idx + 1))
-              : LABELS[idx] || String(idx + 1),
+          label: labelFromLineEl(el, mode, idx + 1),
           prompt: topic || promptForBlank(form, el.name),
           student,
           completed: completedSentenceForBlank(form, el.name, student),
@@ -1124,6 +1195,9 @@
     HINT_TENSE_OPTIONS,
     DEFAULT_HINT_TENSE,
     normalizeHintConjugation,
+    getGrammarBlankTense,
+    tenseShouldShowPill,
+    tensePillText,
     checkHomework,
     collectHomeworkAnswers,
     renderCheckResults,

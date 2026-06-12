@@ -7,6 +7,8 @@
     { username: "benm", displayName: "Ben M" },
     { username: "deme", displayName: "Deme" },
     { username: "ivan", displayName: "Ivan" },
+    { username: "benc", displayName: "benc" },
+    { username: "noplan", displayName: "No Plan" },
   ];
 
   let catalogAssignments = [];
@@ -177,7 +179,7 @@
 
   function worksheetOptionLabel(entry) {
     const students = (entry.students || []).filter(Boolean);
-    const who = students.length ? students.join(", ") : "not assigned";
+    const who = students.length ? students.join(", ") : "any student";
     return (entry.title || entry.id) + " (" + entry.id + ") — " + who;
   }
 
@@ -329,9 +331,29 @@
       const assigned = (entry?.students || []).some(
         (s) => String(s).toLowerCase() === student
       );
-      publishHint.textContent = assigned
-        ? "Already on this student’s hub — send again to refresh their copy."
-        : "Will add this worksheet to " + student + "’s hub.";
+      const builder = ensureBuilder();
+      const canvasId =
+        editingAssignmentId ||
+        makerEditSelect?.value ||
+        builder?.getCanvasAssignmentId?.() ||
+        null;
+      const hasBlocks = (builder?.getState?.().blocks?.length || 0) > 0;
+      let hint = assigned
+        ? "On " + student + "'s hub."
+        : "Will add to " + student + "'s hub.";
+      const others = (entry?.students || [])
+        .map((s) => String(s).toLowerCase())
+        .filter((s) => s && s !== student);
+      if (others.length) {
+        hint += " Also shared with: " + others.join(", ") + ".";
+      }
+      hint += " Same sheet can go to multiple students.";
+      if (hasBlocks && canvasId !== id) {
+        hint += ' Open "' + id + '" in Worksheet maker first to include unsaved canvas edits.';
+      } else if (hasBlocks && canvasId === id) {
+        hint += " Send includes your open worksheet (saved automatically first).";
+      }
+      publishHint.textContent = hint;
     }
 
     function ensureBuilder() {
@@ -343,6 +365,7 @@
           if (worksheetBuilder?.isPreviewOpen?.()) {
             worksheetBuilder.showPreview(readMakerMeta(makerForm).grammarPoint || "Homework");
           }
+          updatePublishHint();
         },
       });
       makerMount.dataset.builderReady = "true";
@@ -472,7 +495,7 @@
         id: assignment.id,
         title: meta.grammarPoint,
         lessonName: meta.grammarPoint,
-        students: [],
+        students: (getCatalogEntry(assignment.id)?.students || []).slice(),
         forSale: false,
         salePrice: 0.99,
         summary: "Worksheet: " + meta.grammarPoint,
@@ -512,6 +535,59 @@
       }
     }
 
+    async function persistAssignmentDraft(session, assignment, entry) {
+      const catalogEntry = {
+        id: assignment.id,
+        title: assignment.title || entry.title || assignment.id,
+        lessonName: assignment.title || entry.lessonName || entry.title,
+        students: (entry.students || []).slice(),
+        youtubeUrl: entry.youtubeUrl || assignment.youtubeUrl || "",
+        forSale: entry.forSale === true,
+        salePrice: entry.salePrice ?? 0.99,
+        summary: entry.summary || "Worksheet: " + (assignment.title || assignment.id),
+        date: entry.date,
+        publishedAt: entry.publishedAt,
+      };
+      const res = await fetch("/api/homework-save-worksheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: session.username,
+          assignment: { ...assignment, status: assignment.status || "draft" },
+          catalogEntry,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save worksheet before send.");
+    }
+
+    async function resolveAssignmentForPublish(worksheetId) {
+      const entry = (options.getCatalogEntry || getCatalogEntry)(worksheetId) || {};
+      const builder = ensureBuilder();
+      const makerSelectId = makerEditSelect?.value;
+      const canvasId = builder?.getCanvasAssignmentId?.() || null;
+      const meta = readMakerMeta(makerForm);
+      const hasBlocks = (builder?.getState?.().blocks?.length || 0) > 0;
+      const useLiveBuilder =
+        builder?.toAssignment &&
+        hasBlocks &&
+        (editingAssignmentId === worksheetId ||
+          makerSelectId === worksheetId ||
+          canvasId === worksheetId);
+
+      if (useLiveBuilder) {
+        const assignment = builder.toAssignment({
+          id: worksheetId,
+          title: meta.grammarPoint || entry.title || worksheetId,
+        });
+        assignment.id = worksheetId;
+        return { assignment, usedLiveBuilder: true, entry };
+      }
+
+      const assignment = await fetchAssignmentWithFallback(worksheetId);
+      return { assignment, usedLiveBuilder: false, entry };
+    }
+
     async function publishWorksheetToStudent() {
       const student = String(publishStudent?.value || "")
         .trim()
@@ -542,10 +618,24 @@
       setPublishStatus("Sending “" + worksheetId + "” to " + student + "…");
 
       try {
-        const assignment = await fetchAssignmentWithFallback(worksheetId);
-        const entry = (options.getCatalogEntry || getCatalogEntry)(worksheetId) || {};
+        const resolved = await resolveAssignmentForPublish(worksheetId);
+        const assignment = resolved.assignment;
+        const entry = resolved.entry || (options.getCatalogEntry || getCatalogEntry)(worksheetId) || {};
         assignment.status = "published";
         assignment.id = worksheetId;
+
+        if (!validateWorksheet(assignment)) {
+          setPublishStatus(
+            "This worksheet needs content — add blocks in Worksheet maker first.",
+            true
+          );
+          return;
+        }
+
+        if (resolved.usedLiveBuilder) {
+          setPublishStatus("Saving latest edits, then sending to " + student + "…");
+          await persistAssignmentDraft(session, assignment, entry);
+        }
 
         const catalogEntry = {
           id: worksheetId,
@@ -556,15 +646,8 @@
           forSale: entry.forSale === true,
           salePrice: entry.salePrice ?? 0.99,
           summary: entry.summary || "Homework: " + (assignment.title || worksheetId),
+          date: entry.date || new Date().toISOString().slice(0, 10),
         };
-
-        if (!validateWorksheet(assignment)) {
-          setPublishStatus(
-            "This worksheet needs content — add blocks in Worksheet maker first.",
-            true
-          );
-          return;
-        }
 
         const res = await fetch("/api/homework-publish", {
           method: "POST",
@@ -581,10 +664,13 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Publish failed.");
 
-        setPublishStatus(data.message || "Sent to " + student + "!");
-        showToast("Published for " + student);
+        setPublishStatus(
+          (data.message || "Sent to " + student + "!") +
+            " This is now their current homework on the hub."
+        );
+        showToast("Current homework set for " + student);
         updatePublishHint();
-        if (options.onPublished) options.onPublished(worksheetId);
+        if (options.onPublished) await options.onPublished(worksheetId, student);
       } catch (err) {
         setPublishStatus((err && err.message) || "Could not publish.", true);
         showToast("Send failed");
@@ -827,11 +913,25 @@
     populateWorksheetSelect(editSelect, editingAssignmentId);
   }
 
+  function syncPublishPicker() {
+    const publishSelect = document.getElementById("hw-teacher-publish-worksheet");
+    if (!publishSelect || !editingAssignmentId) return;
+    if (publishSelect.querySelector('option[value="' + editingAssignmentId + '"]')) {
+      publishSelect.value = editingAssignmentId;
+    }
+    const publishStudent = document.getElementById("hw-teacher-publish-student");
+    const accountStudent = document.getElementById("hw-teacher-account-student");
+    if (publishStudent && accountStudent?.value && !publishStudent.value) {
+      publishStudent.value = accountStudent.value;
+    }
+  }
+
   global.HwTeacherEditor = {
     init,
     refreshCatalog,
     bootstrap,
     loadAssignment,
+    syncPublishPicker,
     buildEmptyAssignment,
   };
 })(window);
