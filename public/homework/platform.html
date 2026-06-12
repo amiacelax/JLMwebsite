@@ -151,6 +151,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-submissions" aria-selected="false" aria-controls="hw-teacher-submissions" data-teacher-tab="submissions">Submissions</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-mistakes" aria-selected="false" aria-controls="hw-teacher-mistakes" data-teacher-tab="mistakes">Mistakes</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-harris" aria-selected="false" aria-controls="hw-teacher-harris" data-teacher-tab="harris">Harris Firm</button>
@@ -293,6 +294,23 @@
             <ul class="hw-ideas-list" id="hw-ideas-list"></ul>
           </section>
 
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-mistakes" id="hw-teacher-mistakes" role="tabpanel" aria-labelledby="hw-teacher-tab-mistakes" hidden>
+            <h2 class="hw-platform-card__title">Mistakes</h2>
+            <p class="hw-platform-card__desc">Recent active entries — same view students see. Log new ones from your lesson bookmark.</p>
+
+            <div class="hw-mistakes-feed-toolbar">
+              <label class="hw-maker-field" for="hw-mistakes-feed-student">
+                Student
+                <select id="hw-mistakes-feed-student">
+                  <option value="">All students</option>
+                </select>
+              </label>
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-mistakes-feed-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-mistakes-feed-meta" aria-live="polite"></p>
+            <ul class="hw-mistake-feed" id="hw-mistakes-feed-list"></ul>
+          </section>
+
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-submissions" id="hw-teacher-submissions" role="tabpanel" aria-labelledby="hw-teacher-tab-submissions" hidden>
             <h2 class="hw-platform-card__title">Student submissions</h2>
             <p class="hw-platform-card__desc">Homework students submit online or upload as photos — stored here so nothing is lost in Discord.</p>
@@ -403,6 +421,42 @@
         <div id="hw-platform-student-only">
           <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
             <div class="hw-grid-stack" id="hw-grid-stack">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+                <h2 class="hw-platform-card__title" id="hw-student-mistakes-title">Recent mistakes</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-student-mistakes-desc">From your lessons — tap to select, then copy or delete.</p>
+                <p class="hw-library-meta hw-student-mistakes-meta" id="hw-student-mistakes-meta" aria-live="polite"></p>
+
+                <div id="hw-student-mistakes-main">
+                  <div class="hw-mistake-feed-single" id="hw-student-mistakes-single" hidden></div>
+                  <details class="hw-mistake-feed-fold" id="hw-student-mistakes-fold" hidden>
+                    <summary class="hw-mistake-feed-fold__summary">
+                      <span class="hw-mistake-feed-fold__preview" id="hw-student-mistakes-preview"></span>
+                      <span class="hw-mistake-feed-fold__expand" id="hw-student-mistakes-expand-label">Show all</span>
+                    </summary>
+                    <ul class="hw-mistake-feed hw-mistake-feed--selectable" id="hw-student-mistakes-list"></ul>
+                  </details>
+                  <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty" hidden>No mistakes on your list — nice work!</p>
+                </div>
+
+                <div class="hw-student-mistakes__trash-panel" id="hw-student-mistakes-trash-panel" hidden>
+                  <p class="hw-student-mistakes__trash-heading">Deleted mistakes</p>
+                  <ul class="hw-mistake-feed" id="hw-student-mistakes-trash-list"></ul>
+                  <p class="hw-mistake-feed__empty" id="hw-student-mistakes-trash-empty" hidden>Nothing in the trash.</p>
+                </div>
+
+                <div class="hw-student-mistakes__footer">
+                  <div class="hw-student-mistakes__actions" id="hw-student-mistakes-actions" hidden>
+                    <button type="button" class="btn btn--ghost btn--sm" id="hw-student-mistakes-copy">Copy</button>
+                    <button type="button" class="btn btn--ghost btn--sm hw-student-mistakes__delete-btn" id="hw-student-mistakes-delete">Delete</button>
+                  </div>
+                  <button type="button" class="hw-student-mistakes__trash-btn" id="hw-student-mistakes-trash-btn" aria-label="View deleted mistakes" title="Deleted mistakes">
+                    <svg class="hw-student-mistakes__trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    <span class="hw-student-mistakes__trash-count" id="hw-student-mistakes-trash-count" hidden></span>
+                  </button>
+                </div>
+                <p class="hw-maker-status hw-student-mistakes-status" id="hw-student-mistakes-status" role="status" aria-live="polite"></p>
+              </section>
+
               <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
                 <h2 class="hw-platform-card__title">Your most recent lesson</h2>
                 <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
@@ -644,10 +698,13 @@
   <script src="/js/hw-teacher-editor.js?v=20260661" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
+  <script src="/js/hw-mistake-feed.js?v=20260674" defer></script>
   <script src="/js/hw-teacher-submissions.js?v=20260605c" defer></script>
+  <script src="/js/hw-teacher-mistakes.js?v=20260673" defer></script>
+  <script src="/js/hw-student-mistakes.js?v=20260682" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260653" defer></script>
+  <script src="/js/hw-platform.js?v=20260673" defer></script>
 </body>
 </html>

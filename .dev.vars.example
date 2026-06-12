@@ -18,4 +18,12 @@ DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
 # HARRIS_PREVIEW_USER=harris
 # HARRIS_PREVIEW_PASSWORD=your-secret-password
 
+# Mistakes quick-log page (/homework/mistakes-log.html?key=…)
+# Generate a long random string; set the same value in production:
+#   wrangler secret put MISTAKES_LOG_KEY
+# MISTAKES_LOG_KEY=your-long-random-secret-here
+#
+# Local dev only — auto-loads key on localhost (no ?key= in URL needed)
+# LOCAL_DEV=1
+
 # Your Cloudflare API token (for wrangler login / deploy) is NOT the same thing — you do not put it here.

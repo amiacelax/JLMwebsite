@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a2744">
+  <title>Log mistakes — JLM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script>
+    (function () {
+      var t = localStorage.getItem("theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      else document.documentElement.setAttribute("data-theme", "dark");
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework hw-mistakes-log-page">
+  <main class="hw-mistakes-log" id="main">
+    <header class="hw-mistakes-log__header">
+      <h1 class="hw-mistakes-log__title">Lesson mistakes</h1>
+      <p class="hw-mistakes-log__desc">Paste your lesson notes — no login. Bookmark this page on your phone or laptop.</p>
+    </header>
+
+    <div class="hw-mistakes-log__gate" id="hw-mistakes-log-gate" hidden>
+      <p class="hw-mistakes-log__gate-msg" id="hw-mistakes-log-gate-msg">This link needs your private key in the URL. Ask JD for the full bookmark.</p>
+    </div>
+
+    <div class="hw-mistakes-log__app" id="hw-mistakes-log-app" hidden>
+      <label class="hw-maker-field" for="hw-log-student">
+        Student
+        <select id="hw-log-student" required>
+          <option value="">— Choose student —</option>
+          <option value="joshs">joshs — Josh S</option>
+          <option value="benm">benm — Ben M</option>
+          <option value="deme">deme — Deme</option>
+          <option value="ivan">ivan — Ivan</option>
+          <option value="benc">benc</option>
+          <option value="noplan">noplan</option>
+        </select>
+      </label>
+
+      <section class="hw-mistakes-log__bulk" aria-labelledby="hw-log-bulk-heading">
+        <h2 class="hw-mistakes-log__bulk-heading" id="hw-log-bulk-heading">Paste &amp; log</h2>
+        <p class="hw-mistakes-log__bulk-steps">Paste your notes, check the preview, then hit <strong>Log mistakes</strong>.</p>
+        <p class="hw-mistakes-log__format-hint">
+          One mistake per line. Easiest: <code>wrong &gt; right</code> or
+          <code>wrong / right</code>. Also: tab, two spaces, or <code>-</code>.
+          Add <code># vocab</code> to categorize the lines below.
+        </p>
+        <pre class="hw-mistakes-log__format-example" aria-hidden="true"># grammar
+まいげつ > まいつき
+わるない > わるくない
+# vocab
+くらma / くるma
+パワーポイント / プレゼン</pre>
+
+        <label class="hw-maker-field" for="hw-log-bulk-default-cat">
+          Default type (when no # line)
+          <select id="hw-log-bulk-default-cat">
+            <option value="grammar">Grammar</option>
+            <option value="vocab">Vocabulary</option>
+            <option value="pronunciation">Pronunciation</option>
+            <option value="kanji">Kanji</option>
+            <option value="particle">Particle</option>
+            <option value="conjugation">Conjugation</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+
+        <label class="hw-maker-field" for="hw-log-bulk-text">
+          Your notes
+          <textarea id="hw-log-bulk-text" class="hw-mistakes-log__bulk-textarea" rows="12"># grammar
+
+# conjugation
+
+# vocab
+
+# kanji
+</textarea>
+        </label>
+
+        <p class="hw-maker-status" id="hw-log-bulk-parse-msg" role="status" aria-live="polite"></p>
+
+        <div class="hw-mistakes-log__preview" id="hw-log-bulk-preview" hidden>
+          <p class="hw-mistakes-log__preview-heading">Preview — adjust type before saving</p>
+          <ul class="hw-mistakes-log__preview-list" id="hw-log-bulk-preview-list"></ul>
+        </div>
+
+        <button type="button" class="btn btn--primary hw-mistakes-log__submit" id="hw-log-bulk-submit" disabled>Log mistakes</button>
+      </section>
+
+      <section class="hw-mistakes-log__recent" aria-labelledby="hw-log-recent-heading">
+        <h2 class="hw-mistakes-log__recent-heading" id="hw-log-recent-heading">Logged this session</h2>
+        <ul class="hw-mistake-feed" id="hw-log-recent-list"></ul>
+      </section>
+    </div>
+  </main>
+  <script src="/js/hw-mistake-feed.js?v=20260679" defer></script>
+  <script src="/js/hw-mistake-parse.js?v=20260679" defer></script>
+  <script src="/js/hw-mistakes-log.js?v=20260680" defer></script>
+</body>
+</html>

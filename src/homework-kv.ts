@@ -59,6 +59,7 @@ export interface DeleteWorksheetPayload {
 interface KvEnv {
   HOMEWORK_KV?: KVNamespace;
   HW_TEACHER_USER?: string;
+  MISTAKES_LOG_KEY?: string;
 }
 
 const TEACHER_DEFAULT = "jlm";
@@ -73,6 +74,26 @@ function isTeacher(username: string | undefined, env: KvEnv): boolean {
   return String(username || "")
     .trim()
     .toLowerCase() === allowed;
+}
+
+function matchesMistakesLogKey(key: string | undefined, env: KvEnv): boolean {
+  const secret = String(env.MISTAKES_LOG_KEY || "").trim();
+  const provided = String(key || "").trim();
+  if (!secret || !provided || secret.length !== provided.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < secret.length; i++) {
+    mismatch |= secret.charCodeAt(i) ^ provided.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+/** Teacher hub login or mistakes quick-log secret URL. */
+export function isTeacherMistakesAccess(
+  data: { teacherUsername?: string; mistakesKey?: string },
+  env: KvEnv
+): boolean {
+  if (isTeacher(data.teacherUsername, env)) return true;
+  return matchesMistakesLogKey(data.mistakesKey, env);
 }
 
 async function readIndex(kv: KVNamespace): Promise<string[]> {
@@ -1040,7 +1061,16 @@ export interface HomeworkVideoSubmitInput {
   lessonName?: string;
 }
 
-async function isKnownStudent(
+export async function isKnownStudent(
+  username: string | undefined,
+  env: KvEnv
+): Promise<boolean> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) return false;
+  return isKnownStudentInKv(username, kv);
+}
+
+async function isKnownStudentInKv(
   username: string | undefined,
   kv: KVNamespace
 ): Promise<boolean> {
@@ -1151,7 +1181,7 @@ export async function saveHomeworkOnlineSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const assignmentId = String(data.assignmentId || "").trim();
   if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
@@ -1191,7 +1221,7 @@ export async function saveHomeworkPhotoSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const photo = await storeSubmissionPhoto(kv, file);
   const submission: HomeworkSubmission = {
@@ -1220,7 +1250,7 @@ export async function saveHomeworkVideoSubmission(
   const username = String(data.username || "")
     .trim()
     .toLowerCase();
-  if (!(await isKnownStudent(username, kv))) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const video = await storeSubmissionVideo(kv, file);
   const submission: HomeworkSubmission = {
@@ -1552,6 +1582,313 @@ export async function deletePromoSignup(
     kv,
     ids.filter((entry) => entry !== id)
   );
+
+  return { id };
+}
+
+/** Student lesson mistakes — tracked per student for review and future homework. */
+
+const MISTAKES_INDEX = "mistakes-index";
+const mistakeKey = (id: string) => `mistake:${id}`;
+
+export type StudentMistakeCategory =
+  | "grammar"
+  | "vocab"
+  | "pronunciation"
+  | "kanji"
+  | "particle"
+  | "conjugation"
+  | "other";
+
+export type StudentMistakeStatus = "active" | "resolved";
+
+export interface StudentMistake {
+  id: string;
+  username: string;
+  displayName?: string;
+  category: StudentMistakeCategory;
+  text: string;
+  correction?: string;
+  context?: string;
+  source?: "lesson" | "homework" | "speaking";
+  lessonName?: string;
+  assignmentId?: string;
+  status: StudentMistakeStatus;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentMistakePayload {
+  teacherUsername?: string;
+  mistakesKey?: string;
+  id?: string;
+  studentUsername?: string;
+  displayName?: string;
+  category?: string;
+  text?: string;
+  correction?: string;
+  context?: string;
+  source?: string;
+  lessonName?: string;
+  assignmentId?: string;
+  status?: StudentMistakeStatus;
+}
+
+export interface StudentMistakeDeletePayload {
+  teacherUsername?: string;
+  mistakesKey?: string;
+  id?: string;
+}
+
+export interface StudentMistakeResolvePayload {
+  username?: string;
+  id?: string;
+}
+
+const MISTAKE_CATEGORIES = new Set<StudentMistakeCategory>([
+  "grammar",
+  "vocab",
+  "pronunciation",
+  "kanji",
+  "particle",
+  "conjugation",
+  "other",
+]);
+
+function makeMistakeId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `mist-${Date.now()}-${rand}`;
+}
+
+function normalizeMistakeCategory(raw: string | undefined): StudentMistakeCategory {
+  const cat = String(raw || "grammar")
+    .trim()
+    .toLowerCase() as StudentMistakeCategory;
+  return MISTAKE_CATEGORIES.has(cat) ? cat : "other";
+}
+
+async function readMistakesIndex(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(MISTAKES_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeMistakesIndex(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(MISTAKES_INDEX, JSON.stringify(unique));
+}
+
+export async function listStudentMistakes(
+  env: KvEnv,
+  opts?: { student?: string; status?: string }
+): Promise<StudentMistake[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const filterStudent = String(opts?.student || "")
+    .trim()
+    .toLowerCase();
+  const filterStatus = String(opts?.status || "").trim().toLowerCase();
+  const ids = await readMistakesIndex(kv);
+  const mistakes: StudentMistake[] = [];
+
+  for (const id of ids) {
+    const raw = await kv.get(mistakeKey(id));
+    if (!raw) continue;
+    try {
+      const entry = JSON.parse(raw) as StudentMistake;
+      if (filterStudent && entry.username !== filterStudent) continue;
+      if (filterStatus && entry.status !== filterStatus) continue;
+      mistakes.push(entry);
+    } catch {
+      /* skip corrupt */
+    }
+  }
+
+  return mistakes;
+}
+
+export async function saveStudentMistake(
+  data: StudentMistakePayload,
+  env: KvEnv
+): Promise<{ id: string; updated: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacherMistakesAccess(data, env)) throw new Error("TEACHER_ONLY");
+
+  const text = String(data.text || "").trim();
+  if (!text) throw new Error("CONTENT_REQUIRED");
+
+  const category = normalizeMistakeCategory(data.category);
+  const status: StudentMistakeStatus =
+    data.status === "resolved" ? "resolved" : "active";
+  const now = new Date().toISOString();
+  const existingId = String(data.id || "").trim();
+  let id = existingId;
+  let updated = false;
+
+  if (id) {
+    const raw = await kv.get(mistakeKey(id));
+    if (!raw) throw new Error("NOT_FOUND");
+    let prev: StudentMistake;
+    try {
+      prev = JSON.parse(raw) as StudentMistake;
+    } catch {
+      throw new Error("NOT_FOUND");
+    }
+
+    const resolvedAt =
+      status === "resolved"
+        ? prev.status === "resolved"
+          ? prev.resolvedAt || now
+          : now
+        : undefined;
+
+    const mistake: StudentMistake = {
+      ...prev,
+      category,
+      text,
+      correction: String(data.correction || "").trim() || undefined,
+      context: String(data.context || "").trim() || undefined,
+      source: (data.source as StudentMistake["source"]) || prev.source || "lesson",
+      lessonName: String(data.lessonName || "").trim() || prev.lessonName,
+      assignmentId: String(data.assignmentId || "").trim() || prev.assignmentId,
+      status,
+      resolvedAt,
+      updatedAt: now,
+    };
+    await kv.put(mistakeKey(id), JSON.stringify(mistake));
+    updated = true;
+  } else {
+    const username = String(data.studentUsername || "")
+      .trim()
+      .toLowerCase();
+    if (!username) throw new Error("STUDENT_REQUIRED");
+    if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+    id = makeMistakeId();
+    const mistake: StudentMistake = {
+      id,
+      username,
+      displayName: String(data.displayName || "").trim() || undefined,
+      category,
+      text,
+      correction: String(data.correction || "").trim() || undefined,
+      context: String(data.context || "").trim() || undefined,
+      source: (data.source as StudentMistake["source"]) || "lesson",
+      lessonName: String(data.lessonName || "").trim() || undefined,
+      assignmentId: String(data.assignmentId || "").trim() || undefined,
+      status,
+      resolvedAt: status === "resolved" ? now : undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await kv.put(mistakeKey(id), JSON.stringify(mistake));
+    const index = await readMistakesIndex(kv);
+    index.unshift(id);
+    await writeMistakesIndex(kv, index);
+  }
+
+  return { id, updated };
+}
+
+export async function deleteStudentMistake(
+  data: StudentMistakeDeletePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacherMistakesAccess(data, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.id || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+
+  const raw = await kv.get(mistakeKey(id));
+  if (!raw) throw new Error("NOT_FOUND");
+
+  await kv.delete(mistakeKey(id));
+  const ids = await readMistakesIndex(kv);
+  await writeMistakesIndex(
+    kv,
+    ids.filter((entry) => entry !== id)
+  );
+
+  return { id };
+}
+
+export async function resolveStudentMistake(
+  data: StudentMistakeResolvePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(data.id || "").trim();
+  if (!username || !id) throw new Error("ID_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const raw = await kv.get(mistakeKey(id));
+  if (!raw) throw new Error("NOT_FOUND");
+
+  let mistake: StudentMistake;
+  try {
+    mistake = JSON.parse(raw) as StudentMistake;
+  } catch {
+    throw new Error("NOT_FOUND");
+  }
+
+  if (mistake.username !== username) throw new Error("FORBIDDEN");
+
+  const now = new Date().toISOString();
+  mistake.status = "resolved";
+  mistake.resolvedAt = now;
+  mistake.updatedAt = now;
+  await kv.put(mistakeKey(id), JSON.stringify(mistake));
+
+  return { id };
+}
+
+/** Student moves a trashed mistake back to their active list. */
+export async function restoreStudentMistake(
+  data: StudentMistakeResolvePayload,
+  env: KvEnv
+): Promise<{ id: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(data.id || "").trim();
+  if (!username || !id) throw new Error("ID_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const raw = await kv.get(mistakeKey(id));
+  if (!raw) throw new Error("NOT_FOUND");
+
+  let mistake: StudentMistake;
+  try {
+    mistake = JSON.parse(raw) as StudentMistake;
+  } catch {
+    throw new Error("NOT_FOUND");
+  }
+
+  if (mistake.username !== username) throw new Error("FORBIDDEN");
+
+  const now = new Date().toISOString();
+  mistake.status = "active";
+  mistake.resolvedAt = undefined;
+  mistake.updatedAt = now;
+  await kv.put(mistakeKey(id), JSON.stringify(mistake));
 
   return { id };
 }

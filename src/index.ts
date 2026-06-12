@@ -56,6 +56,16 @@ import {
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
   type HomeworkVideoSubmitInput,
+  listStudentMistakes,
+  saveStudentMistake,
+  deleteStudentMistake,
+  resolveStudentMistake,
+  restoreStudentMistake,
+  isKnownStudent,
+  isTeacherMistakesAccess,
+  type StudentMistakePayload,
+  type StudentMistakeDeletePayload,
+  type StudentMistakeResolvePayload,
 } from "./homework-kv";
 import {
   createUserAccount,
@@ -75,6 +85,9 @@ interface Env {
   DISCORD_HOMEWORK_CHANNEL_ID?: string;
   OPENAI_API_KEY?: string;
   HW_TEACHER_USER?: string;
+  MISTAKES_LOG_KEY?: string;
+  /** Set to 1 in .dev.vars so localhost can auto-load the mistakes log key */
+  LOCAL_DEV?: string;
   HARRIS_PREVIEW_USER?: string;
   HARRIS_PREVIEW_PASSWORD?: string;
 }
@@ -125,6 +138,31 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
+}
+
+function isLocalDevRequest(request: Request, env: Env): boolean {
+  if (String(env.LOCAL_DEV || "").trim() !== "1") return false;
+  const host = (request.headers.get("Host") || "").split(":")[0].toLowerCase();
+  try {
+    const hostname = new URL(request.url).hostname.toLowerCase();
+    return host === "127.0.0.1" || host === "localhost" || hostname === "127.0.0.1" || hostname === "localhost";
+  } catch {
+    return host === "127.0.0.1" || host === "localhost";
+  }
+}
+
+async function handleLocalDevMistakesKey(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  if (!isLocalDevRequest(request, env)) {
+    return jsonResponse({ error: "Not available." }, 404);
+  }
+  const key = String(env.MISTAKES_LOG_KEY || "").trim();
+  if (!key) {
+    return jsonResponse({ error: "Add MISTAKES_LOG_KEY to .dev.vars" }, 503);
+  }
+  return jsonResponse({ key });
 }
 
 function clip(value: string, max: number): string {
@@ -1618,6 +1656,183 @@ async function handleTeacherIdeaDelete(request: Request, env: Env): Promise<Resp
   }
 }
 
+async function handleStudentMistakes(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const username = url.searchParams.get("username") || "";
+    const student = url.searchParams.get("student") || "";
+    const status = url.searchParams.get("status") || "";
+    const mistakesKey = url.searchParams.get("mistakesKey") || "";
+    const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+
+    try {
+      if (
+        teacherUsername.trim().toLowerCase() === allowed ||
+        isTeacherMistakesAccess({ mistakesKey }, env)
+      ) {
+        const mistakes = await listStudentMistakes(env, {
+          student: student || undefined,
+          status: status || undefined,
+        });
+        return jsonResponse({ mistakes });
+      }
+
+      const studentUser = username.trim().toLowerCase();
+      if (!studentUser) {
+        return jsonResponse({ error: "Student login required." }, 403);
+      }
+      if (!(await isKnownStudent(studentUser, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+
+      const mistakes = await listStudentMistakes(env, {
+        student: studentUser,
+        status: status || undefined,
+      });
+      return jsonResponse({ mistakes });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Mistake storage is not configured on this server." }, 503);
+      }
+      console.error("student-mistakes list failed:", err);
+      return jsonResponse({ error: "Could not load mistakes." }, 500);
+    }
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as StudentMistakePayload;
+    const result = await saveStudentMistake(data, env);
+    return jsonResponse({
+      success: true,
+      message: result.updated ? "Mistake updated." : "Mistake logged.",
+      id: result.id,
+      updated: result.updated,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Mistake storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "CONTENT_REQUIRED") {
+      return jsonResponse({ error: "Describe what the student said or wrote." }, 400);
+    }
+    if (code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Choose a student." }, 400);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student id." }, 400);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Mistake not found." }, 404);
+    }
+    console.error("student-mistakes save failed:", err);
+    return jsonResponse({ error: "Could not save mistake." }, 500);
+  }
+}
+
+async function handleStudentMistakeDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as StudentMistakeDeletePayload;
+    const result = await deleteStudentMistake(data, env);
+    return jsonResponse({ success: true, message: "Mistake deleted.", id: result.id });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Mistake storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Mistake not found." }, 404);
+    }
+    console.error("student-mistakes delete failed:", err);
+    return jsonResponse({ error: "Could not delete mistake." }, 500);
+  }
+}
+
+async function handleStudentMistakeResolve(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as StudentMistakeResolvePayload;
+    const result = await resolveStudentMistake(data, env);
+    return jsonResponse({ success: true, message: "Moved to trash.", id: result.id });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Mistake storage is not configured on this server." }, 503);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "FORBIDDEN") {
+      return jsonResponse({ error: "Not allowed." }, 403);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Mistake not found." }, 404);
+    }
+    console.error("student-mistakes resolve failed:", err);
+    return jsonResponse({ error: "Could not update mistake." }, 500);
+  }
+}
+
+async function handleStudentMistakeRestore(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as StudentMistakeResolvePayload;
+    const result = await restoreStudentMistake(data, env);
+    return jsonResponse({ success: true, message: "Restored.", id: result.id });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Mistake storage is not configured on this server." }, 503);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "FORBIDDEN") {
+      return jsonResponse({ error: "Not allowed." }, 403);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Mistake not found." }, 404);
+    }
+    console.error("student-mistakes restore failed:", err);
+    return jsonResponse({ error: "Could not restore mistake." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1793,6 +2008,26 @@ export default {
 
     if (url.pathname === "/api/homework-submit") {
       return handleHomeworkSubmit(request, env);
+    }
+
+    if (url.pathname === "/api/student-mistakes") {
+      return handleStudentMistakes(request, env);
+    }
+
+    if (url.pathname === "/api/local-dev-mistakes-key") {
+      return handleLocalDevMistakesKey(request, env);
+    }
+
+    if (url.pathname === "/api/student-mistakes/delete") {
+      return handleStudentMistakeDelete(request, env);
+    }
+
+    if (url.pathname === "/api/student-mistakes/resolve") {
+      return handleStudentMistakeResolve(request, env);
+    }
+
+    if (url.pathname === "/api/student-mistakes/restore") {
+      return handleStudentMistakeRestore(request, env);
     }
 
     if (url.pathname === "/api/homework-submissions") {

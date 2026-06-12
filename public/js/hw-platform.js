@@ -1466,6 +1466,7 @@
       library: document.getElementById("hw-teacher-library"),
       ideas: document.getElementById("hw-teacher-ideas"),
       submissions: document.getElementById("hw-teacher-submissions"),
+      mistakes: document.getElementById("hw-teacher-mistakes"),
       promo: document.getElementById("hw-teacher-promo"),
       birthdays: document.getElementById("hw-teacher-birthdays"),
       harris: document.getElementById("hw-teacher-harris"),
@@ -1490,6 +1491,9 @@
       if (name === "ideas" && global.HwTeacherIdeas?.reloadIfNeeded) {
         HwTeacherIdeas.reloadIfNeeded();
       }
+      if (name === "mistakes" && global.HwTeacherMistakes?.reloadIfNeeded) {
+        HwTeacherMistakes.reloadIfNeeded();
+      }
       if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
         global.HwTeacherEditor.syncPublishPicker();
       }
@@ -1503,6 +1507,11 @@
 
     let initial = "maker";
     try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "gamelab") {
+        initial = tabParam;
+      } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
       if (saved === "homework") {
         initial = "account";
@@ -1512,12 +1521,14 @@
         saved === "library" ||
         saved === "ideas" ||
         saved === "submissions" ||
+        saved === "mistakes" ||
         saved === "promo" ||
         saved === "birthdays" ||
         saved === "harris" ||
         saved === "gamelab"
       ) {
         initial = saved;
+      }
       }
     } catch {
       /* ignore */
@@ -1548,7 +1559,7 @@
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
     if (hubDesc) {
       hubDesc.textContent =
-        "Worksheet maker → Homework → Student info → Library → Ideas & memos → Submissions → Email list → Birthdays.";
+        "Worksheet maker → Student info → Library → Ideas → Submissions → Mistakes → Email list → Birthdays.";
     }
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
@@ -1563,6 +1574,12 @@
     }
     if (global.HwTeacherSubmissions?.init) {
       HwTeacherSubmissions.init({
+        getTeacherSession: () => session,
+        showToast,
+      });
+    }
+    if (global.HwTeacherMistakes?.init) {
+      HwTeacherMistakes.init({
         getTeacherSession: () => session,
         showToast,
       });
@@ -1704,6 +1721,10 @@
       form.setAttribute("data-assignment-id", saveMeta.id);
     }
     bindWorksheetSave(form, saveMeta);
+
+    if (global.HwStudentMistakes?.load) {
+      void HwStudentMistakes.load(session);
+    }
   }
 
   function ensureTeacherEditorMounted() {
