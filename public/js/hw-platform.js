@@ -1494,6 +1494,9 @@
       if (name === "mistakes" && global.HwTeacherMistakes?.reloadIfNeeded) {
         HwTeacherMistakes.reloadIfNeeded();
       }
+      if (name === "gamelab" && global.HwTeacherLanternWords?.reloadIfNeeded) {
+        HwTeacherLanternWords.reloadIfNeeded();
+      }
       if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
         global.HwTeacherEditor.syncPublishPicker();
       }
@@ -1592,6 +1595,12 @@
     }
     if (global.HwTeacherBirthdays?.init) {
       HwTeacherBirthdays.init({
+        getTeacherSession: () => session,
+        showToast,
+      });
+    }
+    if (global.HwTeacherLanternWords?.init) {
+      HwTeacherLanternWords.init({
         getTeacherSession: () => session,
         showToast,
       });

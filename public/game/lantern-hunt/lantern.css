@@ -128,12 +128,23 @@ body.lhn-body {
   line-height: 1.4;
 }
 
+.lhn-main {
+  overflow: visible;
+}
+
 .lhn-settings {
   margin: 0.65rem 0 0.5rem;
   padding: 0.8rem;
   border-radius: 12px;
   background: #1a2236;
   border: 1px solid #2a3550;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lhn-settings .lhn-toggle + .lhn-toggle {
+  margin-top: 0;
 }
 
 .lhn-toggle {
@@ -741,6 +752,18 @@ body.lhn-body {
 
 .lhn-stage--lit .lhn-glow {
   opacity: 1;
+}
+
+.lhn-stage--no-lantern {
+  cursor: default;
+}
+
+.lhn-stage--no-lantern .lhn-veil {
+  opacity: 0;
+}
+
+.lhn-stage--no-lantern .lhn-glow {
+  opacity: 0 !important;
 }
 
 .lhn-controls {

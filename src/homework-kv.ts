@@ -1892,3 +1892,226 @@ export async function restoreStudentMistake(
 
   return { id };
 }
+
+/** Lantern Word Hunt — editable word lists per study set (teacher hub → Game lab). */
+
+export interface LanternWord {
+  word: string;
+  reading: string;
+  en: string;
+}
+
+export interface LanternWordSetSummary {
+  id: string;
+  label: string;
+  wordCount: number;
+  updatedAt?: string;
+  builtin?: boolean;
+}
+
+export interface LanternWordSetSavePayload {
+  teacherUsername?: string;
+  setId?: string;
+  label?: string;
+  words?: LanternWord[];
+}
+
+export interface LanternWordSetDeletePayload {
+  teacherUsername?: string;
+  setId?: string;
+}
+
+const LANTERN_SETS_INDEX = "lantern-words-sets-index";
+const lanternSetKey = (id: string) => `lantern-words-set:${id}`;
+
+const BUILTIN_LANTERN_SETS: Record<string, { label: string }> = {
+  demo: { label: "Demo words" },
+  n5: { label: "JLPT N5 words" },
+};
+
+function normalizeLanternSetId(raw: string): string {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+}
+
+function isValidLanternSetId(id: string): boolean {
+  return /^[a-z0-9][a-z0-9-]{0,31}$/.test(id);
+}
+
+function sanitizeLanternWords(words: unknown): LanternWord[] {
+  if (!Array.isArray(words)) return [];
+  const out: LanternWord[] = [];
+  for (const item of words) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const word = String(row.word || "").trim();
+    const reading = String(row.reading || "")
+      .trim()
+      .split(/\s*[／/]\s*/)[0]
+      .trim();
+    const en = String(row.en || "").trim();
+    if (!word || !reading) continue;
+    out.push({ word, reading, en });
+  }
+  return out;
+}
+
+async function readLanternSetIds(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(LANTERN_SETS_INDEX);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.map((id) => normalizeLanternSetId(String(id))).filter(isValidLanternSetId)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeLanternSetIds(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(isValidLanternSetId))];
+  await kv.put(LANTERN_SETS_INDEX, JSON.stringify(unique));
+}
+
+export async function listLanternWordSets(env: KvEnv): Promise<LanternWordSetSummary[]> {
+  const kv = env.HOMEWORK_KV;
+  const summaries: LanternWordSetSummary[] = [];
+
+  for (const [id, meta] of Object.entries(BUILTIN_LANTERN_SETS)) {
+    summaries.push({ id, label: meta.label, wordCount: 0, builtin: true });
+  }
+
+  if (!kv) return summaries;
+
+  const customIds = await readLanternSetIds(kv);
+  for (const id of customIds) {
+    if (BUILTIN_LANTERN_SETS[id]) continue;
+    const raw = await kv.get(lanternSetKey(id));
+    if (!raw) continue;
+    try {
+      const data = JSON.parse(raw) as { label?: string; words?: LanternWord[]; updatedAt?: string };
+      summaries.push({
+        id,
+        label: String(data.label || id).trim() || id,
+        wordCount: Array.isArray(data.words) ? data.words.length : 0,
+        updatedAt: data.updatedAt,
+      });
+    } catch {
+      /* skip corrupt */
+    }
+  }
+
+  for (const summary of summaries) {
+    const raw = await kv.get(lanternSetKey(summary.id));
+    if (!raw) continue;
+    try {
+      const data = JSON.parse(raw) as { words?: LanternWord[]; updatedAt?: string; label?: string };
+      summary.wordCount = Array.isArray(data.words) ? data.words.length : 0;
+      if (data.updatedAt) summary.updatedAt = data.updatedAt;
+      if (data.label && summary.builtin) summary.label = String(data.label).trim() || summary.label;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return summaries;
+}
+
+export async function loadLanternWords(
+  setId: string,
+  env: KvEnv
+): Promise<{ setId: string; label: string; words: LanternWord[] | null; source: "kv" | "none" }> {
+  const id = normalizeLanternSetId(setId);
+  if (!isValidLanternSetId(id)) throw new Error("INVALID_SET");
+
+  const label = BUILTIN_LANTERN_SETS[id]?.label || id;
+
+  const kv = env.HOMEWORK_KV;
+  if (!kv) {
+    return { setId: id, label, words: null, source: "none" };
+  }
+
+  const raw = await kv.get(lanternSetKey(id));
+  if (!raw) {
+    return { setId: id, label, words: null, source: "none" };
+  }
+
+  try {
+    const data = JSON.parse(raw) as { label?: string; words?: LanternWord[] };
+    const words = sanitizeLanternWords(data.words);
+    return {
+      setId: id,
+      label: String(data.label || label).trim() || label,
+      words,
+      source: "kv",
+    };
+  } catch {
+    return { setId: id, label, words: null, source: "none" };
+  }
+}
+
+export async function saveLanternWords(
+  data: LanternWordSetSavePayload,
+  env: KvEnv
+): Promise<{ setId: string; wordCount: number }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const setId = normalizeLanternSetId(String(data.setId || ""));
+  if (!isValidLanternSetId(setId)) throw new Error("INVALID_SET");
+
+  const words = sanitizeLanternWords(data.words);
+  if (!words.length) throw new Error("WORDS_REQUIRED");
+
+  const defaultLabel = BUILTIN_LANTERN_SETS[setId]?.label || setId;
+  const label = String(data.label || defaultLabel).trim() || defaultLabel;
+  const now = new Date().toISOString();
+
+  await kv.put(
+    lanternSetKey(setId),
+    JSON.stringify({
+      id: setId,
+      label,
+      words,
+      updatedAt: now,
+    })
+  );
+
+  if (!BUILTIN_LANTERN_SETS[setId]) {
+    const ids = await readLanternSetIds(kv);
+    if (!ids.includes(setId)) {
+      ids.unshift(setId);
+      await writeLanternSetIds(kv, ids);
+    }
+  }
+
+  return { setId, wordCount: words.length };
+}
+
+export async function deleteLanternWordSet(
+  data: LanternWordSetDeletePayload,
+  env: KvEnv
+): Promise<{ setId: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const setId = normalizeLanternSetId(String(data.setId || ""));
+  if (!isValidLanternSetId(setId)) throw new Error("INVALID_SET");
+  if (BUILTIN_LANTERN_SETS[setId]) throw new Error("BUILTIN_SET");
+
+  await kv.delete(lanternSetKey(setId));
+  const ids = await readLanternSetIds(kv);
+  await writeLanternSetIds(
+    kv,
+    ids.filter((id) => id !== setId)
+  );
+
+  return { setId };
+}

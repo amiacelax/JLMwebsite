@@ -4,78 +4,24 @@
  * Time attack: 14 rounds, 5 finds per round, scaling board size and timer bonuses.
  */
 (function (global) {
-  const DEMO_WORDS = [
-    { word: "来る", reading: "くる", en: "to come" },
-    { word: "来ます", reading: "きます", en: "to come (polite)" },
-    { word: "行く", reading: "いく", en: "to go" },
-    { word: "行きます", reading: "いきます", en: "to go (polite)" },
-    { word: "食べる", reading: "たべる", en: "to eat" },
-    { word: "食べます", reading: "たべます", en: "to eat (polite)" },
-    { word: "飲む", reading: "のむ", en: "to drink" },
-    { word: "飲みます", reading: "のみます", en: "to drink (polite)" },
-    { word: "見る", reading: "みる", en: "to see" },
-    { word: "見ます", reading: "みます", en: "to see (polite)" },
-    { word: "聞く", reading: "きく", en: "to hear / ask" },
-    { word: "話す", reading: "はなす", en: "to speak" },
-    { word: "読む", reading: "よむ", en: "to read" },
-    { word: "書く", reading: "かく", en: "to write" },
-    { word: "買う", reading: "かう", en: "to buy" },
-    { word: "売る", reading: "うる", en: "to sell" },
-    { word: "休む", reading: "やすむ", en: "to rest" },
-    { word: "する", reading: "する", en: "to do" },
-    { word: "します", reading: "します", en: "to do (polite)" },
-    { word: "雨", reading: "あめ", en: "rain" },
-    { word: "雪", reading: "ゆき", en: "snow" },
-    { word: "犬", reading: "いぬ", en: "dog" },
-    { word: "猫", reading: "ねこ", en: "cat" },
-    { word: "鳥", reading: "とり", en: "bird" },
-    { word: "魚", reading: "さかな", en: "fish" },
-    { word: "花", reading: "はな", en: "flower" },
-    { word: "山", reading: "やま", en: "mountain" },
-    { word: "海", reading: "うみ", en: "sea" },
-    { word: "川", reading: "かわ", en: "river" },
-    { word: "水", reading: "みず", en: "water" },
-    { word: "火", reading: "ひ", en: "fire" },
-    { word: "木", reading: "き", en: "tree" },
-    { word: "本", reading: "ほん", en: "book" },
-    { word: "紙", reading: "かみ", en: "paper" },
-    { word: "車", reading: "くるま", en: "car" },
-    { word: "電車", reading: "でんしゃ", en: "train" },
-    { word: "駅", reading: "えき", en: "station" },
-    { word: "道", reading: "みち", en: "road" },
-    { word: "店", reading: "みせ", en: "shop" },
-    { word: "学校", reading: "がっこう", en: "school" },
-    { word: "勉強", reading: "べんきょう", en: "study" },
-    { word: "友達", reading: "ともだち", en: "friend" },
-    { word: "人", reading: "ひと", en: "person" },
-    { word: "手", reading: "て", en: "hand" },
-    { word: "目", reading: "め", en: "eye" },
-    { word: "口", reading: "くち", en: "mouth" },
-    { word: "今日", reading: "きょう", en: "today" },
-    { word: "明日", reading: "あした", en: "tomorrow" },
-    { word: "昨日", reading: "きのう", en: "yesterday" },
-    { word: "日本", reading: "にほん", en: "Japan" },
-    { word: "日本語", reading: "にほんご", en: "Japanese language" },
-    { word: "天気", reading: "てんき", en: "weather" },
-    { word: "料理", reading: "りょうり", en: "cooking / dish" },
-    { word: "新しい", reading: "あたらしい", en: "new" },
-    { word: "古い", reading: "ふるい", en: "old" },
-    { word: "大きい", reading: "おおきい", en: "big" },
-    { word: "小さい", reading: "ちいさい", en: "small" },
-    { word: "高い", reading: "たかい", en: "tall / expensive" },
-    { word: "安い", reading: "やすい", en: "cheap" },
-    { word: "白い", reading: "しろい", en: "white" },
-    { word: "赤い", reading: "あかい", en: "red" },
-    { word: "青い", reading: "あおい", en: "blue" },
-    { word: "黒い", reading: "くろい", en: "black" },
-    { word: "楽しい", reading: "たのしい", en: "fun" },
-    { word: "美味しい", reading: "おいしい", en: "delicious" },
-    { word: "静か", reading: "しずか", en: "quiet" },
-    { word: "元気", reading: "げんき", en: "healthy / energetic" },
-    { word: "便利", reading: "べんり", en: "convenient" },
-    { word: "好き", reading: "すき", en: "to like" },
-    { word: "嫌い", reading: "きらい", en: "to dislike" },
-  ];
+  function ensureLanternToggleInSettings() {
+    if (document.getElementById("lhn-lantern-toggle")) return;
+    const settings =
+      document.querySelector(".lhn-settings") ||
+      document.querySelector("[aria-labelledby='lhn-settings-heading']");
+    const hintsLabel = document.getElementById("lhn-hints-toggle")?.closest(".lhn-toggle");
+    if (!settings) return;
+    const label = document.createElement("label");
+    label.className = "lhn-toggle";
+    label.innerHTML =
+      '<input type="checkbox" class="lhn-toggle__input" id="lhn-lantern-toggle">' +
+      '<span class="lhn-toggle__track" aria-hidden="true"></span>' +
+      '<span class="lhn-toggle__label">Turn off lantern (show all words)</span>';
+    if (hintsLabel) settings.insertBefore(label, hintsLabel);
+    else settings.appendChild(label);
+  }
+
+  ensureLanternToggleInSettings();
 
   const MAX_HEARTS = 3;
   const CHOICES = 5;
@@ -125,15 +71,22 @@
   const findPanel = document.getElementById("lhn-find-panel");
   const headerSubEl = document.getElementById("lhn-header-sub");
   const modeButtons = [...document.querySelectorAll("[data-lhn-mode]")];
-  const studySetButtons = [...document.querySelectorAll("[data-lhn-studyset]")];
   const hintsToggle = document.getElementById("lhn-hints-toggle");
+  const lanternToggle = document.getElementById("lhn-lantern-toggle");
   const clearEl = document.getElementById("lhn-clear");
   const fireworksEl = document.getElementById("lhn-fireworks");
   const clearScoreEl = document.getElementById("lhn-clear-score");
 
   let gameMode = "learning";
   let studySet = "demo";
+  const wordsCache = {};
+  const setMetaById = {
+    demo: { label: "Demo words" },
+    n5: { label: "JLPT N5 words" },
+  };
+  let availableSetIds = ["demo", "n5"];
   let hintsEnabled = false;
+  let lanternOff = false;
   let gameClear = false;
   let taRound = 1;
   let taFindsInRound = 0;
@@ -170,6 +123,7 @@
   }
 
   const HINTS_STORAGE_KEY = "lhn-hints-enabled";
+  const LANTERN_OFF_STORAGE_KEY = "lhn-lantern-off";
   const STUDY_SET_STORAGE_KEY = "lhn-study-set";
 
   /** Keep only the reading used in this word (never show kunyomi/on'yomi pairs). */
@@ -188,16 +142,79 @@
   }
 
   function studySetLabel() {
-    return studySet === "n5" ? "JLPT N5 words" : "Demo words";
+    return setMetaById[studySet]?.label || studySet;
+  }
+
+  function builtinWords(setId) {
+    if (setId === "n5") {
+      const list = global.LanternWordsN5;
+      if (Array.isArray(list) && list.length) return sanitizeWordList(list);
+    }
+    if (setId === "demo") {
+      const list = global.LanternWordsDemo;
+      if (Array.isArray(list) && list.length) return sanitizeWordList(list);
+    }
+    return [];
+  }
+
+  async function fetchWordsForSet(setId) {
+    try {
+      const res = await fetch("/api/lantern-words?set=" + encodeURIComponent(setId));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.label) setMetaById[setId] = { label: data.label };
+        if (Array.isArray(data.words) && data.words.length) {
+          wordsCache[setId] = sanitizeWordList(data.words);
+          return wordsCache[setId];
+        }
+      }
+    } catch (_) {}
+    const built = builtinWords(setId);
+    wordsCache[setId] = built;
+    return built;
   }
 
   function getWords() {
-    if (studySet === "n5") {
-      const list = global.LanternWordsN5;
-      if (!Array.isArray(list) || !list.length) return sanitizeWordList(DEMO_WORDS);
-      return sanitizeWordList(list);
+    if (wordsCache[studySet]?.length) return wordsCache[studySet];
+    return builtinWords(studySet);
+  }
+
+  function renderStudySetButtons() {
+    const container = document.getElementById("lhn-studyset-options");
+    if (!container) return;
+    container.innerHTML = "";
+    availableSetIds.forEach((id) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "lhn-mode__btn";
+      btn.setAttribute("data-lhn-studyset", id);
+      btn.setAttribute("aria-pressed", id === studySet ? "true" : "false");
+      btn.textContent = setMetaById[id]?.label || id;
+      btn.disabled = settingsLocked();
+      btn.addEventListener("click", () => setStudySet(id));
+      container.appendChild(btn);
+    });
+  }
+
+  async function refreshWordSets() {
+    try {
+      const res = await fetch("/api/lantern-words/sets");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.sets) && data.sets.length) {
+          availableSetIds = data.sets.map((s) => s.id).filter(Boolean);
+          data.sets.forEach((s) => {
+            if (s.id) setMetaById[s.id] = { label: s.label || s.id };
+          });
+        }
+      }
+    } catch (_) {}
+    if (!availableSetIds.includes(studySet)) {
+      studySet = availableSetIds.includes("demo") ? "demo" : availableSetIds[0] || "demo";
     }
-    return sanitizeWordList(DEMO_WORDS);
+    renderStudySetButtons();
+    await fetchWordsForSet(studySet);
+    updateStudySetUi();
   }
 
   function warnIfN5Missing() {
@@ -216,8 +233,14 @@
 
   function loadStudySetPreference() {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const urlSet = params.get("set");
+      if (urlSet) {
+        studySet = urlSet.trim().toLowerCase();
+        return;
+      }
       const stored = localStorage.getItem(STUDY_SET_STORAGE_KEY);
-      if (stored === "demo" || stored === "n5") studySet = stored;
+      if (stored) studySet = stored;
     } catch (_) {}
   }
 
@@ -237,11 +260,14 @@
   }
 
   function updateStudySetUi() {
-    studySetButtons.forEach((btn) => {
-      const pressed = btn.getAttribute("data-lhn-studyset") === studySet;
-      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
-      btn.disabled = settingsLocked();
-    });
+    const container = document.getElementById("lhn-studyset-options");
+    if (container) {
+      container.querySelectorAll("[data-lhn-studyset]").forEach((btn) => {
+        const pressed = btn.getAttribute("data-lhn-studyset") === studySet;
+        btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+        btn.disabled = settingsLocked();
+      });
+    }
     const note = document.getElementById("lhn-studyset-note");
     if (note) {
       note.textContent = studySetLabel() + " · " + getWords().length + " entries";
@@ -250,11 +276,12 @@
     updateFindLabel();
   }
 
-  function setStudySet(set) {
-    if (set !== "demo" && set !== "n5") return;
-    if (set === studySet) return;
+  async function setStudySet(set) {
+    if (!set || set === studySet) return;
+    if (!availableSetIds.includes(set) && !setMetaById[set]) return;
     studySet = set;
     saveStudySetPreference();
+    await fetchWordsForSet(studySet);
     updateStudySetUi();
     resetGame();
   }
@@ -292,6 +319,66 @@
     if (hintsToggle) hintsToggle.checked = hintsEnabled;
     updateWordHints();
     saveHintsPreference();
+  }
+
+  function loadLanternPreference() {
+    try {
+      const stored = localStorage.getItem(LANTERN_OFF_STORAGE_KEY);
+      if (stored === "1") lanternOff = true;
+      else if (stored === "0") lanternOff = false;
+    } catch (_) {}
+    if (lanternToggle) lanternToggle.checked = lanternOff;
+    applyLanternOffState(false);
+  }
+
+  function saveLanternPreference() {
+    try {
+      localStorage.setItem(LANTERN_OFF_STORAGE_KEY, lanternOff ? "1" : "0");
+    } catch (_) {}
+  }
+
+  function revealAllWords() {
+    roundChoices.forEach((entry) => {
+      entry.el.style.setProperty("--reveal", "1");
+      entry.el.classList.add("lhn-word--visible", "lhn-word--ready");
+    });
+  }
+
+  function findSubText(active) {
+    if (!active) return "Press New game when you are ready";
+    return lanternOff
+      ? "Tap the matching word"
+      : "Shine the dark and tap the matching word";
+  }
+
+  function updateIdleStageHint() {
+    if (!stageHint || playing) return;
+    if (lanternOff) {
+      stageHint.textContent = "All words visible — tap the matching word";
+      return;
+    }
+    stageHint.textContent = isCoarsePointer
+      ? "Hold to shine · tap a lit word"
+      : "Move mouse or finger to light the dark";
+  }
+
+  function applyLanternOffState(updateWords) {
+    if (stage) stage.classList.toggle("lhn-stage--no-lantern", lanternOff);
+    updateIdleStageHint();
+    if (findSubEl && playing && targetEntry) {
+      findSubEl.textContent = findSubText(true);
+    }
+    if (updateWords !== false && playing) {
+      if (lanternOff) revealAllWords();
+      else updateReveal();
+    }
+  }
+
+  function setLanternOff(off) {
+    lanternOff = Boolean(off);
+    if (lanternToggle) lanternToggle.checked = lanternOff;
+    applyLanternOffState(true);
+    saveLanternPreference();
   }
 
   function shuffled(list) {
@@ -617,9 +704,7 @@
       meaningEl.lang = "en";
     }
     if (findSubEl) {
-      findSubEl.textContent = active
-        ? "Shine the dark and tap the matching word"
-        : "Press New game when you are ready";
+      findSubEl.textContent = findSubText(active);
     }
     if (findPanel) {
       findPanel.classList.toggle("lhn-find--active", Boolean(active && target));
@@ -766,6 +851,7 @@
         targetEntry = entry;
       }
     });
+    if (lanternOff) revealAllWords();
   }
 
   function fadeAllWords() {
@@ -875,6 +961,10 @@
 
   function updateReveal() {
     if (!playing || !stage) return;
+    if (lanternOff) {
+      revealAllWords();
+      return;
+    }
     const rect = stage.getBoundingClientRect();
     const px = (lx / 100) * rect.width;
     const py = (ly / 100) * rect.height;
@@ -1048,11 +1138,7 @@
     updateHud();
     updateActionButton();
     updateModeUi();
-    if (stageHint) {
-      stageHint.textContent = isCoarsePointer
-        ? "Hold to shine · tap a lit word"
-        : "Move mouse or finger to light the dark";
-    }
+    updateIdleStageHint();
   }
 
   function clearTouchGesture() {
@@ -1196,10 +1282,6 @@
     btn.addEventListener("click", () => setMode(btn.getAttribute("data-lhn-mode") || "learning"));
   });
 
-  studySetButtons.forEach((btn) => {
-    btn.addEventListener("click", () => setStudySet(btn.getAttribute("data-lhn-studyset") || "demo"));
-  });
-
   actionBtn?.addEventListener("click", () => {
     if (playing || advanceTimer) return;
     if (gameOver) resetGame();
@@ -1211,9 +1293,13 @@
   });
 
   hintsToggle?.addEventListener("change", () => setHintsEnabled(hintsToggle.checked));
+  document.getElementById("lhn-lantern-toggle")?.addEventListener("change", (e) => {
+    setLanternOff(e.target.checked);
+  });
 
   loadStudySetPreference();
   updateModeUi();
   loadHintsPreference();
-  resetGame();
+  loadLanternPreference();
+  refreshWordSets().then(() => resetGame());
 })(typeof window !== "undefined" ? window : globalThis);

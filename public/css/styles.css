@@ -2711,6 +2711,26 @@ body.subpage--platform .hw-platform-bar {
   }
 }
 
+@media (max-width: 767px) {
+  .hw-login-hero__words {
+    --hw-login-word-size: clamp(2.15rem, 11vw, 3.35rem);
+    padding: 0 0.65rem;
+    translate: 0 0;
+  }
+
+  .hw-login-hero__words.is-long-word {
+    --hw-login-word-size: clamp(1.7rem, 8.2vw, 2.55rem);
+    letter-spacing: -0.02em;
+  }
+}
+
+@media (max-width: 420px) {
+  .hw-login-hero__words.is-long-word {
+    --hw-login-word-size: clamp(1.45rem, 7.4vw, 2.15rem);
+    letter-spacing: -0.04em;
+  }
+}
+
 .hw-login-hero__scrim {
   position: absolute;
   inset: 0;
@@ -5450,6 +5470,52 @@ body.hw-role-teacher #hw-teacher-hub {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   line-height: 1.45;
+}
+
+.hw-lantern-words-editor {
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(12, 18, 32, 0.55);
+  border: 1px solid var(--color-border);
+}
+
+.hw-lantern-words-toolbar {
+  margin-bottom: 0.75rem;
+}
+
+.hw-lantern-words-actions {
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.hw-lantern-words-text-label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-lantern-words-text {
+  width: 100%;
+  min-height: 16rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.hw-lantern-words-text:focus {
+  outline: 2px solid var(--color-accent-soft, rgba(232, 93, 44, 0.45));
+  outline-offset: 1px;
 }
 
 .hw-teacher-tabs {

@@ -66,6 +66,12 @@ import {
   type StudentMistakePayload,
   type StudentMistakeDeletePayload,
   type StudentMistakeResolvePayload,
+  listLanternWordSets,
+  loadLanternWords,
+  saveLanternWords,
+  deleteLanternWordSet,
+  type LanternWordSetSavePayload,
+  type LanternWordSetDeletePayload,
 } from "./homework-kv";
 import {
   createUserAccount,
@@ -1970,6 +1976,111 @@ async function handleHomeworkSubmissionPhoto(request: Request, env: Env): Promis
   }
 }
 
+async function handleLanternWords(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const setId = url.searchParams.get("set") || "demo";
+    try {
+      const result = await loadLanternWords(setId, env);
+      return jsonResponse(result);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "INVALID_SET") {
+        return jsonResponse({ error: "Invalid study set." }, 400);
+      }
+      console.error("lantern-words load failed:", err);
+      return jsonResponse({ error: "Could not load word list." }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    try {
+      const data = (await request.json()) as LanternWordSetSavePayload;
+      const result = await saveLanternWords(data, env);
+      return jsonResponse({
+        success: true,
+        message: "Word list saved.",
+        setId: result.setId,
+        wordCount: result.wordCount,
+      });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Word list storage is not configured on this server." }, 503);
+      }
+      if (code === "TEACHER_ONLY") {
+        return jsonResponse({ error: "Teacher login required." }, 403);
+      }
+      if (code === "INVALID_SET") {
+        return jsonResponse({ error: "Invalid study set id." }, 400);
+      }
+      if (code === "WORDS_REQUIRED") {
+        return jsonResponse({ error: "Add at least one word with a reading." }, 400);
+      }
+      console.error("lantern-words save failed:", err);
+      return jsonResponse({ error: "Could not save word list." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
+async function handleLanternWordSets(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const sets = await listLanternWordSets(env);
+    return jsonResponse({ sets });
+  } catch (err) {
+    console.error("lantern-word-sets list failed:", err);
+    return jsonResponse({ error: "Could not load study sets." }, 500);
+  }
+}
+
+async function handleLanternWordSetDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as LanternWordSetDeletePayload;
+    const result = await deleteLanternWordSet(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Study set deleted.",
+      setId: result.setId,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Word list storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "BUILTIN_SET") {
+      return jsonResponse({ error: "Built-in study sets cannot be deleted." }, 400);
+    }
+    if (code === "INVALID_SET") {
+      return jsonResponse({ error: "Invalid study set id." }, 400);
+    }
+    console.error("lantern-word-set delete failed:", err);
+    return jsonResponse({ error: "Could not delete study set." }, 500);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -2104,6 +2215,18 @@ export default {
 
     if (url.pathname === "/api/teacher-ideas/delete") {
       return handleTeacherIdeaDelete(request, env);
+    }
+
+    if (url.pathname === "/api/lantern-words") {
+      return handleLanternWords(request, env);
+    }
+
+    if (url.pathname === "/api/lantern-words/sets") {
+      return handleLanternWordSets(request, env);
+    }
+
+    if (url.pathname === "/api/lantern-words/delete-set") {
+      return handleLanternWordSetDelete(request, env);
     }
 
     if (isHarrisPreviewPath(url.pathname)) {

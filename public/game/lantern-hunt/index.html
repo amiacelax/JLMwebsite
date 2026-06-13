@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/kumo.css">
-  <link rel="stylesheet" href="/game/lantern-hunt/lantern.css">
+  <link rel="stylesheet" href="/game/lantern-hunt/lantern.css?v=20260642">
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -73,10 +73,7 @@
 
     <section class="lhn-mode" aria-labelledby="lhn-studyset-heading">
       <h2 class="lhn-mode__heading" id="lhn-studyset-heading">Study set</h2>
-      <div class="lhn-mode__options" role="group" aria-label="Study set">
-        <button type="button" class="lhn-mode__btn" data-lhn-studyset="demo" aria-pressed="true">Demo</button>
-        <button type="button" class="lhn-mode__btn" data-lhn-studyset="n5" aria-pressed="false">JLPT N5 words</button>
-      </div>
+      <div class="lhn-mode__options" id="lhn-studyset-options" role="group" aria-label="Study set"></div>
       <p class="lhn-mode__note" id="lhn-studyset-note">Demo words · 70 entries</p>
     </section>
 
@@ -91,6 +88,11 @@
     <section class="lhn-settings" aria-labelledby="lhn-settings-heading">
       <h2 class="lhn-mode__heading" id="lhn-settings-heading">Settings</h2>
       <label class="lhn-toggle">
+        <input type="checkbox" class="lhn-toggle__input" id="lhn-lantern-toggle">
+        <span class="lhn-toggle__track" aria-hidden="true"></span>
+        <span class="lhn-toggle__label">Turn off lantern (show all words)</span>
+      </label>
+      <label class="lhn-toggle">
         <input type="checkbox" class="lhn-toggle__input" id="lhn-hints-toggle">
         <span class="lhn-toggle__track" aria-hidden="true"></span>
         <span class="lhn-toggle__label">Show reading hints on words</span>
@@ -103,8 +105,9 @@
 
   </main>
 
-  <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260636" defer></script>
-  <script src="/game/lantern-hunt/lantern.js?v=20260638" defer></script>
+  <script src="/game/lantern-hunt/lantern-words-demo.js?v=20260650" defer></script>
+  <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
+  <script src="/game/lantern-hunt/lantern.js?v=20260650" defer></script>
   <script src="/js/kumo-wallpaper.js" defer></script>
 </body>
 </html>

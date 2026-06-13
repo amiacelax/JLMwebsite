@@ -36,12 +36,14 @@
 
   async function showStatic(entry) {
     el.classList.remove("is-typing", "is-converting");
+    el.classList.toggle("is-long-word", chars(entry.kanji || entry.kana).length >= 7);
     el.textContent = entry.kanji || entry.kana;
   }
 
   async function playWord(entry) {
     el.classList.remove("is-converting", "is-between");
     el.classList.add("is-typing");
+    el.classList.toggle("is-long-word", chars(entry.kanji || entry.kana).length >= 7);
 
     const units = chars(entry.kana);
     for (let i = 0; i < units.length; i++) {

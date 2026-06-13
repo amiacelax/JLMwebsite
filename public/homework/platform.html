@@ -396,9 +396,46 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-gamelab" id="hw-teacher-gamelab" role="tabpanel" aria-labelledby="hw-teacher-tab-gamelab" hidden>
             <h2 class="hw-platform-card__title">Game lab</h2>
-            <p class="hw-platform-card__desc">Hidden prototypes — not on the public Games page.</p>
+            <p class="hw-platform-card__desc">Hidden prototypes and Lantern Word Hunt word lists.</p>
+
+            <div class="hw-lantern-words-editor" id="hw-lantern-words-editor">
+              <h3 class="hw-teacher-panel-subtitle">Lantern Word Hunt — word lists</h3>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">One word per line: <code>word TAB reading TAB meaning</code>. Saved lists go live in the game immediately.</p>
+
+              <div class="hw-teacher-meta hw-lantern-words-toolbar">
+                <div class="hw-teacher-meta__grid">
+                  <label class="hw-teacher-meta__field">
+                    Study set
+                    <select id="hw-lantern-words-set" aria-label="Choose study set"></select>
+                  </label>
+                  <label class="hw-teacher-meta__field">
+                    Display name
+                    <input type="text" id="hw-lantern-words-label" placeholder="e.g. JLPT N5 words" autocomplete="off">
+                  </label>
+                </div>
+                <div class="hw-teacher-meta__actions hw-lantern-words-actions">
+                  <button type="button" class="btn btn--primary" id="hw-lantern-words-save">Save word list</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-builtin">Load built-in defaults</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-new-set">New study set</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-delete-set" hidden>Delete set</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-preview">Preview game</button>
+                </div>
+                <p class="hw-library-meta" id="hw-lantern-words-meta" aria-live="polite"></p>
+                <p class="hw-maker-status" id="hw-lantern-words-status" role="status" aria-live="polite">Loading…</p>
+              </div>
+
+              <label class="hw-lantern-words-text-label" for="hw-lantern-words-text">Words</label>
+              <textarea class="hw-lantern-words-text" id="hw-lantern-words-text" rows="14" spellcheck="false" placeholder="食べる	たべる	to eat&#10;飲む	のむ	to drink"></textarea>
+            </div>
 
             <ul class="hw-gamelab-list">
+              <li class="hw-gamelab-item">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Lantern Word Hunt</h3>
+                  <p class="hw-gamelab-item__desc">Public game — word lists edited above.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Open game</a>
+              </li>
               <li class="hw-gamelab-item hw-gamelab-item--hidden">
                 <div class="hw-gamelab-item__main">
                   <h3 class="hw-gamelab-item__title">はじめてのおつかい</h3>
@@ -704,7 +741,11 @@
   <script src="/js/hw-student-mistakes.js?v=20260682" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
   <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
+  <script src="/game/lantern-hunt/lantern-words-demo.js?v=20260650" defer></script>
+  <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
+  <script src="/js/lantern-word-format.js?v=20260650" defer></script>
+  <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260673" defer></script>
+  <script src="/js/hw-platform.js?v=20260674" defer></script>
 </body>
 </html>
