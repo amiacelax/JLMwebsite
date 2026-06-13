@@ -570,14 +570,23 @@
   function bindCurrentAssignmentPills(active) {
     const pillOnline = document.getElementById("hw-pill-online");
     const pillPrint = document.getElementById("hw-pill-print");
-    const pillsWrap = pillOnline?.closest(".hw-current-assignment__pills");
+    const pillsWrap = document.getElementById("hw-current-assignment-pills");
+    const takePictureBtn = document.getElementById("hw-photo-take-picture");
+    const chooseFileBtn = document.getElementById("hw-photo-choose-file");
+    const photoForm = document.getElementById("hw-photo-upload-form");
 
     if (!active) {
       if (pillsWrap) pillsWrap.hidden = true;
+      if (takePictureBtn) takePictureBtn.hidden = true;
+      if (chooseFileBtn) chooseFileBtn.hidden = true;
+      if (photoForm) photoForm.hidden = true;
       return;
     }
 
     if (pillsWrap) pillsWrap.hidden = false;
+    if (takePictureBtn) takePictureBtn.hidden = false;
+    if (chooseFileBtn) chooseFileBtn.hidden = false;
+    if (photoForm) photoForm.hidden = false;
     if (pillOnline) {
       pillOnline.hidden = false;
       pillOnline.href = "#hw-worksheet-section";
@@ -798,11 +807,11 @@
     const form = document.getElementById("hw-photo-upload-form");
     const fileInput = document.getElementById("hw-photo-file");
     const status = document.getElementById("hw-photo-upload-status");
-    const startBtn = document.getElementById("hw-photo-open-camera");
+    const takePictureBtn = document.getElementById("hw-photo-take-picture");
+    const chooseFileBtn = document.getElementById("hw-photo-choose-file");
+    const captureWrap = document.getElementById("hw-photo-capture");
     const captureBtn = document.getElementById("hw-photo-capture-btn");
     const cancelBtn = document.getElementById("hw-photo-cancel-camera");
-    const retakeBtn = document.getElementById("hw-photo-retake");
-    const idlePanel = document.getElementById("hw-photo-capture-idle");
     const livePanel = document.getElementById("hw-photo-capture-live");
     const previewPanel = document.getElementById("hw-photo-capture-preview");
     const videoEl = document.getElementById("hw-photo-capture-video");
@@ -819,9 +828,15 @@
     let cameraStream = null;
     let capturedBlob = null;
     let previewObjectUrl = "";
+    let uploading = false;
 
     function setStatus(message) {
       if (status) status.textContent = message || "";
+    }
+
+    function setPhotoButtonsDisabled(disabled) {
+      if (takePictureBtn) takePictureBtn.disabled = disabled;
+      if (chooseFileBtn) chooseFileBtn.disabled = disabled;
     }
 
     function stopCamera() {
@@ -841,29 +856,29 @@
       if (previewImg) previewImg.removeAttribute("src");
     }
 
-    function showCaptureIdle() {
+    function hideCaptureUi() {
       stopCamera();
-      idlePanel?.removeAttribute("hidden");
+      captureWrap?.setAttribute("hidden", "");
       livePanel?.setAttribute("hidden", "");
       previewPanel?.setAttribute("hidden", "");
     }
 
     function showCaptureLive() {
-      idlePanel?.setAttribute("hidden", "");
+      captureWrap?.removeAttribute("hidden");
       livePanel?.removeAttribute("hidden");
       previewPanel?.setAttribute("hidden", "");
     }
 
     function showCapturePreview() {
       stopCamera();
-      idlePanel?.setAttribute("hidden", "");
+      captureWrap?.removeAttribute("hidden");
       livePanel?.setAttribute("hidden", "");
       previewPanel?.removeAttribute("hidden");
     }
 
     function resetCaptureUi() {
       clearCapture();
-      showCaptureIdle();
+      hideCaptureUi();
     }
 
     function resolvePhotoFile() {
@@ -876,117 +891,10 @@
       });
     }
 
-    async function openCamera() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setStatus("Camera capture is not supported in this browser.");
-        return;
-      }
-      clearCapture();
-      if (fileInput) fileInput.value = "";
-      setStatus("");
-
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-          audio: false,
-        });
-        if (videoEl) {
-          videoEl.srcObject = cameraStream;
-          await videoEl.play();
-        }
-        showCaptureLive();
-      } catch (err) {
-        stopCamera();
-        showCaptureIdle();
-        const name = err && err.name;
-        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-          setStatus("Camera access was blocked. Allow camera permission and try again.");
-        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-          setStatus("No camera found on this device.");
-        } else {
-          setStatus("Could not start camera. Try uploading a file instead.");
-        }
-      }
-    }
-
-    function capturePhoto() {
-      if (!videoEl || !cameraStream) return;
-      const width = videoEl.videoWidth;
-      const height = videoEl.videoHeight;
-      if (!width || !height) {
-        setStatus("Camera is still loading — wait a moment and try again.");
-        return;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        setStatus("Could not capture photo. Try uploading a file instead.");
-        return;
-      }
-      ctx.drawImage(videoEl, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            setStatus("Could not capture photo. Try again.");
-            return;
-          }
-          clearCapture();
-          capturedBlob = blob;
-          previewObjectUrl = URL.createObjectURL(blob);
-          if (previewImg) previewImg.src = previewObjectUrl;
-          showCapturePreview();
-          setStatus("Photo captured — tap Upload homework photo when ready.");
-        },
-        "image/jpeg",
-        0.9
-      );
-    }
-
-    startBtn?.addEventListener("click", () => {
-      openCamera();
-    });
-
-    captureBtn?.addEventListener("click", () => {
-      capturePhoto();
-    });
-
-    cancelBtn?.addEventListener("click", () => {
-      resetCaptureUi();
-      setStatus("");
-    });
-
-    retakeBtn?.addEventListener("click", () => {
-      clearCapture();
-      openCamera();
-    });
-
-    fileInput?.addEventListener("change", () => {
-      if (fileInput.files?.[0]) {
-        resetCaptureUi();
-        setStatus("");
-      }
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) stopCamera();
-    });
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const file = resolvePhotoFile();
-      if (!file) {
-        setStatus("Choose a file or open the camera to capture a photo first.");
-        return;
-      }
-      const submitBtn = document.getElementById("hw-photo-upload-submit");
-      if (submitBtn) submitBtn.disabled = true;
+    async function uploadPhoto(file) {
+      if (!file || uploading) return;
+      uploading = true;
+      setPhotoButtonsDisabled(true);
       stopCamera();
       setStatus("Uploading photo…");
 
@@ -1012,8 +920,115 @@
         setStatus((err && err.message) || "Upload failed.");
         showToast("Photo upload failed");
       } finally {
-        if (submitBtn) submitBtn.disabled = false;
+        uploading = false;
+        setPhotoButtonsDisabled(false);
       }
+    }
+
+    async function openCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setStatus("Camera is not supported here — use Choose file instead.");
+        return;
+      }
+      clearCapture();
+      if (fileInput) fileInput.value = "";
+      setStatus("");
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
+        if (videoEl) {
+          videoEl.srcObject = cameraStream;
+          await videoEl.play();
+        }
+        showCaptureLive();
+      } catch (err) {
+        stopCamera();
+        hideCaptureUi();
+        const name = err && err.name;
+        if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+          setStatus("Camera access was blocked. Allow camera permission or use Choose file.");
+        } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+          setStatus("No camera found — use Choose file instead.");
+        } else {
+          setStatus("Could not start camera. Use Choose file instead.");
+        }
+      }
+    }
+
+    function capturePhoto() {
+      if (!videoEl || !cameraStream) return;
+      const width = videoEl.videoWidth;
+      const height = videoEl.videoHeight;
+      if (!width || !height) {
+        setStatus("Camera is still loading — wait a moment and try again.");
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setStatus("Could not capture photo. Use Choose file instead.");
+        return;
+      }
+      ctx.drawImage(videoEl, 0, 0, width, height);
+      canvas.toBlob(
+        async (blob) => {
+          if (!blob) {
+            setStatus("Could not capture photo. Try again.");
+            return;
+          }
+          clearCapture();
+          capturedBlob = blob;
+          previewObjectUrl = URL.createObjectURL(blob);
+          if (previewImg) previewImg.src = previewObjectUrl;
+          showCapturePreview();
+          await uploadPhoto(resolvePhotoFile());
+        },
+        "image/jpeg",
+        0.9
+      );
+    }
+
+    takePictureBtn?.addEventListener("click", () => {
+      openCamera();
+    });
+
+    chooseFileBtn?.addEventListener("click", () => {
+      fileInput?.click();
+    });
+
+    captureBtn?.addEventListener("click", () => {
+      capturePhoto();
+    });
+
+    cancelBtn?.addEventListener("click", () => {
+      resetCaptureUi();
+      setStatus("");
+    });
+
+    fileInput?.addEventListener("change", async () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      resetCaptureUi();
+      setStatus("");
+      await uploadPhoto(file);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopCamera();
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
     });
   }
 
