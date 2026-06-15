@@ -13,6 +13,7 @@
 
   let catalogAssignments = [];
   let catalogStudentProfiles = {};
+  let catalogStudents = [];
   let editingAssignmentId = null;
   let editorOptions = null;
   let worksheetBuilder = null;
@@ -231,6 +232,51 @@
         .join("");
   }
 
+  function getMergedStudentList() {
+    const byUser = new Map();
+    const accounts = editorOptions?.getStudentAccounts?.() || [];
+    const authList = accounts.length ? accounts : DEFAULT_STUDENTS;
+    authList.forEach((a) => {
+      if (a?.username) byUser.set(a.username, a);
+    });
+    (catalogStudents || []).forEach((a) => {
+      if (a?.username) byUser.set(a.username, a);
+    });
+    return [...byUser.values()].sort((a, b) =>
+      String(a.username).localeCompare(String(b.username))
+    );
+  }
+
+  function fillStudentSelect(selectEl, keepValue) {
+    if (!selectEl) return;
+    const keep = keepValue || selectEl.value;
+    const students = getMergedStudentList();
+    selectEl.innerHTML =
+      '<option value="">— Choose student —</option>' +
+      students
+        .map((a) => {
+          const label =
+            a.username + (a.displayName ? " — " + a.displayName : "");
+          return (
+            '<option value="' +
+            a.username +
+            '"' +
+            (a.username === keep ? " selected" : "") +
+            ">" +
+            label +
+            "</option>"
+          );
+        })
+        .join("");
+    if (keep) selectEl.value = keep;
+  }
+
+  function populateAllStudentSelects() {
+    fillStudentSelect(document.getElementById("hw-teacher-maker-send-student"));
+    fillStudentSelect(document.getElementById("hw-teacher-publish-student"));
+    fillStudentSelect(document.getElementById("hw-teacher-account-student"));
+  }
+
   async function ensureCatalogLoaded() {
     if (catalogAssignments.length) return catalogAssignments;
     if (!editorOptions?.fetchCatalog) return catalogAssignments;
@@ -238,6 +284,8 @@
       const data = await editorOptions.fetchCatalog();
       catalogAssignments = data.assignments || [];
       catalogStudentProfiles = data.studentProfiles || {};
+      catalogStudents = data.students || [];
+      populateAllStudentSelects();
     } catch {
       /* use FALLBACK_ASSIGNMENTS */
     }
@@ -279,8 +327,11 @@
     const getStudentAccounts = options.getStudentAccounts || function () {
       return [];
     };
-    const isStudentAccount = options.isStudentAccount || function () {
-      return true;
+    const isStudentAccount = function (username) {
+      const key = String(username || "").trim().toLowerCase();
+      if (!key) return false;
+      if (options.isStudentAccount && options.isStudentAccount(key)) return true;
+      return getMergedStudentList().some((s) => s.username === key);
     };
 
     if (!makerForm || !makerMount) return;
@@ -366,32 +417,21 @@
 
     function updateMakerEditUI() {
       const isEdit = Boolean(editingAssignmentId);
-      if (makerUpdateBtn) makerUpdateBtn.hidden = !isEdit;
+      if (makerUpdateBtn) {
+        makerUpdateBtn.hidden = false;
+        makerUpdateBtn.textContent = isEdit ? "Update saved" : "Save as new";
+      }
       if (makerDeleteBtn) makerDeleteBtn.hidden = !isEdit;
       if (makerEditingNote) {
         makerEditingNote.textContent = isEdit
           ? "Editing “" + editingAssignmentId + "”"
-          : "New sheet — send to a student to save it.";
+          : "New sheet — save or send when ready.";
       }
       updateMakerDockHint();
     }
 
     function populateMakerDockStudents() {
-      if (!makerSendStudent) return;
-      const keep = makerSendStudent.value;
-      const accounts = getStudentAccounts();
-      const students = accounts.length ? accounts : DEFAULT_STUDENTS;
-      const existing = new Set(
-        Array.from(makerSendStudent.options).map((o) => o.value).filter(Boolean)
-      );
-      students.forEach((a) => {
-        if (existing.has(a.username)) return;
-        const opt = document.createElement("option");
-        opt.value = a.username;
-        opt.textContent = a.username + (a.displayName ? " — " + a.displayName : "");
-        makerSendStudent.appendChild(opt);
-      });
-      if (keep) makerSendStudent.value = keep;
+      fillStudentSelect(makerSendStudent, makerSendStudent?.value);
     }
 
     function updateMakerPreviewBtn(isOpen) {
@@ -408,9 +448,9 @@
       slot.innerHTML =
         '<div class="hw-builder__dock-section hw-builder__dock-section--library">' +
         '<h5 class="hw-builder__dock-heading">Library</h5>' +
-        '<p class="hw-builder__dock-note" id="hw-teacher-maker-editing-note">New sheet — send to a student to save it.</p>' +
+        '<p class="hw-builder__dock-note" id="hw-teacher-maker-editing-note">New sheet — save or send when ready.</p>' +
         '<div class="hw-builder__dock-actions">' +
-        '<button type="button" class="btn hw-btn--save" id="hw-teacher-maker-update-btn" hidden>Update saved</button>' +
+        '<button type="button" class="btn hw-btn--save" id="hw-teacher-maker-update-btn">Save as new</button>' +
         '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-teacher-maker-delete-btn" hidden>Delete worksheet</button>' +
         "</div></div>" +
         '<div class="hw-builder__dock-section hw-builder__dock-section--send">' +
@@ -442,16 +482,7 @@
 
       makerUpdateBtn?.addEventListener("click", async (e) => {
         e.preventDefault();
-        const id = editingAssignmentId || makerEditSelect?.value;
-        if (!id) {
-          setMakerStatus("Load a saved worksheet first.", true);
-          return;
-        }
-        if (!editingAssignmentId || !worksheetBuilder) {
-          await loadAssignmentById(id);
-        }
-        if (!editingAssignmentId) return;
-        saveWorksheetToLibrary();
+        await saveWorksheetToLibrary();
       });
 
       makerDeleteBtn?.addEventListener("click", (e) => {
@@ -652,11 +683,6 @@
     }
 
     async function saveWorksheetToLibrary() {
-      if (!editingAssignmentId) {
-        setMakerStatus("Load a saved worksheet first, or send to a student to save a new one.", true);
-        return;
-      }
-
       const meta = readMakerMeta(makerForm);
       if (!meta.grammarPoint) {
         setMakerStatus("Enter a grammar point / title.", true);
@@ -675,11 +701,23 @@
         return;
       }
 
+      const isNew = !editingAssignmentId;
+      const assignmentId = editingAssignmentId || makeWorksheetId(meta.grammarPoint);
+      if (isNew && getCatalogEntry(assignmentId)) {
+        setMakerStatus(
+          "A sheet titled like this already exists (“" +
+            assignmentId +
+            "”) — change the title or load the existing sheet.",
+          true
+        );
+        return;
+      }
+
       const assignment = builder.toAssignment({
-        id: editingAssignmentId,
+        id: assignmentId,
         title: meta.grammarPoint,
       });
-      assignment.id = editingAssignmentId;
+      assignment.id = assignmentId;
       assignment.title = meta.grammarPoint;
       assignment.status = "draft";
 
@@ -702,7 +740,7 @@
       };
 
       if (makerUpdateBtn) makerUpdateBtn.disabled = true;
-      setMakerStatus("Updating " + assignment.id + "…");
+      setMakerStatus((isNew ? "Saving “" : "Updating “") + assignment.id + "”…");
 
       try {
         const res = await fetch("/api/homework-save-worksheet", {
@@ -719,12 +757,12 @@
 
         afterWorksheetSavedLocally(assignment.id);
 
-        setMakerStatus(data.message || "Worksheet updated.");
-        showToast("Worksheet updated");
+        setMakerStatus(data.message || (isNew ? "Worksheet saved." : "Worksheet updated."));
+        showToast(isNew ? "Worksheet saved" : "Worksheet updated");
         if (options.onWorksheetSaved) await options.onWorksheetSaved(assignment.id);
       } catch (err) {
         setMakerStatus((err && err.message) || "Could not save.", true);
-        showToast("Update failed");
+        showToast(isNew ? "Save failed" : "Update failed");
       } finally {
         if (makerUpdateBtn) makerUpdateBtn.disabled = false;
       }
@@ -1024,17 +1062,7 @@
       publishForm.dataset.bound = "true";
       publishForm.addEventListener("submit", (e) => e.preventDefault());
 
-      const accounts = getStudentAccounts();
-      const students = accounts.length ? accounts : DEFAULT_STUDENTS;
-      if (publishStudent) {
-        students.forEach((a) => {
-          if (publishStudent.querySelector('option[value="' + a.username + '"]')) return;
-          const opt = document.createElement("option");
-          opt.value = a.username;
-          opt.textContent = a.username + (a.displayName ? " — " + a.displayName : "");
-          publishStudent.appendChild(opt);
-        });
-      }
+      fillStudentSelect(publishStudent, publishStudent?.value);
 
       publishWorksheet?.addEventListener("focus", async () => {
         await ensureCatalogLoaded();
@@ -1057,17 +1085,7 @@
       accountForm.dataset.bound = "true";
       accountForm.addEventListener("submit", (e) => e.preventDefault());
 
-      const accounts = getStudentAccounts();
-      const students = accounts.length ? accounts : DEFAULT_STUDENTS;
-      if (accountStudentSelect) {
-        students.forEach((a) => {
-          if (accountStudentSelect.querySelector('option[value="' + a.username + '"]')) return;
-          const opt = document.createElement("option");
-          opt.value = a.username;
-          opt.textContent = a.username + (a.displayName ? " — " + a.displayName : "");
-          accountStudentSelect.appendChild(opt);
-        });
-      }
+      fillStudentSelect(accountStudentSelect, accountStudentSelect?.value);
 
       accountStudentSelect?.addEventListener("change", async () => {
         await ensureCatalogLoaded();
@@ -1094,9 +1112,11 @@
     });
   }
 
-  function refreshCatalog(assignments, studentProfiles) {
+  function refreshCatalog(assignments, studentProfiles, students) {
     catalogAssignments = assignments || [];
     if (studentProfiles) catalogStudentProfiles = studentProfiles;
+    if (students) catalogStudents = students;
+    populateAllStudentSelects();
     populateWorksheetSelect(document.getElementById("hw-teacher-maker-edit-select"));
     populatePublishWorksheetSelect(document.getElementById("hw-teacher-publish-worksheet"));
     applyStudentProfileFields(
@@ -1144,12 +1164,15 @@
     const deleteBtn = document.getElementById("hw-teacher-maker-delete-btn");
     const editingNote = document.getElementById("hw-teacher-maker-editing-note");
     if (editSelect && editingAssignmentId) editSelect.value = editingAssignmentId;
-    if (updateBtn) updateBtn.hidden = !editingAssignmentId;
+    if (updateBtn) {
+      updateBtn.hidden = false;
+      updateBtn.textContent = editingAssignmentId ? "Update saved" : "Save as new";
+    }
     if (deleteBtn) deleteBtn.hidden = !editingAssignmentId;
     if (editingNote) {
       editingNote.textContent = editingAssignmentId
         ? "Editing “" + editingAssignmentId + "”"
-        : "New sheet — send to a student to save it.";
+        : "New sheet — save or send when ready.";
     }
     populateWorksheetSelect(editSelect, editingAssignmentId);
   }

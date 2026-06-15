@@ -2,9 +2,15 @@
 
 import { extractPlaylistId, fetchLatestVideoFromPlaylist } from "./youtube-playlist";
 
+export interface StudentListEntry {
+  username: string;
+  displayName: string;
+}
+
 export interface CatalogFile {
   playlistUrl?: string;
   reviewPlaylistUrl?: string;
+  students?: StudentListEntry[];
   studentProfiles?: Record<
     string,
     {
@@ -67,7 +73,65 @@ const TEACHER_DEFAULT = "jlm";
 /** Legacy demo students + teacher publish list (public/js/hw-auth.js ACCOUNTS). */
 const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan", "benc", "noplan"]);
 
+const LEGACY_STUDENT_LABELS: Record<string, string> = {
+  benm: "Ben M",
+  joshs: "Josh S",
+  deme: "Deme",
+  ivan: "Ivan",
+  benc: "benc",
+  noplan: "No Plan",
+};
+
+const USERS_INDEX = "user-accounts-index";
+
 const userAccountKey = (username: string) => `user-account:${username}`;
+
+async function readRegisteredUsernames(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(USERS_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function listAllStudentAccounts(
+  kv: KVNamespace
+): Promise<StudentListEntry[]> {
+  const byUser = new Map<string, StudentListEntry>();
+  for (const username of STUDENT_ACCOUNTS) {
+    byUser.set(username, {
+      username,
+      displayName: LEGACY_STUDENT_LABELS[username] || username,
+    });
+  }
+  const ids = await readRegisteredUsernames(kv);
+  for (const username of ids) {
+    const key = String(username || "").trim().toLowerCase();
+    if (!key || byUser.has(key)) continue;
+    const raw = await kv.get(userAccountKey(key));
+    if (!raw) continue;
+    try {
+      const account = JSON.parse(raw) as {
+        username?: string;
+        displayName?: string;
+        role?: string;
+      };
+      if (account.role !== "student") continue;
+      byUser.set(key, {
+        username: account.username || key,
+        displayName: account.displayName || account.username || key,
+      });
+    } catch {
+      /* skip corrupt */
+    }
+  }
+  return [...byUser.values()].sort((a, b) =>
+    a.username.localeCompare(b.username)
+  );
+}
 
 function isTeacher(username: string | undefined, env: KvEnv): boolean {
   const allowed = (env.HW_TEACHER_USER || TEACHER_DEFAULT).toLowerCase();
@@ -148,7 +212,7 @@ export async function saveStudentProfile(
     .trim()
     .toLowerCase();
   if (!student) throw new Error("STUDENT_REQUIRED");
-  if (!STUDENT_ACCOUNTS.has(student)) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
 
   await applyStudentMedia(kv, student, {
     youtubeUrl: data.youtubeUrl,
@@ -181,7 +245,7 @@ export async function publishToStudentHub(
 
   if (!id) throw new Error("ID_REQUIRED");
   if (!student) throw new Error("STUDENT_REQUIRED");
-  if (!STUDENT_ACCOUNTS.has(student)) throw new Error("UNKNOWN_STUDENT");
+  if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
 
   catalogEntry.id = id;
   assignment.id = id;
@@ -339,7 +403,8 @@ export async function deleteWorksheetFromLibrary(
     index.filter((entry) => entry !== id)
   );
 
-  for (const student of STUDENT_ACCOUNTS) {
+  const allStudents = await listAllStudentAccounts(kv);
+  for (const { username: student } of allStudents) {
     const current = await kv.get(studentCurrentHomeworkKey(student));
     if (current === id) await kv.delete(studentCurrentHomeworkKey(student));
   }
@@ -489,7 +554,10 @@ export async function mergeCatalog(
       }
     }
 
-    for (const student of STUDENT_ACCOUNTS) {
+    const allStudents = await listAllStudentAccounts(kvNs);
+    merged.students = allStudents;
+
+    for (const { username: student } of allStudents) {
       const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(student));
       if (!currentHomeworkId) continue;
       merged.studentProfiles![student] = {

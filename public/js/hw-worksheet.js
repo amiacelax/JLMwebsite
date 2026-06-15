@@ -938,6 +938,61 @@
     return assignment;
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /**
+   * @param {object} assignment
+   * @returns {HTMLElement|null}
+   */
+  function renderTopicBrief(assignment) {
+    const explanation = String(assignment?.topicExplanation || "").trim();
+    const videos = (Array.isArray(assignment?.topicVideos) ? assignment.topicVideos : [])
+      .map((url) => String(url || "").trim())
+      .filter((url) => url && /youtube\.com|youtu\.be/i.test(url));
+    if (!explanation && !videos.length) return null;
+
+    const wrap = document.createElement("div");
+    wrap.className = "hw-worksheet__topic-brief";
+
+    const heading = document.createElement("h4");
+    heading.className = "hw-worksheet__topic-brief-title";
+    heading.textContent = "Grammar description";
+    wrap.appendChild(heading);
+
+    if (explanation) {
+      const p = document.createElement("p");
+      p.className = "hw-worksheet__topic-explanation";
+      p.textContent = explanation;
+      wrap.appendChild(p);
+    }
+
+    if (videos.length) {
+      const list = document.createElement("ul");
+      list.className = "hw-worksheet__topic-videos";
+      videos.forEach((url, index) => {
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+        link.className = "hw-worksheet__topic-video-link";
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent =
+          videos.length > 1 ? "YouTube link " + (index + 1) : "YouTube link";
+        li.appendChild(link);
+        list.appendChild(li);
+      });
+      wrap.appendChild(list);
+    }
+
+    return wrap;
+  }
+
   function assignmentHasVariants(assignment) {
     return (assignment.sections || []).some((section) =>
       (section.items || []).some((item) =>
@@ -984,6 +1039,10 @@
     metaTop.appendChild(metaText);
 
     meta.appendChild(metaTop);
+
+    const topicBrief = renderTopicBrief(prepared);
+    if (topicBrief) meta.appendChild(topicBrief);
+
     form.appendChild(meta);
 
     const itemCounter = { value: 0 };
@@ -1082,7 +1141,16 @@
     nav.append(counterWrap, navControls);
 
     const firstSection = form.querySelector(".hw-worksheet__section");
-    form.insertBefore(nav, firstSection || form.querySelector(".hw-worksheet__actions"));
+    const insertBefore = firstSection || form.querySelector(".hw-worksheet__actions");
+    const brief = form.querySelector(".hw-worksheet__topic-brief");
+    const stickyHead = document.createElement("div");
+    stickyHead.className = "hw-worksheet__slide-sticky-head";
+    if (brief) {
+      brief.classList.add("hw-worksheet__topic-brief--slide");
+      stickyHead.appendChild(brief);
+    }
+    stickyHead.appendChild(nav);
+    form.insertBefore(stickyHead, insertBefore);
 
     form.classList.add("hw-worksheet--slide-mode");
 
@@ -1291,14 +1359,6 @@
       requestAnimationFrame(() => window.print());
     });
     return true;
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
   }
 
   /** Normalize student input for comparison (Japanese-friendly). */

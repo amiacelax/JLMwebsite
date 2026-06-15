@@ -289,6 +289,13 @@
       .replace(/"/g, "&quot;");
   }
 
+  function parseTopicVideoUrls(text) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && /youtube\.com|youtu\.be/i.test(line));
+  }
+
   function sectionsToBlocks(sections, assignmentRegister) {
     const blocks = [];
     (sections || []).forEach((sec) => {
@@ -468,7 +475,7 @@
    */
   function mount(mount, options) {
     options = options || {};
-    let state = { templateType: "custom", blocks: [] };
+    let state = { templateType: "custom", blocks: [], topicExplanation: "", topicVideoText: "" };
     let previewOpen = false;
     let canvasAssignmentId = null;
     let clipboardBlock = null;
@@ -502,7 +509,7 @@
     palette.className = "hw-builder__palette";
     palette.innerHTML =
       '<h4 class="hw-builder__palette-title">Blocks</h4>' +
-      '<p class="hw-builder__palette-hint">Click or drag blocks onto the canvas. Use ⠿ to reorder. Right-click a block to copy or paste.</p>';
+      '<p class="hw-builder__palette-hint">Drag blocks onto the canvas · ⠿ reorder · right-click copy/paste</p>';
 
     const paletteList = document.createElement("div");
     paletteList.className = "hw-builder__palette-list";
@@ -536,15 +543,51 @@
     const canvasWrap = document.createElement("div");
     canvasWrap.className = "hw-builder__canvas-wrap";
 
+    const metaStack = document.createElement("div");
+    metaStack.className = "hw-builder__meta-stack";
+
     const titleField = document.createElement("label");
-    titleField.className = "hw-builder__title-field hw-maker-field";
+    titleField.className = "hw-builder__field-row hw-maker-field";
     titleField.innerHTML =
       'Grammar point / title<input type="text" name="grammarPoint" id="hw-teacher-maker-grammar" placeholder="Enter title here" autocomplete="off">';
+
+    const topicFields = document.createElement("div");
+    topicFields.className = "hw-builder__topic-fields";
+
+    const explainWrap = document.createElement("div");
+    explainWrap.className = "hw-builder__field-row";
+    const explainInput = document.createElement("textarea");
+    explainInput.className = "hw-builder__topic-textarea";
+    explainInput.rows = 2;
+    explainInput.setAttribute("aria-label", "Grammar description");
+    explainInput.placeholder =
+      "Grammar description";
+    explainInput.addEventListener("input", () => {
+      state.topicExplanation = explainInput.value;
+      notifyChange();
+    });
+    explainWrap.appendChild(explainInput);
+    topicFields.appendChild(explainWrap);
+
+    const videosWrap = document.createElement("div");
+    videosWrap.className = "hw-builder__field-row";
+    const videosInput = document.createElement("textarea");
+    videosInput.className = "hw-builder__topic-textarea hw-builder__topic-textarea--links";
+    videosInput.rows = 2;
+    videosInput.setAttribute("aria-label", "YouTube link");
+    videosInput.placeholder = "YouTube link — one link per line";
+    videosInput.addEventListener("input", () => {
+      state.topicVideoText = videosInput.value;
+      notifyChange();
+    });
+    videosWrap.appendChild(videosInput);
+    topicFields.appendChild(videosWrap);
+    metaStack.append(titleField, topicFields);
 
     const canvas = document.createElement("div");
     canvas.className = "hw-builder__canvas";
     canvas.setAttribute("aria-label", "Worksheet blocks");
-    canvasWrap.append(titleField, canvas);
+    canvasWrap.append(metaStack, canvas);
 
     const previewMount = document.createElement("div");
     previewMount.className = "hw-builder__preview";
@@ -966,12 +1009,6 @@
         englishLabel.appendChild(englishInput);
         partsWrap.appendChild(englishLabel);
 
-        const transcriptHint = document.createElement("p");
-        transcriptHint.className = "hw-builder__inline-hint";
-        transcriptHint.textContent =
-          "Paste Immersion Kit audio + screenshot URLs above (both at once works). Japanese + English are your answer keys — students only see the clip.";
-        partsWrap.appendChild(transcriptHint);
-
         el.appendChild(partsWrap);
         return el;
       }
@@ -1190,6 +1227,15 @@
       canvas.append(list, dropZone);
     }
 
+    function syncTopicFieldsFromState() {
+      explainInput.value = state.topicExplanation || "";
+      videosInput.value = state.topicVideoText || "";
+    }
+
+    function setTopicFieldsHidden(hidden) {
+      metaStack.hidden = hidden;
+    }
+
     function applyTemplate(key) {
       const t = TEMPLATES[key];
       if (!t) return;
@@ -1197,17 +1243,22 @@
       state = {
         templateType: t.templateType,
         blocks: sectionsToBlocks(t.sections || []),
+        topicExplanation: "",
+        topicVideoText: "",
       };
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      titleField.hidden = false;
+      setTopicFieldsHidden(false);
+      syncTopicFieldsFromState();
       notifyPreviewChange();
       renderCanvas();
       notifyChange();
     }
 
     function toAssignment(meta) {
+      const topicExplanation = String(state.topicExplanation || "").trim();
+      const topicVideos = parseTopicVideoUrls(state.topicVideoText);
       const assignment = {
         id: meta?.id || "",
         title: meta?.title || "Homework",
@@ -1218,6 +1269,8 @@
         salePrice: 0.99,
         sections: blocksToSections(normalizeBlocks(state.blocks)),
       };
+      if (topicExplanation) assignment.topicExplanation = topicExplanation;
+      if (topicVideos.length) assignment.topicVideos = topicVideos;
       if (global.HwWorksheet?.enrichGrammarVariants) {
         global.HwWorksheet.enrichGrammarVariants(assignment);
       }
@@ -1230,11 +1283,14 @@
       state = {
         templateType: data.templateType || "custom",
         blocks: sectionsToBlocks(data.sections || [], data.register),
+        topicExplanation: data.topicExplanation || "",
+        topicVideoText: Array.isArray(data.topicVideos) ? data.topicVideos.join("\n") : "",
       };
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      titleField.hidden = false;
+      setTopicFieldsHidden(false);
+      syncTopicFieldsFromState();
       notifyPreviewChange();
       renderCanvas();
       notifyChange();
@@ -1248,7 +1304,7 @@
       previewOpen = true;
       previewMount.hidden = false;
       canvas.hidden = true;
-      titleField.hidden = true;
+      setTopicFieldsHidden(true);
       notifyPreviewChange();
       previewMount.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
@@ -1257,7 +1313,7 @@
       previewOpen = false;
       previewMount.hidden = true;
       canvas.hidden = false;
-      titleField.hidden = false;
+      setTopicFieldsHidden(false);
       notifyPreviewChange();
     }
 

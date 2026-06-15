@@ -1411,7 +1411,8 @@
           catalogCache = await fetchCatalog();
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
-            catalogCache.studentProfiles || {}
+            catalogCache.studentProfiles || {},
+            catalogCache.students || []
           );
         } catch {
           /* ignore */
@@ -1423,7 +1424,8 @@
           catalogCache = await fetchCatalog();
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
-            catalogCache.studentProfiles || {}
+            catalogCache.studentProfiles || {},
+            catalogCache.students || []
           );
         } catch {
           /* ignore */
@@ -1435,7 +1437,8 @@
           catalogCache = await fetchCatalog();
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
-            catalogCache.studentProfiles || {}
+            catalogCache.studentProfiles || {},
+            catalogCache.students || []
           );
           if (id) {
             const publishSelect = document.getElementById("hw-teacher-publish-worksheet");
@@ -1636,7 +1639,11 @@
     const entries = catalogCache.assignments || [];
     const hashId = window.location.hash.replace(/^#hw-/, "");
     if (global.HwTeacherEditor?.refreshCatalog) {
-      HwTeacherEditor.refreshCatalog(entries, catalogCache.studentProfiles || {});
+      HwTeacherEditor.refreshCatalog(
+        entries,
+        catalogCache.studentProfiles || {},
+        catalogCache.students || []
+      );
     }
     if (global.HwTeacherEditor?.bootstrap) {
       HwTeacherEditor.bootstrap();
