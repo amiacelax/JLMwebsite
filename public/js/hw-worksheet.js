@@ -258,6 +258,56 @@
     return span;
   }
 
+  function normalizeRubyInput(text) {
+    return String(text || "").replace(
+      /[\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\ufeff]/g,
+      ""
+    );
+  }
+
+  const BRACKET_RUBY_RE = /([^\[\]]+?)\[([^\]]+)\]/g;
+
+  function hasBracketRubyNotation(text) {
+    const raw = normalizeRubyInput(text);
+    return /([^\[\]]+?)\[([^\]]+)\]/.test(raw);
+  }
+
+  /**
+   * Parse 直接[ちょくせつ] 言[い]われた into ruby segments.
+   * @param {string} text
+   * @returns {{ text: string, rt?: string }[]}
+   */
+  function parseBracketRubyNotation(text) {
+    const raw = normalizeRubyInput(text);
+    if (!raw) return [];
+    const segments = [];
+    let lastIndex = 0;
+    const re = new RegExp(BRACKET_RUBY_RE.source, "g");
+    let match;
+    while ((match = re.exec(raw)) !== null) {
+      if (match.index > lastIndex) {
+        const plain = raw.slice(lastIndex, match.index);
+        if (plain) segments.push({ text: plain });
+      }
+      segments.push({ text: match[1], rt: match[2] });
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < raw.length) {
+      segments.push({ text: raw.slice(lastIndex) });
+    }
+    if (!segments.length) segments.push({ text: raw });
+    return segments;
+  }
+
+  function renderBracketRubyText(text) {
+    const frag = document.createDocumentFragment();
+    parseBracketRubyNotation(text).forEach((seg) => {
+      if (seg.rt) frag.appendChild(renderRubySegment(seg));
+      else if (seg.text) frag.appendChild(document.createTextNode(seg.text));
+    });
+    return frag;
+  }
+
   function renderRubySegment(seg) {
     const text = seg.text || "";
     const hasKanji = /[\u4e00-\u9fff々]/.test(text);
@@ -286,7 +336,9 @@
       part.ruby.forEach((seg) => frag.appendChild(renderRubySegment(seg)));
       return frag;
     }
-    return document.createTextNode(part.value || "");
+    const value = part.value || "";
+    if (hasBracketRubyNotation(value)) return renderBracketRubyText(value);
+    return document.createTextNode(value);
   }
 
   function renderBlankWithHint(part, options) {
@@ -1108,7 +1160,12 @@
       if (!answer) return;
       const el = document.createElement("p");
       el.className = "hw-worksheet__teacher-answer";
-      el.textContent = answer;
+      el.setAttribute("lang", "ja");
+      if (hasBracketRubyNotation(answer)) {
+        el.appendChild(renderBracketRubyText(answer));
+      } else {
+        el.textContent = answer;
+      }
       wrap.appendChild(el);
     });
     const btn = form.querySelector("[data-hw-see-answers]");
@@ -1656,5 +1713,8 @@
     applyAnswerVariants,
     isImmersionKitMediaUrl,
     parseImmersionKitMediaPaste,
+    hasBracketRubyNotation,
+    parseBracketRubyNotation,
+    renderBracketRubyText,
   };
 })(window);

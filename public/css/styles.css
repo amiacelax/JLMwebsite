@@ -8118,12 +8118,14 @@ button.hw-tense-pill {
   margin: 0 0.1rem;
 }
 
-.hw-worksheet__content .ja-ruby {
+.hw-worksheet__content .ja-ruby,
+.hw-worksheet__teacher-answer .ja-ruby {
   ruby-position: over;
   ruby-align: center;
 }
 
-.hw-worksheet__content .ja-ruby rt {
+.hw-worksheet__content .ja-ruby rt,
+.hw-worksheet__teacher-answer .ja-ruby rt {
   font-size: 0.55em;
   font-weight: 500;
   color: var(--color-text-muted);
@@ -8132,7 +8134,12 @@ button.hw-tense-pill {
   font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
 }
 
-.hw-worksheet__content .ja-okuri {
+body.hw-hw-focus-mode .hw-worksheet__teacher-answer .ja-ruby rt {
+  color: rgba(232, 237, 245, 0.72);
+}
+
+.hw-worksheet__content .ja-okuri,
+.hw-worksheet__teacher-answer .ja-okuri {
   font-size: inherit;
 }
 
