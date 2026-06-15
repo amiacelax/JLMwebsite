@@ -1551,6 +1551,13 @@
       completed: row.completed,
     }));
 
+    const listening = (report.listening || []).map((row) => ({
+      label: row.label,
+      prompt: row.prompt,
+      student: row.student,
+      completed: row.completed,
+    }));
+
     return {
       username: meta.username,
       displayName: meta.displayName,
@@ -1560,6 +1567,7 @@
       register: meta.register || "casual",
       section1,
       section2,
+      listening,
     };
   }
 

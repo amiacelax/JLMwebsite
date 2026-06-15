@@ -506,7 +506,11 @@
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
-      if (!payload.section1?.length && !payload.section2?.length) {
+      if (
+        !payload.section1?.length &&
+        !payload.section2?.length &&
+        !payload.listening?.length
+      ) {
         if (saveStatus) {
           saveStatus.textContent = "Fill in at least one blank before submitting.";
         }

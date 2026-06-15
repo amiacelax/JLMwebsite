@@ -119,6 +119,7 @@ interface HomeworkSubmitPayload {
   scoreTotal?: number;
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
+  listening?: HomeworkAnswerRow[];
 }
 
 interface ContactPayload {
@@ -699,6 +700,9 @@ function buildHomeworkDiscordDescription(
     "Section 2 — your response",
     "",
     formatSection2Discord(data.section2),
+    data.listening?.length
+      ? ["", "Listening", "", formatSection1Discord(data.listening)].join("\n")
+      : null,
   ];
   return lines.filter((line) => line != null).join("\n");
 }
@@ -784,7 +788,8 @@ function validateHomeworkSubmit(data: HomeworkSubmitPayload): string | null {
   if (!data.assignmentId?.trim()) return "Assignment is required.";
   const s1 = data.section1?.length ?? 0;
   const s2 = data.section2?.length ?? 0;
-  if (s1 + s2 === 0) return "No answers to submit.";
+  const listening = data.listening?.length ?? 0;
+  if (s1 + s2 + listening === 0) return "No answers to submit.";
   return null;
 }
 

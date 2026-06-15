@@ -65,7 +65,11 @@
 
   function answerCount(entry) {
     if (entry.type === "photo") return 0;
-    return (entry.section1?.length || 0) + (entry.section2?.length || 0);
+    return (
+      (entry.section1?.length || 0) +
+      (entry.section2?.length || 0) +
+      (entry.listening?.length || 0)
+    );
   }
 
   async function fetchSubmissions(session, student) {
@@ -172,7 +176,10 @@
     } else {
       detail.append(
         renderAnswerSection("Section 1", entry.section1),
-        renderAnswerSection("Section 2 — student response", entry.section2)
+        renderAnswerSection("Section 2 — student response", entry.section2),
+        entry.listening?.length
+          ? renderAnswerSection("Listening", entry.listening)
+          : null
       );
     }
 

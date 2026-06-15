@@ -1097,6 +1097,7 @@ export interface HomeworkSubmission {
   scoreTotal?: number;
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
+  listening?: HomeworkAnswerRow[];
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
@@ -1113,6 +1114,7 @@ export interface HomeworkOnlineSubmitInput {
   scoreTotal?: number;
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
+  listening?: HomeworkAnswerRow[];
 }
 
 export interface HomeworkPhotoSubmitInput {
@@ -1256,7 +1258,10 @@ export async function saveHomeworkOnlineSubmission(
 
   const section1 = Array.isArray(data.section1) ? data.section1 : [];
   const section2 = Array.isArray(data.section2) ? data.section2 : [];
-  if (!section1.length && !section2.length) throw new Error("ANSWERS_REQUIRED");
+  const listening = Array.isArray(data.listening) ? data.listening : [];
+  if (!section1.length && !section2.length && !listening.length) {
+    throw new Error("ANSWERS_REQUIRED");
+  }
 
   const submission: HomeworkSubmission = {
     id: makeSubmissionId(),
@@ -1271,6 +1276,7 @@ export async function saveHomeworkOnlineSubmission(
     scoreTotal: data.scoreTotal,
     section1,
     section2,
+    listening,
     submittedAt: new Date().toISOString(),
   };
 
