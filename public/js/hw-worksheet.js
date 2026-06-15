@@ -321,6 +321,10 @@
       field.dataset.variants = JSON.stringify(part.variants);
     }
     if (!options.omitAnswers && part.answer) field.dataset.answer = part.answer;
+    if (options.omitAnswers && listenStyle) {
+      const teacherAnswer = String(part.answer || "").trim();
+      if (teacherAnswer) wrap.dataset.teacherAnswer = teacherAnswer;
+    }
     wrap.appendChild(field);
 
     const hintData = part.hint || null;
@@ -1084,9 +1088,65 @@
     if (!authoring && !options.preview) {
       initSlideMode(form);
       initFocusMode(form);
+      initSeeAnswers(form);
     }
 
     return form;
+  }
+
+  function hasListenTeacherAnswers(form) {
+    return Boolean(
+      form?.querySelector(".hw-blank-wrap--listen[data-teacher-answer]")
+    );
+  }
+
+  function revealTeacherAnswers(form) {
+    if (!form) return;
+    form.querySelectorAll(".hw-blank-wrap--listen[data-teacher-answer]").forEach((wrap) => {
+      if (wrap.querySelector(".hw-worksheet__teacher-answer")) return;
+      const answer = String(wrap.dataset.teacherAnswer || "").trim();
+      if (!answer) return;
+      const el = document.createElement("p");
+      el.className = "hw-worksheet__teacher-answer";
+      el.textContent = answer;
+      wrap.appendChild(el);
+    });
+    const btn = form.querySelector("[data-hw-see-answers]");
+    if (btn) {
+      btn.textContent = "Answers shown";
+      btn.disabled = true;
+      btn.setAttribute("aria-pressed", "true");
+    }
+  }
+
+  function enableSeeAnswers(form) {
+    const btn = form?.querySelector("[data-hw-see-answers]");
+    if (btn) btn.hidden = false;
+  }
+
+  /**
+   * @param {HTMLFormElement} form
+   */
+  function initSeeAnswers(form) {
+    if (!hasListenTeacherAnswers(form)) return;
+    const actions = form.querySelector(".hw-worksheet__actions");
+    if (!actions || actions.querySelector("[data-hw-see-answers]")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--ghost";
+    btn.setAttribute("data-hw-see-answers", "");
+    btn.setAttribute("aria-pressed", "false");
+    btn.textContent = "See Answers";
+    btn.hidden = true;
+    btn.addEventListener("click", () => revealTeacherAnswers(form));
+
+    const submitBtn = actions.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      actions.insertBefore(btn, submitBtn);
+    } else {
+      actions.appendChild(btn);
+    }
   }
 
   /**
@@ -1587,6 +1647,9 @@
     normalizeAnswer,
     answersMatch,
     buildSubmitPayload,
+    enableSeeAnswers,
+    revealTeacherAnswers,
+    hasListenTeacherAnswers,
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,

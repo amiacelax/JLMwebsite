@@ -455,6 +455,7 @@
 
     const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
+    const submittedKey = `jlm-hw-submitted-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll("input.hw-blank, textarea.hw-blank");
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -533,6 +534,16 @@
           saveStatus.textContent = data.message || "Submitted! JD received your answers.";
         }
         showToast("Sent to JD");
+        try {
+          localStorage.setItem(submittedKey, new Date().toISOString());
+        } catch (_) {}
+        if (global.HwWorksheet?.enableSeeAnswers) {
+          HwWorksheet.enableSeeAnswers(form);
+        }
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Submitted";
+        }
       } catch (err) {
         if (saveStatus) {
           saveStatus.textContent =
@@ -540,10 +551,20 @@
             "Could not submit. Answers are still saved in this browser.";
         }
         showToast("Submit failed");
-      } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
     });
+
+    try {
+      if (localStorage.getItem(submittedKey) && global.HwWorksheet?.enableSeeAnswers) {
+        HwWorksheet.enableSeeAnswers(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Submitted";
+        }
+      }
+    } catch (_) {}
   }
 
   async function loadWorksheetPreview(catalogEntry) {

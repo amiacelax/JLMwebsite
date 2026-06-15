@@ -5474,6 +5474,19 @@ button.course-card__status:disabled {
   width: 100%;
 }
 
+.hw-worksheet__teacher-answer {
+  margin: 0.45rem 0 0;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-green);
+  white-space: pre-wrap;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
+  color: #5ddea8;
+}
+
 .hw-builder__parts--listen {
   display: flex;
   flex-direction: column;
