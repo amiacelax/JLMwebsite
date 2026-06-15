@@ -457,7 +457,57 @@
         <!-- Everything below here is student-only (hidden for teachers) -->
         <div id="hw-platform-student-only">
           <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
+              <h2 class="hw-platform-card__title">Current assignment</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
+              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
+              <div class="hw-current-assignment__pills" id="hw-current-assignment-pills">
+                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Start Homework</a>
+                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
+                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-take-picture" hidden>Take Picture</button>
+                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-choose-file" hidden>Choose file</button>
+              </div>
+              <form class="hw-photo-upload hw-photo-upload--assignment" id="hw-photo-upload-form" hidden>
+                <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
+                <div class="hw-photo-capture" id="hw-photo-capture" hidden>
+                  <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
+                  <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
+                    <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
+                    <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                      <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
+                      <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
+                    </div>
+                  </div>
+                  <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
+                    <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
+                  </div>
+                </div>
+                <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+
             <div class="hw-grid-stack" id="hw-grid-stack">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
+                <div class="hw-lesson-actions">
+                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+                  <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
+                </div>
+              </section>
+
+              <article class="course-card course-card--locked hw-addon-card hw-addon-card--compact hw-grid-video" id="hw-video-response-card" tabindex="0">
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Video response</h2>
+                <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
+                <div class="course-card__footer" id="hw-video-response-footer"></div>
+              </article>
+            </div>
+
+            <div class="hw-grid-upload-col">
               <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
                 <h2 class="hw-platform-card__title" id="hw-student-mistakes-title">Recent mistakes</h2>
                 <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-student-mistakes-desc">From your lessons — tap to select, then copy or delete.</p>
@@ -494,27 +544,6 @@
                 <p class="hw-maker-status hw-student-mistakes-status" id="hw-student-mistakes-status" role="status" aria-live="polite"></p>
               </section>
 
-              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
-                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
-                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
-                <div class="hw-lesson-actions">
-                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
-                  <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
-                </div>
-              </section>
-
-              <article class="course-card course-card--locked hw-addon-card hw-addon-card--compact hw-grid-video" id="hw-video-response-card" tabindex="0">
-                <span class="course-card__lock" aria-hidden="true">
-                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-                </span>
-                <h2 class="course-card__title">Video response</h2>
-                <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
-                <div class="course-card__footer" id="hw-video-response-footer"></div>
-              </article>
-            </div>
-
-            <div class="hw-grid-upload-col">
             <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
               <div class="hw-games-pixel-scene" aria-hidden="true">
                 <svg class="hw-games-pixel-art" viewBox="0 0 80 52" role="presentation" focusable="false">
@@ -546,35 +575,6 @@
               <p class="hw-games-hub-soon">…more coming soon</p>
             </article>
             </div>
-
-            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
-              <h2 class="hw-platform-card__title">Current assignment</h2>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
-              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
-              <div class="hw-current-assignment__pills" id="hw-current-assignment-pills">
-                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Homework Online</a>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-take-picture" hidden>Take Picture</button>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-choose-file" hidden>Choose file</button>
-              </div>
-              <form class="hw-photo-upload hw-photo-upload--assignment" id="hw-photo-upload-form" hidden>
-                <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
-                <div class="hw-photo-capture" id="hw-photo-capture" hidden>
-                  <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
-                  <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
-                    <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
-                    <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
-                      <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
-                      <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
-                    </div>
-                  </div>
-                  <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
-                    <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
-                  </div>
-                </div>
-                <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
-              </form>
-            </section>
 
             <article class="course-card course-card--locked hw-addon-card hw-grid-upgrade" id="hw-weekly-upgrade-card" hidden tabindex="0">
               <span class="course-card__lock" aria-hidden="true">
@@ -678,7 +678,7 @@
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-video-inline.js?v=20260630" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260652" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260655" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260662" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260661" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>

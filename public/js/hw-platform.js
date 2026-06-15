@@ -1720,7 +1720,7 @@
     if (heading) heading.textContent = view.heading;
     if (intro) {
       intro.textContent =
-        "Fill in the blanks, then Submit homework. JD will review your answers on Discord.";
+        "One question at a time — fill in each blank, then submit when you're done.";
     }
 
     const form = HwWorksheet.render(mount, assignment, {

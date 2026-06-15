@@ -3540,9 +3540,9 @@ button.course-card__status:disabled {
 .hw-platform-grid--student {
   grid-template-columns: 1fr;
   grid-template-areas:
+    "assignments"
     "stack"
     "upload"
-    "assignments"
     "upgrade"
     "notifs";
 }
@@ -4093,8 +4093,8 @@ button.course-card__status:disabled {
   .hw-platform-grid--student {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "stack upload"
       "assignments upload"
+      "stack upload"
       "upgrade upgrade"
       "notifs notifs";
   }
@@ -7422,6 +7422,263 @@ body.hw-role-teacher #hw-teacher-hub {
   color: var(--color-text-muted);
   margin: 0 0 1.25rem;
   line-height: 1.55;
+}
+
+.hw-worksheet__slide-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.hw-worksheet__slide-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.hw-worksheet__slide-counter-wrap {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.hw-worksheet__slide-counter {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-worksheet__slide-section {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hw-worksheet__slide-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), opacity var(--transition);
+}
+
+.hw-worksheet__slide-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  border-color: var(--color-brand-blue);
+  color: var(--color-brand-blue);
+}
+
+.hw-worksheet__slide-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hw-worksheet__slide-toggle {
+  flex-shrink: 0;
+  min-width: 7.5rem;
+  padding-inline: 0.75rem;
+}
+
+.hw-worksheet--slide-mode .hw-worksheet__line[hidden],
+.hw-worksheet--slide-mode .hw-worksheet__section[hidden] {
+  display: none !important;
+}
+
+/* Focus mode — dark theater view, worksheet centered on screen */
+body.hw-hw-focus-mode {
+  overflow: hidden;
+}
+
+body.hw-hw-focus-mode .site-header,
+body.hw-hw-focus-mode .hw-platform-bar,
+body.hw-hw-focus-mode #hw-student-grid,
+body.hw-hw-focus-mode .section__header,
+body.hw-hw-focus-mode .subpage-back,
+body.hw-hw-focus-mode .site-footer,
+body.hw-hw-focus-mode .hw-worksheet-heading,
+body.hw-hw-focus-mode .hw-worksheet-intro {
+  display: none !important;
+}
+
+body.hw-hw-focus-mode .subpage__main .section .container--wide {
+  max-width: none;
+  padding: 0;
+}
+
+body.hw-hw-focus-mode .hw-worksheet-section {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: #0a0a0c;
+  overflow: hidden;
+  scroll-margin-top: 0;
+}
+
+.hw-focus-bar {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(8, 8, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hw-focus-bar[hidden] {
+  display: none !important;
+}
+
+.hw-focus-bar__exit {
+  position: absolute;
+  left: max(1rem, env(safe-area-inset-left));
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.hw-focus-bar__exit:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.hw-focus-bar__title {
+  max-width: min(28rem, 60vw);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.hw-hw-focus-mode #hw-worksheet-mount {
+  flex: 1;
+  display: flex;
+  align-items: safe center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+body.hw-hw-focus-mode .hw-worksheet {
+  position: relative;
+  width: 100%;
+  max-width: 44rem;
+  margin: auto;
+  background: #161b26;
+  color: #e8edf5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(103, 196, 235, 0.04);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__meta-hint,
+body.hw-hw-focus-mode .hw-worksheet__meta-date,
+body.hw-hw-focus-mode .hw-worksheet__slide-section,
+body.hw-hw-focus-mode .hw-worksheet__section-intro {
+  color: #94a3b8;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__meta-title,
+body.hw-hw-focus-mode .hw-worksheet__section-title {
+  color: #f1f5f9;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__meta {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__slide-nav {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__slide-counter {
+  color: #e8edf5;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__slide-btn {
+  color: #e8edf5;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__slide-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-brand-blue);
+  color: #fff;
+}
+
+body.hw-hw-focus-mode .hw-worksheet .hw-blank {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #e8edf5;
+}
+
+body.hw-hw-focus-mode .hw-worksheet .hw-blank:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 0 0 2px rgba(103, 196, 235, 0.3);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__line-num,
+body.hw-hw-focus-mode .hw-item-num {
+  color: #64748b;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__status {
+  color: #94a3b8;
+}
+
+body.hw-hw-focus-mode .hw-check-results {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e8edf5;
 }
 
 .hw-worksheet {

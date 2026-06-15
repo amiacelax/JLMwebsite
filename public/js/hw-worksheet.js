@@ -946,7 +946,244 @@
 
     actions.querySelector?.("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
 
+    if (!authoring && !options.preview) {
+      initSlideMode(form);
+      initFocusMode(form);
+    }
+
     return form;
+  }
+
+  /**
+   * One-question-at-a-time view for students (default). Toggle to see full worksheet.
+   * @param {HTMLFormElement} form
+   */
+  function initSlideMode(form) {
+    const lines = Array.from(form.querySelectorAll(".hw-worksheet__line"));
+    if (lines.length <= 1) return;
+
+    let current = 0;
+    let seeAll = false;
+
+    const nav = document.createElement("div");
+    nav.className = "hw-worksheet__slide-nav";
+    nav.setAttribute("role", "region");
+    nav.setAttribute("aria-label", "Homework question navigation");
+
+    const prevBtn = document.createElement("button");
+    prevBtn.type = "button";
+    prevBtn.className = "hw-worksheet__slide-btn";
+    prevBtn.setAttribute("aria-label", "Previous question");
+    prevBtn.textContent = "←";
+
+    const counterWrap = document.createElement("div");
+    counterWrap.className = "hw-worksheet__slide-counter-wrap";
+
+    const counter = document.createElement("p");
+    counter.className = "hw-worksheet__slide-counter";
+    counter.setAttribute("aria-live", "polite");
+
+    const sectionLabel = document.createElement("p");
+    sectionLabel.className = "hw-worksheet__slide-section";
+
+    counterWrap.append(counter, sectionLabel);
+
+    const nextBtn = document.createElement("button");
+    nextBtn.type = "button";
+    nextBtn.className = "hw-worksheet__slide-btn";
+    nextBtn.setAttribute("aria-label", "Next question");
+    nextBtn.textContent = "→";
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "btn btn--ghost btn--sm hw-worksheet__slide-toggle";
+    toggleBtn.textContent = "See all HW";
+
+    const navControls = document.createElement("div");
+    navControls.className = "hw-worksheet__slide-controls";
+    navControls.append(prevBtn, toggleBtn, nextBtn);
+
+    nav.append(counterWrap, navControls);
+
+    const firstSection = form.querySelector(".hw-worksheet__section");
+    form.insertBefore(nav, firstSection || form.querySelector(".hw-worksheet__actions"));
+
+    form.classList.add("hw-worksheet--slide-mode");
+
+    const hint = form.querySelector(".hw-worksheet__meta-hint");
+    if (hint) {
+      hint.textContent =
+        "One question at a time — use the arrows to move, or see all homework at once.";
+    }
+
+    function sectionMetaForLine(line) {
+      const section = line.closest(".hw-worksheet__section");
+      if (!section) return "";
+      const title = section.querySelector(".hw-worksheet__section-title")?.textContent?.trim() || "";
+      return title;
+    }
+
+    function applySlideView() {
+      if (seeAll) {
+        form.classList.remove("hw-worksheet--slide-mode");
+        nav.hidden = false;
+        counterWrap.hidden = true;
+        prevBtn.hidden = true;
+        nextBtn.hidden = true;
+        toggleBtn.textContent = "One at a time";
+        form.querySelectorAll(".hw-worksheet__section").forEach((sec) => {
+          sec.hidden = false;
+        });
+        lines.forEach((line) => {
+          line.hidden = false;
+        });
+        return;
+      }
+
+      form.classList.add("hw-worksheet--slide-mode");
+      counterWrap.hidden = false;
+      prevBtn.hidden = false;
+      nextBtn.hidden = false;
+      toggleBtn.textContent = "See all HW";
+      counter.textContent = current + 1 + " of " + lines.length;
+      sectionLabel.textContent = sectionMetaForLine(lines[current]) || "";
+
+      prevBtn.disabled = current <= 0;
+      nextBtn.disabled = current >= lines.length - 1;
+
+      form.querySelectorAll(".hw-worksheet__section").forEach((sec) => {
+        let sectionVisible = false;
+        sec.querySelectorAll(".hw-worksheet__line").forEach((line) => {
+          const show = lines[current] === line;
+          line.hidden = !show;
+          if (show) sectionVisible = true;
+        });
+        sec.hidden = !sectionVisible;
+      });
+    }
+
+    function goTo(index) {
+      current = Math.max(0, Math.min(index, lines.length - 1));
+      applySlideView();
+    }
+
+    prevBtn.addEventListener("click", () => goTo(current - 1));
+    nextBtn.addEventListener("click", () => goTo(current + 1));
+
+    toggleBtn.addEventListener("click", () => {
+      seeAll = !seeAll;
+      applySlideView();
+    });
+
+    form.addEventListener("keydown", (e) => {
+      if (seeAll || e.target.closest("input, textarea, select")) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goTo(current - 1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goTo(current + 1);
+      }
+    });
+
+    const printBtn = form.querySelector("[data-hw-print]");
+    if (printBtn) {
+      printBtn.addEventListener(
+        "click",
+        () => {
+          if (form.classList.contains("hw-worksheet--slide-mode")) {
+            seeAll = true;
+            applySlideView();
+          }
+        },
+        true
+      );
+    }
+
+    applySlideView();
+  }
+
+  /**
+   * @returns {void}
+   */
+  function exitHomeworkFocusMode() {
+    const section = document.getElementById("hw-worksheet-section");
+    document.body.classList.remove("hw-hw-focus-mode");
+    section?.querySelector(".hw-focus-bar")?.setAttribute("hidden", "");
+    section?.querySelector("[data-hw-focus]")?.removeAttribute("hidden");
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  /**
+   * Distraction-free fullscreen view — dark theater background, centered worksheet page.
+   * @param {HTMLFormElement} form
+   */
+  function initFocusMode(form) {
+    const section = form.closest("#hw-worksheet-section");
+    if (!section) return;
+
+    const focusBtn = document.createElement("button");
+    focusBtn.type = "button";
+    focusBtn.className = "btn btn--ghost hw-worksheet__focus-btn";
+    focusBtn.setAttribute("data-hw-focus", "");
+    focusBtn.textContent = "Focus mode";
+
+    const actions = form.querySelector(".hw-worksheet__actions");
+    if (actions) {
+      actions.insertBefore(focusBtn, actions.firstChild);
+    }
+
+    const focusBar = document.createElement("div");
+    focusBar.className = "hw-focus-bar";
+    focusBar.hidden = true;
+    focusBar.innerHTML =
+      '<button type="button" class="hw-focus-bar__exit">Exit focus</button>' +
+      '<span class="hw-focus-bar__title"></span>';
+    section.querySelector(".hw-focus-bar")?.remove();
+    section.insertBefore(focusBar, section.firstChild);
+
+    const titleEl = focusBar.querySelector(".hw-focus-bar__title");
+    const exitBtn = focusBar.querySelector(".hw-focus-bar__exit");
+
+    function updateTitle() {
+      const activeForm = section.querySelector("#hw-worksheet-form");
+      const title =
+        activeForm?.querySelector(".hw-worksheet__meta-title")?.textContent?.trim() || "Homework";
+      titleEl.textContent = title;
+    }
+
+    async function enterFocus() {
+      if (document.body.classList.contains("hw-hw-focus-mode")) return;
+      updateTitle();
+      document.body.classList.add("hw-hw-focus-mode");
+      focusBar.hidden = false;
+      focusBtn.hidden = true;
+      section.scrollTop = 0;
+      try {
+        await (section.requestFullscreen?.() || document.documentElement.requestFullscreen());
+      } catch (_) {
+        /* overlay-only focus is fine when fullscreen is blocked */
+      }
+    }
+
+    focusBtn.addEventListener("click", () => enterFocus());
+    exitBtn.addEventListener("click", () => exitHomeworkFocusMode());
+
+    if (!section.dataset.hwFocusBound) {
+      section.dataset.hwFocusBound = "1";
+      document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement && document.body.classList.contains("hw-hw-focus-mode")) {
+          exitHomeworkFocusMode();
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || !document.body.classList.contains("hw-hw-focus-mode")) return;
+        e.preventDefault();
+        exitHomeworkFocusMode();
+      });
+    }
   }
 
   /**
