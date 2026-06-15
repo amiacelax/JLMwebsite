@@ -3687,6 +3687,15 @@ button.course-card__status:disabled {
   gap: 0.28rem;
 }
 
+.hw-games-hub-soon {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-style: italic;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
 .hw-games-hub-btn {
   display: block;
   box-sizing: border-box;
