@@ -28,6 +28,14 @@
   const scheduleWeekNext = document.getElementById("lesson-scheduler-week-next");
   const scheduleWeekRange = document.getElementById("lesson-scheduler-week-range");
   const messageField = document.getElementById("message");
+  const introVideoModal = document.getElementById("intro-video-modal");
+  const introVideoOpenBtns = document.querySelectorAll("[data-intro-video-open]");
+  const introVideoCloseBtns = document.querySelectorAll("[data-intro-video-close]");
+  const introVideoIframe = document.getElementById("intro-video-iframe");
+  const stickyCta = document.getElementById("sticky-cta");
+  const heroSection = document.querySelector(".hero");
+  const contactSection = document.getElementById("contact");
+  const introVideoMobileQuery = window.matchMedia("(max-width: 767px)");
   let lastFocusedBeforeModal = null;
   let selectedScheduleDateIndex = 0;
   let selectedScheduleSlot = null;
@@ -142,8 +150,29 @@
     const modalOpen =
       (hwBreakdownModal && !hwBreakdownModal.hidden) ||
       (jumpstartModal && !jumpstartModal.hidden) ||
-      (scheduleModal && !scheduleModal.hidden);
+      (scheduleModal && !scheduleModal.hidden) ||
+      (introVideoModal && !introVideoModal.hidden);
     document.body.classList.toggle("is-modal-open", !!modalOpen);
+  }
+
+  function closeIntroVideo() {
+    if (!introVideoModal || introVideoModal.hidden) return;
+    introVideoModal.hidden = true;
+    if (introVideoIframe) introVideoIframe.src = "";
+    updateModalBodyState();
+    if (lastFocusedBeforeModal instanceof HTMLElement) {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
+  }
+
+  function openIntroVideo() {
+    if (!introVideoModal || !introVideoIframe) return;
+    lastFocusedBeforeModal = document.activeElement;
+    introVideoIframe.src = introVideoIframe.dataset.src || "";
+    introVideoModal.hidden = false;
+    updateModalBodyState();
+    introVideoModal.querySelector("[data-intro-video-close]")?.focus();
   }
 
   function closeHwBreakdown() {
@@ -498,6 +527,7 @@
     closeHwBreakdown();
     closeJumpstart();
     closeSchedule();
+    closeIntroVideo();
   });
 
   function headerScrollOffset() {
@@ -538,6 +568,49 @@
   jumpstartCloseBtns.forEach((btn) => {
     btn.addEventListener("click", closeJumpstart);
   });
+
+  introVideoOpenBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeMenu();
+      if (introVideoMobileQuery.matches) {
+        openIntroVideo();
+        return;
+      }
+      const aboutVideo = document.getElementById("about-video");
+      if (aboutVideo) scrollToSection(aboutVideo);
+    });
+  });
+
+  introVideoCloseBtns.forEach((btn) => {
+    btn.addEventListener("click", closeIntroVideo);
+  });
+
+  introVideoModal?.addEventListener("click", (e) => {
+    if (e.target === introVideoModal.querySelector(".intro-video-modal__backdrop")) {
+      closeIntroVideo();
+    }
+  });
+
+  function updateStickyCta() {
+    if (!stickyCta || !heroSection) return;
+    if (!introVideoMobileQuery.matches) {
+      stickyCta.hidden = true;
+      document.body.classList.remove("is-sticky-cta-visible");
+      return;
+    }
+    const heroRect = heroSection.getBoundingClientRect();
+    const contactRect = contactSection?.getBoundingClientRect();
+    const pastHero = heroRect.bottom < 80;
+    const nearContact = contactRect && contactRect.top < window.innerHeight * 0.75;
+    const show = pastHero && !nearContact;
+    stickyCta.hidden = !show;
+    document.body.classList.toggle("is-sticky-cta-visible", show);
+  }
+
+  window.addEventListener("scroll", updateStickyCta, { passive: true });
+  window.addEventListener("resize", updateStickyCta);
+  updateStickyCta();
 
   scheduleOpenBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {

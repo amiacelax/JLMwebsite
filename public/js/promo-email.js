@@ -10,10 +10,13 @@
   const submitBtn = document.getElementById("promo-submit");
   const SUBSCRIBED_KEY = "jlm-promo-subscribed";
   const DISMISSED_KEY = "jlm-promo-dismissed";
+  const SESSION_SHOWN_KEY = "jlm-promo-shown-session";
   const LEGACY_SEEN_KEY = "jlm-promo-seen";
   const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
   const OPEN_DELAY_MS = 5000;
+  const SCROLL_DEPTH = 0.45;
   const AUTO_SHOW_PAGES = new Set(["Home"]);
+  let promoOpened = false;
 
   function showStatus(message, type) {
     if (!statusEl) return;
@@ -25,7 +28,6 @@
   function hasSubscribed() {
     try {
       if (localStorage.getItem(SUBSCRIBED_KEY) === "1") return true;
-      // Older popup logic stored this on any dismiss/open — honor it so promos stay off.
       return localStorage.getItem(LEGACY_SEEN_KEY) === "1";
     } catch {
       return false;
@@ -44,9 +46,28 @@
     }
   }
 
+  function hasShownThisSession() {
+    if (promoOpened) return true;
+    try {
+      return sessionStorage.getItem(SESSION_SHOWN_KEY) === "1";
+    } catch {
+      return promoOpened;
+    }
+  }
+
+  function markShownThisSession() {
+    promoOpened = true;
+    try {
+      sessionStorage.setItem(SESSION_SHOWN_KEY, "1");
+    } catch {
+      /* private browsing / storage blocked */
+    }
+  }
+
   function shouldShowPromo() {
     if (hasSubscribed()) return false;
     if (wasDismissedRecently()) return false;
+    if (hasShownThisSession()) return false;
     return true;
   }
 
@@ -79,16 +100,37 @@
     if (dismissed) markDismissed();
   }
 
-  function scheduleOpen() {
+  function tryOpenPromo() {
     if (!AUTO_SHOW_PAGES.has(pageName)) return;
     if (!shouldShowPromo()) return;
-    window.setTimeout(() => {
-      if (!shouldShowPromo() || !modal.hidden) return;
-      openModal();
-    }, OPEN_DELAY_MS);
+    if (!modal.hidden) return;
+    markShownThisSession();
+    openModal();
   }
 
-  scheduleOpen();
+  function bindPromoTriggers() {
+    if (!AUTO_SHOW_PAGES.has(pageName)) return;
+    if (!shouldShowPromo()) return;
+
+    window.setTimeout(() => tryOpenPromo(), OPEN_DELAY_MS);
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (maxScroll <= 0) return;
+        if (window.scrollY / maxScroll >= SCROLL_DEPTH) tryOpenPromo();
+      },
+      { passive: true }
+    );
+
+    document.addEventListener("mouseout", (e) => {
+      if (e.relatedTarget || e.clientY > 0) return;
+      tryOpenPromo();
+    });
+  }
+
+  bindPromoTriggers();
 
   modal.querySelectorAll("[data-promo-close]").forEach((el) => {
     el.addEventListener("click", () => closeModal(true));
