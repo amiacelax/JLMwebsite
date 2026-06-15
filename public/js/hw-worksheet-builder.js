@@ -6,7 +6,7 @@
     { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
-    { type: "listen-line", label: "Audio listening", hint: "Clip + transcript" },
+    { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
   ];
 
   const TEMPLATE_ORDER = ["blank", "grammar", "application", "listening"];
@@ -112,11 +112,12 @@
 
   function listenItem(n) {
     const id = "listen-" + n;
-    return { id, audioUrl: "", parts: [{ type: "blank", name: id, wide: true }] };
+    return { id, audioUrl: "", imageUrl: "", parts: [{ type: "blank", name: id, wide: true }] };
   }
 
   function ensureListenBlock(block) {
     block.audioUrl = String(block.audioUrl || "").trim();
+    block.imageUrl = String(block.imageUrl || "").trim();
     if (!block.parts?.length) {
       block.parts = [{ type: "blank", name: block.id, wide: true, answer: "" }];
     }
@@ -244,6 +245,7 @@
           id,
           type,
           audioUrl: "",
+          imageUrl: "",
           parts: [{ type: "blank", name: id, wide: true, answer: "" }],
         });
       default:
@@ -319,6 +321,7 @@
               id: item.id || uid("blk"),
               type: "listen-line",
               audioUrl: String(item.audioUrl || "").trim() || sectionAudio,
+              imageUrl: String(item.imageUrl || "").trim(),
               parts: JSON.parse(JSON.stringify(item.parts || [])),
             })
           );
@@ -435,6 +438,8 @@
     const out = { id: block.id || "listen-" + (index + 1), parts: [] };
     const audioUrl = String(block.audioUrl || "").trim();
     if (audioUrl) out.audioUrl = audioUrl;
+    const imageUrl = String(block.imageUrl || "").trim();
+    if (imageUrl) out.imageUrl = imageUrl;
     (block.parts || []).forEach((part) => {
       if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true };
@@ -851,19 +856,64 @@
 
         const audioLabel = document.createElement("label");
         audioLabel.className = "hw-builder__audio-label";
-        audioLabel.textContent = "Audio clip URL or file path";
+        audioLabel.textContent = "Immersion Kit audio URL";
         const audioInput = document.createElement("input");
         audioInput.type = "url";
         audioInput.className = "hw-builder__field hw-builder__field--compact";
-        audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
+        audioInput.placeholder = "Paste audio URL from immersionkit.com";
         audioInput.value = block.audioUrl || "";
         audioInput.addEventListener("input", () => {
           block.audioUrl = audioInput.value.trim();
           renderCanvas();
           notifyChange();
         });
+        audioInput.addEventListener("paste", (e) => {
+          const text = e.clipboardData?.getData("text") || "";
+          const parsed = global.HwWorksheet?.parseImmersionKitMediaPaste?.(text);
+          if (!parsed || (!parsed.audioUrl && !parsed.imageUrl)) return;
+          e.preventDefault();
+          if (parsed.audioUrl) block.audioUrl = parsed.audioUrl;
+          if (parsed.imageUrl) block.imageUrl = parsed.imageUrl;
+          renderCanvas();
+          notifyChange();
+        });
         audioLabel.appendChild(audioInput);
         partsWrap.appendChild(audioLabel);
+
+        const imageLabel = document.createElement("label");
+        imageLabel.className = "hw-builder__audio-label";
+        imageLabel.textContent = "Screenshot URL (Immersion Kit)";
+        const imageInput = document.createElement("input");
+        imageInput.type = "url";
+        imageInput.className = "hw-builder__field hw-builder__field--compact";
+        imageInput.placeholder = "Paste screenshot URL from the same clip";
+        imageInput.value = block.imageUrl || "";
+        imageInput.addEventListener("input", () => {
+          block.imageUrl = imageInput.value.trim();
+          renderCanvas();
+          notifyChange();
+        });
+        imageInput.addEventListener("paste", (e) => {
+          const text = e.clipboardData?.getData("text") || "";
+          const parsed = global.HwWorksheet?.parseImmersionKitMediaPaste?.(text);
+          if (!parsed || (!parsed.audioUrl && !parsed.imageUrl)) return;
+          e.preventDefault();
+          if (parsed.audioUrl) block.audioUrl = parsed.audioUrl;
+          if (parsed.imageUrl) block.imageUrl = parsed.imageUrl;
+          renderCanvas();
+          notifyChange();
+        });
+        imageLabel.appendChild(imageInput);
+        partsWrap.appendChild(imageLabel);
+
+        if (block.imageUrl) {
+          const thumb = document.createElement("img");
+          thumb.className = "hw-builder__listen-thumb";
+          thumb.src = block.imageUrl;
+          thumb.alt = "Immersion Kit screenshot preview";
+          thumb.loading = "lazy";
+          partsWrap.appendChild(thumb);
+        }
 
         if (block.audioUrl) {
           const preview = document.createElement("audio");
@@ -892,7 +942,8 @@
 
         const transcriptHint = document.createElement("p");
         transcriptHint.className = "hw-builder__inline-hint";
-        transcriptHint.textContent = "Students get a player above and write what they hear below.";
+        transcriptHint.textContent =
+          "Copy audio + screenshot URLs from Immersion Kit — paste both at once or one per field. Students see the screenshot and player, then write what they hear.";
         partsWrap.appendChild(transcriptHint);
 
         el.appendChild(partsWrap);

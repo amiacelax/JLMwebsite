@@ -19,6 +19,36 @@
 
   const DEFAULT_HINT_TENSE = "Now-later";
 
+  function isImmersionKitMediaUrl(url) {
+    const u = String(url || "").toLowerCase();
+    return u.includes("immersionkit") || u.includes("linodeobjects.com/immersionkit");
+  }
+
+  /**
+   * Split a paste of Immersion Kit audio + screenshot URLs.
+   * @param {string} text
+   * @returns {{ audioUrl: string, imageUrl: string }}
+   */
+  function parseImmersionKitMediaPaste(text) {
+    const urls = [
+      ...new Set((String(text).match(/https?:\/\/[^\s<>"']+/gi) || []).map((u) => u.replace(/[),.;]+$/, ""))),
+    ];
+    let audioUrl = "";
+    let imageUrl = "";
+    urls.forEach((url) => {
+      if (!isImmersionKitMediaUrl(url)) return;
+      const lower = url.toLowerCase();
+      if (/\.(mp3|m4a|wav|ogg|aac)(\?|#|$)/i.test(lower)) {
+        if (!audioUrl) audioUrl = url;
+        return;
+      }
+      if (/\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(lower)) {
+        if (!imageUrl) imageUrl = url;
+      }
+    });
+    return { audioUrl, imageUrl };
+  }
+
   function normalizeHintConjugation(value) {
     const c = String(value || "").trim();
     if (!c || c === "plain") return DEFAULT_HINT_TENSE;
@@ -497,15 +527,27 @@
     if (sectionMode === "audio-listening") {
       const audioLabel = document.createElement("label");
       audioLabel.className = "hw-author-audio-url";
-      audioLabel.textContent = "Audio clip URL";
+      audioLabel.textContent = "Immersion Kit audio URL";
       const audioInput = document.createElement("input");
       audioInput.type = "url";
       audioInput.className = "hw-blank hw-blank--wide hw-author-audio";
       audioInput.value = item.audioUrl || lineOptions.sectionAudioUrl || "";
       audioInput.setAttribute("data-item-audio-url", "1");
-      audioInput.placeholder = "https://… or /homework/audio/clip.mp3";
+      audioInput.placeholder = "Paste audio URL from immersionkit.com";
       audioLabel.appendChild(audioInput);
       content.appendChild(audioLabel);
+
+      const imageLabel = document.createElement("label");
+      imageLabel.className = "hw-author-audio-url";
+      imageLabel.textContent = "Screenshot URL (Immersion Kit)";
+      const imageInput = document.createElement("input");
+      imageInput.type = "url";
+      imageInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      imageInput.value = item.imageUrl || "";
+      imageInput.setAttribute("data-item-image-url", "1");
+      imageInput.placeholder = "Paste screenshot URL from the same clip";
+      imageLabel.appendChild(imageInput);
+      content.appendChild(imageLabel);
     }
 
     (item.parts || []).forEach((part) => {
@@ -546,6 +588,21 @@
 
     line.appendChild(content);
     return line;
+  }
+
+  function renderListenScreenshot(url) {
+    const imgUrl = String(url || "").trim();
+    if (!imgUrl) return null;
+    const fig = document.createElement("figure");
+    fig.className = "hw-listen-card__figure";
+    const img = document.createElement("img");
+    img.className = "hw-listen-card__img";
+    img.src = imgUrl;
+    img.alt = "Anime screenshot from Immersion Kit";
+    img.loading = "lazy";
+    img.decoding = "async";
+    fig.appendChild(img);
+    return fig;
   }
 
   function renderAudioPlayer(url, options) {
@@ -668,6 +725,9 @@
       listenCard = document.createElement("div");
       listenCard.className = "hw-listen-card";
       const audioUrl = String(item.audioUrl || lineOptions.sectionAudioUrl || "").trim();
+      const imageUrl = String(item.imageUrl || "").trim();
+      const screenshot = renderListenScreenshot(imageUrl);
+      if (screenshot) listenCard.appendChild(screenshot);
       listenCard.appendChild(renderAudioPlayer(audioUrl, { inline: true }));
       content.appendChild(listenCard);
     }
@@ -806,6 +866,8 @@
         if (section.mode === "audio-listening") {
           const audioUrl = lineEl.querySelector("[data-item-audio-url]")?.value?.trim();
           if (audioUrl) item.audioUrl = audioUrl;
+          const imageUrl = lineEl.querySelector("[data-item-image-url]")?.value?.trim();
+          if (imageUrl) item.imageUrl = imageUrl;
         }
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
@@ -1349,6 +1411,7 @@
           !el.name ||
           el.hasAttribute("data-section-audio-url") ||
           el.hasAttribute("data-item-audio-url") ||
+          el.hasAttribute("data-item-image-url") ||
           el.hasAttribute("data-video-prompt")
         ) {
           return;
@@ -1445,5 +1508,7 @@
     buildRegisterVariants,
     enrichGrammarVariants,
     applyAnswerVariants,
+    isImmersionKitMediaUrl,
+    parseImmersionKitMediaPaste,
   };
 })(window);

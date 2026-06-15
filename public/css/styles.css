@@ -5357,6 +5357,31 @@ button.course-card__status:disabled {
   box-sizing: border-box;
 }
 
+.hw-listen-card__figure {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  line-height: 0;
+}
+
+.hw-listen-card__img {
+  display: block;
+  width: 100%;
+  max-height: 11rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+.hw-builder__listen-thumb {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  max-height: 8rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
 .hw-listen-card .hw-blank-wrap--listen {
   max-width: none;
   width: 100%;
