@@ -112,12 +112,19 @@
 
   function listenItem(n) {
     const id = "listen-" + n;
-    return { id, audioUrl: "", imageUrl: "", parts: [{ type: "blank", name: id, wide: true }] };
+    return {
+      id,
+      audioUrl: "",
+      imageUrl: "",
+      englishAnswer: "",
+      parts: [{ type: "blank", name: id, wide: true }],
+    };
   }
 
   function ensureListenBlock(block) {
     block.audioUrl = String(block.audioUrl || "").trim();
     block.imageUrl = String(block.imageUrl || "").trim();
+    block.englishAnswer = String(block.englishAnswer || "").trim();
     if (!block.parts?.length) {
       block.parts = [{ type: "blank", name: block.id, wide: true, answer: "" }];
     }
@@ -246,6 +253,7 @@
           type,
           audioUrl: "",
           imageUrl: "",
+          englishAnswer: "",
           parts: [{ type: "blank", name: id, wide: true, answer: "" }],
         });
       default:
@@ -322,6 +330,7 @@
               type: "listen-line",
               audioUrl: String(item.audioUrl || "").trim() || sectionAudio,
               imageUrl: String(item.imageUrl || "").trim(),
+              englishAnswer: String(item.englishAnswer || "").trim(),
               parts: JSON.parse(JSON.stringify(item.parts || [])),
             })
           );
@@ -440,6 +449,8 @@
     if (audioUrl) out.audioUrl = audioUrl;
     const imageUrl = String(block.imageUrl || "").trim();
     if (imageUrl) out.imageUrl = imageUrl;
+    const englishAnswer = String(block.englishAnswer || "").trim();
+    if (englishAnswer) out.englishAnswer = englishAnswer;
     (block.parts || []).forEach((part) => {
       if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true };
@@ -927,7 +938,7 @@
 
         const transcriptLabel = document.createElement("label");
         transcriptLabel.className = "hw-builder__field-label";
-        transcriptLabel.textContent = "Answer key (optional)";
+        transcriptLabel.textContent = "Japanese answer (optional)";
         const transcriptInput = document.createElement("input");
         transcriptInput.type = "text";
         transcriptInput.className = "hw-builder__field hw-builder__field--jp";
@@ -940,10 +951,25 @@
         transcriptLabel.appendChild(transcriptInput);
         partsWrap.appendChild(transcriptLabel);
 
+        const englishLabel = document.createElement("label");
+        englishLabel.className = "hw-builder__field-label";
+        englishLabel.textContent = "English meaning (optional)";
+        const englishInput = document.createElement("textarea");
+        englishInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
+        englishInput.rows = 2;
+        englishInput.placeholder = "e.g. I want to go to city hall.";
+        englishInput.value = block.englishAnswer || "";
+        englishInput.addEventListener("input", () => {
+          block.englishAnswer = englishInput.value.trim();
+          notifyChange();
+        });
+        englishLabel.appendChild(englishInput);
+        partsWrap.appendChild(englishLabel);
+
         const transcriptHint = document.createElement("p");
         transcriptHint.className = "hw-builder__inline-hint";
         transcriptHint.textContent =
-          "Copy audio + screenshot URLs from Immersion Kit — paste both at once or one per field. Students see the screenshot and player, then write what they hear.";
+          "Paste Immersion Kit audio + screenshot URLs above (both at once works). Japanese + English are your answer keys — students only see the clip.";
         partsWrap.appendChild(transcriptHint);
 
         el.appendChild(partsWrap);

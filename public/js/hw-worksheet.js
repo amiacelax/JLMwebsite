@@ -548,6 +548,18 @@
       imageInput.placeholder = "Paste screenshot URL from the same clip";
       imageLabel.appendChild(imageInput);
       content.appendChild(imageLabel);
+
+      const englishLabel = document.createElement("label");
+      englishLabel.className = "hw-author-audio-url";
+      englishLabel.textContent = "English meaning (teacher reference)";
+      const englishInput = document.createElement("textarea");
+      englishInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      englishInput.rows = 2;
+      englishInput.value = item.englishAnswer || "";
+      englishInput.setAttribute("data-item-english-answer", "1");
+      englishInput.placeholder = "English translation of what they should hear";
+      englishLabel.appendChild(englishInput);
+      content.appendChild(englishLabel);
     }
 
     (item.parts || []).forEach((part) => {
@@ -868,6 +880,8 @@
           if (audioUrl) item.audioUrl = audioUrl;
           const imageUrl = lineEl.querySelector("[data-item-image-url]")?.value?.trim();
           if (imageUrl) item.imageUrl = imageUrl;
+          const englishAnswer = lineEl.querySelector("[data-item-english-answer]")?.value?.trim();
+          if (englishAnswer) item.englishAnswer = englishAnswer;
         }
         if (lineEl.querySelector(".hw-author-negative")?.checked) {
           item.negative = true;
@@ -1412,6 +1426,7 @@
           el.hasAttribute("data-section-audio-url") ||
           el.hasAttribute("data-item-audio-url") ||
           el.hasAttribute("data-item-image-url") ||
+          el.hasAttribute("data-item-english-answer") ||
           el.hasAttribute("data-video-prompt")
         ) {
           return;
