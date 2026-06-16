@@ -1417,18 +1417,21 @@
       getCatalogEntry,
       getTeacherSession: () => session,
       getStudentAccounts: function () {
+        if (global.HwStudentList?.getStudentsSync) {
+          return global.HwStudentList.getStudentsSync();
+        }
         if (global.HwAuth && typeof global.HwAuth.listStudentAccounts === "function") {
           return global.HwAuth.listStudentAccounts();
         }
         return [];
       },
       isStudentAccount: function (username) {
+        const key = String(username || "").trim().toLowerCase();
+        if (global.HwStudentList?.isKnownStudent?.(key)) return true;
         if (global.HwAuth && typeof global.HwAuth.isStudentAccount === "function") {
           return global.HwAuth.isStudentAccount(username);
         }
-        return ["joshs", "benm", "deme", "ivan", "benc", "noplan"].includes(
-          String(username || "").toLowerCase()
-        );
+        return ["joshs", "benm", "deme", "ivan", "benc", "noplan"].includes(key);
       },
       onWorksheetSaved: async function () {
         catalogCache = null;
@@ -1610,6 +1613,10 @@
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
+    if (global.HwStudentList?.fetchStudents) {
+      await global.HwStudentList.fetchStudents();
+    }
+
     const activateTeacherTab = initTeacherTabs();
     initTeacherEditor();
     if (global.HwTeacherIdeas?.init) {
@@ -1661,6 +1668,11 @@
       }
     }
 
+    if (global.HwStudentList?.setStudents) {
+      global.HwStudentList.setStudents(catalogCache.students || []);
+      void global.HwStudentList.refreshTeacherFilterSelects();
+    }
+
     const entries = catalogCache.assignments || [];
     const hashId = window.location.hash.replace(/^#hw-/, "");
     if (global.HwTeacherEditor?.refreshCatalog) {
@@ -1701,6 +1713,10 @@
     const studentOnly = document.getElementById("hw-platform-student-only");
     if (teacherHub) teacherHub.hidden = true;
     if (studentOnly) studentOnly.hidden = false;
+
+    if (global.HwStudentMistakes?.load) {
+      void HwStudentMistakes.load(session);
+    }
 
     const mount = document.getElementById("hw-worksheet-mount");
     const heading = document.getElementById("hw-worksheet-heading");
@@ -1777,10 +1793,6 @@
       form.setAttribute("data-assignment-id", saveMeta.id);
     }
     bindWorksheetSave(form, saveMeta);
-
-    if (global.HwStudentMistakes?.load) {
-      void HwStudentMistakes.load(session);
-    }
   }
 
   function ensureTeacherEditorMounted() {

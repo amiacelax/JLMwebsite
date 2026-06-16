@@ -346,14 +346,28 @@
     if (gate) gate.hidden = true;
     if (app) app.hidden = false;
 
-    try {
-      const savedStudent = sessionStorage.getItem(SESSION_KEY);
-      if (savedStudent) {
-        const sel = document.getElementById("hw-log-student");
-        if (sel) sel.value = savedStudent;
+    const studentSelect = document.getElementById("hw-log-student");
+    if (studentSelect && win.HwStudentList?.refreshSelect) {
+      void win.HwStudentList.refreshSelect(studentSelect, {
+        emptyLabel: "— Choose student —",
+        required: true,
+      }).then(() => {
+        try {
+          const savedStudent = sessionStorage.getItem(SESSION_KEY);
+          if (savedStudent && studentSelect.querySelector('option[value="' + savedStudent + '"]')) {
+            studentSelect.value = savedStudent;
+          }
+        } catch {
+          /* ignore */
+        }
+      });
+    } else {
+      try {
+        const savedStudent = sessionStorage.getItem(SESSION_KEY);
+        if (savedStudent && studentSelect) studentSelect.value = savedStudent;
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
     }
 
     document.getElementById("hw-log-bulk-text")?.addEventListener("input", scheduleParse);

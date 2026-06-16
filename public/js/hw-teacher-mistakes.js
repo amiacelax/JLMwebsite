@@ -28,15 +28,15 @@
 
   function populateStudents(selectEl) {
     if (!selectEl) return;
-    const accounts =
-      global.HwAuth?.listStudentAccounts?.() ||
-      [
-        { username: "joshs", displayName: "Josh S" },
-        { username: "benm", displayName: "Ben M" },
-        { username: "deme", displayName: "Deme" },
-        { username: "ivan", displayName: "Ivan" },
-        { username: "benc", displayName: "benc" },
-      ];
+    if (global.HwStudentList?.fillStudentSelect) {
+      global.HwStudentList.fillStudentSelect(selectEl, {
+        includeAllOption: true,
+        allLabel: "All students",
+        keepValue: selectEl.value,
+      });
+      return;
+    }
+    const accounts = global.HwAuth?.listStudentAccounts?.() || [];
     const existing = new Set(
       Array.from(selectEl.options).map((o) => o.value).filter(Boolean)
     );
@@ -47,6 +47,13 @@
       opt.textContent = a.username + (a.displayName ? " — " + a.displayName : "");
       selectEl.appendChild(opt);
     });
+  }
+
+  async function ensureStudentsLoaded() {
+    if (global.HwStudentList?.fetchStudents) {
+      await global.HwStudentList.fetchStudents();
+      populateStudents(document.getElementById("hw-mistakes-feed-student"));
+    }
   }
 
   function renderFeed() {
@@ -96,6 +103,7 @@
     bound = true;
 
     populateStudents(document.getElementById("hw-mistakes-feed-student"));
+    void ensureStudentsLoaded();
     document.getElementById("hw-mistakes-feed-student")?.addEventListener("change", renderFeed);
     document.getElementById("hw-mistakes-feed-refresh")?.addEventListener("click", () => reload());
   }
@@ -107,6 +115,7 @@
 
   function reloadIfNeeded() {
     bind();
+    void ensureStudentsLoaded();
     if (!loadedOnce) void reload();
     else renderFeed();
   }

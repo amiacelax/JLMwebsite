@@ -2,13 +2,6 @@
  * Teacher view — stored student homework submissions (online + photos).
  */
 (function (global) {
-  const STUDENTS = [
-    { username: "joshs", label: "joshs — Josh S" },
-    { username: "benm", label: "benm — Ben M" },
-    { username: "deme", label: "deme — Deme" },
-    { username: "ivan", label: "ivan — Ivan" },
-  ];
-
   let submissionsCache = [];
   let expandedId = null;
   let loading = false;
@@ -338,8 +331,15 @@
     if (bound) return;
     bound = true;
 
-    const search = document.getElementById("hw-submissions-search");
     const studentFilter = document.getElementById("hw-submissions-student");
+    if (studentFilter && global.HwStudentList?.refreshSelect) {
+      void global.HwStudentList.refreshSelect(studentFilter, {
+        includeAllOption: true,
+        allLabel: "All students",
+      });
+    }
+
+    const search = document.getElementById("hw-submissions-search");
     const refreshBtn = document.getElementById("hw-submissions-refresh");
 
     if (search) search.addEventListener("input", renderList);
