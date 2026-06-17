@@ -18,6 +18,68 @@
   let editorOptions = null;
   let worksheetBuilder = null;
 
+  const WORKSHEET_MRU_KEY = "jlm-hw-worksheet-mru";
+  const WORKSHEET_MRU_MAX = 50;
+
+  function loadWorksheetMru() {
+    try {
+      const raw = localStorage.getItem(WORKSHEET_MRU_KEY);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list.filter((id) => typeof id === "string" && id) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeWorksheetMru(list) {
+    try {
+      localStorage.setItem(WORKSHEET_MRU_KEY, JSON.stringify(list || []));
+    } catch {
+      /* quota or private mode */
+    }
+  }
+
+  function touchWorksheetMru(id) {
+    const sheetId = String(id || "").trim();
+    if (!sheetId) return;
+    const list = loadWorksheetMru().filter((x) => x !== sheetId);
+    list.unshift(sheetId);
+    writeWorksheetMru(list.slice(0, WORKSHEET_MRU_MAX));
+  }
+
+  function removeWorksheetMru(id) {
+    const sheetId = String(id || "").trim();
+    if (!sheetId) return;
+    writeWorksheetMru(loadWorksheetMru().filter((x) => x !== sheetId));
+  }
+
+  function sortAssignmentsForLoadSelect(list) {
+    const mru = loadWorksheetMru();
+    const rank = new Map(mru.map((sheetId, i) => [sheetId, i]));
+    return list.slice().sort((a, b) => {
+      const ra = rank.has(a.id) ? rank.get(a.id) : Infinity;
+      const rb = rank.has(b.id) ? rank.get(b.id) : Infinity;
+      if (ra !== rb) return ra - rb;
+      return String(b.publishedAt || b.date || b.id).localeCompare(
+        String(a.publishedAt || a.date || a.id)
+      );
+    });
+  }
+
+  function seedWorksheetMruFromCatalog() {
+    if (loadWorksheetMru().length) return;
+    const seeded = allAssignments()
+      .sort((a, b) =>
+        String(b.publishedAt || b.date || b.id).localeCompare(
+          String(a.publishedAt || a.date || a.id)
+        )
+      )
+      .map((e) => e.id)
+      .filter(Boolean);
+    if (seeded.length) writeWorksheetMru(seeded.slice(0, WORKSHEET_MRU_MAX));
+  }
+
   const FALLBACK_ASSIGNMENTS = {
     joshs: [{ id: "joshs-naitoikenai", title: "～ないといけない", students: ["joshs"] }],
     benm: [
@@ -306,25 +368,35 @@
 
   function populateWorksheetSelect(selectEl, keepId) {
     if (!selectEl) return;
-    const list = allAssignments().sort((a, b) =>
-      String(b.date || b.id).localeCompare(String(a.date || a.id))
-    );
+    const all = allAssignments();
+    const mruIds = loadWorksheetMru();
+    const byId = new Map(all.map((e) => [e.id, e]));
+    const mru = mruIds.map((id) => byId.get(id)).filter(Boolean);
+    const mruSet = new Set(mru.map((e) => e.id));
+    const rest = sortAssignmentsForLoadSelect(all.filter((e) => !mruSet.has(e.id)));
     const keep = keepId || selectEl.value;
-    selectEl.innerHTML =
-      '<option value="">— New blank sheet —</option>' +
-      list
-        .map((e) => {
-          return (
-            '<option value="' +
-            e.id +
-            '"' +
-            (e.id === keep ? " selected" : "") +
-            ">" +
-            worksheetOptionLabel(e) +
-            "</option>"
-          );
-        })
-        .join("");
+
+    function optionHtml(e) {
+      return (
+        '<option value="' +
+        e.id +
+        '"' +
+        (e.id === keep ? " selected" : "") +
+        ">" +
+        worksheetOptionLabel(e) +
+        "</option>"
+      );
+    }
+
+    let html = '<option value="">— New blank sheet —</option>';
+    if (mru.length) {
+      html +=
+        '<optgroup label="Most recently used">' + mru.map(optionHtml).join("") + "</optgroup>";
+    }
+    if (rest.length) {
+      html += '<optgroup label="All worksheets">' + rest.map(optionHtml).join("") + "</optgroup>";
+    }
+    selectEl.innerHTML = html;
   }
 
   function populatePublishWorksheetSelect(selectEl, keepId) {
@@ -403,6 +475,7 @@
       catalogStudentProfiles = data.studentProfiles || {};
       catalogStudents = data.students || [];
       populateAllStudentSelects();
+      seedWorksheetMruFromCatalog();
     } catch {
       /* use FALLBACK_ASSIGNMENTS */
     }
@@ -502,6 +575,7 @@
     }
 
     function afterWorksheetSavedLocally(assignmentId) {
+      touchWorksheetMru(assignmentId);
       editingAssignmentId = assignmentId;
       if (makerEditSelect) makerEditSelect.value = assignmentId;
       updateMakerEditUI();
@@ -763,6 +837,7 @@
       if (makerEditSelect && editingAssignmentId) {
         makerEditSelect.value = editingAssignmentId;
       }
+      if (editingAssignmentId) touchWorksheetMru(editingAssignmentId);
       updateMakerEditUI();
       setMakerStatus(
         "Loaded “" + editingAssignmentId + "” — edit below, then update saved worksheet."
@@ -973,6 +1048,7 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Delete failed.");
 
+        removeWorksheetMru(id);
         clearEditMode();
         renderSheet("blank");
         setMakerStatus(data.message || "Deleted “" + id + "”.");
@@ -1142,11 +1218,13 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Publish failed.");
 
+        touchWorksheetMru(worksheetId);
         setStatus(
           (data.message || "Sent to " + student + "!") +
             " This is now their current homework on the hub."
         );
         showToast("Current homework set for " + student);
+        populateWorksheetSelect(makerEditSelect, worksheetId);
         updatePublishHint();
         updateMakerDockHint();
         if (options.onPublished) await options.onPublished(worksheetId, student);
@@ -1310,6 +1388,8 @@
       }
       worksheetBuilder.loadAssignment(assignment);
     }
+
+    if (editingAssignmentId) touchWorksheetMru(editingAssignmentId);
 
     const editSelect = document.getElementById("hw-teacher-maker-edit-select");
     const updateBtn = document.getElementById("hw-teacher-maker-update-btn");

@@ -556,7 +556,7 @@
       '<option value="">— Choose template —</option>' +
       "</select></label>" +
       '<label class="hw-builder__toolbar-field hw-builder__toolbar-field--sm hw-builder__toolbar-field--end">' +
-      '<span class="hw-builder__toolbar-label">Load worksheet</span>' +
+      '<span class="hw-builder__toolbar-label">Most recently used</span>' +
       '<select class="hw-builder__toolbar-select hw-builder__toolbar-select--sm" id="hw-teacher-maker-edit-select" aria-label="Choose worksheet to edit">' +
       '<option value="">— New blank sheet —</option>' +
       "</select></label></div>";
