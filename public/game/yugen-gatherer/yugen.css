@@ -1,0 +1,281 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0e14;
+  font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
+  color: #e8edf5;
+}
+
+#yg-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#yg-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#yg-vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.55) 100%);
+  z-index: 2;
+}
+
+.yg-blur-dream {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(12px);
+  z-index: 3;
+  opacity: 1;
+  transition: opacity 2.4s ease;
+}
+
+.yg-blur-dream.is-clear {
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.yg-subtitle {
+  position: fixed;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  max-width: min(90vw, 32rem);
+  text-align: center;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: rgba(232, 237, 245, 0.92);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.8);
+  z-index: 8;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+.yg-subtitle.is-visible {
+  opacity: 1;
+}
+
+.yg-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(12, 18, 28, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  font-size: 0.875rem;
+  z-index: 6;
+}
+
+.yg-prompt kbd {
+  display: inline-block;
+  min-width: 1.5rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.yg-dialogue,
+.yg-note {
+  position: fixed;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  width: min(92vw, 26rem);
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.85rem;
+  background: rgba(14, 20, 32, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.yg-dialogue__speaker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8fdcf5;
+}
+
+.yg-dialogue__line {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.yg-dialogue__choices {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.yg-note__jp {
+  margin: 0;
+  font-family: "Noto Sans JP", serif;
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+
+.yg-note__hint {
+  margin: 0.65rem 0 1rem;
+  font-size: 0.8125rem;
+  color: rgba(232, 237, 245, 0.72);
+  text-align: center;
+}
+
+.yg-btn {
+  appearance: none;
+  border: none;
+  border-radius: 0.55rem;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, #3d6a8a, #2a4f68);
+  color: #fff;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.yg-btn:hover {
+  filter: brightness(1.08);
+}
+
+.yg-btn:active {
+  transform: scale(0.98);
+}
+
+.yg-btn--accept {
+  background: linear-gradient(180deg, #3a7d62, #2a5c48);
+}
+
+.yg-btn--decline {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(232, 237, 245, 0.85);
+}
+
+.yg-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#yg-minimap {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(8, 12, 20, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+#yg-minimap.is-visible {
+  opacity: 1;
+}
+
+.yg-hud {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 5;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(232, 237, 245, 0.82);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.yg-hud__title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(143, 220, 245, 0.9);
+}
+
+.yg-hud__phase,
+.yg-hud__bag {
+  margin: 0.15rem 0 0;
+}
+
+.yg-controls-hint {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  font-size: 0.6875rem;
+  color: rgba(232, 237, 245, 0.45);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.yg-back {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(8, 12, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(232, 237, 245, 0.75);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+}
+
+.yg-back:hover {
+  color: #fff;
+}
+
+.yg-fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s ease;
+}
+
+.yg-fade.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}

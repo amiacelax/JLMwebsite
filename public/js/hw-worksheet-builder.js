@@ -10,6 +10,8 @@
   ];
 
   const TEMPLATE_ORDER = ["blank", "grammar", "application", "listening"];
+  const CUSTOM_TEMPLATES_KEY = "jlm-hw-worksheet-templates-v1";
+  const CUSTOM_TEMPLATE_PREFIX = "custom:";
 
   const TEMPLATES = {
     blank: { label: "Blank canvas", templateType: "custom", sections: [] },
@@ -263,6 +265,29 @@
 
   function cloneBlocks(blocks) {
     return JSON.parse(JSON.stringify(blocks || []));
+  }
+
+  function slugifyTemplateLabel(text) {
+    return String(text || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40);
+  }
+
+  function loadCustomTemplates() {
+    try {
+      const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeCustomTemplates(list) {
+    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(list || []));
   }
 
   function duplicateBlockData(block) {
@@ -582,6 +607,36 @@
     });
     videosWrap.appendChild(videosInput);
     topicFields.appendChild(videosWrap);
+
+    const collapseAllRow = document.createElement("div");
+    collapseAllRow.className = "hw-builder__collapse-all-row";
+    const collapseAllBtn = document.createElement("button");
+    collapseAllBtn.type = "button";
+    collapseAllBtn.className = "hw-builder__collapse-all-btn";
+    collapseAllBtn.textContent = "Collapse all";
+    collapseAllBtn.hidden = true;
+    collapseAllBtn.addEventListener("click", () => {
+      if (!state.blocks.length) return;
+      const expand = state.blocks.every((b) => b.collapsed);
+      state.blocks.forEach((b) => {
+        b.collapsed = !expand;
+      });
+      renderCanvas();
+      notifyChange();
+    });
+    collapseAllRow.appendChild(collapseAllBtn);
+    topicFields.appendChild(collapseAllRow);
+
+    function updateCollapseAllBtn() {
+      if (!state.blocks.length) {
+        collapseAllBtn.hidden = true;
+        return;
+      }
+      collapseAllBtn.hidden = false;
+      const allCollapsed = state.blocks.every((b) => b.collapsed);
+      collapseAllBtn.textContent = allCollapsed ? "Expand all" : "Collapse all";
+    }
+
     metaStack.append(titleField, topicFields);
 
     const canvas = document.createElement("div");
@@ -609,18 +664,50 @@
     root.appendChild(ctxMenu);
 
     const templateSelect = toolbar.querySelector("[data-builder-template]");
-    TEMPLATE_ORDER.forEach((key) => {
-      const t = TEMPLATES[key];
-      if (!t) return;
-      const opt = document.createElement("option");
-      opt.value = key;
-      opt.textContent = t.label;
-      templateSelect.appendChild(opt);
-    });
+    function refreshTemplateSelectOptions() {
+      if (!templateSelect) return;
+      const keep = templateSelect.value;
+      templateSelect.innerHTML = '<option value="">— Choose template —</option>';
+
+      const builtInGroup = document.createElement("optgroup");
+      builtInGroup.label = "Built-in";
+      TEMPLATE_ORDER.forEach((key) => {
+        const t = TEMPLATES[key];
+        if (!t) return;
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = t.label;
+        builtInGroup.appendChild(opt);
+      });
+      templateSelect.appendChild(builtInGroup);
+
+      const custom = loadCustomTemplates();
+      if (custom.length) {
+        const customGroup = document.createElement("optgroup");
+        customGroup.label = "My templates";
+        custom.forEach((entry) => {
+          const opt = document.createElement("option");
+          opt.value = CUSTOM_TEMPLATE_PREFIX + entry.id;
+          opt.textContent = entry.label || entry.id;
+          customGroup.appendChild(opt);
+        });
+        templateSelect.appendChild(customGroup);
+      }
+
+      if (keep && templateSelect.querySelector('option[value="' + keep + '"]')) {
+        templateSelect.value = keep;
+      }
+    }
+
+    refreshTemplateSelectOptions();
     templateSelect?.addEventListener("change", () => {
       const key = templateSelect.value;
       if (!key) return;
-      applyTemplate(key);
+      if (key.startsWith(CUSTOM_TEMPLATE_PREFIX)) {
+        applyCustomTemplateById(key.slice(CUSTOM_TEMPLATE_PREFIX.length));
+      } else {
+        applyTemplate(key);
+      }
       templateSelect.value = "";
     });
 
@@ -809,6 +896,31 @@
       });
     }
 
+    function blockSummary(block) {
+      function clip(text, max) {
+        const t = String(text || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!t) return "";
+        return t.length > max ? t.slice(0, max) + "…" : t;
+      }
+
+      if (block.type === "video-prompt") {
+        return clip(block.prompt) || "Video prompt";
+      }
+      if (block.type === "listen-line") {
+        const jp = (block.parts || []).find((p) => p.type === "blank")?.answer;
+        return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
+      }
+      if (block.type === "open-line") {
+        return clip(block.topic) || "Open response";
+      }
+      if (block.type === "grammar-line") {
+        return clip(grammarSentenceFromBlock(block)) || "Blank sentence";
+      }
+      return "Block";
+    }
+
     function renderBlockEl(block, index) {
       if (block.type === "audio-clip") {
         block.type = "listen-line";
@@ -880,8 +992,34 @@
       removeBtn.className = "hw-builder__remove-btn";
       removeBtn.textContent = "Remove";
       removeBtn.addEventListener("click", () => removeBlock(index));
+
+      const summaryEl = document.createElement("span");
+      summaryEl.className = "hw-builder__block-summary";
+      summaryEl.textContent = blockSummary(block);
+      summaryEl.hidden = !block.collapsed;
+      head.appendChild(summaryEl);
+
+      const collapseBtn = document.createElement("button");
+      collapseBtn.type = "button";
+      collapseBtn.className = "hw-builder__collapse-btn";
+      collapseBtn.textContent = block.collapsed ? "Expand" : "Collapse";
+      collapseBtn.setAttribute("aria-expanded", block.collapsed ? "false" : "true");
+      collapseBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        block.collapsed = !block.collapsed;
+        renderCanvas();
+        notifyChange();
+      });
+      head.appendChild(collapseBtn);
       head.appendChild(removeBtn);
       el.appendChild(head);
+
+      if (block.collapsed) el.classList.add("hw-builder__block--collapsed");
+
+      const body = document.createElement("div");
+      body.className = "hw-builder__block-body";
+      body.hidden = Boolean(block.collapsed);
+      el.appendChild(body);
 
       bindBlockDropTarget(el, index);
 
@@ -893,9 +1031,10 @@
         prompt.value = block.prompt || "";
         prompt.addEventListener("input", () => {
           block.prompt = prompt.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         });
-        el.appendChild(prompt);
+        body.appendChild(prompt);
         return el;
       }
 
@@ -1009,7 +1148,7 @@
         englishLabel.appendChild(englishInput);
         partsWrap.appendChild(englishLabel);
 
-        el.appendChild(partsWrap);
+        body.appendChild(partsWrap);
         return el;
       }
 
@@ -1024,10 +1163,12 @@
         topicInput.value = block.topic || "";
         topicInput.addEventListener("input", () => {
           block.topic = topicInput.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         });
         topicLabel.appendChild(topicInput);
-        el.appendChild(topicLabel);
+        body.appendChild(topicLabel);
+        return el;
       }
 
       if (block.type === "grammar-line") {
@@ -1053,6 +1194,7 @@
         sentenceInput.value = grammarSentenceFromBlock(block);
         sentenceInput.addEventListener("input", () => {
           syncGrammarPartsFromSentence(block, sentenceInput.value);
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         });
         sentenceLabel.appendChild(sentenceInput);
@@ -1155,7 +1297,7 @@
         registerRow.appendChild(registerSwitch);
         partsWrap.appendChild(registerRow);
 
-        el.appendChild(partsWrap);
+        body.appendChild(partsWrap);
         return el;
       }
 
@@ -1188,7 +1330,7 @@
         }
       });
 
-      el.appendChild(partsWrap);
+      body.appendChild(partsWrap);
       return el;
     }
 
@@ -1225,6 +1367,7 @@
       bindDropZone(dropZone);
 
       canvas.append(list, dropZone);
+      updateCollapseAllBtn();
     }
 
     function syncTopicFieldsFromState() {
@@ -1254,6 +1397,62 @@
       notifyPreviewChange();
       renderCanvas();
       notifyChange();
+    }
+
+    function applyCustomTemplate(entry) {
+      if (!entry) return;
+      canvasAssignmentId = null;
+      state = {
+        templateType: entry.templateType || "custom",
+        blocks: normalizeBlocks(cloneBlocks(entry.blocks || [])),
+        topicExplanation: entry.topicExplanation || "",
+        topicVideoText: entry.topicVideoText || "",
+      };
+      previewOpen = false;
+      previewMount.hidden = true;
+      canvas.hidden = false;
+      setTopicFieldsHidden(false);
+      syncTopicFieldsFromState();
+      notifyPreviewChange();
+      renderCanvas();
+      notifyChange();
+    }
+
+    function applyCustomTemplateById(id) {
+      const entry = loadCustomTemplates().find((t) => t.id === id);
+      applyCustomTemplate(entry);
+    }
+
+    function exportTemplateSnapshot() {
+      return {
+        templateType: state.templateType || "custom",
+        blocks: cloneBlocks(state.blocks),
+        topicExplanation: state.topicExplanation || "",
+        topicVideoText: state.topicVideoText || "",
+      };
+    }
+
+    function saveCustomTemplate(label) {
+      const name = String(label || "").trim();
+      if (!name) return null;
+      if (!state.blocks.length) return null;
+
+      const templates = loadCustomTemplates();
+      const id =
+        "tpl-" +
+        (slugifyTemplateLabel(name) || "template") +
+        "-" +
+        Date.now().toString(36);
+      const entry = {
+        id,
+        label: name,
+        createdAt: new Date().toISOString(),
+        ...exportTemplateSnapshot(),
+      };
+      templates.unshift(entry);
+      writeCustomTemplates(templates);
+      refreshTemplateSelectOptions();
+      return entry;
     }
 
     function toAssignment(meta) {
@@ -1323,9 +1522,14 @@
       toAssignment,
       loadAssignment,
       applyTemplate,
+      applyCustomTemplate,
       showPreview,
       hidePreview,
       getState: () => state,
+      getBlockCount: () => state.blocks.length,
+      exportTemplateSnapshot,
+      saveCustomTemplate,
+      refreshCustomTemplates: refreshTemplateSelectOptions,
       getCanvasAssignmentId: () => canvasAssignmentId,
       isPreviewOpen: () => previewOpen,
     };
@@ -1335,6 +1539,7 @@
     mount,
     TEMPLATES,
     TEMPLATE_ORDER,
+    loadCustomTemplates,
     grammarItem,
     openItem,
     videoItem,

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Yūgen Gatherer — a peaceful 3D gathering adventure in the Japanese countryside">
+  <title>幽玄の採集者 — Yūgen Gatherer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/game/yugen-gatherer/yugen.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="yg-root">
+    <canvas id="yg-canvas"></canvas>
+
+    <div id="yg-vignette" aria-hidden="true"></div>
+    <div id="yg-blur-dream" class="yg-blur-dream" aria-hidden="true"></div>
+
+    <div id="yg-subtitle" class="yg-subtitle" hidden></div>
+
+    <div id="yg-prompt" class="yg-prompt" hidden>
+      <span id="yg-prompt-text"></span>
+      <kbd>E</kbd>
+    </div>
+
+    <div id="yg-dialogue" class="yg-dialogue" hidden role="dialog" aria-modal="true">
+      <p class="yg-dialogue__speaker" id="yg-dialogue-speaker"></p>
+      <p class="yg-dialogue__line" id="yg-dialogue-line"></p>
+      <div class="yg-dialogue__choices" id="yg-dialogue-choices" hidden>
+        <button type="button" class="yg-btn yg-btn--accept" id="yg-choice-yes">ありがとう</button>
+        <button type="button" class="yg-btn yg-btn--decline" id="yg-choice-no">いらない</button>
+      </div>
+      <button type="button" class="yg-btn yg-btn--ghost" id="yg-dialogue-close" hidden>…</button>
+    </div>
+
+    <div id="yg-note" class="yg-note" hidden role="dialog" aria-modal="true">
+      <p class="yg-note__jp">さがせ</p>
+      <p class="yg-note__hint">Your bag is gone. Someone left this on the table.</p>
+      <button type="button" class="yg-btn" id="yg-note-close">Close</button>
+    </div>
+
+    <canvas id="yg-minimap" width="168" height="168" aria-label="Minimap"></canvas>
+
+    <div id="yg-hud" class="yg-hud" hidden>
+      <p class="yg-hud__title">幽玄の採集者</p>
+      <p class="yg-hud__phase" id="yg-hud-phase"></p>
+      <p class="yg-hud__bag" id="yg-hud-bag">Bag: empty</p>
+    </div>
+
+    <div id="yg-controls-hint" class="yg-controls-hint">
+      <span>WASD move · Space jump · Shift sprint</span>
+      <span>Right-click look · Scroll zoom</span>
+    </div>
+
+    <a class="yg-back" href="/games.html">← Games</a>
+  </div>
+
+  <script type="module" src="/game/yugen-gatherer/js/main.js"></script>
+</body>
+</html>

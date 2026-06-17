@@ -4788,7 +4788,8 @@ button.course-card__status:disabled {
 }
 
 .hw-builder__dock-preview,
-.hw-builder__dock-send {
+.hw-builder__dock-send,
+.hw-builder__dock-template {
   width: 100%;
 }
 
@@ -5047,6 +5048,31 @@ button.course-card__status:disabled {
   min-height: 2.35rem;
 }
 
+.hw-builder__collapse-all-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.15rem;
+}
+
+.hw-builder__collapse-all-btn {
+  padding: 0.2rem 0.45rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.hw-builder__collapse-all-btn:hover {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent, #c45c3e) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent, #c45c3e) 6%, var(--color-bg));
+}
+
 .hw-builder__canvas {
   display: flex;
   flex-direction: column;
@@ -5163,6 +5189,44 @@ button.course-card__status:disabled {
   margin-bottom: 0.45rem;
 }
 
+.hw-builder__block--collapsed .hw-builder__block-head {
+  margin-bottom: 0;
+}
+
+.hw-builder__block--collapsed {
+  padding-bottom: 0.4rem;
+}
+
+.hw-builder__block-summary {
+  flex: 1;
+  min-width: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.72rem;
+  font-style: italic;
+  font-weight: 500;
+  color: color-mix(in srgb, #fff 78%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hw-builder__collapse-btn {
+  margin-left: auto;
+  padding: 0.15rem 0.4rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: color-mix(in srgb, #fff 88%, transparent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.hw-builder__block-head .hw-builder__remove-btn {
+  margin-left: 0;
+}
+
 .hw-builder__block-type {
   font-family: Inter, sans-serif;
   font-size: 0.7rem;
@@ -5201,7 +5265,6 @@ button.course-card__status:disabled {
 }
 
 .hw-builder__remove-btn {
-  margin-left: auto;
   padding: 0.15rem 0.4rem;
   font-family: Inter, sans-serif;
   font-size: 0.7rem;

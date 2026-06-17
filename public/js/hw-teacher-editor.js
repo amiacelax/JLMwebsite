@@ -34,9 +34,22 @@
       .replace(/^-+|-+$/g, "");
   }
 
+  /** Stable id suffix when title has no Latin slug (e.g. Japanese-only). */
+  function hashTitleId(text) {
+    const title = String(text || "").trim();
+    if (!title) return "homework";
+    let h = 2166136261;
+    for (let i = 0; i < title.length; i++) {
+      h ^= title.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return "u" + (h >>> 0).toString(36);
+  }
+
   function makeWorksheetId(grammarPoint) {
-    const grammar = slugify(grammarPoint) || "homework";
-    return "sheet-" + grammar;
+    const grammar = slugify(grammarPoint);
+    if (grammar) return "sheet-" + grammar;
+    return "sheet-" + hashTitleId(grammarPoint);
   }
 
   function grammarItem(n) {
@@ -299,6 +312,7 @@
     const makerStatusEl = document.getElementById("hw-teacher-maker-status");
     let makerEditSelect = null;
     let makerUpdateBtn = null;
+    let makerSaveTemplateBtn = null;
     let makerDeleteBtn = null;
     let makerEditingNote = null;
     let makerSendStudent = null;
@@ -415,6 +429,11 @@
         : "Will send “" + id + "” to " + student + ".";
     }
 
+    function updateMakerTemplateButton() {
+      const hasBlocks = (worksheetBuilder?.getBlockCount?.() || 0) > 0;
+      if (makerSaveTemplateBtn) makerSaveTemplateBtn.hidden = !hasBlocks;
+    }
+
     function updateMakerEditUI() {
       const isEdit = Boolean(editingAssignmentId);
       if (makerUpdateBtn) {
@@ -427,6 +446,7 @@
           ? "Editing “" + editingAssignmentId + "”"
           : "New sheet — save or send when ready.";
       }
+      updateMakerTemplateButton();
       updateMakerDockHint();
     }
 
@@ -451,6 +471,7 @@
         '<p class="hw-builder__dock-note" id="hw-teacher-maker-editing-note">New sheet — save or send when ready.</p>' +
         '<div class="hw-builder__dock-actions">' +
         '<button type="button" class="btn hw-btn--save" id="hw-teacher-maker-update-btn">Save as new</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm hw-builder__dock-template" id="hw-teacher-maker-save-template-btn" hidden>Save as new template</button>' +
         '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-teacher-maker-delete-btn" hidden>Delete worksheet</button>' +
         "</div></div>" +
         '<div class="hw-builder__dock-section hw-builder__dock-section--send">' +
@@ -466,6 +487,7 @@
         "</div>";
 
       makerUpdateBtn = document.getElementById("hw-teacher-maker-update-btn");
+      makerSaveTemplateBtn = document.getElementById("hw-teacher-maker-save-template-btn");
       makerDeleteBtn = document.getElementById("hw-teacher-maker-delete-btn");
       makerEditingNote = document.getElementById("hw-teacher-maker-editing-note");
       makerSendStudent = document.getElementById("hw-teacher-maker-send-student");
@@ -483,6 +505,11 @@
       makerUpdateBtn?.addEventListener("click", async (e) => {
         e.preventDefault();
         await saveWorksheetToLibrary();
+      });
+
+      makerSaveTemplateBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        saveWorksheetAsTemplate();
       });
 
       makerDeleteBtn?.addEventListener("click", (e) => {
@@ -590,6 +617,7 @@
           if (worksheetBuilder?.isPreviewOpen?.()) {
             worksheetBuilder.showPreview(readMakerMeta(makerForm).grammarPoint || "Homework");
           }
+          updateMakerTemplateButton();
           updatePublishHint();
           updateMakerDockHint();
         },
@@ -705,9 +733,9 @@
       const assignmentId = editingAssignmentId || makeWorksheetId(meta.grammarPoint);
       if (isNew && getCatalogEntry(assignmentId)) {
         setMakerStatus(
-          "A sheet titled like this already exists (“" +
+          "A sheet with this title already exists (“" +
             assignmentId +
-            "”) — change the title or load the existing sheet.",
+            "”) — load it from Load worksheet, or change the title.",
           true
         );
         return;
@@ -765,6 +793,41 @@
         showToast(isNew ? "Save failed" : "Update failed");
       } finally {
         if (makerUpdateBtn) makerUpdateBtn.disabled = false;
+      }
+    }
+
+    function saveWorksheetAsTemplate() {
+      const builder = ensureBuilder();
+      if (!builder?.saveCustomTemplate) {
+        setMakerStatus("Worksheet builder not ready.", true);
+        return;
+      }
+      if (!builder.getBlockCount?.()) {
+        setMakerStatus("Add at least one block before saving a template.", true);
+        return;
+      }
+
+      const meta = readMakerMeta(makerForm);
+      const defaultName = meta.grammarPoint || "Untitled template";
+      const name = window.prompt("Template name", defaultName);
+      if (name === null) return;
+      const label = String(name).trim();
+      if (!label) {
+        setMakerStatus("Template name is required.", true);
+        return;
+      }
+
+      if (makerSaveTemplateBtn) makerSaveTemplateBtn.disabled = true;
+      try {
+        const entry = builder.saveCustomTemplate(label);
+        if (!entry) {
+          setMakerStatus("Could not save template.", true);
+          return;
+        }
+        setMakerStatus('Template saved — choose "' + entry.label + '" under Start from a template.');
+        showToast("Template saved");
+      } finally {
+        if (makerSaveTemplateBtn) makerSaveTemplateBtn.disabled = false;
       }
     }
 
@@ -1169,6 +1232,10 @@
       updateBtn.textContent = editingAssignmentId ? "Update saved" : "Save as new";
     }
     if (deleteBtn) deleteBtn.hidden = !editingAssignmentId;
+    const saveTemplateBtn = document.getElementById("hw-teacher-maker-save-template-btn");
+    if (saveTemplateBtn) {
+      saveTemplateBtn.hidden = !(worksheetBuilder?.getBlockCount?.() > 0);
+    }
     if (editingNote) {
       editingNote.textContent = editingAssignmentId
         ? "Editing “" + editingAssignmentId + "”"

@@ -522,6 +522,48 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
   try {
     const data = (await request.json()) as SignupInput;
     const result = await createUserAccount(data, env);
+
+    const webhookUrl = getWebhook(env);
+    if (webhookUrl) {
+      const channelError = await getWebhookChannelMismatch(
+        webhookUrl,
+        env.DISCORD_CHANNEL_ID,
+        "#website-inquiries"
+      );
+      if (channelError) {
+        console.error("auth signup discord:", channelError);
+      } else {
+        const discordResult = await notifyDiscord(webhookUrl, {
+          title: "Website inquiries — new homework account",
+          color: 0x57a773,
+          fields: [
+            { name: "Username", value: result.session.username, inline: true },
+            { name: "Email", value: result.session.email, inline: true },
+            {
+              name: "Display name",
+              value: result.session.displayName,
+              inline: true,
+            },
+            { name: "Tier", value: result.session.tier, inline: true },
+            {
+              name: "Type",
+              value: "Homework Hub account signup",
+              inline: true,
+            },
+          ],
+        });
+        if (!discordResult.ok) {
+          console.error(
+            "auth signup discord post failed:",
+            discordResult.status,
+            discordResult.detail
+          );
+        }
+      }
+    } else {
+      console.error("auth signup: DISCORD_WEBHOOK_URL not configured");
+    }
+
     return jsonResponse({
       success: true,
       message: "Account created.",
