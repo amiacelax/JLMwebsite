@@ -967,10 +967,7 @@
       el.className =
         "hw-builder__block hw-builder__block--" +
         block.type +
-        (block.negative ? " hw-builder__block--negative" : "") +
-        (global.HwWorksheet?.tenseShouldShowPill?.(blockTense(block))
-          ? " hw-builder__block--tense"
-          : "");
+        (block.negative ? " hw-builder__block--negative" : "");
       el.dataset.blockIndex = String(index);
 
       el.addEventListener("contextmenu", (e) => openBlockContextMenu(e, index));
@@ -1016,12 +1013,14 @@
         head.appendChild(badge);
       }
 
-      const tense = blockTense(block);
-      if (global.HwWorksheet?.tenseShouldShowPill?.(tense)) {
-        const badge = document.createElement("span");
-        badge.className = "hw-tense-badge";
-        badge.textContent = global.HwWorksheet.tensePillText(tense);
-        head.appendChild(badge);
+      if (block.type === "grammar-line") {
+        const tense = blockTense(block);
+        if (global.HwWorksheet?.tenseShouldShowPill?.(tense)) {
+          const badge = document.createElement("span");
+          badge.className = "hw-tense-badge";
+          badge.textContent = global.HwWorksheet.tensePillText(tense);
+          head.appendChild(badge);
+        }
       }
 
       const removeBtn = document.createElement("button");
