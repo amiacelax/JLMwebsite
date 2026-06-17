@@ -5417,12 +5417,6 @@ button.course-card__status:disabled {
   background: #a78bfa;
 }
 
-.hw-builder__block--past,
-.hw-builder__block--tense {
-  border-color: #b8860b;
-  background: color-mix(in srgb, #d4a017 94%, #1a1408);
-}
-
 .hw-builder__tense-select {
   min-width: 7.5rem;
   cursor: pointer;
