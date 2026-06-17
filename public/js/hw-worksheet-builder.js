@@ -1559,9 +1559,16 @@
       notifyChange();
     }
 
-    function showPreview(title) {
+    async function showPreview(title) {
       if (!global.HwWorksheet?.render) return;
       const assignment = toAssignment({ title });
+      if (global.HwFuriganaAuto?.annotateAssignment) {
+        try {
+          await global.HwFuriganaAuto.annotateAssignment(assignment);
+        } catch {
+          /* preview without readings */
+        }
+      }
       previewMount.innerHTML = "";
       global.HwWorksheet.render(previewMount, assignment, { preview: true });
       previewOpen = true;

@@ -159,8 +159,24 @@
     return assignment;
   }
 
+  function assignmentNeedsAnnotation(assignment) {
+    for (const section of assignment?.sections || []) {
+      if (section.mode !== "grammar-blank") continue;
+      for (const item of section.items || []) {
+        for (const part of item.parts || []) {
+          if (part.type !== "text" || part.ruby?.length) continue;
+          const value = String(part.value || "").trim();
+          if (!value) continue;
+          if (hasManualReadings(value) || KANJI_RE.test(value)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   global.HwFuriganaAuto = {
     annotateAssignment,
+    assignmentNeedsAnnotation,
     textToRubySegments,
     hasManualReadings,
   };

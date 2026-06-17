@@ -1771,6 +1771,17 @@
         "One question at a time — fill in each blank, then submit when you're done.";
     }
 
+    if (
+      global.HwFuriganaAuto?.annotateAssignment &&
+      global.HwFuriganaAuto.assignmentNeedsAnnotation?.(assignment)
+    ) {
+      try {
+        await global.HwFuriganaAuto.annotateAssignment(assignment);
+      } catch (err) {
+        console.warn("Hover readings skipped:", err);
+      }
+    }
+
     const form = HwWorksheet.render(mount, assignment, {
       studentMeta: {
         username: session.username || "",

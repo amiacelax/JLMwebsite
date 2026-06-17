@@ -8296,7 +8296,7 @@ button.hw-tense-pill {
   content: attr(data-reading);
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 0.3rem);
+  top: calc(100% + 0.3rem);
   transform: translateX(-50%);
   padding: 0.22rem 0.5rem;
   border-radius: 0.35rem;
@@ -8312,7 +8312,7 @@ button.hw-tense-pill {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.12s ease, visibility 0.12s ease;
-  z-index: 4;
+  z-index: 20;
 }
 
 .hw-worksheet__content .ja-reading:hover::after,
@@ -8349,19 +8349,7 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer .ja-reading::after {
   row-gap: 0.35rem;
   align-items: start;
   margin: 0 0 1.15rem;
-}
-
-.hw-worksheet__line-num {
-  grid-column: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 0.12rem;
-}
-
-.hw-worksheet__line > .hw-worksheet__content {
-  grid-column: 2;
-  min-width: 0;
+  overflow: visible;
 }
 
 .hw-worksheet__line:not(:has(.hw-worksheet__line-num)) > .hw-worksheet__content {

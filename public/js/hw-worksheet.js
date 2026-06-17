@@ -335,7 +335,7 @@
       const span = document.createElement("span");
       span.className = "ja-reading";
       span.textContent = text;
-      span.dataset.reading = reading;
+      span.setAttribute("data-reading", reading);
       span.setAttribute("title", reading);
       span.setAttribute("aria-label", text + " — " + reading);
       return span;
