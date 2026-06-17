@@ -298,7 +298,25 @@
     return segments;
   }
 
-  function renderBracketRubyText(text) {
+  function rubySegmentsToBracketString(segments) {
+    return (segments || [])
+      .map((seg) => {
+        const text = seg.text || "";
+        const rt = String(seg.rt || "").trim();
+        if (rt && normalizeAnswer(rt) !== normalizeAnswer(text)) {
+          return text + "[" + rt + "]";
+        }
+        return text;
+      })
+      .join("");
+  }
+
+  function textPartToEditorString(part) {
+    if (!part || part.type !== "text") return "";
+    if (part.ruby?.length) return rubySegmentsToBracketString(part.ruby);
+    return part.value || "";
+  }
+
     const frag = document.createDocumentFragment();
     parseBracketRubyNotation(text).forEach((seg) => {
       if (seg.rt) frag.appendChild(renderRubySegment(seg));
@@ -309,20 +327,19 @@
 
   function renderRubySegment(seg) {
     const text = seg.text || "";
-    const hasKanji = /[\u4e00-\u9fff々]/.test(text);
-    const rtDiffers =
-      seg.rt &&
-      normalizeAnswer(seg.rt) !== normalizeAnswer(text) &&
-      !/^[\u3041-\u309fー]+$/.test(text);
-    if (seg.rt && hasKanji && rtDiffers) {
-      const ruby = document.createElement("ruby");
-      ruby.className = "ja-ruby";
-      ruby.appendChild(document.createTextNode(text));
-      const rt = document.createElement("rt");
-      rt.textContent = seg.rt;
-      ruby.appendChild(rt);
-      return ruby;
+    const reading = String(seg.rt || "").trim();
+    const showReading =
+      reading && normalizeAnswer(reading) !== normalizeAnswer(text);
+    if (showReading) {
+      const span = document.createElement("span");
+      span.className = "ja-reading";
+      span.textContent = text;
+      span.dataset.reading = reading;
+      span.setAttribute("title", reading);
+      span.setAttribute("aria-label", text + " — " + reading);
+      return span;
     }
+    if (!text) return document.createTextNode("");
     const plain = document.createElement("span");
     plain.className = "ja-okuri";
     plain.textContent = text;
@@ -1675,7 +1692,9 @@
     const clone = content.cloneNode(true);
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
     clone.querySelectorAll(".hw-negative-badge, .hw-question-badge").forEach((el) => el.remove());
-    clone.querySelectorAll("rt").forEach((el) => el.remove());
+    clone.querySelectorAll(".ja-reading").forEach((el) => {
+      el.replaceWith(document.createTextNode(el.textContent || ""));
+    });
     const blank = clone.querySelector(".hw-blank");
     if (blank) blank.replaceWith(document.createTextNode((answerText || "").trim() || "___"));
     return clone.textContent.replace(/\s+/g, " ").trim();
@@ -1780,7 +1799,9 @@
       el.replaceWith(document.createTextNode("___"));
     });
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
-    clone.querySelectorAll("rt").forEach((el) => el.remove());
+    clone.querySelectorAll(".ja-reading").forEach((el) => {
+      el.replaceWith(document.createTextNode(el.textContent || ""));
+    });
     return clone.textContent.replace(/\s+/g, " ").trim();
   }
 
@@ -1846,6 +1867,8 @@
     parseImmersionKitMediaPaste,
     hasBracketRubyNotation,
     parseBracketRubyNotation,
+    rubySegmentsToBracketString,
+    textPartToEditorString,
     renderBracketRubyText,
   };
 })(window);

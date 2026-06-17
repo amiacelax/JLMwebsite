@@ -168,12 +168,20 @@
     const before = parts
       .slice(0, blankIdx)
       .filter((p) => p.type === "text")
-      .map((p) => p.value || "")
+      .map((p) =>
+        global.HwWorksheet?.textPartToEditorString
+          ? global.HwWorksheet.textPartToEditorString(p)
+          : p.value || ""
+      )
       .join("");
     const after = parts
       .slice(blankIdx + 1)
       .filter((p) => p.type === "text")
-      .map((p) => p.value || "")
+      .map((p) =>
+        global.HwWorksheet?.textPartToEditorString
+          ? global.HwWorksheet.textPartToEditorString(p)
+          : p.value || ""
+      )
       .join("");
     return { before, after };
   }
@@ -479,8 +487,12 @@
     if (block.register === "polite") out.register = "polite";
     (block.parts || []).forEach((part) => {
       if (part.type === "text") {
-        const value = String(part.value || "").trim();
-        if (value) out.parts.push({ type: "text", value });
+        if (part.ruby?.length) {
+          out.parts.push({ type: "text", ruby: JSON.parse(JSON.stringify(part.ruby)) });
+        } else {
+          const value = String(part.value || "").trim();
+          if (value) out.parts.push({ type: "text", value });
+        }
       } else if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true };
         const answer = String(part.answer || "").trim();
@@ -1253,7 +1265,8 @@
 
         const sentenceHint = document.createElement("p");
         sentenceHint.className = "hw-builder__inline-hint";
-        sentenceHint.textContent = "Put {answer} where the blank goes. Use {} if you do not need an answer key.";
+        sentenceHint.textContent =
+          "Put {answer} where the blank goes. Hover readings are added when you save or send. Override anytime: 食べました[たべました].";
         partsWrap.appendChild(sentenceHint);
 
         const hintRow = document.createElement("div");

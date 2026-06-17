@@ -320,6 +320,16 @@
     }
   }
 
+  async function applyAutoReadings(assignment) {
+    if (!assignment || !global.HwFuriganaAuto?.annotateAssignment) return assignment;
+    try {
+      return await global.HwFuriganaAuto.annotateAssignment(assignment);
+    } catch (err) {
+      console.warn("Auto readings skipped:", err);
+      return assignment;
+    }
+  }
+
   function getCatalogEntry(id) {
     return catalogAssignments.find((e) => e.id === id) || null;
   }
@@ -927,6 +937,9 @@
       assignment.title = meta.grammarPoint;
       assignment.status = "draft";
 
+      setMakerStatus("Adding hover readings…");
+      await applyAutoReadings(assignment);
+
       if (!validateWorksheet(assignment)) {
         setMakerStatus(
           "Add at least one block with content — blank sentence, video prompt, or listening line.",
@@ -1116,6 +1129,7 @@
           title: meta.grammarPoint || entry.title || worksheetId,
         });
         assignment.id = worksheetId;
+        await applyAutoReadings(assignment);
         return { assignment, usedLiveBuilder: true, entry };
       }
 
