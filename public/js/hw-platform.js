@@ -1771,18 +1771,7 @@
         "One question at a time — fill in each blank, then submit when you're done.";
     }
 
-    if (
-      global.HwFuriganaAuto?.annotateAssignment &&
-      global.HwFuriganaAuto.assignmentNeedsAnnotation?.(assignment)
-    ) {
-      try {
-        await global.HwFuriganaAuto.annotateAssignment(assignment);
-      } catch (err) {
-        console.warn("Hover readings skipped:", err);
-      }
-    }
-
-    const form = HwWorksheet.render(mount, assignment, {
+    const renderOptions = {
       studentMeta: {
         username: session.username || "",
         displayName: session.displayName || session.username || "",
@@ -1790,20 +1779,46 @@
         lessonName:
           assignment.lessonName || assignment.title || active.lessonName || active.title || active.id,
       },
-    });
-    const saveMeta = {
-      ...assignment,
-      id: assignment.id || active.id,
-      title: assignment.title || active.title,
-      lessonName:
-        assignment.lessonName || active.lessonName || active.title || active.id,
-      date: assignment.date || active.date,
-      register: assignment.register || "casual",
     };
-    if (!form.getAttribute("data-assignment-id") && saveMeta.id) {
-      form.setAttribute("data-assignment-id", saveMeta.id);
+
+    function mountWorksheet(data) {
+      const form = HwWorksheet.render(mount, data, renderOptions);
+      const saveMeta = {
+        ...data,
+        id: data.id || active.id,
+        title: data.title || active.title,
+        lessonName:
+          data.lessonName || active.lessonName || active.title || active.id,
+        date: data.date || active.date,
+        register: data.register || "casual",
+      };
+      if (!form.getAttribute("data-assignment-id") && saveMeta.id) {
+        form.setAttribute("data-assignment-id", saveMeta.id);
+      }
+      bindWorksheetSave(form, saveMeta);
+      return form;
     }
-    bindWorksheetSave(form, saveMeta);
+
+    mountWorksheet(assignment);
+
+    if (
+      global.HwFuriganaAuto?.annotateAssignment &&
+      global.HwFuriganaAuto.assignmentNeedsAnnotation?.(assignment)
+    ) {
+      void (async () => {
+        try {
+          const annotated = JSON.parse(JSON.stringify(assignment));
+          const annotate = global.HwFuriganaAuto.annotateAssignment(annotated);
+          const timed = global.HwFuriganaAuto.withTimeout
+            ? global.HwFuriganaAuto.withTimeout(annotate, 8000, "reading-timeout")
+            : annotate;
+          await timed;
+          mountWorksheet(annotated);
+        } catch (err) {
+          console.warn("Hover readings skipped:", err);
+        }
+      })();
+    }
   }
 
   function ensureTeacherEditorMounted() {

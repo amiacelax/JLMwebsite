@@ -1562,13 +1562,6 @@
     async function showPreview(title) {
       if (!global.HwWorksheet?.render) return;
       const assignment = toAssignment({ title });
-      if (global.HwFuriganaAuto?.annotateAssignment) {
-        try {
-          await global.HwFuriganaAuto.annotateAssignment(assignment);
-        } catch {
-          /* preview without readings */
-        }
-      }
       previewMount.innerHTML = "";
       global.HwWorksheet.render(previewMount, assignment, { preview: true });
       previewOpen = true;
@@ -1577,6 +1570,21 @@
       setTopicFieldsHidden(true);
       notifyPreviewChange();
       previewMount.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      if (!global.HwFuriganaAuto?.annotateAssignment) return;
+      try {
+        const annotated = toAssignment({ title });
+        const annotate = global.HwFuriganaAuto.annotateAssignment(annotated);
+        const timed = global.HwFuriganaAuto.withTimeout
+          ? global.HwFuriganaAuto.withTimeout(annotate, 8000, "reading-timeout")
+          : annotate;
+        await timed;
+        if (!previewOpen) return;
+        previewMount.innerHTML = "";
+        global.HwWorksheet.render(previewMount, annotated, { preview: true });
+      } catch {
+        /* preview without readings */
+      }
     }
 
     function hidePreview() {

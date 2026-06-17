@@ -323,7 +323,11 @@
   async function applyAutoReadings(assignment) {
     if (!assignment || !global.HwFuriganaAuto?.annotateAssignment) return assignment;
     try {
-      return await global.HwFuriganaAuto.annotateAssignment(assignment);
+      const job = global.HwFuriganaAuto.annotateAssignment(assignment);
+      const timed = global.HwFuriganaAuto.withTimeout
+        ? global.HwFuriganaAuto.withTimeout(job, 15000, "reading-timeout")
+        : job;
+      return await timed;
     } catch (err) {
       console.warn("Auto readings skipped:", err);
       return assignment;
