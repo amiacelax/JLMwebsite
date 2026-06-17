@@ -177,6 +177,7 @@
     { label: "Village prototype", href: "/game/" },
     { label: "Tic Tac Toe", href: "/game/tictactoe-past/" },
     { label: "Lantern Word Hunt", href: "/game/lantern-hunt/" },
+    { label: "Yūgen Gatherer", href: "/game/yugen-gatherer/" },
   ];
 
   function renderGamesHubCard() {
