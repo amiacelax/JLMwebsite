@@ -18,6 +18,7 @@ import {
   mergeCatalog,
   publishToStudentHub,
   saveStudentProfile,
+  getStudentProfileForTeacher,
   saveWorksheetDraft,
   deleteWorksheetFromLibrary,
   loadPublishedAssignment,
@@ -1182,6 +1183,128 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
   }
 }
 
+async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  try {
+    const form = await request.formData();
+    const username = String(form.get("username") || "").trim();
+    const displayName = String(form.get("displayName") || username).trim();
+    const assignmentId = String(form.get("assignmentId") || "audio-homework").trim();
+    const lessonName = String(form.get("lessonName") || assignmentId).trim();
+    const promptLabel = String(form.get("promptLabel") || "").trim();
+    const file = form.get("audio");
+
+    if (!username) return jsonResponse({ error: "Username is required." }, 400);
+    if (!isUploadedFile(file)) return jsonResponse({ error: "Audio is required." }, 400);
+    if (!file.type.startsWith("audio/")) {
+      return jsonResponse({ error: "Please upload an audio file." }, 400);
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      return jsonResponse({ error: "Audio must be under 12 MB." }, 400);
+    }
+
+    const videoMeta: HomeworkVideoSubmitInput = {
+      username,
+      displayName,
+      assignmentId,
+      lessonName,
+    };
+
+    let stored = false;
+    try {
+      await saveHomeworkVideoSubmission(videoMeta, file, env);
+      stored = true;
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 400);
+      }
+      if (code === "VIDEO_TYPE") {
+        return jsonResponse({ error: "Please upload an audio file." }, 400);
+      }
+      if (code === "VIDEO_TOO_LARGE") {
+        return jsonResponse({ error: "Audio must be under 12 MB." }, 400);
+      }
+      if (code !== "KV_NOT_CONFIGURED") {
+        console.error("homework-audio store failed:", err);
+      }
+    }
+
+    const webhook = resolveHomeworkWebhook(env);
+    let discordOk = false;
+    if (webhook) {
+      const safeName = safeKeyPart(file.name, "homework-audio.webm");
+      const channelError = await getWebhookChannelMismatch(
+        webhook.url,
+        webhook.channelId,
+        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+      );
+      if (channelError) {
+        console.warn("homework-audio channel check:", channelError);
+      }
+
+      const text = [
+        webhook.usedFallback
+          ? "[Homework audio — posted via site webhook until HW webhook is set]"
+          : null,
+        `Audio homework — ${displayName}`,
+        "",
+        `Student: ${displayName} (${username})`,
+        `Assignment: ${lessonName}`,
+        promptLabel ? `Prompt: ${promptLabel}` : null,
+        `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+      ]
+        .filter((line) => line != null)
+        .join("\n");
+      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+      discordOk = result.ok;
+      if (!result.ok) {
+        console.error("Homework audio Discord error", result.status, result.detail);
+      }
+    } else {
+      console.error("homework-audio: no Discord webhook configured");
+    }
+
+    if (stored) {
+      return jsonResponse({
+        success: true,
+        message: discordOk
+          ? "Homework sent! JD can see it in Discord now."
+          : "Homework sent! JD can see it on the teacher hub.",
+      });
+    }
+
+    if (!webhook) {
+      return jsonResponse(
+        {
+          error:
+            "Audio upload is not set up on the server yet. Ask JD to enable homework storage.",
+        },
+        503
+      );
+    }
+
+    if (!discordOk) {
+      return jsonResponse(
+        { error: "Could not send audio. Please try again in a few minutes." },
+        502
+      );
+    }
+
+    return jsonResponse({
+      success: true,
+      message: "Homework sent! JD can see it in Discord now.",
+    });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("homework-audio-upload failed:", detail);
+    return jsonResponse({ error: "Audio upload failed. Please try again later." }, 500);
+  }
+}
+
 async function loadStaticCatalog(env: Env): Promise<CatalogFile> {
   const res = await env.ASSETS.fetch(
     new Request(new URL("/homework/catalog.json", "https://internal.local"))
@@ -1367,6 +1490,37 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
+
+  if (request.method === "GET") {
+    try {
+      const url = new URL(request.url);
+      const profile = await getStudentProfileForTeacher(
+        {
+          teacherUsername: url.searchParams.get("teacherUsername") || "",
+          studentUsername: url.searchParams.get("studentUsername") || "",
+        },
+        env
+      );
+      return jsonResponse({ success: true, profile });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+      }
+      if (code === "TEACHER_ONLY") {
+        return jsonResponse({ error: "Teacher login required." }, 403);
+      }
+      if (code === "STUDENT_REQUIRED") {
+        return jsonResponse({ error: "Student id is required." }, 400);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student id." }, 400);
+      }
+      console.error("homework-student-profile get failed:", err);
+      return jsonResponse({ error: "Could not load student info." }, 500);
+    }
+  }
+
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
@@ -1376,7 +1530,7 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
     const result = await saveStudentProfile(data, env);
     return jsonResponse({
       success: true,
-      message: `Saved links for ${result.student}. They can refresh their Homework Hub to see updates.`,
+      message: `Saved info for ${result.student}. They can refresh their Homework Hub to see updates.`,
       student: result.student,
     });
   } catch (err) {
@@ -1391,10 +1545,10 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
       return jsonResponse({ error: "Student id is required." }, 400);
     }
     if (code === "UNKNOWN_STUDENT") {
-      return jsonResponse(
-        { error: "Unknown student id. Add the account in hw-auth.js first." },
-        400
-      );
+      return jsonResponse({ error: "Unknown student id." }, 400);
+    }
+    if (code === "INVALID_ACCOUNT_LABEL" || code === "INVALID_ACCOUNT_TIER") {
+      return jsonResponse({ error: "Invalid account type or plan tier." }, 400);
     }
     console.error("homework-student-profile failed:", err);
     return jsonResponse({ error: "Could not save student info." }, 500);
@@ -2206,6 +2360,10 @@ export default {
 
     if (url.pathname === "/api/homework-video-upload") {
       return handleHomeworkVideoUpload(request, env);
+    }
+
+    if (url.pathname === "/api/homework-audio-upload") {
+      return handleHomeworkAudioUpload(request, env);
     }
 
     if (url.pathname === "/api/homework-generate") {

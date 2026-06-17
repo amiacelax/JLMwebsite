@@ -1,6 +1,14 @@
 /** Published homework in KV (teacher → student hub, no git deploy). */
 
 import { extractPlaylistId, fetchLatestVideoFromPlaylist } from "./youtube-playlist";
+import {
+  getUserAccount,
+  updateUserAccountSettings,
+  normalizeAccountLabel,
+  normalizeAccountTier,
+  type AccountLabel,
+  type AccountTier,
+} from "./user-accounts";
 
 export interface StudentListEntry {
   username: string;
@@ -30,6 +38,7 @@ const catalogKey = (id: string) => `catalog:${id}`;
 const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
 const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
 const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
+const studentAccountSettingsKey = (username: string) => `student:${username}:account-settings`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
   `student:${username}:playlist-latest:${playlistId}`;
 
@@ -49,6 +58,19 @@ export interface StudentProfilePayload {
   studentUsername?: string;
   youtubeUrl?: string;
   lessonPlaylistUrl?: string;
+  accountLabel?: AccountLabel;
+  tier?: AccountTier;
+}
+
+export interface StudentProfileView {
+  student: string;
+  youtubeUrl: string;
+  lessonPlaylistUrl: string;
+  accountLabel: AccountLabel;
+  tier: AccountTier;
+  hasKvAccount: boolean;
+  currentHomeworkId: string;
+  currentHomeworkTitle: string;
 }
 
 export interface SaveWorksheetPayload {
@@ -200,6 +222,167 @@ async function applyStudentMedia(
   }
 }
 
+interface StoredStudentAccountSettings {
+  accountLabel: AccountLabel;
+  tier: AccountTier;
+}
+
+async function readStudentAccountSettingsOverride(
+  kv: KVNamespace,
+  student: string
+): Promise<StoredStudentAccountSettings | null> {
+  const raw = await kv.get(studentAccountSettingsKey(student));
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Partial<StoredStudentAccountSettings>;
+    const accountLabel = normalizeAccountLabel(data.accountLabel);
+    const tier = normalizeAccountTier(data.tier);
+    if (!accountLabel || !tier) return null;
+    return { accountLabel, tier };
+  } catch {
+    return null;
+  }
+}
+
+async function writeStudentAccountSettingsOverride(
+  kv: KVNamespace,
+  student: string,
+  settings: StoredStudentAccountSettings
+): Promise<void> {
+  await kv.put(studentAccountSettingsKey(student), JSON.stringify(settings));
+}
+
+export async function getStudentAccountSettings(
+  student: string,
+  env: KvEnv
+): Promise<{ accountLabel: AccountLabel; tier: AccountTier; hasKvAccount: boolean }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(student || "")
+    .trim()
+    .toLowerCase();
+  const account = await getUserAccount(user, env);
+  if (account) {
+    return {
+      accountLabel: account.accountLabel || "homework_only",
+      tier: account.tier || "pending",
+      hasKvAccount: true,
+    };
+  }
+
+  const override = await readStudentAccountSettingsOverride(kv, user);
+  if (override) {
+    return { ...override, hasKvAccount: false };
+  }
+
+  return {
+    accountLabel: "homework_only",
+    tier: "pending",
+    hasKvAccount: false,
+  };
+}
+
+async function saveStudentAccountSettings(
+  kv: KVNamespace,
+  student: string,
+  patch: { accountLabel?: AccountLabel; tier?: AccountTier }
+): Promise<void> {
+  const nextLabel = patch.accountLabel
+    ? normalizeAccountLabel(patch.accountLabel)
+    : null;
+  if (patch.accountLabel !== undefined && !nextLabel) {
+    throw new Error("INVALID_ACCOUNT_LABEL");
+  }
+
+  const nextTier = patch.tier ? normalizeAccountTier(patch.tier) : null;
+  if (patch.tier !== undefined && !nextTier) {
+    throw new Error("INVALID_ACCOUNT_TIER");
+  }
+
+  if (!nextLabel && !nextTier) return;
+
+  const updated = await updateUserAccountSettings(
+    student,
+    {
+      ...(nextLabel ? { accountLabel: nextLabel } : {}),
+      ...(nextTier ? { tier: nextTier } : {}),
+    },
+    { HOMEWORK_KV: kv }
+  );
+
+  if (updated) return;
+
+  const current = (await readStudentAccountSettingsOverride(kv, student)) || {
+    accountLabel: "homework_only" as AccountLabel,
+    tier: "pending" as AccountTier,
+  };
+
+  await writeStudentAccountSettingsOverride(kv, student, {
+    accountLabel: nextLabel || current.accountLabel,
+    tier: nextTier || current.tier,
+  });
+}
+
+export async function getStudentProfileForTeacher(
+  data: { teacherUsername?: string; studentUsername?: string },
+  env: KvEnv
+): Promise<StudentProfileView> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const student = String(data.studentUsername || "")
+    .trim()
+    .toLowerCase();
+  if (!student) throw new Error("STUDENT_REQUIRED");
+  if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const youtubeUrl = String((await kv.get(studentYoutubeKey(student))) || "").trim();
+  const lessonPlaylistUrl = String(
+    (await kv.get(studentLessonPlaylistKey(student))) || ""
+  ).trim();
+  const account = await getStudentAccountSettings(student, env);
+
+  const currentHomeworkId = String(
+    (await kv.get(studentCurrentHomeworkKey(student))) || ""
+  ).trim();
+  let currentHomeworkTitle = "";
+  if (currentHomeworkId) {
+    const catalogRaw = await kv.get(catalogKey(currentHomeworkId));
+    if (catalogRaw) {
+      try {
+        const entry = JSON.parse(catalogRaw) as { title?: string };
+        currentHomeworkTitle = String(entry.title || "").trim();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!currentHomeworkTitle) {
+      const assignmentRaw = await kv.get(assignmentKey(currentHomeworkId));
+      if (assignmentRaw) {
+        try {
+          const assignment = JSON.parse(assignmentRaw) as { title?: string };
+          currentHomeworkTitle = String(assignment.title || "").trim();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
+
+  return {
+    student,
+    youtubeUrl,
+    lessonPlaylistUrl,
+    accountLabel: account.accountLabel,
+    tier: account.tier,
+    hasKvAccount: account.hasKvAccount,
+    currentHomeworkId,
+    currentHomeworkTitle,
+  };
+}
+
 export async function saveStudentProfile(
   data: StudentProfilePayload,
   env: KvEnv
@@ -222,6 +405,13 @@ export async function saveStudentProfile(
   const playlist = String(data.lessonPlaylistUrl || "").trim();
   if (playlist) {
     await resolveLatestLessonFromPlaylist(kv, student, playlist, true);
+  }
+
+  if (data.accountLabel !== undefined || data.tier !== undefined) {
+    await saveStudentAccountSettings(kv, student, {
+      accountLabel: data.accountLabel,
+      tier: data.tier,
+    });
   }
 
   return { student };
@@ -1061,6 +1251,11 @@ const SUBMISSION_VIDEO_TYPES = new Set([
   "video/quicktime",
   "video/x-matroska",
   "video/ogg",
+  "audio/webm",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/mpeg",
+  "audio/mp3",
 ]);
 
 export interface HomeworkAnswerRow {

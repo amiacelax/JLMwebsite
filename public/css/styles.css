@@ -4908,12 +4908,20 @@ button.course-card__status:disabled {
   background: color-mix(in srgb, #7c5cbf 94%, #120c20);
 }
 
+.hw-builder__palette-block--audio-prompt {
+  border-color: #5a4a8a;
+  border-left-color: #453a6e;
+  background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
+}
+
 .hw-builder__palette-block--audio-clip {
   border-color: #5a4a8a;
   border-left-color: #453a6e;
   background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
 }
 
+.hw-builder__palette-block--audio-prompt .hw-builder__palette-block-label,
+.hw-builder__palette-block--audio-prompt .hw-builder__palette-block-hint,
 .hw-builder__palette-block--audio-clip .hw-builder__palette-block-label,
 .hw-builder__palette-block--audio-clip .hw-builder__palette-block-hint {
   color: #fff;
@@ -4926,7 +4934,9 @@ button.course-card__status:disabled {
 .hw-builder__palette-block--video-prompt .hw-builder__palette-block-label,
 .hw-builder__palette-block--video-prompt .hw-builder__palette-block-hint,
 .hw-builder__palette-block--listen-line .hw-builder__palette-block-label,
-.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint {
+.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--audio-prompt .hw-builder__palette-block-label,
+.hw-builder__palette-block--audio-prompt .hw-builder__palette-block-hint {
   color: #fff;
 }
 
@@ -4948,7 +4958,8 @@ button.course-card__status:disabled {
 .hw-builder__palette-block--grammar-line .hw-builder__palette-block-hint,
 .hw-builder__palette-block--open-line .hw-builder__palette-block-hint,
 .hw-builder__palette-block--video-prompt .hw-builder__palette-block-hint,
-.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint {
+.hw-builder__palette-block--listen-line .hw-builder__palette-block-hint,
+.hw-builder__palette-block--audio-prompt .hw-builder__palette-block-hint {
   opacity: 0.88;
 }
 
@@ -5123,6 +5134,11 @@ button.course-card__status:disabled {
 }
 
 .hw-builder__block--audio-clip {
+  border-color: #5a4a8a;
+  background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
+}
+
+.hw-builder__block--audio-prompt {
   border-color: #5a4a8a;
   background: color-mix(in srgb, #6b5b9a 94%, #100e1a);
 }
@@ -5505,6 +5521,81 @@ button.course-card__status:disabled {
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-sizing: border-box;
+}
+
+.hw-audio-prompt {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid #6b5b9a;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.hw-audio-prompt__text {
+  margin: 0 0 0.65rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.hw-audio-prompt__recorder {
+  margin-top: 0.25rem;
+}
+
+.hw-audio-prompt__note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-audio-inline__idle,
+.hw-audio-inline__live,
+.hw-audio-inline__preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hw-audio-inline__recording-label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-accent-vivid);
+}
+
+.hw-audio-inline__playback {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.hw-audio-inline__timer {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.hw-audio-inline__preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.hw-audio-inline__status {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.hw-worksheet__line--audio-prompt .hw-worksheet__content {
+  display: block;
+  width: 100%;
 }
 
 .hw-listen-card__figure {
@@ -7343,6 +7434,23 @@ body.hw-role-teacher #hw-teacher-hub {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   line-height: 1.45;
+}
+
+.hw-teacher-current-hw__value {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.hw-teacher-current-hw__value--set {
+  color: var(--color-text);
+  border-left: 3px solid var(--color-brand-blue);
 }
 
 .hw-teacher-worksheet {

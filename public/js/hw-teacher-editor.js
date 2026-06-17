@@ -120,7 +120,13 @@
 
   function readAccountMedia(form) {
     if (!form) {
-      return { studentUsername: "", youtubeUrl: "", lessonPlaylistUrl: "" };
+      return {
+        studentUsername: "",
+        youtubeUrl: "",
+        lessonPlaylistUrl: "",
+        accountLabel: "",
+        tier: "",
+      };
     }
     return {
       studentUsername: String(
@@ -132,7 +138,106 @@
       lessonPlaylistUrl: String(
         form.querySelector('[name="lessonPlaylistUrl"]')?.value || ""
       ).trim(),
+      accountLabel: String(form.querySelector('[name="accountLabel"]')?.value || "").trim(),
+      tier: String(form.querySelector('[name="accountTier"]')?.value || "").trim(),
     };
+  }
+
+  function legacyAccountDefaults(studentUsername) {
+    const key = String(studentUsername || "").trim().toLowerCase();
+    const account = global.HwAuth?.ACCOUNTS?.[key];
+    if (!account || account.role !== "student") return null;
+    return {
+      accountLabel: account.accountLabel || "homework_only",
+      tier: account.tier || "pending",
+    };
+  }
+
+  function applyAccountSettingsFields(form, profile) {
+    if (!form || !profile) return;
+    const labelInput = form.querySelector('[name="accountLabel"]');
+    const tierInput = form.querySelector('[name="accountTier"]');
+    if (labelInput && profile.accountLabel) {
+      labelInput.value = profile.accountLabel;
+    }
+    if (tierInput && profile.tier) {
+      tierInput.value = profile.tier;
+    }
+  }
+
+  function renderCurrentHomework(studentUsername, profile) {
+    const el = document.getElementById("hw-teacher-current-hw");
+    if (!el) return;
+
+    const student = String(studentUsername || "").trim().toLowerCase();
+    if (!student) {
+      el.textContent = "Choose a student to see their active sheet.";
+      el.classList.remove("hw-teacher-current-hw__value--set");
+      return;
+    }
+
+    const id =
+      String(profile?.currentHomeworkId || "").trim() ||
+      String(catalogStudentProfiles[student]?.currentHomeworkId || "").trim();
+    if (!id) {
+      el.textContent = "No homework assigned yet.";
+      el.classList.remove("hw-teacher-current-hw__value--set");
+      return;
+    }
+
+    const title =
+      String(profile?.currentHomeworkTitle || "").trim() ||
+      String(getCatalogEntry(id)?.title || "").trim();
+    el.textContent = title ? id + " — " + title : id;
+    el.classList.add("hw-teacher-current-hw__value--set");
+  }
+
+  async function loadStudentProfileFields(form, studentUsername) {
+    if (!form) return;
+    const student = String(studentUsername || "").trim().toLowerCase();
+    applyStudentProfileFields(form, student);
+    renderCurrentHomework(student, null);
+
+    if (!student) return;
+
+    const legacy = legacyAccountDefaults(student);
+    applyAccountSettingsFields(form, legacy);
+
+    const session =
+      editorOptions?.getTeacherSession?.() || global.HwAuth?.getSession?.() || null;
+    if (!session || session.role !== "teacher") return;
+
+    try {
+      const url =
+        "/api/homework-student-profile?teacherUsername=" +
+        encodeURIComponent(session.username) +
+        "&studentUsername=" +
+        encodeURIComponent(student) +
+        "&_=" +
+        Date.now();
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const profile = data.profile || {};
+      if (profile.youtubeUrl !== undefined) {
+        const youtubeInput = form.querySelector('[name="youtubeUrl"]');
+        if (youtubeInput) youtubeInput.value = profile.youtubeUrl || "";
+      }
+      if (profile.lessonPlaylistUrl !== undefined) {
+        const playlistInput = form.querySelector('[name="lessonPlaylistUrl"]');
+        if (playlistInput) playlistInput.value = profile.lessonPlaylistUrl || "";
+      }
+      applyAccountSettingsFields(form, profile);
+      if (profile.currentHomeworkId) {
+        catalogStudentProfiles[student] = {
+          ...(catalogStudentProfiles[student] || {}),
+          currentHomeworkId: profile.currentHomeworkId,
+        };
+      }
+      renderCurrentHomework(student, profile);
+    } catch {
+      /* keep catalog / legacy defaults */
+    }
   }
 
   function getAccountForm() {
@@ -286,7 +391,6 @@
 
   function populateAllStudentSelects() {
     fillStudentSelect(document.getElementById("hw-teacher-maker-send-student"));
-    fillStudentSelect(document.getElementById("hw-teacher-publish-student"));
     fillStudentSelect(document.getElementById("hw-teacher-account-student"));
   }
 
@@ -322,12 +426,11 @@
     let makerDockHintEl = null;
     let makerDockReady = false;
 
-    const publishForm = document.getElementById("hw-teacher-publish-form");
-    const publishStudent = document.getElementById("hw-teacher-publish-student");
     const publishWorksheet = document.getElementById("hw-teacher-publish-worksheet");
     const publishSendBtn = document.getElementById("hw-teacher-send-btn");
     const publishStatusEl = document.getElementById("hw-teacher-publish-status");
     const publishHint = document.getElementById("hw-teacher-publish-hint");
+    const publishStudent = document.getElementById("hw-teacher-publish-student");
 
     const accountForm = getAccountForm();
     const accountStatusEl = document.getElementById("hw-teacher-account-status");
@@ -1047,6 +1150,10 @@
         updatePublishHint();
         updateMakerDockHint();
         if (options.onPublished) await options.onPublished(worksheetId, student);
+        const accountStudent = document.getElementById("hw-teacher-account-student")?.value;
+        if (accountStudent && accountStudent.toLowerCase() === student) {
+          await loadStudentProfileFields(getAccountForm(), student);
+        }
       } catch (err) {
         setStatus((err && err.message) || "Could not publish.", true);
         showToast("Send failed");
@@ -1084,6 +1191,8 @@
             studentUsername: media.studentUsername,
             youtubeUrl: media.youtubeUrl,
             lessonPlaylistUrl: media.lessonPlaylistUrl,
+            accountLabel: media.accountLabel,
+            tier: media.tier,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -1098,6 +1207,7 @@
 
         setAccountStatus(data.message || "Saved!");
         showToast("Student info saved");
+        await loadStudentProfileFields(accountForm, media.studentUsername);
       } catch (err) {
         setAccountStatus((err && err.message) || "Could not save.", true);
         showToast("Save failed");
@@ -1121,29 +1231,6 @@
 
     }
 
-    if (publishForm && publishForm.dataset.bound !== "true") {
-      publishForm.dataset.bound = "true";
-      publishForm.addEventListener("submit", (e) => e.preventDefault());
-
-      fillStudentSelect(publishStudent, publishStudent?.value);
-
-      publishWorksheet?.addEventListener("focus", async () => {
-        await ensureCatalogLoaded();
-        populatePublishWorksheetSelect(publishWorksheet, publishWorksheet.value);
-      });
-
-      publishStudent?.addEventListener("change", updatePublishHint);
-      publishWorksheet?.addEventListener("change", updatePublishHint);
-
-      publishSendBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        publishWorksheetToStudent({
-          student: publishStudent?.value,
-          worksheetId: publishWorksheet?.value,
-        });
-      });
-    }
-
     if (accountForm && accountForm.dataset.bound !== "true") {
       accountForm.dataset.bound = "true";
       accountForm.addEventListener("submit", (e) => e.preventDefault());
@@ -1152,8 +1239,12 @@
 
       accountStudentSelect?.addEventListener("change", async () => {
         await ensureCatalogLoaded();
-        applyStudentProfileFields(accountForm, accountStudentSelect.value);
-        setAccountStatus("Loaded " + accountStudentSelect.value + "'s saved links.");
+        await loadStudentProfileFields(accountForm, accountStudentSelect.value);
+        if (accountStudentSelect.value) {
+          setAccountStatus("Loaded " + accountStudentSelect.value + "'s info.");
+        } else {
+          renderCurrentHomework("", null);
+        }
       });
 
       accountSaveBtn?.addEventListener("click", (e) => {
@@ -1181,18 +1272,16 @@
     if (students) catalogStudents = students;
     populateAllStudentSelects();
     populateWorksheetSelect(document.getElementById("hw-teacher-maker-edit-select"));
-    populatePublishWorksheetSelect(document.getElementById("hw-teacher-publish-worksheet"));
-    applyStudentProfileFields(
+    void loadStudentProfileFields(
       getAccountForm(),
       document.getElementById("hw-teacher-account-student")?.value
     );
   }
 
   function bootstrap() {
-    return ensureCatalogLoaded().then(() => {
+    return ensureCatalogLoaded().then(async () => {
       populateWorksheetSelect(document.getElementById("hw-teacher-maker-edit-select"));
-      populatePublishWorksheetSelect(document.getElementById("hw-teacher-publish-worksheet"));
-      applyStudentProfileFields(
+      await loadStudentProfileFields(
         getAccountForm(),
         document.getElementById("hw-teacher-account-student")?.value
       );
@@ -1245,16 +1334,7 @@
   }
 
   function syncPublishPicker() {
-    const publishSelect = document.getElementById("hw-teacher-publish-worksheet");
-    if (!publishSelect || !editingAssignmentId) return;
-    if (publishSelect.querySelector('option[value="' + editingAssignmentId + '"]')) {
-      publishSelect.value = editingAssignmentId;
-    }
-    const publishStudent = document.getElementById("hw-teacher-publish-student");
-    const accountStudent = document.getElementById("hw-teacher-account-student");
-    if (publishStudent && accountStudent?.value && !publishStudent.value) {
-      publishStudent.value = accountStudent.value;
-    }
+    /* publish picker removed from Student info — send via Worksheet maker dock */
   }
 
   global.HwTeacherEditor = {

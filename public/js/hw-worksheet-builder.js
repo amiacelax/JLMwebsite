@@ -6,6 +6,7 @@
     { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
+    { type: "audio-prompt", label: "Audio prompt", hint: "Student records an answer" },
     { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
   ];
 
@@ -54,7 +55,7 @@
         {
           mode: "audio-listening",
           title: "Listening practice",
-          instructions: "Play each clip, then write what you hear in the box below it.",
+          instructions: "Listen to the clip and write down what you think it's saying.",
           audioUrl: "",
           items: [1, 2, 3].map((n) => listenItem(n)),
         },
@@ -249,6 +250,8 @@
         return { id, type, topic: "", parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
       case "video-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
+      case "audio-prompt":
+        return { id, type, prompt: "", recordLabel: "Record your answer" };
       case "listen-line":
         return ensureListenBlock({
           id,
@@ -366,6 +369,13 @@
               parts: JSON.parse(JSON.stringify(item.parts || [])),
             })
           );
+        } else if (sec.mode === "audio-prompt") {
+          blocks.push({
+            id: item.id || uid("blk"),
+            type: "audio-prompt",
+            prompt: item.prompt || "",
+            recordLabel: item.recordLabel || "Record your answer",
+          });
         }
       });
     });
@@ -423,12 +433,36 @@
       }
 
       if (block.type === "listen-line") {
-        const sec = { id: uid("sec"), mode: "audio-listening", title: "", instructions: "", audioUrl: "", items: [] };
+        const sec = {
+          id: uid("sec"),
+          mode: "audio-listening",
+          title: "",
+          instructions: "Listen to the clip and write down what you think it's saying.",
+          audioUrl: "",
+          items: [],
+        };
         while (i < blocks.length && blocks[i].type === "listen-line") {
           sec.items.push(blockToListenItem(blocks[i], sec.items.length));
           i++;
         }
         if (sec.items[0]?.audioUrl) sec.audioUrl = sec.items[0].audioUrl;
+        if (sec.items.length) sections.push(sec);
+        continue;
+      }
+
+      if (block.type === "audio-prompt") {
+        const sec = { id: uid("sec"), mode: "audio-prompt", title: "", instructions: "", items: [] };
+        while (i < blocks.length && blocks[i].type === "audio-prompt") {
+          const prompt = String(blocks[i].prompt || "").trim();
+          if (prompt) {
+            sec.items.push({
+              id: blocks[i].id || "aud-" + (sec.items.length + 1),
+              prompt,
+              recordLabel: blocks[i].recordLabel || "Record your answer",
+            });
+          }
+          i++;
+        }
         if (sec.items.length) sections.push(sec);
         continue;
       }
@@ -908,6 +942,9 @@
       if (block.type === "video-prompt") {
         return clip(block.prompt) || "Video prompt";
       }
+      if (block.type === "audio-prompt") {
+        return clip(block.prompt) || "Audio prompt";
+      }
       if (block.type === "listen-line") {
         const jp = (block.parts || []).find((p) => p.type === "blank")?.answer;
         return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
@@ -1028,6 +1065,21 @@
         prompt.className = "hw-builder__field hw-builder__field--area";
         prompt.rows = 2;
         prompt.placeholder = "Question or prompt for the student";
+        prompt.value = block.prompt || "";
+        prompt.addEventListener("input", () => {
+          block.prompt = prompt.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        body.appendChild(prompt);
+        return el;
+      }
+
+      if (block.type === "audio-prompt") {
+        const prompt = document.createElement("textarea");
+        prompt.className = "hw-builder__field hw-builder__field--area";
+        prompt.rows = 2;
+        prompt.placeholder = "Question or prompt for the student to answer on audio";
         prompt.value = block.prompt || "";
         prompt.addEventListener("input", () => {
           block.prompt = prompt.value;

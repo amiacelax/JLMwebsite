@@ -66,7 +66,13 @@
   }
 
   function tenseShouldShowPill(tense) {
-    return Boolean(tense && tense !== DEFAULT_HINT_TENSE);
+    return Boolean(tense);
+  }
+
+  function formatHint(hint) {
+    if (!hint) return "";
+    const d = hint.dictionary || "—";
+    return "（" + d + "）";
   }
 
   function tensePillText(tense) {
@@ -93,16 +99,9 @@
     const line = el.closest(".hw-worksheet__line");
     const num = line?.querySelector(".hw-item-num")?.textContent?.trim() || String(fallback);
     if (mode === "audio-listening") return "Listen " + num;
+    if (mode === "audio-prompt") return "Audio " + num;
     if (mode === "context-blank") return "Question " + num;
     return num;
-  }
-
-  function formatHint(hint) {
-    if (!hint) return "";
-    const d = hint.dictionary || "—";
-    const c = normalizeHintConjugation(hint.conjugation);
-    if (!c || c === "ない") return "（" + d + "）";
-    return "（" + d + "・" + c + "）";
   }
 
   /**
@@ -700,6 +699,22 @@
     return wrap;
   }
 
+  function resolveRecorderMeta(renderOptions, assignment) {
+    const fromOpts = renderOptions?.studentMeta || {};
+    const session = global.HwAuth?.getSession?.() || null;
+    return {
+      username: fromOpts.username || session?.username || "",
+      displayName:
+        fromOpts.displayName ||
+        session?.displayName ||
+        session?.username ||
+        fromOpts.username ||
+        "",
+      assignmentId: fromOpts.assignmentId || assignment?.id || "",
+      lessonName: fromOpts.lessonName || assignment?.lessonName || assignment?.title || "",
+    };
+  }
+
   function renderVideoRecordCue(item, index, renderOptions) {
     renderOptions = renderOptions || {};
     const videoLine = document.createElement("div");
@@ -727,18 +742,19 @@
     if (renderOptions.preview) {
       recorderMount.innerHTML =
         '<p class="hw-video-prompt__note">Students record and send their answer here.</p>';
-    } else if (renderOptions.studentMeta && global.HwVideoInline?.mount) {
+    } else if (global.HwVideoInline?.mount) {
+      const meta = resolveRecorderMeta(renderOptions, renderOptions.assignment);
       global.HwVideoInline.mount(recorderMount, {
-        username: renderOptions.studentMeta.username,
-        displayName: renderOptions.studentMeta.displayName,
-        assignmentId: renderOptions.studentMeta.assignmentId,
-        lessonName: renderOptions.studentMeta.lessonName,
+        username: meta.username,
+        displayName: meta.displayName,
+        assignmentId: meta.assignmentId,
+        lessonName: meta.lessonName,
         promptId: item.id || "vid-" + (index + 1),
         promptLabel: item.prompt || "",
       });
     } else {
       recorderMount.innerHTML =
-        '<p class="hw-video-prompt__note">Sign in as a student to record here, or use the Video section below.</p>';
+        '<p class="hw-video-prompt__note">Recording is not available in this browser.</p>';
     }
 
     videoContent.appendChild(wrap);
@@ -765,6 +781,79 @@
     prompt.value = item.prompt || "";
     prompt.setAttribute("data-video-prompt", "1");
     prompt.setAttribute("aria-label", "Video prompt " + (index + 1));
+    content.appendChild(prompt);
+    wrap.appendChild(content);
+    return wrap;
+  }
+
+  function renderAudioRecordCue(item, index, renderOptions) {
+    renderOptions = renderOptions || {};
+    const audioLine = document.createElement("div");
+    audioLine.className = "hw-worksheet__line hw-worksheet__line--audio-prompt";
+    audioLine.dataset.itemId = item.id || "";
+
+    if (renderOptions.itemNum) {
+      appendLineNumber(audioLine, renderOptions.itemNum);
+    }
+
+    const audioContent = document.createElement("div");
+    audioContent.className = "hw-worksheet__content";
+
+    const wrap = document.createElement("div");
+    wrap.className = "hw-audio-prompt";
+
+    const prompt = document.createElement("p");
+    prompt.className = "hw-audio-prompt__text";
+    prompt.textContent = item.prompt || "Answer this question on audio.";
+    wrap.appendChild(prompt);
+
+    const recorderMount = document.createElement("div");
+    recorderMount.className = "hw-audio-prompt__recorder";
+    wrap.appendChild(recorderMount);
+
+    if (renderOptions.preview) {
+      recorderMount.innerHTML =
+        '<p class="hw-audio-prompt__note">Students record and send their answer here.</p>';
+    } else if (global.HwAudioInline?.mount) {
+      const meta = resolveRecorderMeta(renderOptions, renderOptions.assignment);
+      global.HwAudioInline.mount(recorderMount, {
+        username: meta.username,
+        displayName: meta.displayName,
+        assignmentId: meta.assignmentId,
+        lessonName: meta.lessonName,
+        promptId: item.id || "aud-" + (index + 1),
+        promptLabel: item.prompt || "",
+      });
+    } else {
+      recorderMount.innerHTML =
+        '<p class="hw-audio-prompt__note">Recording is not available in this browser.</p>';
+    }
+
+    audioContent.appendChild(wrap);
+    audioLine.appendChild(audioContent);
+    return audioLine;
+  }
+
+  function renderAuthorAudioItem(item, index, lineOptions) {
+    lineOptions = lineOptions || {};
+    const wrap = document.createElement("div");
+    wrap.className =
+      "hw-worksheet__line hw-worksheet__line--author hw-worksheet__line--audio-prompt";
+    wrap.dataset.itemId = item.id || "aud-" + (index + 1);
+
+    if (lineOptions.itemNum) {
+      appendLineNumber(wrap, lineOptions.itemNum);
+    }
+
+    const content = document.createElement("div");
+    content.className = "hw-worksheet__content";
+
+    const prompt = document.createElement("textarea");
+    prompt.className = "hw-blank hw-blank--wide hw-blank--open hw-author-audio-prompt";
+    prompt.rows = 2;
+    prompt.value = item.prompt || "";
+    prompt.setAttribute("data-audio-prompt", "1");
+    prompt.setAttribute("aria-label", "Audio prompt " + (index + 1));
     content.appendChild(prompt);
     wrap.appendChild(content);
     return wrap;
@@ -856,10 +945,15 @@
 
     wrap.appendChild(head);
 
-    if (section.instructions) {
+    const sectionIntro =
+      String(section.instructions || "").trim() ||
+      (section.mode === "audio-listening"
+        ? "Listen to the clip and write down what you think it's saying."
+        : "");
+    if (sectionIntro) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";
-      intro.textContent = section.instructions;
+      intro.textContent = sectionIntro;
       wrap.appendChild(intro);
     }
 
@@ -874,7 +968,12 @@
 
       if (section.mode === "video-response") {
         if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i, lineOpts));
-        else wrap.appendChild(renderVideoRecordCue(item, i, lineOpts));
+        else wrap.appendChild(renderVideoRecordCue(item, i, { ...renderOptions, ...lineOpts }));
+        return;
+      }
+      if (section.mode === "audio-prompt") {
+        if (authoring) wrap.appendChild(renderAuthorAudioItem(item, i, lineOpts));
+        else wrap.appendChild(renderAudioRecordCue(item, i, { ...renderOptions, ...lineOpts }));
         return;
       }
       if (authoring) {
@@ -920,6 +1019,19 @@
           if (!prompt) return;
           section.items.push({
             id: lineEl.dataset.itemId || "vid-" + (index + 1),
+            prompt,
+            recordLabel: "Record your answer",
+          });
+        });
+        assignment.sections.push(section);
+        return;
+      }
+      if (section.mode === "audio-prompt") {
+        secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((lineEl, ai) => {
+          const prompt = lineEl.querySelector("[data-audio-prompt]")?.value?.trim();
+          if (!prompt) return;
+          section.items.push({
+            id: lineEl.dataset.itemId || "aud-" + (ai + 1),
             prompt,
             recordLabel: "Record your answer",
           });
@@ -1066,6 +1178,9 @@
     options = options || {};
     const authoring = Boolean(options.authoring);
     const prepared = JSON.parse(JSON.stringify(assignment || { sections: [] }));
+    if (!options.preview && !authoring) {
+      options = { ...options, assignment: prepared };
+    }
     mount.innerHTML = "";
 
     const form = document.createElement("form");
@@ -1091,7 +1206,7 @@
       "</p>" +
       (authoring
         ? '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>'
-        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record in the Video section. JD will review your work.</p>');
+        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video or audio prompts, record your answer in each block. JD will review your work.</p>');
     metaTop.appendChild(metaText);
 
     meta.appendChild(metaTop);
@@ -1578,6 +1693,7 @@
     const section2 = [];
 
     const videoPrompts = [];
+    const audioPrompts = [];
     const listening = [];
 
     form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
@@ -1597,6 +1713,19 @@
         return;
       }
 
+      if (mode === "audio-prompt") {
+        secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((promptEl, ai) => {
+          const num = promptEl.querySelector(".hw-item-num")?.textContent?.trim() || String(ai + 1);
+          audioPrompts.push({
+            label: "Audio " + num,
+            prompt:
+              promptEl.querySelector(".hw-audio-prompt__text")?.textContent?.trim() || "",
+            student: "(submitted via audio upload)",
+          });
+        });
+        return;
+      }
+
       secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
         if (
           !el.name ||
@@ -1604,7 +1733,8 @@
           el.hasAttribute("data-item-audio-url") ||
           el.hasAttribute("data-item-image-url") ||
           el.hasAttribute("data-item-english-answer") ||
-          el.hasAttribute("data-video-prompt")
+          el.hasAttribute("data-video-prompt") ||
+          el.hasAttribute("data-audio-prompt")
         ) {
           return;
         }
@@ -1634,6 +1764,7 @@
       section1,
       section2,
       videoPrompts,
+      audioPrompts,
       listening,
       score: { correct: 0, total: 0 },
     };

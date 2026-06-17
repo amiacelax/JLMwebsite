@@ -173,7 +173,7 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
             <h2 class="hw-platform-card__title">Student info</h2>
-            <p class="hw-platform-card__desc">Lesson links, playlists, and homework publishing for each student’s hub.</p>
+            <p class="hw-platform-card__desc">Lesson links, account type, and current homework for each student’s hub.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-account-form">
               <div class="hw-teacher-meta__grid">
@@ -183,6 +183,29 @@
                     <option value="">— Choose student —</option>
                   </select>
                 </label>
+                <label class="hw-maker-field">
+                  Account type
+                  <select name="accountLabel" id="hw-teacher-account-label">
+                    <option value="current_student">Current Student</option>
+                    <option value="homework_only">Homework Only</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field">
+                  Plan tier
+                  <select name="accountTier" id="hw-teacher-account-tier">
+                    <option value="pending">No plan yet</option>
+                    <option value="student_special">Student Special</option>
+                    <option value="tier1">Basic</option>
+                    <option value="tier2">Premium</option>
+                    <option value="tier3">Unlimited</option>
+                  </select>
+                </label>
+                <div class="hw-maker-field hw-maker-field--wide hw-teacher-current-hw">
+                  Current homework
+                  <p class="hw-teacher-current-hw__value" id="hw-teacher-current-hw">
+                    Choose a student to see their active sheet.
+                  </p>
+                </div>
                 <label class="hw-maker-field hw-maker-field--wide">
                   Lesson playlist
                   <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…" required>
@@ -191,6 +214,8 @@
                   Latest lesson — YouTube (optional override)
                   <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
                 </label>
+                <p class="hw-teacher-account-note">Send homework from the Worksheet maker dock — the sheet you send becomes their current homework on the hub.</p>
+                <p class="hw-teacher-account-note">Account type and plan tier apply when the student logs in again. Signup accounts (e.g. Faye) update immediately in storage; demo accounts in hw-auth.js use saved overrides when they sign in via the website.</p>
                 <p class="hw-teacher-account-note">The <strong>last</strong> video in the playlist becomes the student’s “Watch lesson” link (refreshes about every hour). Add each new lesson at the <strong>bottom</strong> of the playlist. Override only if the feed can’t read a private playlist.</p>
               </div>
               <div class="hw-teacher-meta__actions">
@@ -200,40 +225,11 @@
                 Pick a student, paste links, then save.
               </p>
             </form>
-
-            <div class="hw-teacher-panel-split" aria-hidden="true"></div>
-
-            <h3 class="hw-teacher-panel-subtitle">Homework — send to student</h3>
-            <p class="hw-platform-card__desc hw-platform-card__desc--tight">Pick a saved worksheet and student. The same sheet can be sent to multiple students — each only sees it after you send to them.</p>
-
-            <form class="hw-teacher-meta" id="hw-teacher-publish-form">
-              <div class="hw-teacher-meta__grid">
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Publish to student
-                  <select name="studentUsername" id="hw-teacher-publish-student" required>
-                    <option value="">— Choose student —</option>
-                  </select>
-                </label>
-                <label class="hw-maker-field hw-maker-field--wide">
-                  Worksheet
-                  <select id="hw-teacher-publish-worksheet" aria-label="Choose worksheet to publish" required>
-                    <option value="">— Choose worksheet —</option>
-                  </select>
-                  <span class="hw-teacher-edit-hint" id="hw-teacher-publish-hint">Choose a student and worksheet, then send.</span>
-                </label>
-              </div>
-              <div class="hw-teacher-meta__actions">
-                <button type="button" class="btn btn--primary" id="hw-teacher-send-btn">Send to student’s hub</button>
-              </div>
-              <p class="hw-maker-status" id="hw-teacher-publish-status" role="status" aria-live="polite">
-                Select a worksheet from the library and a student to publish.
-              </p>
-            </form>
           </section>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-library" id="hw-teacher-library" role="tabpanel" aria-labelledby="hw-teacher-tab-library" hidden>
             <h2 class="hw-platform-card__title">Worksheet library</h2>
-            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from Student info.</p>
+            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from the maker dock.</p>
             <label class="hw-library-search-label" for="hw-library-search">Search</label>
             <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
             <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
@@ -665,6 +661,7 @@
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-video-inline.js?v=20260630" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260630" defer></script>
   <script src="/js/hw-worksheet.js?v=20260674" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260671" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260670" defer></script>

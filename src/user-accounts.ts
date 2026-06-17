@@ -18,6 +18,23 @@ const RESERVED_USERNAMES = new Set([
   "support",
 ]);
 
+export type AccountLabel = "homework_only" | "current_student";
+export type AccountTier =
+  | "pending"
+  | "tier1"
+  | "tier2"
+  | "tier3"
+  | "student_special";
+
+const ACCOUNT_LABELS = new Set<AccountLabel>(["homework_only", "current_student"]);
+const ACCOUNT_TIERS = new Set<AccountTier>([
+  "pending",
+  "tier1",
+  "tier2",
+  "tier3",
+  "student_special",
+]);
+
 export interface UserAccount {
   id: string;
   username: string;
@@ -26,8 +43,8 @@ export interface UserAccount {
   passwordSalt: string;
   displayName: string;
   role: "student";
-  accountLabel: "homework_only";
-  tier: "pending" | "tier1" | "tier2" | "tier3";
+  accountLabel: AccountLabel;
+  tier: AccountTier;
   courses: string[];
   videoResponseUnlock: boolean;
   createdAt: string;
@@ -38,8 +55,8 @@ export interface AuthSession {
   displayName: string;
   email: string;
   role: "student";
-  accountLabel: "homework_only";
-  tier: UserAccount["tier"];
+  accountLabel: AccountLabel;
+  tier: AccountTier;
   courses: string[];
   videoResponseUnlock: boolean;
   source: "server";
@@ -206,6 +223,80 @@ export async function loginUserAccount(
   if (!ok) throw new Error("INVALID_CREDENTIALS");
 
   return { session: toAuthSession(account) };
+}
+
+export async function getUserAccount(
+  username: string,
+  env: KvEnv
+): Promise<UserAccount | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const normalized = normalizeUsername(username);
+  if (!normalized) return null;
+
+  const raw = await kv.get(userKey(normalized));
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as UserAccount;
+  } catch {
+    return null;
+  }
+}
+
+export interface UserAccountSettingsPatch {
+  accountLabel?: AccountLabel;
+  tier?: AccountTier;
+}
+
+export function normalizeAccountLabel(value: unknown): AccountLabel | null {
+  const label = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (label === "current_student" || label === "homework_only") return label;
+  return null;
+}
+
+export function normalizeAccountTier(value: unknown): AccountTier | null {
+  const tier = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (ACCOUNT_TIERS.has(tier as AccountTier)) return tier as AccountTier;
+  return null;
+}
+
+export async function updateUserAccountSettings(
+  username: string,
+  patch: UserAccountSettingsPatch,
+  env: KvEnv
+): Promise<UserAccount | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const normalized = normalizeUsername(username);
+  if (!normalized) throw new Error("USERNAME_REQUIRED");
+
+  const account = await getUserAccount(normalized, env);
+  if (!account) return null;
+
+  const nextLabel = patch.accountLabel
+    ? normalizeAccountLabel(patch.accountLabel)
+    : null;
+  if (patch.accountLabel !== undefined && !nextLabel) {
+    throw new Error("INVALID_ACCOUNT_LABEL");
+  }
+
+  const nextTier = patch.tier ? normalizeAccountTier(patch.tier) : null;
+  if (patch.tier !== undefined && !nextTier) {
+    throw new Error("INVALID_ACCOUNT_TIER");
+  }
+
+  if (nextLabel) account.accountLabel = nextLabel;
+  if (nextTier) account.tier = nextTier;
+
+  await kv.put(userKey(normalized), JSON.stringify(account));
+  return account;
 }
 
 export async function deleteUserAccount(
