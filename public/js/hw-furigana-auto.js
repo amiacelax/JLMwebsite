@@ -139,23 +139,27 @@
   async function annotateAssignment(assignment) {
     if (!assignment) return assignment;
 
+    const jobs = [];
     for (const section of assignment.sections || []) {
       if (section.mode !== "grammar-blank") continue;
 
       for (const item of section.items || []) {
-        const nextParts = [];
-        for (const part of item.parts || []) {
-          if (part.type !== "text") {
-            nextParts.push(part);
-            continue;
-          }
-          const annotated = await annotateTextPart(part);
-          if (annotated) nextParts.push(annotated);
-        }
-        item.parts = nextParts;
+        jobs.push(
+          (async () => {
+            const nextParts = await Promise.all(
+              (item.parts || []).map(async (part) => {
+                if (part.type !== "text") return part;
+                const annotated = await annotateTextPart(part);
+                return annotated || part;
+              })
+            );
+            item.parts = nextParts;
+          })()
+        );
       }
     }
 
+    await Promise.all(jobs);
     return assignment;
   }
 
@@ -183,11 +187,16 @@
     ]);
   }
 
+  function preload() {
+    void ensureTokenizer().catch(() => {});
+  }
+
   global.HwFuriganaAuto = {
     annotateAssignment,
     assignmentNeedsAnnotation,
     textToRubySegments,
     hasManualReadings,
     withTimeout,
+    preload,
   };
 })(window);

@@ -4,20 +4,63 @@
 (function () {
   const win = typeof window !== "undefined" ? window : globalThis;
 
+  const MISTAKES_CACHE_PREFIX = "jlm-hw-mistakes-v1-";
+  const MISTAKES_TTL_MS = 5 * 60_000;
+
   let activeCache = [];
   let trashCache = [];
   let loading = false;
   let trashOpen = false;
   let selectedIds = new Set();
   let sessionRef = null;
+  let fetchInFlight = null;
 
-  async function fetchMistakes(username, status) {
-    const url =
-      "/api/student-mistakes?username=" +
-      encodeURIComponent(username) +
-      "&status=" +
-      encodeURIComponent(status);
-    const res = await fetch(url);
+  function mistakesCacheKey(username) {
+    return MISTAKES_CACHE_PREFIX + String(username || "").toLowerCase();
+  }
+
+  function readMistakesCache(username, allowStale) {
+    try {
+      const raw = sessionStorage.getItem(mistakesCacheKey(username));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const fresh =
+        parsed?.savedAt && Date.now() - parsed.savedAt <= MISTAKES_TTL_MS;
+      if (!fresh && !allowStale) return null;
+      return {
+        fresh: Boolean(fresh),
+        active: Array.isArray(parsed.active) ? parsed.active : [],
+        trash: Array.isArray(parsed.trash) ? parsed.trash : [],
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeMistakesCache(username, active, trash) {
+    try {
+      sessionStorage.setItem(
+        mistakesCacheKey(username),
+        JSON.stringify({ savedAt: Date.now(), active, trash })
+      );
+    } catch {
+      /* quota */
+    }
+  }
+
+  function splitMistakes(rows) {
+    const active = [];
+    const trash = [];
+    (rows || []).forEach((entry) => {
+      if (entry?.status === "resolved") trash.push(entry);
+      else active.push(entry);
+    });
+    return { active, trash };
+  }
+
+  async function fetchAllMistakes(username) {
+    const url = "/api/student-mistakes?username=" + encodeURIComponent(username);
+    const res = await fetch(url, { cache: "default" });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Could not load mistakes.");
@@ -167,7 +210,7 @@
     restore.addEventListener("click", () => {
       restore.disabled = true;
       restoreMistake(session.username, entry.id)
-        .then(() => reload(session))
+        .then(() => reload(session, { bypassCache: true }))
         .then(() => setStatus("Restored ✓"))
         .catch((err) => setStatus((err && err.message) || "Could not restore.", true))
         .finally(() => {
@@ -301,17 +344,33 @@
     updateActions();
   }
 
-  async function reload(session) {
-    const [active, trash] = await Promise.all([
-      fetchMistakes(session.username, "active"),
-      fetchMistakes(session.username, "resolved"),
-    ]);
-    activeCache = active;
-    trashCache = trash;
+  function applyMistakeRows(session, rows) {
+    const split = splitMistakes(rows);
+    activeCache = split.active;
+    trashCache = split.trash;
     selectedIds = new Set(
       [...selectedIds].filter((id) => activeCache.some((m) => m.id === id))
     );
+    writeMistakesCache(session.username, activeCache, trashCache);
     render(session);
+  }
+
+  async function reload(session, options) {
+    options = options || {};
+    const username = session?.username;
+    if (!username) return;
+
+    const work = (async () => {
+      const rows = await fetchAllMistakes(username);
+      applyMistakeRows(session, rows);
+    })();
+
+    fetchInFlight = work;
+    try {
+      await work;
+    } finally {
+      if (fetchInFlight === work) fetchInFlight = null;
+    }
   }
 
   async function copySelected() {
@@ -339,11 +398,16 @@
         await trashMistake(session.username, ids[i]);
       }
       clearSelection();
-      await reload(session);
+      try {
+        sessionStorage.removeItem(mistakesCacheKey(session.username));
+      } catch {
+        /* ignore */
+      }
+      await reload(session, { bypassCache: true });
       setStatus(ids.length === 1 ? "Moved to trash ✓" : "Moved " + ids.length + " to trash ✓");
     } catch (err) {
       setStatus((err && err.message) || "Could not delete.", true);
-      await reload(session);
+      await reload(session, { bypassCache: true });
     } finally {
       if (deleteBtn) deleteBtn.disabled = false;
     }
@@ -368,24 +432,52 @@
     });
   }
 
-  async function load(session) {
+  async function load(session, options) {
+    options = options || {};
     const card = document.getElementById("hw-student-mistakes-card");
     if (!session?.username) return;
 
     bindOnce();
     sessionRef = session;
-    loading = true;
-    render(session);
+
+    const cached = options.bypassCache ? null : readMistakesCache(session.username, true);
+    if (cached) {
+      activeCache = cached.active;
+      trashCache = cached.trash;
+      loading = false;
+      if (card) card.hidden = false;
+      render(session);
+    } else if (!options.background) {
+      loading = true;
+      render(session);
+    }
+
+    if (cached?.fresh && !options.bypassCache) {
+      return;
+    }
+
+    if (fetchInFlight && !options.bypassCache) {
+      try {
+        await fetchInFlight;
+      } catch {
+        /* handled by in-flight caller */
+      }
+      return;
+    }
 
     try {
-      await reload(session);
+      if (!cached) loading = true;
+      if (!cached && !options.background) render(session);
+      await reload(session, options);
       if (card) card.hidden = false;
     } catch {
-      activeCache = [];
-      trashCache = [];
-      if (card) card.hidden = false;
-      const metaEl = document.getElementById("hw-student-mistakes-meta");
-      if (metaEl) metaEl.textContent = "Could not load your mistake list.";
+      if (!cached) {
+        activeCache = [];
+        trashCache = [];
+        if (card) card.hidden = false;
+        const metaEl = document.getElementById("hw-student-mistakes-meta");
+        if (metaEl) metaEl.textContent = "Could not load your mistake list.";
+      }
     } finally {
       loading = false;
       render(session);

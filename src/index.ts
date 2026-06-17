@@ -141,10 +141,10 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...extraHeaders },
   });
 }
 
@@ -1318,9 +1318,15 @@ async function handleHomeworkCatalog(request: Request, env: Env): Promise<Respon
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
   try {
+    const url = new URL(request.url);
     const staticCatalog = await loadStaticCatalog(env);
-    const merged = await mergeCatalog(staticCatalog, env.HOMEWORK_KV);
-    return jsonResponse(merged);
+    const student = url.searchParams.get("student")?.trim().toLowerCase() || "";
+    const merged = await mergeCatalog(staticCatalog, env.HOMEWORK_KV, student ? { student } : undefined);
+    const extraHeaders: Record<string, string> = {};
+    if (student) {
+      extraHeaders["Cache-Control"] = "private, max-age=30";
+    }
+    return jsonResponse(merged, 200, extraHeaders);
   } catch (err) {
     console.error("homework-catalog failed:", err);
     return jsonResponse({ error: "Could not load homework catalog." }, 500);

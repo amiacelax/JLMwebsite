@@ -406,10 +406,100 @@
       .toLowerCase();
   }
 
-  async function fetchCatalog() {
-    const res = await fetch("/api/homework-catalog", { cache: "no-store" });
-    if (!res.ok) throw new Error("catalog");
-    return res.json();
+  const CATALOG_SESSION_KEY = "jlm-hw-catalog-v1";
+  const CATALOG_TTL_MS = 90_000;
+  const assignmentMemoryCache = new Map();
+  let catalogFetchInFlight = null;
+  let studentHubLoadGen = 0;
+  let studentHubHiddenAt = 0;
+  let studentMountedAssignmentId = null;
+
+  function readSessionJson(key) {
+    try {
+      const raw = sessionStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeSessionJson(key, value) {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* quota */
+    }
+  }
+
+  function invalidateCatalogCaches() {
+    catalogCache = null;
+    catalogFetchInFlight = null;
+    try {
+      sessionStorage.removeItem(CATALOG_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function invalidateAssignmentCache(id) {
+    if (id) {
+      assignmentMemoryCache.delete(id);
+      try {
+        sessionStorage.removeItem("jlm-hw-assignment-" + id);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    assignmentMemoryCache.clear();
+    try {
+      Object.keys(sessionStorage).forEach((k) => {
+        if (k.startsWith("jlm-hw-assignment-")) sessionStorage.removeItem(k);
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function fetchCatalog(options) {
+    options = options || {};
+    if (!options.bypassCache && catalogCache) return catalogCache;
+
+    if (!options.bypassCache) {
+      const cached = readSessionJson(CATALOG_SESSION_KEY);
+      if (
+        cached?.savedAt &&
+        Date.now() - cached.savedAt < CATALOG_TTL_MS &&
+        cached.data?.assignments
+      ) {
+        catalogCache = cached.data;
+        return cached.data;
+      }
+    }
+
+    if (!options.bypassCache && catalogFetchInFlight) return catalogFetchInFlight;
+
+    const work = (async () => {
+      const studentParam =
+        !isTeacher && session?.username
+          ? "?student=" + encodeURIComponent(session.username)
+          : "";
+      const res = await fetch("/api/homework-catalog" + studentParam, {
+        cache: options.bypassCache ? "no-store" : "default",
+      });
+      if (!res.ok) throw new Error("catalog");
+      const data = await res.json();
+      catalogCache = data;
+      writeSessionJson(CATALOG_SESSION_KEY, { savedAt: Date.now(), data });
+      return data;
+    })();
+
+    if (!options.bypassCache) catalogFetchInFlight = work;
+    try {
+      return await work;
+    } finally {
+      if (catalogFetchInFlight === work) catalogFetchInFlight = null;
+    }
   }
 
   function normalizeAssignmentPayload(data) {
@@ -419,26 +509,49 @@
     return data;
   }
 
-  async function fetchAssignmentJson(id) {
+  async function fetchAssignmentJson(id, options) {
+    options = options || {};
+    if (!id) throw new Error("assignment");
+
+    if (!options.bypassCache && assignmentMemoryCache.has(id)) {
+      return assignmentMemoryCache.get(id);
+    }
+
+    const sessionKey = "jlm-hw-assignment-" + id;
+    if (!options.bypassCache) {
+      const cached = readSessionJson(sessionKey);
+      if (cached?.data?.sections?.length) {
+        assignmentMemoryCache.set(id, cached.data);
+        return cached.data;
+      }
+    }
+
+    const fetchOpts = { cache: options.bypassCache ? "no-store" : "default" };
+    const apiUrl = "/api/homework-assignment?id=" + encodeURIComponent(id);
+
     try {
-      const res = await fetch(
-        "/api/homework-assignment?id=" + encodeURIComponent(id) + "&_=" + Date.now(),
-        { cache: "no-store" }
-      );
+      const res = await fetch(apiUrl, fetchOpts);
       if (res.ok) {
         const assignment = normalizeAssignmentPayload(await res.json());
-        if (assignment?.sections?.length) return assignment;
+        if (assignment?.sections?.length) {
+          assignmentMemoryCache.set(id, assignment);
+          writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
+          return assignment;
+        }
       }
     } catch {
       /* fall through to static file */
     }
+
     const staticRes = await fetch(
       "/homework/assignments/" + encodeURIComponent(id) + ".json",
-      { cache: "no-store" }
+      fetchOpts
     );
     if (!staticRes.ok) throw new Error("assignment");
     const assignment = normalizeAssignmentPayload(await staticRes.json());
     if (!assignment?.sections?.length) throw new Error("assignment");
+    assignmentMemoryCache.set(id, assignment);
+    writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
     return assignment;
   }
 
@@ -1412,7 +1525,7 @@
     if (mount.querySelector(".hw-builder") || mount.dataset.builderReady === "true") return;
     HwTeacherEditor.init({
       showToast,
-      fetchAssignmentJson,
+      fetchAssignmentJson: (id) => fetchAssignmentJson(id, { bypassCache: true }),
       fetchCatalog,
       getCatalogEntry,
       getTeacherSession: () => session,
@@ -1434,9 +1547,9 @@
         return ["joshs", "benm", "deme", "ivan", "benc", "noplan"].includes(key);
       },
       onWorksheetSaved: async function () {
-        catalogCache = null;
+        invalidateCatalogCaches();
         try {
-          catalogCache = await fetchCatalog();
+          catalogCache = await fetchCatalog({ bypassCache: true });
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
             catalogCache.studentProfiles || {},
@@ -1447,9 +1560,9 @@
         }
       },
       onWorksheetDeleted: async function () {
-        catalogCache = null;
+        invalidateCatalogCaches();
         try {
-          catalogCache = await fetchCatalog();
+          catalogCache = await fetchCatalog({ bypassCache: true });
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
             catalogCache.studentProfiles || {},
@@ -1460,9 +1573,10 @@
         }
       },
       onPublished: async function (id, studentUsername) {
-        catalogCache = null;
+        invalidateCatalogCaches();
+        invalidateAssignmentCache(id);
         try {
-          catalogCache = await fetchCatalog();
+          catalogCache = await fetchCatalog({ bypassCache: true });
           HwTeacherEditor.refreshCatalog(
             catalogCache.assignments || [],
             catalogCache.studentProfiles || {},
@@ -1706,7 +1820,35 @@
     return String(entry?.publishedAt || entry?.date || entry?.id || "");
   }
 
-  async function loadStudentHub() {
+  function guessedAssignmentId() {
+    const hashId = window.location.hash.replace(/^#hw-/, "");
+    if (hashId) return hashId;
+    const cached = readSessionJson(CATALOG_SESSION_KEY);
+    const user = session?.username;
+    if (user && cached?.data?.studentProfiles?.[user]?.currentHomeworkId) {
+      return cached.data.studentProfiles[user].currentHomeworkId;
+    }
+    const mem = catalogCache?.studentProfiles?.[user]?.currentHomeworkId;
+    return mem || null;
+  }
+
+  function scheduleStudentMistakesLoad(options) {
+    if (!global.HwStudentMistakes?.load) return;
+    const run = () => {
+      void HwStudentMistakes.load(session, options || {});
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      setTimeout(run, 200);
+    }
+  }
+
+  async function loadStudentHub(options) {
+    options = options || {};
+    const loadGen = ++studentHubLoadGen;
+    const isStale = () => loadGen !== studentHubLoadGen;
+
     document.body.classList.add("hw-role-student");
 
     const teacherHub = document.getElementById("hw-teacher-hub");
@@ -1714,27 +1856,37 @@
     if (teacherHub) teacherHub.hidden = true;
     if (studentOnly) studentOnly.hidden = false;
 
-    if (global.HwStudentMistakes?.load) {
-      void HwStudentMistakes.load(session);
-    }
-
     const mount = document.getElementById("hw-worksheet-mount");
     const heading = document.getElementById("hw-worksheet-heading");
     const intro = document.getElementById("hw-worksheet-intro");
 
+    const hashId = window.location.hash.replace(/^#hw-/, "");
+    const guessId = options.skipWorksheet ? null : guessedAssignmentId();
+    const catalogPromise = fetchCatalog(
+      options.bypassCache ? { bypassCache: true } : undefined
+    );
+    const speculativeId = hashId || guessId;
+    const speculativeAssignmentPromise =
+      speculativeId && !options.skipWorksheet
+        ? fetchAssignmentJson(
+            speculativeId,
+            options.bypassCache ? { bypassCache: true } : undefined
+          ).catch(() => null)
+        : null;
+
     let catalog;
     try {
-      catalog = await fetchCatalog();
+      catalog = await catalogPromise;
     } catch {
       if (intro) intro.textContent = "Could not load homework catalog.";
       return;
     }
+    if (isStale()) return;
 
     const user = session.username;
     const mine = (catalog.assignments || []).filter((a) => (a.students || []).includes(user));
     mine.sort((a, b) => assignmentRecencyKey(b).localeCompare(assignmentRecencyKey(a)));
 
-    const hashId = window.location.hash.replace(/^#hw-/, "");
     const currentId = catalog.studentProfiles?.[user]?.currentHomeworkId;
     const active =
       (hashId && mine.find((a) => a.id === hashId)) ||
@@ -1752,15 +1904,46 @@
       if (heading) heading.textContent = "Current homework";
       if (intro) intro.textContent = "No assignment is linked to your account yet.";
       mount.innerHTML = "";
+      studentMountedAssignmentId = null;
+      scheduleStudentMistakesLoad({
+        background: Boolean(options.background),
+        bypassCache: Boolean(options.bypassCache),
+      });
       return;
     }
 
-    let assignment;
-    try {
-      assignment = await fetchAssignmentJson(active.id);
-    } catch {
-      if (intro) intro.textContent = "Could not load this worksheet.";
+    if (
+      options.metadataOnly &&
+      active.id === studentMountedAssignmentId &&
+      mount.querySelector("#hw-worksheet-form")
+    ) {
+      scheduleStudentMistakesLoad({
+        background: true,
+        bypassCache: Boolean(options.bypassCache),
+      });
       return;
+    }
+
+    let assignment = null;
+    if (speculativeAssignmentPromise && active.id === speculativeId) {
+      assignment = await speculativeAssignmentPromise;
+      if (isStale()) return;
+    }
+    if (!assignment) {
+      try {
+        assignment = await fetchAssignmentJson(
+          active.id,
+          options.bypassCache ? { bypassCache: true } : undefined
+        );
+      } catch {
+        if (intro) intro.textContent = "Could not load this worksheet.";
+        scheduleStudentMistakesLoad({
+          background: Boolean(options.background),
+          bypassCache: Boolean(options.bypassCache),
+        });
+        return;
+      }
+      if (isStale()) return;
     }
 
     const view = studentViewMeta(active, assignment);
@@ -1800,6 +1983,12 @@
     }
 
     mountWorksheet(assignment);
+    studentMountedAssignmentId = active.id;
+
+    scheduleStudentMistakesLoad({
+      background: Boolean(options.background),
+      bypassCache: Boolean(options.bypassCache),
+    });
 
     if (
       global.HwFuriganaAuto?.annotateAssignment &&
@@ -1838,13 +2027,36 @@
       renderGamesHubCard();
       bindWeeklyUpgradeCard();
       loadStudentHub();
-      window.addEventListener("hashchange", loadStudentHub);
+      window.addEventListener("hashchange", () => {
+        loadStudentHub();
+      });
       window.addEventListener("pageshow", (e) => {
-        if (e.persisted) loadStudentHub();
+        if (e.persisted) {
+          loadStudentHub({ bypassCache: true, metadataOnly: false });
+        }
       });
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") loadStudentHub();
+        if (document.visibilityState === "hidden") {
+          studentHubHiddenAt = Date.now();
+          return;
+        }
+        if (document.visibilityState !== "visible") return;
+        const hiddenMs = studentHubHiddenAt ? Date.now() - studentHubHiddenAt : 0;
+        if (hiddenMs < 90_000) return;
+        void loadStudentHub({
+          background: true,
+          bypassCache: true,
+          metadataOnly: true,
+        });
       });
+      if (global.HwFuriganaAuto?.preload) {
+        const preload = () => void global.HwFuriganaAuto.preload();
+        if (typeof requestIdleCallback === "function") {
+          requestIdleCallback(preload, { timeout: 4000 });
+        } else {
+          setTimeout(preload, 1500);
+        }
+      }
     }
   }
 

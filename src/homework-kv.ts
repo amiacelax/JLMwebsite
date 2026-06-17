@@ -604,17 +604,18 @@ export async function deleteWorksheetFromLibrary(
 
 export async function loadPublishedCatalogEntries(kv: KVNamespace): Promise<Record<string, unknown>[]> {
   const ids = await readIndex(kv);
-  const entries: Record<string, unknown>[] = [];
-  for (const id of ids) {
-    const raw = await kv.get(catalogKey(id));
-    if (!raw) continue;
-    try {
-      entries.push(JSON.parse(raw) as Record<string, unknown>);
-    } catch {
-      /* skip corrupt */
-    }
-  }
-  return entries;
+  const rows = await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(catalogKey(id));
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return rows.filter((e): e is Record<string, unknown> => Boolean(e));
 }
 
 export async function loadPublishedAssignment(
@@ -645,7 +646,8 @@ async function resolveLatestLessonFromPlaylist(
   kv: KVNamespace | undefined,
   student: string,
   playlistUrl: string,
-  bustCache = false
+  bustCache = false,
+  allowLiveFetch = true
 ): Promise<string | null> {
   const playlistId = extractPlaylistId(playlistUrl);
   if (!playlistId) return null;
@@ -663,6 +665,8 @@ async function resolveLatestLessonFromPlaylist(
     }
   }
 
+  if (!allowLiveFetch) return null;
+
   const latest = await fetchLatestVideoFromPlaylist(playlistId);
   if (!latest) return null;
 
@@ -679,12 +683,19 @@ async function resolveLatestLessonFromPlaylist(
 async function enrichProfileWithPlaylistLatest(
   kv: KVNamespace | undefined,
   student: string,
-  profile: NonNullable<CatalogFile["studentProfiles"]>[string]
+  profile: NonNullable<CatalogFile["studentProfiles"]>[string],
+  opts?: { allowLiveFetch?: boolean }
 ): Promise<NonNullable<CatalogFile["studentProfiles"]>[string]> {
   const playlistUrl = String(profile.lessonPlaylistUrl || "").trim();
   if (!playlistUrl) return profile;
 
-  const fromPlaylist = await resolveLatestLessonFromPlaylist(kv, student, playlistUrl);
+  const fromPlaylist = await resolveLatestLessonFromPlaylist(
+    kv,
+    student,
+    playlistUrl,
+    false,
+    opts?.allowLiveFetch !== false
+  );
   if (!fromPlaylist) return profile;
 
   return {
@@ -694,9 +705,45 @@ async function enrichProfileWithPlaylistLatest(
   };
 }
 
+export interface MergeCatalogOptions {
+  /** Student hub: only enrich this learner — skips full roster + live playlist fetches. */
+  student?: string;
+}
+
+type StudentProfile = NonNullable<CatalogFile["studentProfiles"]>[string];
+
+async function applyKvStudentMedia(
+  kvNs: KVNamespace,
+  key: string,
+  base: StudentProfile
+): Promise<StudentProfile | null> {
+  const [yt, playlist] = await Promise.all([
+    getStudentYoutube(kvNs, key),
+    getStudentLessonPlaylist(kvNs, key),
+  ]);
+  let next: StudentProfile = { ...base };
+  if (playlist) {
+    next = { ...next, lessonPlaylistUrl: playlist };
+  }
+  if (yt) {
+    next = { ...next, latestLessonUrl: yt, youtubeUrl: yt };
+  }
+  if (yt || playlist || base.lessonPlaylistUrl) return next;
+  return null;
+}
+
+function assignmentIncludesStudent(
+  entry: Record<string, unknown>,
+  studentKey: string
+): boolean {
+  const students = (entry.students as string[]) || [];
+  return students.some((s) => String(s).toLowerCase() === studentKey);
+}
+
 export async function mergeCatalog(
   staticCatalog: CatalogFile,
-  kv: KVNamespace | undefined
+  kv: KVNamespace | undefined,
+  opts?: MergeCatalogOptions
 ): Promise<CatalogFile> {
   const published = kv ? await loadPublishedCatalogEntries(kv) : [];
   const staticAssignments = staticCatalog.assignments || [];
@@ -709,56 +756,100 @@ export async function mergeCatalog(
     if (e?.id) byId.set(String(e.id), e);
   });
 
+  const studentKey = String(opts?.student || "")
+    .trim()
+    .toLowerCase();
+  let assignments = [...byId.values()];
+  if (studentKey) {
+    assignments = assignments.filter((e) => assignmentIncludesStudent(e, studentKey));
+  }
+
   const merged: CatalogFile = {
     ...staticCatalog,
-    assignments: [...byId.values()],
+    assignments,
   };
 
-  if (kv) {
-    const kvNs = kv;
-    type StudentProfile = NonNullable<CatalogFile["studentProfiles"]>[string];
-    merged.studentProfiles = { ...(staticCatalog.studentProfiles || {}) };
-    async function applyKvStudentMedia(key: string, base: StudentProfile) {
-      const yt = await getStudentYoutube(kvNs, key);
-      const playlist = await getStudentLessonPlaylist(kvNs, key);
-      let next: StudentProfile = { ...base };
-      if (playlist) {
-        next = { ...next, lessonPlaylistUrl: playlist };
-      }
-      if (yt) {
-        next = { ...next, latestLessonUrl: yt, youtubeUrl: yt };
-      }
-      if (yt || playlist || base.lessonPlaylistUrl) {
-        merged.studentProfiles![key] = next;
-      }
-    }
+  if (!kv) return merged;
 
-    for (const [user, profile] of Object.entries(staticCatalog.studentProfiles || {})) {
-      const key = user.toLowerCase();
-      await applyKvStudentMedia(key, profile);
-    }
-    for (const entry of published) {
-      for (const user of (entry.students as string[]) || []) {
-        const key = String(user).toLowerCase();
-        await applyKvStudentMedia(key, merged.studentProfiles![key] || {});
-      }
-    }
+  const kvNs = kv;
+  const allowLivePlaylist = !studentKey;
 
-    const allStudents = await listAllStudentAccounts(kvNs);
-    merged.students = allStudents;
+  if (studentKey) {
+    const base = staticCatalog.studentProfiles?.[studentKey] || {};
+    merged.studentProfiles = { [studentKey]: { ...base } };
 
-    for (const { username: student } of allStudents) {
-      const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(student));
-      if (!currentHomeworkId) continue;
-      merged.studentProfiles![student] = {
-        ...(merged.studentProfiles![student] || {}),
+    const media = await applyKvStudentMedia(kvNs, studentKey, base);
+    if (media) merged.studentProfiles[studentKey] = media;
+
+    const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(studentKey));
+    if (currentHomeworkId) {
+      merged.studentProfiles[studentKey] = {
+        ...(merged.studentProfiles[studentKey] || {}),
         currentHomeworkId,
       };
     }
 
-    for (const [key, profile] of Object.entries(merged.studentProfiles || {})) {
+    const profile = merged.studentProfiles[studentKey] || {};
+    const playlistUrl = String(profile.lessonPlaylistUrl || "").trim();
+    if (playlistUrl) {
+      const manualYt = await getStudentYoutube(kvNs, studentKey);
+      if (manualYt) {
+        merged.studentProfiles[studentKey] = {
+          ...profile,
+          latestLessonUrl: manualYt,
+          youtubeUrl: manualYt,
+        };
+      } else {
+        const enriched = await enrichProfileWithPlaylistLatest(kvNs, studentKey, profile, {
+          allowLiveFetch: allowLivePlaylist,
+        });
+        if (enriched.latestLessonUrl) {
+          merged.studentProfiles[studentKey] = enriched;
+        }
+      }
+    }
+
+    return merged;
+  }
+
+  merged.studentProfiles = { ...(staticCatalog.studentProfiles || {}) };
+
+  const studentKeys = new Set<string>();
+  for (const user of Object.keys(staticCatalog.studentProfiles || {})) {
+    studentKeys.add(user.toLowerCase());
+  }
+  for (const entry of published) {
+    for (const user of (entry.students as string[]) || []) {
+      studentKeys.add(String(user).toLowerCase());
+    }
+  }
+
+  await Promise.all(
+    [...studentKeys].map(async (key) => {
+      const base = merged.studentProfiles![key] || {};
+      const media = await applyKvStudentMedia(kvNs, key, base);
+      if (media) merged.studentProfiles![key] = media;
+    })
+  );
+
+  const allStudents = await listAllStudentAccounts(kvNs);
+  merged.students = allStudents;
+
+  await Promise.all(
+    allStudents.map(async ({ username: student }) => {
+      const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(student));
+      if (!currentHomeworkId) return;
+      merged.studentProfiles![student] = {
+        ...(merged.studentProfiles![student] || {}),
+        currentHomeworkId,
+      };
+    })
+  );
+
+  await Promise.all(
+    Object.entries(merged.studentProfiles || {}).map(async ([key, profile]) => {
       const playlistUrl = String(profile.lessonPlaylistUrl || "").trim();
-      if (!playlistUrl) continue;
+      if (!playlistUrl) return;
 
       const manualYt = await getStudentYoutube(kvNs, key);
       if (manualYt) {
@@ -767,15 +858,17 @@ export async function mergeCatalog(
           latestLessonUrl: manualYt,
           youtubeUrl: manualYt,
         };
-        continue;
+        return;
       }
 
-      const enriched = await enrichProfileWithPlaylistLatest(kvNs, key, profile);
+      const enriched = await enrichProfileWithPlaylistLatest(kvNs, key, profile, {
+        allowLiveFetch: true,
+      });
       if (enriched.latestLessonUrl) {
         merged.studentProfiles![key] = enriched;
       }
-    }
-  }
+    })
+  );
 
   return merged;
 }
@@ -1859,6 +1952,8 @@ export async function deletePromoSignup(
 
 const MISTAKES_INDEX = "mistakes-index";
 const mistakeKey = (id: string) => `mistake:${id}`;
+const studentMistakesIndexKey = (username: string) =>
+  `mistakes-student:${username.toLowerCase()}`;
 
 export type StudentMistakeCategory =
   | "grammar"
@@ -1953,6 +2048,110 @@ async function writeMistakesIndex(kv: KVNamespace, ids: string[]): Promise<void>
   await kv.put(MISTAKES_INDEX, JSON.stringify(unique));
 }
 
+async function readStudentMistakesIndex(
+  kv: KVNamespace,
+  student: string
+): Promise<string[] | null> {
+  const raw = await kv.get(studentMistakesIndexKey(student));
+  if (!raw) return null;
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeStudentMistakesIndex(
+  kv: KVNamespace,
+  student: string,
+  ids: string[]
+): Promise<void> {
+  await kv.put(
+    studentMistakesIndexKey(student),
+    JSON.stringify([...new Set(ids.filter(Boolean))])
+  );
+}
+
+async function addStudentMistakesIndexId(
+  kv: KVNamespace,
+  student: string,
+  id: string
+): Promise<void> {
+  const key = student.toLowerCase();
+  let ids = (await readStudentMistakesIndex(kv, key)) || [];
+  if (!ids.length) {
+    ids = await buildStudentMistakesIndex(kv, key);
+  }
+  if (!ids.includes(id)) {
+    ids.unshift(id);
+    await writeStudentMistakesIndex(kv, key, ids);
+  }
+}
+
+async function removeStudentMistakesIndexId(
+  kv: KVNamespace,
+  student: string,
+  id: string
+): Promise<void> {
+  const key = student.toLowerCase();
+  const ids = await readStudentMistakesIndex(kv, key);
+  if (!ids?.length) return;
+  const next = ids.filter((entry) => entry !== id);
+  await writeStudentMistakesIndex(kv, key, next);
+}
+
+async function buildStudentMistakesIndex(
+  kv: KVNamespace,
+  student: string
+): Promise<string[]> {
+  const filterStudent = student.toLowerCase();
+  const ids = await readMistakesIndex(kv);
+  const studentIds: string[] = [];
+  await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(mistakeKey(id));
+      if (!raw) return;
+      try {
+        const entry = JSON.parse(raw) as StudentMistake;
+        if (entry.username === filterStudent) studentIds.push(id);
+      } catch {
+        /* skip */
+      }
+    })
+  );
+  studentIds.sort((a, b) => b.localeCompare(a));
+  await writeStudentMistakesIndex(kv, filterStudent, studentIds);
+  return studentIds;
+}
+
+async function ensureStudentMistakesIndex(
+  kv: KVNamespace,
+  student: string
+): Promise<string[]> {
+  const existing = await readStudentMistakesIndex(kv, student);
+  if (existing) return existing;
+  return buildStudentMistakesIndex(kv, student);
+}
+
+async function loadMistakesByIds(
+  kv: KVNamespace,
+  ids: string[]
+): Promise<StudentMistake[]> {
+  const rows = await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(mistakeKey(id));
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as StudentMistake;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return rows.filter((e): e is StudentMistake => Boolean(e));
+}
+
 export async function listStudentMistakes(
   env: KvEnv,
   opts?: { student?: string; status?: string }
@@ -1964,23 +2163,20 @@ export async function listStudentMistakes(
     .trim()
     .toLowerCase();
   const filterStatus = String(opts?.status || "").trim().toLowerCase();
-  const ids = await readMistakesIndex(kv);
-  const mistakes: StudentMistake[] = [];
 
-  for (const id of ids) {
-    const raw = await kv.get(mistakeKey(id));
-    if (!raw) continue;
-    try {
-      const entry = JSON.parse(raw) as StudentMistake;
-      if (filterStudent && entry.username !== filterStudent) continue;
-      if (filterStatus && entry.status !== filterStatus) continue;
-      mistakes.push(entry);
-    } catch {
-      /* skip corrupt */
+  if (filterStudent) {
+    const ids = await ensureStudentMistakesIndex(kv, filterStudent);
+    let mistakes = await loadMistakesByIds(kv, ids);
+    if (filterStatus) {
+      mistakes = mistakes.filter((entry) => entry.status === filterStatus);
     }
+    return mistakes;
   }
 
-  return mistakes;
+  const ids = await readMistakesIndex(kv);
+  const mistakes = await loadMistakesByIds(kv, ids);
+  if (!filterStatus) return mistakes;
+  return mistakes.filter((entry) => entry.status === filterStatus);
 }
 
 export async function saveStudentMistake(
@@ -2062,6 +2258,7 @@ export async function saveStudentMistake(
     const index = await readMistakesIndex(kv);
     index.unshift(id);
     await writeMistakesIndex(kv, index);
+    await addStudentMistakesIndexId(kv, username, id);
   }
 
   return { id, updated };
@@ -2081,12 +2278,22 @@ export async function deleteStudentMistake(
   const raw = await kv.get(mistakeKey(id));
   if (!raw) throw new Error("NOT_FOUND");
 
+  let deletedUsername = "";
+  try {
+    deletedUsername = (JSON.parse(raw) as StudentMistake).username || "";
+  } catch {
+    /* ignore */
+  }
+
   await kv.delete(mistakeKey(id));
   const ids = await readMistakesIndex(kv);
   await writeMistakesIndex(
     kv,
     ids.filter((entry) => entry !== id)
   );
+  if (deletedUsername) {
+    await removeStudentMistakesIndexId(kv, deletedUsername, id);
+  }
 
   return { id };
 }
