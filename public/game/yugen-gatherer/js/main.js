@@ -64,6 +64,9 @@ let cameraPitch = 0.25;
 let cameraDistance = 7;
 const CAMERA_MIN = 0.05;
 const CAMERA_MAX = 14;
+const CAMERA_DEFAULT_PITCH = 0.25;
+const CAMERA_RECENTER_YAW = 2.8;
+const CAMERA_RECENTER_PITCH = 2.2;
 
 const player = createPlayerMesh();
 player.position.set(0, 0, 2);
@@ -460,6 +463,20 @@ function handleMovement(dt) {
   }
 }
 
+function updateCameraRecenter(dt) {
+  if (rightMouse || uiLocked || phase === "dream") return;
+
+  let yawDelta = player.rotation.y - cameraYaw;
+  while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+  while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+
+  const yawBlend = 1 - Math.exp(-CAMERA_RECENTER_YAW * dt);
+  cameraYaw += yawDelta * yawBlend;
+
+  const pitchBlend = 1 - Math.exp(-CAMERA_RECENTER_PITCH * dt);
+  cameraPitch += (CAMERA_DEFAULT_PITCH - cameraPitch) * pitchBlend;
+}
+
 function updateCamera() {
   if (phase === "dream") {
     const t = dreamTime * 0.15;
@@ -574,6 +591,7 @@ function animate() {
   if (phase === "dream") dreamTime += dt;
   if (phase === "karaoke") updateKaraokeAmbience(clock.elapsedTime);
 
+  updateCameraRecenter(dt);
   updateCamera();
   updateInteractPrompt();
   drawMinimap();
@@ -596,6 +614,7 @@ window.addEventListener("mousemove", (e) => {
   if (!rightMouse || uiLocked) return;
   cameraYaw -= e.movementX * 0.004;
   cameraPitch += e.movementY * 0.003;
+  cameraPitch = THREE.MathUtils.clamp(cameraPitch, -0.1, 0.85);
 });
 canvas.addEventListener("wheel", (e) => {
   cameraDistance += e.deltaY * 0.012;

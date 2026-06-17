@@ -598,82 +598,67 @@ export function buildElevatorInterior() {
   return group;
 }
 
+function flatMat(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: opts.roughness ?? 0.48,
+    metalness: opts.metalness ?? 0,
+    flatShading: true,
+  });
+}
+
 export function createPlayerMesh() {
   const g = new THREE.Group();
   g.name = "player";
 
-  const legMat = stdMat(0x2a3540, { roughness: 0.85 });
-  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 0.45, 4, 8), legMat);
-  legL.position.set(-0.14, 0.38, 0);
-  legL.castShadow = true;
-  const legR = legL.clone();
-  legR.position.x = 0.14;
+  const skin = 0xe8b888;
+  const hairTone = 0x342820;
+  const capTone = 0x4d6b58;
+  const jacketTone = 0x4f6d88;
+  const shirtTone = 0x9ab0c4;
+  const pantsTone = 0x383f4a;
+  const shoeTone = 0x242018;
+  const bagTone = 0x7a5c42;
+  const strapTone = 0x4a3828;
 
-  const torso = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.32, 0.55, 6, 12),
-    stdMat(0x4a5870, { roughness: 0.78 })
-  );
-  torso.position.y = 1.02;
-  torso.castShadow = true;
+  function part(geo, color, x, y, z, rot = {}) {
+    const m = new THREE.Mesh(geo, flatMat(color));
+    m.position.set(x, y, z);
+    if (rot.x) m.rotation.x = rot.x;
+    if (rot.y) m.rotation.y = rot.y;
+    if (rot.z) m.rotation.z = rot.z;
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  }
 
-  const jacket = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.5, 0.38),
-    stdMat(0x3d4a62, { roughness: 0.72 })
-  );
-  jacket.position.set(0, 1.05, 0.02);
-  jacket.castShadow = true;
+  part(new THREE.BoxGeometry(0.2, 0.1, 0.28), shoeTone, -0.15, 0.05, 0.03);
+  part(new THREE.BoxGeometry(0.2, 0.1, 0.28), shoeTone, 0.15, 0.05, 0.03);
 
-  const collar = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.1, 0.36),
-    stdMat(0x5a6878, { roughness: 0.75 })
-  );
-  collar.position.set(0, 1.32, 0.02);
+  part(new THREE.CylinderGeometry(0.11, 0.13, 0.58, 6), pantsTone, -0.15, 0.39, 0);
+  part(new THREE.CylinderGeometry(0.11, 0.13, 0.58, 6), pantsTone, 0.15, 0.39, 0);
 
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.26, 14, 14),
-    stdMat(0xd4a574, { roughness: 0.72 })
-  );
-  head.position.y = 1.68;
-  head.castShadow = true;
+  part(new THREE.BoxGeometry(0.4, 0.14, 0.28), pantsTone, 0, 0.75, 0);
 
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.27, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    stdMat(0x2a2018, { roughness: 0.85 })
-  );
-  hair.position.set(0, 1.78, -0.02);
-  hair.castShadow = true;
+  part(new THREE.BoxGeometry(0.5, 0.46, 0.32), shirtTone, 0, 1.05, 0);
+  part(new THREE.BoxGeometry(0.54, 0.48, 0.34), jacketTone, 0, 1.05, 0.01);
+  part(new THREE.BoxGeometry(0.34, 0.09, 0.3), shirtTone, 0, 1.3, 0.02);
 
-  const armL = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.09, 0.38, 4, 8),
-    stdMat(0x4a5870, { roughness: 0.8 })
-  );
-  armL.position.set(-0.38, 1.0, 0);
-  armL.rotation.z = 0.15;
-  armL.castShadow = true;
-  const armR = armL.clone();
-  armR.position.x = 0.38;
-  armR.rotation.z = -0.15;
+  part(new THREE.BoxGeometry(0.15, 0.4, 0.15), jacketTone, -0.35, 1.02, 0.02, { z: 0.16 });
+  part(new THREE.BoxGeometry(0.15, 0.4, 0.15), jacketTone, 0.35, 1.02, 0.02, { z: -0.16 });
 
-  const bag = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.42, 0.14),
-    stdMat(0x2a4a32, { roughness: 0.62 })
-  );
-  bag.position.set(-0.3, 1.0, -0.18);
-  bag.rotation.y = 0.25;
-  bag.castShadow = true;
-  const bagStrap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.06, 0.35, 0.06),
-    stdMat(0x1a3020, { roughness: 0.7 })
-  );
-  bagStrap.position.set(-0.18, 1.12, -0.05);
-  bagStrap.rotation.z = -0.35;
+  part(new THREE.SphereGeometry(0.26, 8, 6), skin, 0, 1.54, 0.02);
 
-  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.22), stdMat(0x1a1a1a, { roughness: 0.6 }));
-  shoeL.position.set(-0.14, 0.04, 0.04);
-  const shoeR = shoeL.clone();
-  shoeR.position.x = 0.14;
+  part(new THREE.BoxGeometry(0.055, 0.028, 0.02), 0x1a1410, -0.08, 1.56, 0.25);
+  part(new THREE.BoxGeometry(0.055, 0.028, 0.02), 0x1a1410, 0.08, 1.56, 0.25);
 
-  g.add(legL, legR, shoeL, shoeR, torso, jacket, collar, armL, armR, head, hair, bag, bagStrap);
+  part(new THREE.BoxGeometry(0.46, 0.12, 0.34), hairTone, 0, 1.58, -0.05);
+  part(new THREE.CylinderGeometry(0.2, 0.26, 0.14, 8), capTone, 0, 1.72, 0.02);
+  part(new THREE.CylinderGeometry(0.3, 0.3, 0.035, 8), capTone, 0, 1.66, 0.17);
+
+  part(new THREE.BoxGeometry(0.28, 0.36, 0.12), bagTone, -0.06, 1.04, -0.19, { y: 0.14 });
+  part(new THREE.BoxGeometry(0.06, 0.3, 0.06), strapTone, -0.11, 1.12, -0.07, { z: -0.32 });
+
   return g;
 }
 
