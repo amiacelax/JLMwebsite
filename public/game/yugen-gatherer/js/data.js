@@ -49,7 +49,7 @@ export const TOWN_BOUNDS = { minX: -28, maxX: 28, minZ: -28, maxZ: 28 };
 
 export function defaultSave() {
   return {
-    phase: "dream",
+    phase: "town",
     noteRead: false,
     inventory: [],
     npcMet: [],

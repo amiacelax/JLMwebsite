@@ -552,17 +552,7 @@ export function buildTown() {
   cross.receiveShadow = true;
   group.add(cross);
 
-  buildJapaneseHouse(5, 4, -12, -8, group, { veranda: true });
-  buildJapaneseHouse(4.5, 5, 10, -12, group, { rotation: -0.2 });
-  buildJapaneseHouse(5, 4.5, -16, 4, group);
-  buildJapaneseHouse(4, 4, 14, 6, group, { rotation: 0.4 });
-  buildJapaneseHouse(6, 5, -6, 14, group, { veranda: true });
-  buildJapaneseHouse(4.5, 4, 18, -6, group, { rotation: -0.5 });
-  buildJapaneseHouse(5, 4, -20, -16, group);
-  buildJapaneseHouse(4, 3.5, 8, 18, group);
-
   buildTorii(0, 26, group);
-  buildShrine(-4, 20, group);
 
   const hillGeo = new THREE.ConeGeometry(22, 14, 8);
   const hillMat = stdMat(0x3d5c3d, { roughness: 1 });

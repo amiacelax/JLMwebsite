@@ -83,7 +83,8 @@ let fadeEl = null;
 const npcMeshes = new Map();
 const colliders = [];
 
-let phase = save.phase === "dream" && save.dreamSeen ? "karaoke" : save.phase;
+let phase = save.phase;
+if (phase === "dream" || phase === "karaoke" || phase === "elevator") phase = "town";
 if (save.level0Complete) phase = "town";
 
 const ambient = new THREE.AmbientLight(0xffeedd, 0.35);
@@ -178,7 +179,7 @@ function setPhase(next) {
     ambient.color.setHex(0xffe8cc);
     renderer.toneMappingExposure = 1.12;
     player.visible = true;
-    player.position.set(0, 0, -22);
+    player.position.set(0, 0, 0);
     cameraYaw = 0;
     ui.hud.hidden = false;
     ui.hudPhase.textContent = save.level0Complete
@@ -451,10 +452,6 @@ function handleMovement(dt) {
   if (phase === "town") {
     player.position.x = THREE.MathUtils.clamp(player.position.x, TOWN_BOUNDS.minX, TOWN_BOUNDS.maxX);
     player.position.z = THREE.MathUtils.clamp(player.position.z, TOWN_BOUNDS.minZ, TOWN_BOUNDS.maxZ);
-    if (player.position.z > 24) {
-      player.position.z = 24;
-      if (!save.level0Complete) showSubtitle("The path beyond waits for another day.", 2200);
-    }
   }
 
   if (phase === "karaoke") {
