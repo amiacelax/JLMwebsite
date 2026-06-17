@@ -317,6 +317,7 @@
     return part.value || "";
   }
 
+  function renderBracketRubyText(text) {
     const frag = document.createDocumentFragment();
     parseBracketRubyNotation(text).forEach((seg) => {
       if (seg.rt) frag.appendChild(renderRubySegment(seg));
