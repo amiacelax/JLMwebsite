@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" role="img" aria-label="Photo placeholder">
+  <rect width="400" height="480" fill="#e8e4dc"/>
+  <circle cx="200" cy="180" r="70" fill="#c5bdb0"/>
+  <ellipse cx="200" cy="380" rx="120" ry="90" fill="#c5bdb0"/>
+  <text x="200" y="450" font-family="system-ui, sans-serif" font-size="14" fill="#6b7280" text-anchor="middle">Replace with assets/photo.jpg</text>
+</svg>

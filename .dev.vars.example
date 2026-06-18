@@ -17,6 +17,10 @@ DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
 # Harris Firm client preview (password-protected, noindex)
 # HARRIS_PREVIEW_USER=harris
 # HARRIS_PREVIEW_PASSWORD=your-secret-password
+#
+# JEM Appraisals client preview (password-protected, noindex)
+# JEM_PREVIEW_USER=jem
+# JEM_PREVIEW_PASSWORD=jem
 
 # Mistakes quick-log page (/homework/mistakes-log.html?key=…)
 # Generate a long random string; set the same value in production:

@@ -5506,10 +5506,11 @@ button.course-card__status:disabled {
 .hw-listen-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
   width: 100%;
   max-width: 28rem;
-  margin: 0 0 0.75rem;
+  margin: 0 auto 0.75rem;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -7797,6 +7798,15 @@ body.hw-role-teacher #hw-teacher-hub {
   display: none !important;
 }
 
+/* Slide-mode students: counter replaces side line numbers (DOM kept for submit/print). */
+.hw-worksheet--hide-line-nums .hw-worksheet__line-num {
+  display: none;
+}
+
+.hw-worksheet--hide-line-nums .hw-worksheet__line > .hw-worksheet__content {
+  grid-column: 1 / -1;
+}
+
 /* Focus mode — dark theater view, worksheet centered on screen */
 body.hw-hw-focus-mode {
   overflow: hidden;
@@ -8334,6 +8344,12 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer .ja-reading::after {
   font-size: inherit;
 }
 
+.hw-worksheet[lang="ja"] .hw-worksheet__line {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-break: strict;
+}
+
 .hw-worksheet__content {
   display: inline;
 }
@@ -8533,9 +8549,25 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer .ja-reading::after {
   box-sizing: border-box;
 }
 
+.hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__section-head {
+  justify-content: center;
+  text-align: center;
+}
+
+.hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__section-intro {
+  text-align: center;
+}
+
+.hw-worksheet__line--listen .hw-worksheet__content {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
 .hw-worksheet__section[data-mode="audio-listening"] .hw-worksheet__content {
   display: block;
   width: 100%;
+  text-align: center;
 }
 
 .hw-blank-wrap--listen {
@@ -8593,9 +8625,32 @@ textarea.hw-blank.hw-blank--open {
 .hw-worksheet__actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  width: 100%;
   gap: 0.75rem;
   margin-top: 1.5rem;
   font-family: Inter, sans-serif;
+  text-align: center;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__actions {
+  justify-content: center;
+  padding-top: 0.25rem;
+}
+
+.hw-worksheet--authoring .hw-worksheet__actions {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.hw-worksheet__status {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-family: Inter, sans-serif;
+  text-align: center;
 }
 
 .hw-submit-confirm {
@@ -8657,13 +8712,6 @@ textarea.hw-blank.hw-blank--open {
   justify-content: center;
 }
 
-.hw-worksheet__status {
-  margin: 0.75rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  font-family: Inter, sans-serif;
-}
-
 .hw-blank--correct {
   background: rgba(0, 184, 148, 0.15);
   color: var(--color-text);
@@ -8706,11 +8754,48 @@ textarea.hw-blank.hw-blank--open {
   }
 
   .hw-blank {
-    min-width: min(6em, 58vw);
+    min-width: 2.75em;
+    padding: 0.06rem 0.22rem;
   }
 
   .hw-blank--wide {
-    min-width: min(10em, 72vw);
+    min-width: 4.5em;
+  }
+
+  input.hw-blank.hw-blank--listen {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  textarea.hw-blank.hw-blank--open {
+    min-height: 6.5rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .hw-blank-wrap {
+    max-width: 100%;
+  }
+
+  .hw-blank-wrap .hw-blank {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hw-worksheet__actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .hw-worksheet__actions .btn {
+    width: min(100%, 16rem);
+  }
+
+  .hw-worksheet--authoring .hw-worksheet__actions {
+    align-items: flex-start;
+  }
+
+  .hw-worksheet--authoring .hw-worksheet__actions .btn {
+    width: auto;
   }
 }
 
@@ -8955,6 +9040,14 @@ textarea.hw-blank.hw-blank--open {
     background: #3d6f9c !important;
     border: 1px solid #2d5578 !important;
     box-shadow: none !important;
+  }
+
+  body.hw-print-active .hw-worksheet--hide-line-nums .hw-worksheet__line-num {
+    display: block !important;
+  }
+
+  body.hw-print-active .hw-worksheet--hide-line-nums .hw-worksheet__line > .hw-worksheet__content {
+    grid-column: auto !important;
   }
 
   body.hw-print-active .hw-blank {

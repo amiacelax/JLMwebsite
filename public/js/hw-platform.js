@@ -1691,6 +1691,7 @@
       promo: document.getElementById("hw-teacher-promo"),
       birthdays: document.getElementById("hw-teacher-birthdays"),
       harris: document.getElementById("hw-teacher-harris"),
+      jem: document.getElementById("hw-teacher-jem"),
       gamelab: document.getElementById("hw-teacher-gamelab"),
     };
 
@@ -1733,7 +1734,7 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "gamelab") {
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab") {
         initial = tabParam;
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
@@ -1749,6 +1750,7 @@
         saved === "promo" ||
         saved === "birthdays" ||
         saved === "harris" ||
+        saved === "jem" ||
         saved === "gamelab"
       ) {
         initial = saved;
@@ -1759,6 +1761,16 @@
     }
     document.getElementById("hw-harris-copy-link")?.addEventListener("click", async () => {
       const url = new URL("/preview/harris-notarization/", window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Preview link copied.");
+      } catch {
+        showToast("Could not copy link.");
+      }
+    });
+
+    document.getElementById("hw-jem-copy-link")?.addEventListener("click", async () => {
+      const url = new URL("/preview/jem-appraisals/", window.location.origin).href;
       try {
         await navigator.clipboard.writeText(url);
         showToast("Preview link copied.");

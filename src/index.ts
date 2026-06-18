@@ -6,6 +6,12 @@ import {
   withHarrisPreviewHeaders,
 } from "./harris-preview-auth";
 import {
+  isJemPreviewAuthorized,
+  isJemPreviewPath,
+  jemPreviewUnauthorized,
+  withJemPreviewHeaders,
+} from "./jem-preview-auth";
+import {
   daysUntilBirthday,
   formatBirthdayLabel,
   listStudentBirthdaysSorted,
@@ -97,6 +103,8 @@ interface Env {
   LOCAL_DEV?: string;
   HARRIS_PREVIEW_USER?: string;
   HARRIS_PREVIEW_PASSWORD?: string;
+  JEM_PREVIEW_USER?: string;
+  JEM_PREVIEW_PASSWORD?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -2446,6 +2454,14 @@ export default {
       }
       const assetResponse = await env.ASSETS.fetch(request);
       return withHarrisPreviewHeaders(assetResponse);
+    }
+
+    if (isJemPreviewPath(url.pathname)) {
+      if (!isJemPreviewAuthorized(request, env)) {
+        return jemPreviewUnauthorized();
+      }
+      const assetResponse = await env.ASSETS.fetch(request);
+      return withJemPreviewHeaders(assetResponse);
     }
 
     return env.ASSETS.fetch(request);

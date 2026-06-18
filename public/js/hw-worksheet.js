@@ -355,7 +355,11 @@
     }
     const value = part.value || "";
     if (hasBracketRubyNotation(value)) return renderBracketRubyText(value);
-    return document.createTextNode(value);
+    if (!value) return document.createTextNode("");
+    const plain = document.createElement("span");
+    plain.className = "ja-okuri";
+    plain.textContent = value;
+    return plain;
   }
 
   function renderBlankWithHint(part, options) {
@@ -1402,7 +1406,7 @@
     stickyHead.appendChild(nav);
     form.insertBefore(stickyHead, insertBefore);
 
-    form.classList.add("hw-worksheet--slide-mode");
+    form.classList.add("hw-worksheet--slide-mode", "hw-worksheet--hide-line-nums");
 
     const hint = form.querySelector(".hw-worksheet__meta-hint");
     if (hint) {

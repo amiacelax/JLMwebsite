@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css?v=20260680">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -155,6 +155,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-harris" aria-selected="false" aria-controls="hw-teacher-harris" data-teacher-tab="harris">Harris Firm</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
           </div>
 
@@ -373,6 +374,22 @@
               <div class="hw-teacher-meta__actions">
                 <a class="btn btn--primary" href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">Open preview</a>
                 <button type="button" class="btn btn--ghost" id="hw-harris-copy-link">Copy link</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-jem" id="hw-teacher-jem" role="tabpanel" aria-labelledby="hw-teacher-tab-jem" hidden>
+            <h2 class="hw-platform-card__title">JEM Appraisals</h2>
+            <p class="hw-platform-card__desc">Password-protected client preview — not indexed by search engines. Share the link and login credentials with your client.</p>
+
+            <div class="hw-harris-panel">
+              <p class="hw-harris-panel__url">
+                <a href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">/preview/jem-appraisals/</a>
+              </p>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Login: <code>jem</code> / <code>jem</code></p>
+              <div class="hw-teacher-meta__actions">
+                <a class="btn btn--primary" href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">Open preview</a>
+                <button type="button" class="btn btn--ghost" id="hw-jem-copy-link">Copy link</button>
               </div>
             </div>
           </section>
@@ -662,7 +679,7 @@
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-video-inline.js?v=20260630" defer></script>
   <script src="/js/hw-audio-inline.js?v=20260630" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260677" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260679" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260683" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260677" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260677" defer></script>
