@@ -1249,7 +1249,7 @@
         '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>' +
         (options.preview
           ? ""
-          : '<button type="submit" class="btn btn--primary">Send Homework to JD</button>');
+          : '<button type="submit" class="btn btn--primary">Submit homework</button>');
       form.appendChild(actions);
     }
 

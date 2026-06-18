@@ -379,57 +379,6 @@
     toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2800);
   }
 
-  function confirmHomeworkSubmit() {
-    return new Promise((resolve) => {
-      const previousFocus = document.activeElement;
-      const modal = document.createElement("div");
-      modal.className = "hw-submit-confirm";
-      modal.setAttribute("role", "dialog");
-      modal.setAttribute("aria-modal", "true");
-      modal.setAttribute("aria-labelledby", "hw-submit-confirm-title");
-      modal.setAttribute("aria-describedby", "hw-submit-confirm-desc");
-      modal.innerHTML =
-        '<div class="hw-submit-confirm__backdrop" data-hw-submit-no></div>' +
-        '<div class="hw-submit-confirm__dialog">' +
-        '<p class="hw-submit-confirm__eyebrow">Warning</p>' +
-        '<h2 class="hw-submit-confirm__title" id="hw-submit-confirm-title">Are you sure?</h2>' +
-        '<p class="hw-submit-confirm__desc" id="hw-submit-confirm-desc">This will send all of your answers to JD.</p>' +
-        '<div class="hw-submit-confirm__actions">' +
-        '<button type="button" class="btn btn--primary" data-hw-submit-yes>はい</button>' +
-        '<button type="button" class="btn btn--ghost" data-hw-submit-no>いいえ</button>' +
-        "</div>" +
-        "</div>";
-
-      let resolved = false;
-
-      function close(confirmed) {
-        if (resolved) return;
-        resolved = true;
-        document.removeEventListener("keydown", onKeydown);
-        modal.remove();
-        document.body.classList.remove("is-modal-open");
-        if (previousFocus instanceof HTMLElement) previousFocus.focus();
-        resolve(confirmed);
-      }
-
-      function onKeydown(event) {
-        if (event.key === "Escape") close(false);
-      }
-
-      modal.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        if (target.closest("[data-hw-submit-yes]")) close(true);
-        if (target.closest("[data-hw-submit-no]")) close(false);
-      });
-
-      document.body.appendChild(modal);
-      document.body.classList.add("is-modal-open");
-      document.addEventListener("keydown", onKeydown);
-      modal.querySelector("[data-hw-submit-no]")?.focus();
-    });
-  }
-
   function isYoutubeReady(url) {
     return url && !String(url).startsWith("REPLACE_");
   }
@@ -681,12 +630,6 @@
           saveStatus.textContent = "Fill in at least one blank before submitting.";
         }
         showToast("Nothing to submit");
-        if (submitBtn) submitBtn.disabled = false;
-        return;
-      }
-
-      const confirmed = await confirmHomeworkSubmit();
-      if (!confirmed) {
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
