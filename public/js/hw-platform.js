@@ -391,7 +391,7 @@
       modal.innerHTML =
         '<div class="hw-submit-confirm__backdrop" data-hw-submit-no></div>' +
         '<div class="hw-submit-confirm__dialog">' +
-        '<p class="hw-submit-confirm__eyebrow">Warning</p>' +
+        '<p class="hw-submit-confirm__eyebrow">ちょっと待って！</p>' +
         '<h2 class="hw-submit-confirm__title" id="hw-submit-confirm-title">Are you sure?</h2>' +
         '<p class="hw-submit-confirm__desc" id="hw-submit-confirm-desc">This will send all of your answers to JD.</p>' +
         '<div class="hw-submit-confirm__actions">' +
