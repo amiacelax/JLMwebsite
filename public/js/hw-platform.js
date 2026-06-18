@@ -1693,6 +1693,7 @@
       harris: document.getElementById("hw-teacher-harris"),
       jem: document.getElementById("hw-teacher-jem"),
       gamelab: document.getElementById("hw-teacher-gamelab"),
+      hubv2: document.getElementById("hw-teacher-hubv2"),
     };
 
     function activate(name) {
@@ -1734,7 +1735,7 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab") {
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "hubv2") {
         initial = tabParam;
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
@@ -1751,7 +1752,8 @@
         saved === "birthdays" ||
         saved === "harris" ||
         saved === "jem" ||
-        saved === "gamelab"
+        saved === "gamelab" ||
+        saved === "hubv2"
       ) {
         initial = saved;
       }
@@ -1777,6 +1779,15 @@
       } catch {
         showToast("Could not copy link.");
       }
+    });
+
+    document.getElementById("hw-hubv2-reset-onboard")?.addEventListener("click", () => {
+      try {
+        localStorage.removeItem("jlm-hw-v2-onboarding-done");
+      } catch {
+        /* ignore */
+      }
+      showToast("Onboarding reset — reload the v2 preview to see it again.");
     });
 
     activate(initial);

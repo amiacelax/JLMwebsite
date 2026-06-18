@@ -157,6 +157,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-harris" aria-selected="false" aria-controls="hw-teacher-harris" data-teacher-tab="harris">Harris Firm</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2">Hub v2 preview</button>
           </div>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
@@ -452,6 +453,20 @@
               </li>
             </ul>
           </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-hubv2" id="hw-teacher-hubv2" role="tabpanel" aria-labelledby="hw-teacher-tab-hubv2" hidden>
+            <h2 class="hw-platform-card__title">Student Hub v2 — prototype</h2>
+            <p class="hw-platform-card__desc">Isolated redesign preview with mock data only. The live student hub is unchanged — nothing here affects accounts, tiers, or real homework.</p>
+
+            <div class="hw-teacher-meta__actions">
+              <a class="btn btn--primary" href="/homework/hub-v2-preview.html" target="_blank" rel="noopener noreferrer">Open full page</a>
+              <button type="button" class="btn btn--ghost" id="hw-hubv2-reset-onboard">Reset onboarding demo</button>
+            </div>
+
+            <div class="hw-teacher-hubv2-embed">
+              <iframe src="/homework/hub-v2-preview.html" title="Homework Hub v2 prototype" loading="lazy"></iframe>
+            </div>
+          </section>
         </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
@@ -697,6 +712,6 @@
   <script src="/js/lantern-word-format.js?v=20260650" defer></script>
   <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260688" defer></script>
+  <script src="/js/hw-platform.js?v=20260689" defer></script>
 </body>
 </html>

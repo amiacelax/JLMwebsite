@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a2744">
+  <title>Homework Hub v2 — Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/hw-hub-v2.css?v=1">
+  <script src="/js/hw-auth.js"></script>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else document.documentElement.setAttribute('data-theme', 'dark');
+      HwAuth.requireAuth('/homework.html');
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework hw-hub-v2-page">
+  <a class="skip-link" href="#hw-v2-main">Skip to content</a>
+
+  <div class="hw-hub-v2-banner" role="status">
+    Prototype only — mock student data · does not affect live accounts or plans
+  </div>
+
+  <div class="hw-hub-v2-demo-bar" aria-label="Prototype demo controls">
+    <span class="hw-hub-v2-demo-bar__label">Simulate state:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="not_started">New student</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="in_progress">In progress</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="submitted">Submitted</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="reviewed">Reviewed</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" id="hw-v2-demo-upsell">Show upsell</button>
+    <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html?tab=hubv2" style="text-decoration:none">← Teacher hub</a>
+  </div>
+
+  <main id="hw-v2-main" class="hw-hub-v2-shell">
+    <header class="hw-hub-v2-hero" aria-labelledby="hw-v2-hero-title">
+      <p class="hw-hub-v2-hero__eyebrow" id="hw-v2-hero-eyebrow">Loading…</p>
+      <h1 class="hw-hub-v2-hero__title" id="hw-v2-hero-title">Your homework</h1>
+      <p class="hw-hub-v2-hero__sub" id="hw-v2-hero-sub"></p>
+
+      <div class="hw-hub-v2-progress" id="hw-v2-progress">
+        <div class="hw-hub-v2-progress__meta">
+          <span id="hw-v2-progress-label">0 of 6 answered</span>
+          <span aria-hidden="true">Progress</span>
+        </div>
+        <div class="hw-hub-v2-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="hw-v2-progress-label">
+          <div class="hw-hub-v2-progress__fill" id="hw-v2-progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="hw-hub-v2-hero__actions">
+        <button type="button" class="btn btn--primary" id="hw-v2-cta-primary" data-action="scroll-worksheet">Continue homework</button>
+        <button type="button" class="btn btn--ghost" id="hw-v2-cta-secondary">Watch lesson</button>
+      </div>
+    </header>
+
+    <ol class="hw-hub-v2-rail" aria-label="Homework status">
+      <li class="hw-hub-v2-rail__step" data-v2-rail="not_started">Not started<time></time></li>
+      <li class="hw-hub-v2-rail__step" data-v2-rail="in_progress">In progress<time></time></li>
+      <li class="hw-hub-v2-rail__step" data-v2-rail="submitted">Submitted<time></time></li>
+      <li class="hw-hub-v2-rail__step" data-v2-rail="reviewed">JD reviewed<time></time></li>
+    </ol>
+
+    <div class="hw-hub-v2-lesson">
+      <p class="hw-hub-v2-lesson__label" id="hw-v2-lesson-label">Loading lesson context…</p>
+      <div class="hw-hub-v2-lesson__tags" id="hw-v2-lesson-tags"></div>
+      <a class="btn btn--ghost btn--sm" id="hw-v2-lesson-link" href="#">Watch lesson</a>
+    </div>
+
+    <div class="hw-hub-v2-layout">
+      <div class="hw-hub-v2-main-col">
+        <section class="hw-hub-v2-panel hw-hub-v2-worksheet-wrap" id="hw-v2-worksheet-zone" aria-labelledby="hw-v2-worksheet-heading">
+          <div class="hw-hub-v2-worksheet-head">
+            <h2 class="hw-hub-v2-worksheet-head__title" id="hw-v2-worksheet-heading">This week's worksheet</h2>
+            <p class="hw-hub-v2-worksheet-head__hint">One question at a time · Focus mode · Print available below</p>
+          </div>
+          <div id="hw-v2-worksheet-mount" lang="ja"></div>
+        </section>
+
+        <div class="hw-hub-v2-tools">
+          <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Lantern Word Hunt</a>
+          <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/" target="_blank" rel="noopener noreferrer">Yūgen Gatherer</a>
+        </div>
+      </div>
+
+      <aside class="hw-hub-v2-sidebar" aria-label="Homework sidebar">
+        <section class="hw-hub-v2-panel" aria-labelledby="hw-v2-notif-title">
+          <div class="hw-hub-v2-panel__head">
+            <h2 class="hw-hub-v2-panel__title" id="hw-v2-notif-title">Notifications</h2>
+            <span class="hw-hub-v2-badge" id="hw-v2-notif-badge" hidden>0</span>
+          </div>
+          <ul class="hw-hub-v2-notif-list" id="hw-v2-notif-list"></ul>
+        </section>
+
+        <section class="hw-hub-v2-panel" aria-labelledby="hw-v2-history-title">
+          <h2 class="hw-hub-v2-panel__title" id="hw-v2-history-title">Past assignments</h2>
+          <p class="hw-hub-v2-panel__desc">Your archive — feedback status at a glance.</p>
+          <ul class="hw-hub-v2-history" id="hw-v2-history"></ul>
+        </section>
+
+        <section class="hw-hub-v2-panel" aria-labelledby="hw-v2-mistakes-title">
+          <h2 class="hw-hub-v2-panel__title" id="hw-v2-mistakes-title">From your lessons</h2>
+          <p class="hw-hub-v2-panel__desc">Recent slips — practice the pattern, don't just memorize the fix.</p>
+          <ul class="hw-hub-v2-mistake-list" id="hw-v2-mistake-list"></ul>
+        </section>
+
+        <section class="hw-hub-v2-upsell" id="hw-v2-upsell" aria-labelledby="hw-v2-upsell-title">
+          <h2 class="hw-hub-v2-upsell__title" id="hw-v2-upsell-title">Video feedback add-on</h2>
+          <p class="hw-hub-v2-upsell__desc">JD records a personal video review of each assignment. Shown here only when locked — not blocking your homework path.</p>
+          <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="PayPal coming soon — demo only.">Learn more</button>
+          <button type="button" class="btn btn--ghost btn--sm" id="hw-v2-upsell-dismiss">Dismiss</button>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <div class="hw-hub-v2-mobile-bar" aria-label="Quick actions">
+    <button type="button" class="btn btn--primary" id="hw-v2-mobile-continue">Continue</button>
+    <button type="button" class="btn btn--ghost" id="hw-v2-mobile-chat">Ask tutor</button>
+    <button type="button" class="btn btn--primary" id="hw-v2-mobile-submit" hidden>Submit</button>
+  </div>
+
+  <button type="button" class="hw-hub-v2-chat-toggle" id="hw-v2-chat-toggle" aria-controls="hw-v2-chat-panel" aria-expanded="false">
+    <span class="hw-hub-v2-chat-toggle__icon" aria-hidden="true">💬</span>
+    Ask tutor
+  </button>
+
+  <div class="hw-hub-v2-chat-panel" id="hw-v2-chat-panel" role="dialog" aria-labelledby="hw-v2-chat-title" aria-modal="true" hidden>
+    <div class="hw-hub-v2-chat-panel__head">
+      <div>
+        <h2 class="hw-hub-v2-chat-panel__title" id="hw-v2-chat-title">Study tutor</h2>
+        <p class="hw-hub-v2-chat-panel__context" id="hw-v2-chat-context"></p>
+      </div>
+      <button type="button" class="hw-hub-v2-chat-close" id="hw-v2-chat-close" aria-label="Close tutor">×</button>
+    </div>
+    <div class="hw-hub-v2-chat-msgs" id="hw-v2-chat-msgs" tabindex="0" aria-live="polite"></div>
+    <div class="hw-hub-v2-chat-suggestions" id="hw-v2-chat-suggestions"></div>
+    <form class="hw-hub-v2-chat-form" id="hw-v2-chat-form">
+      <label class="visually-hidden" for="hw-v2-chat-input">Message tutor</label>
+      <input class="hw-hub-v2-chat-input" id="hw-v2-chat-input" type="text" autocomplete="off" placeholder="Ask about grammar or hints…">
+      <button type="submit" class="btn btn--primary btn--sm hw-hub-v2-chat-send">Send</button>
+    </form>
+  </div>
+
+  <div class="hw-hub-v2-onboard" id="hw-v2-onboard" hidden>
+    <div class="hw-hub-v2-onboard__card" role="dialog" aria-labelledby="hw-v2-onboard-title">
+      <p class="hw-hub-v2-onboard__step" id="hw-v2-onboard-step">Step 1 of 3</p>
+      <h2 class="hw-hub-v2-onboard__title" id="hw-v2-onboard-title">Welcome</h2>
+      <p class="hw-hub-v2-onboard__text" id="hw-v2-onboard-text"></p>
+      <div class="hw-hub-v2-onboard__dots" aria-hidden="true">
+        <span class="hw-hub-v2-onboard__dot is-active"></span>
+        <span class="hw-hub-v2-onboard__dot"></span>
+        <span class="hw-hub-v2-onboard__dot"></span>
+      </div>
+      <button type="button" class="btn btn--primary" id="hw-v2-onboard-next">Next</button>
+      <button type="button" class="btn btn--ghost" id="hw-v2-onboard-skip" style="margin-top:0.5rem">Skip tour</button>
+    </div>
+  </div>
+
+  <div class="hw-hub-v2-drill" id="hw-v2-drill" hidden>
+    <div class="hw-hub-v2-drill__dialog" role="dialog" aria-labelledby="hw-v2-drill-title">
+      <h2 class="hw-hub-v2-drill__title" id="hw-v2-drill-title">Quick practice</h2>
+      <p class="hw-hub-v2-drill__prompt" id="hw-v2-drill-prompt"></p>
+      <div id="hw-v2-drill-items"></div>
+      <div class="hw-hub-v2-drill__actions">
+        <button type="button" class="btn btn--primary btn--sm" id="hw-v2-drill-check">Check answers</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="hw-v2-drill-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260679" defer></script>
+  <script src="/js/hw-hub-v2.js?v=1" defer></script>
+</body>
+</html>
