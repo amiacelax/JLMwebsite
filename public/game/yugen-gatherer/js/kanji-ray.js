@@ -1,6 +1,6 @@
 /**
- * Kanji Ray — flat XYZ raycaster (map X/Z, screen Y up).
- * Far = solid fills. Within ~2 tiles + scroll zoom = kanji reveal.
+ * Kanji Ray — flat XYZ corridor raycaster.
+ * Far = solid fills. Within ~0.5 tiles + zoom = kanji reveal.
  */
 import { loadSave, writeSave } from "./save.js";
 
@@ -9,17 +9,20 @@ const ctx = canvas.getContext("2d");
 const hud = document.getElementById("yg-hud-zone");
 const prompt = document.getElementById("yg-prompt");
 
+/** Narrow hallway: open x=3..5, walls elsewhere. Row 1 = torii pillars. */
 const MAP = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 1, 1, 1, 0, 1, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
+  [1, 1, 1, 0, 0, 0, 1, 1, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
@@ -30,25 +33,30 @@ const WALL = "壁";
 const FLOOR = "床";
 const TORII = "鳥居";
 
-const COLS = 120;
-const MAX_DEPTH = 22;
+const COLS = 80;
+const RENDER_MAX_W = 960;
+const MAX_DEPTH = 24;
 const MOVE = 2.4;
 const TURN = 2.0;
-const REVEAL_DIST = 2.0;
+const REVEAL_DIST = 0.5;
 const ZOOM_MIN = 0.85;
 const ZOOM_MAX = 2.8;
 const PLANE_BASE = 0.66;
+const HORIZON_RATIO = 0.44;
+const FLOOR_SCALE = 0.46;
+const WALL_H_SCALE = 0.78;
 
-const TORII_OBJ = { x: 4.5, y: 3.0, reach: 1.0 };
+const TORII_GATE = { x: 4.5, y: 1.0 };
 
 const palette = {
   sky: "#0a0e14",
+  meshVoid: "#0a0e14",
   wall: "#2a6898",
   wallDark: "#153050",
-  wallKanji: "#9ec8e8",
+  wallKanji: "#256088",
   floor: "#7a5838",
   floorDark: "#3d2818",
-  floorKanji: "#c8a878",
+  floorKanji: "#6a4830",
   torii: "#c03028",
   toriiDark: "#801820",
   toriiHi: "#e85040",
@@ -58,7 +66,7 @@ const palette = {
 const save = loadSave();
 const player = {
   x: typeof save.x === "number" ? save.x : 4.5,
-  y: typeof save.y === "number" ? save.y : 9.2,
+  y: typeof save.y === "number" ? save.y : 10.5,
   angle: typeof save.angle === "number" ? save.angle : -Math.PI / 2,
 };
 
@@ -69,8 +77,11 @@ let lastT = 0;
 let saveTimer = 0;
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const scale = Math.min(1, RENDER_MAX_W / window.innerWidth);
+  canvas.width = Math.max(320, (window.innerWidth * scale) | 0);
+  canvas.height = Math.max(240, (window.innerHeight * scale) | 0);
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -79,16 +90,19 @@ function tileAt(mx, my) {
   return MAP[my][mx];
 }
 
-function solid(t) {
-  return t === 1;
+function blocked(px, py) {
+  return tileAt(Math.floor(px), Math.floor(py)) === 1;
+}
+
+function passedToriiGate() {
+  return player.y < TORII_GATE.y + 0.15 && Math.abs(player.x - TORII_GATE.x) < 0.35;
 }
 
 function trySlide(nx, ny) {
-  if (!solid(tileAt(Math.floor(nx), Math.floor(player.y)))) player.x = nx;
-  if (!solid(tileAt(Math.floor(player.x), Math.floor(ny)))) player.y = ny;
+  if (!blocked(nx, player.y)) player.x = nx;
+  if (!blocked(player.x, ny)) player.y = ny;
 }
 
-/** DDA on direction vector (linear rays — flat walls, no fish-eye curve). */
 function castWallDir(rx, ry) {
   let mx = Math.floor(player.x);
   let my = Math.floor(player.y);
@@ -146,7 +160,6 @@ function mix(a, b, t) {
   return `rgb(${ca.map((v, i) => (v + (cb[i] - v) * t) | 0).join(",")})`;
 }
 
-/** 0 = solid only. 1 = full kanji grid. Needs close range; zoom amplifies. */
 function revealAmt(dist) {
   if (dist >= REVEAL_DIST) return 0;
   const near = 1 - dist / REVEAL_DIST;
@@ -155,7 +168,14 @@ function revealAmt(dist) {
 }
 
 function floorYAtDist(dist, horizon, scrH) {
-  return horizon + (0.5 * scrH) / Math.max(dist, 0.08);
+  return horizon + (scrH * FLOOR_SCALE) / Math.max(dist, 0.08);
+}
+
+function wallSlice(dist, h, horizon) {
+  const bot = Math.min(h, floorYAtDist(dist, horizon, h));
+  const wallH = (h * WALL_H_SCALE) / (dist + 0.08);
+  const top = Math.max(0, bot - wallH);
+  return { top, bot };
 }
 
 function setKanjiFont(px) {
@@ -164,96 +184,112 @@ function setKanjiFont(px) {
   ctx.textBaseline = "middle";
 }
 
-/** 2D kanji grid across a wall face (visible when close + zoomed). */
-function drawWallKanjiFace(left, right, top, bot, amt, char, color) {
-  if (amt <= 0.04) return;
-  const h = canvas.height;
-  const visL = Math.max(0, left);
-  const visR = Math.min(canvas.width, right);
-  const visT = Math.max(0, top);
-  const visB = Math.min(h, bot);
-  const visW = visR - visL;
-  const visH = visB - visT;
-  if (visW < 8 || visH < 8) return;
+/** Staggered mesh on black void — blue comes from kanji only when revealed. */
+function wallMeshHit(sx, sy, colW, wallTops, wallBots, wallDists) {
+  const col = Math.min(COLS - 1, Math.max(0, (sx / colW) | 0));
+  for (let c = col - 1; c <= col + 1; c++) {
+    if (c < 0 || c >= COLS) continue;
+    const amt = revealAmt(wallDists[c]);
+    if (amt <= 0.04) continue;
+    if (sy >= wallTops[c] && sy <= wallBots[c]) {
+      return { dist: wallDists[c], amt };
+    }
+  }
+  return null;
+}
 
-  const cells = Math.max(3, Math.min(7, Math.round(3 + amt * 4)));
-  const cellH = visH / cells;
-  const cellW = cellH * 1.05;
-  const size = cellH * 0.78;
-  setKanjiFont(size);
-  ctx.fillStyle = color;
+function drawWallKanjiGrid(w, h, colW, wallTops, wallBots, wallDists, zoomMul) {
+  let minDist = MAX_DEPTH;
+  let anchorCol = (COLS / 2) | 0;
 
-  const cols = Math.ceil(visW / cellW) + 1;
-  for (let r = 0; r < cells; r++) {
-    for (let c = 0; c < cols; c++) {
-      ctx.fillText(char, visL + (c + 0.5) * cellW, visT + (r + 0.5) * cellH);
+  for (let c = 0; c < COLS; c++) {
+    const d = wallDists[c];
+    if (revealAmt(d) <= 0.04) continue;
+    if (d < minDist) {
+      minDist = d;
+      anchorCol = c;
+    }
+  }
+  if (minDist >= REVEAL_DIST) return;
+
+  const close = 1 - minDist / REVEAL_DIST;
+  const amt = revealAmt(minDist) * zoomMul;
+  const cellPx = Math.max(16, 16 + close * 18 + amt * 4);
+  const cellW = cellPx * 1.08;
+  const rowStep = cellPx * 0.7;
+  const refBot = wallBots[anchorCol];
+
+  let row = 0;
+  for (let sy = refBot - rowStep * 0.5; sy >= 0; sy -= rowStep, row++) {
+    const xOff = row & 1 ? cellW * 0.5 : 0;
+
+    for (let sx = xOff + cellW * 0.5; sx < w; sx += cellW) {
+      const hit = wallMeshHit(sx, sy, colW, wallTops, wallBots, wallDists);
+      if (!hit) continue;
+
+      const { dist, amt: colAmt } = hit;
+      const size = Math.min(cellPx * 0.52, cellW * 0.82);
+      const colClose = 1 - dist / REVEAL_DIST;
+      const blue = mix(palette.wallDark, palette.wall, 0.5 + colClose * 0.45 + colAmt * 0.08);
+
+      setKanjiFont(size);
+      ctx.fillStyle = blue;
+      ctx.fillText(WALL, sx, sy);
     }
   }
 }
 
-function drawToriiSolid(z, w, h, horizon, dirX, dirY, planeX, planeY) {
-  const dx = TORII_OBJ.x - player.x;
-  const dy = TORII_OBJ.y - player.y;
+/** Torii lintel/beams only — pillars are map walls. */
+function drawToriiSprite(z, w, h, horizon, dirX, dirY, planeX, planeY) {
+  const dx = TORII_GATE.x - player.x;
+  const dy = TORII_GATE.y - player.y;
   const inv = 1 / (planeX * dirY - dirX * planeY + 1e-9);
   const tx = inv * (dirY * dx - dirX * dy);
   const ty = inv * (-planeY * dx + planeX * dy);
-  if (ty <= 0.15) return null;
+  if (ty <= 0.12) return null;
 
   const dist = ty;
-  const col = Math.max(0, Math.min(COLS - 1, ((COLS / 2) * (1 + tx / ty)) | 0));
+  const screenX = w / 2 + (w / 2) * (tx / ty);
+  const col = Math.max(0, Math.min(COLS - 1, ((screenX / w) * COLS) | 0));
   if (dist >= z[col]) return null;
 
-  const rawH = (h * 0.55) / (dist + 0.12);
-  const spriteH = Math.min(rawH, h * 0.65);
-  const spriteW = spriteH * 0.9;
+  const spriteH = Math.min((h * 1.6) / (dist + 0.08), h * 0.72);
+  const spriteW = spriteH * 0.95;
   const footY = floorYAtDist(dist, horizon, h);
   const top = footY - spriteH;
-  const left = w / 2 + (w / 2) * (tx / ty) - spriteW / 2;
+  const left = screenX - spriteW / 2;
   const shade = 1 - Math.min(dist / MAX_DEPTH, 1);
-  const colFill = mix(palette.toriiDark, palette.toriiHi, shade);
+  const colFill = mix(palette.toriiDark, palette.toriiHi, 0.4 + shade * 0.6);
 
-  const pw = spriteW * 0.13;
-  const gapL = left + spriteW * 0.34;
-  const gapR = left + spriteW * 0.66;
-  const lintelY = top + spriteH * 0.08;
-  const beamY = lintelY + spriteH * 0.12;
+  const lintelY = top + spriteH * 0.06;
+  const beamY = lintelY + spriteH * 0.13;
 
   ctx.fillStyle = colFill;
-  ctx.fillRect(left, top, pw, spriteH);
-  ctx.fillRect(left + spriteW - pw, top, pw, spriteH);
-  ctx.fillRect(left - spriteW * 0.03, lintelY, spriteW * 1.06, spriteH * 0.1);
-  ctx.fillRect(left + spriteW * 0.1, beamY, spriteW * 0.8, spriteH * 0.06);
+  ctx.fillRect(left - spriteW * 0.05, lintelY, spriteW * 1.1, Math.max(spriteH * 0.1, 4));
+  ctx.fillRect(left + spriteW * 0.06, beamY, spriteW * 0.88, Math.max(spriteH * 0.06, 3));
 
-  return { dist, left, top, footY, spriteW, spriteH, colFill };
+  return { dist, left, top, spriteW, spriteH, colFill };
 }
 
 function drawToriiKanji(info, amt) {
   if (!info || amt <= 0.04) return;
-  const { left, top, spriteW, spriteH } = info;
-  const pw = spriteW * 0.13;
-  const size = Math.min(spriteH * 0.2, pw);
-  setKanjiFont(size);
+  const { left, top, spriteW, spriteH, colFill } = info;
+  setKanjiFont(Math.max(14, spriteH * 0.12));
   ctx.fillStyle = palette.toriiKanji;
-
-  for (let r = 0; r < 4; r++) {
-    const py = top + spriteH * 0.18 + r * spriteH * 0.18;
-    ctx.fillText(TORII, left + pw / 2, py);
-    ctx.fillText(TORII, left + spriteW - pw / 2, py);
-  }
   for (let i = 0; i < 3; i++) {
-    ctx.fillText(TORII, left + spriteW * (0.22 + i * 0.28), top + spriteH * 0.1);
+    ctx.fillText(TORII, left + spriteW * (0.2 + i * 0.3), top + spriteH * 0.08);
   }
 }
 
 function render() {
   const w = canvas.width;
   const h = canvas.height;
-  const horizon = (h / 2) | 0;
+  const horizon = (h * HORIZON_RATIO) | 0;
   const colW = w / COLS;
   const planeLen = PLANE_BASE / zoom;
 
   ctx.fillStyle = palette.sky;
-  ctx.fillRect(0, 0, w, h);
+  ctx.fillRect(0, 0, w, horizon);
 
   const z = new Float32Array(COLS);
   const wallTops = new Float32Array(COLS);
@@ -273,80 +309,65 @@ function render() {
     z[col] = hit.dist;
     wallDists[col] = hit.dist;
 
-    const wallH = h / (hit.dist + 0.12);
-    const floorLine = floorYAtDist(hit.dist, horizon, h);
-    const top = horizon - wallH / 2;
-    const bot = Math.min(horizon + wallH / 2, floorLine);
+    const { top, bot } = wallSlice(hit.dist, h, horizon);
     wallTops[col] = top;
     wallBots[col] = bot;
 
     const visTop = Math.max(0, top);
     const visBot = Math.min(h, bot);
-    const visH = visBot - visTop;
-    if (visH < 1) continue;
+    if (visBot - visTop < 1) continue;
 
     const shade = 1 - Math.min(hit.dist / MAX_DEPTH, 1);
-    ctx.fillStyle = mix(palette.wallDark, palette.wall, shade * (hit.side ? 0.65 : 1));
-    ctx.fillRect(col * colW, visTop, colW + 0.5, visH);
+    const rev = revealAmt(hit.dist);
+    if (rev > 0.04) {
+      ctx.fillStyle = palette.meshVoid;
+    } else {
+      ctx.fillStyle = mix(palette.wallDark, palette.wall, shade * (hit.side ? 0.65 : 1));
+    }
+    ctx.fillRect(col * colW, visTop, colW + 0.5, visBot - visTop);
   }
 
-  const toriiInfo = drawToriiSolid(z, w, h, horizon, dirX, dirY, planeX, planeY);
-
-  for (let y = horizon; y < h; y++) {
-    const rowDist = y === horizon ? MAX_DEPTH : (0.5 * h) / (y - horizon);
+  for (let y = horizon + 1; y < h; y += 2) {
+    const rowDist = (h * FLOOR_SCALE) / (y - horizon);
     const shade = 1 - Math.min(rowDist / MAX_DEPTH, 1);
     ctx.fillStyle = mix(palette.floorDark, palette.floor, shade);
-    ctx.fillRect(0, y, w, 1);
-  }
 
-  let bestAmt = 0;
-  let faceL = w;
-  let faceR = 0;
-  let faceT = h;
-  let faceB = 0;
-  let faceDist = MAX_DEPTH;
-
-  for (let col = 0; col < COLS; col++) {
-    const dist = wallDists[col];
-    const amt = revealAmt(dist);
-    if (amt <= 0.04) continue;
-    if (amt > bestAmt) {
-      bestAmt = amt;
-      faceDist = dist;
+    let col = 0;
+    while (col < COLS) {
+      while (col < COLS && rowDist >= z[col]) col++;
+      if (col >= COLS) break;
+      const start = col;
+      while (col < COLS && rowDist < z[col]) col++;
+      ctx.fillRect(start * colW, y, (col - start) * colW, 2);
     }
-    const x0 = col * colW;
-    faceL = Math.min(faceL, x0);
-    faceR = Math.max(faceR, x0 + colW);
-    faceT = Math.min(faceT, wallTops[col]);
-    faceB = Math.max(faceB, wallBots[col]);
   }
 
-  if (bestAmt > 0.04) {
-    drawWallKanjiFace(faceL, faceR, faceT, faceB, bestAmt * Math.min(1, zoom / 1.2), WALL, palette.wallKanji);
-  }
+  const toriiInfo = drawToriiSprite(z, w, h, horizon, dirX, dirY, planeX, planeY);
 
-  const floorAmt = revealAmt(Math.min(faceDist, 1.8));
+  const zoomMul = Math.min(1, zoom / 1.2);
+  drawWallKanjiGrid(w, h, colW, wallTops, wallBots, wallDists, zoomMul);
+
+  let minWall = MAX_DEPTH;
+  for (let col = 0; col < COLS; col++) minWall = Math.min(minWall, wallDists[col]);
+
+  const floorAmt = revealAmt(Math.min(minWall, 0.9));
   if (floorAmt > 0.04) {
-    const fy = Math.min(h - 1, floorYAtDist(1.2, horizon, h));
-    const fTop = Math.max(horizon, fy - h * 0.22 * floorAmt);
-    const step = Math.max(36, (52 / zoom) | 0);
-    const fSize = 14 + floorAmt * 22;
-    setKanjiFont(fSize);
-    ctx.fillStyle = palette.floorKanji;
+    const step = Math.max(40, (56 / zoom) | 0);
+    const close = 1 - Math.min(minWall, 0.9) / REVEAL_DIST;
+    setKanjiFont(12 + floorAmt * 16);
+    ctx.fillStyle = mix(palette.floorDark, palette.floor, 0.42 + close * 0.38);
     ctx.textBaseline = "top";
-    for (let y = fTop | 0; y < h; y += step) {
-      for (let x = step / 2; x < w; x += step) {
-        const col = Math.min(COLS - 1, (x / w * COLS) | 0);
-        const rowDist = (0.5 * h) / Math.max(y - horizon, 1);
+    for (let y = horizon + 1; y < h; y += step) {
+      const rowDist = (h * FLOOR_SCALE) / (y - horizon);
+      if (rowDist >= REVEAL_DIST) continue;
+      for (let col = 0; col < COLS; col += 2) {
         if (rowDist >= z[col]) continue;
-        ctx.fillText(FLOOR, x, y);
+        ctx.fillText(FLOOR, (col + 0.5) * colW, y);
       }
     }
   }
 
-  if (toriiInfo) {
-    drawToriiKanji(toriiInfo, revealAmt(toriiInfo.dist));
-  }
+  if (toriiInfo) drawToriiKanji(toriiInfo, revealAmt(toriiInfo.dist));
 }
 
 function move(dt) {
@@ -366,8 +387,7 @@ function move(dt) {
     trySlide(nx, ny);
   }
 
-  const td = Math.hypot(player.x - TORII_OBJ.x, player.y - TORII_OBJ.y);
-  if (td < TORII_OBJ.reach && !won) {
+  if (passedToriiGate() && !won) {
     won = true;
     if (hud) hud.textContent = "鳥居 — 到着!";
     if (prompt) {
@@ -377,10 +397,14 @@ function move(dt) {
   }
 
   saveTimer += dt;
-  if (saveTimer >= 0.4) {
+  if (saveTimer >= 2) {
     saveTimer = 0;
-    writeSave({ version: 3, x: player.x, y: player.y, angle: player.angle, zone: "kanji-ray-test" });
+    writeSave({ version: 4, x: player.x, y: player.y, angle: player.angle, zone: "kanji-ray-test" });
   }
+}
+
+function flushSave() {
+  writeSave({ version: 4, x: player.x, y: player.y, angle: player.angle, zone: "kanji-ray-test" });
 }
 
 function loop(t) {
@@ -393,6 +417,7 @@ function loop(t) {
 
 window.addEventListener("keydown", (e) => keys.add(e.code));
 window.addEventListener("keyup", (e) => keys.delete(e.code));
+window.addEventListener("beforeunload", flushSave);
 window.addEventListener("resize", resize);
 window.addEventListener(
   "wheel",
@@ -406,7 +431,7 @@ window.addEventListener(
 if (location.search.includes("reset")) {
   localStorage.removeItem("yugen-gatherer-v2");
   player.x = 4.5;
-  player.y = 9.2;
+  player.y = 10.5;
   player.angle = -Math.PI / 2;
   won = false;
   zoom = 1.0;
