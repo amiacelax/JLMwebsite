@@ -473,6 +473,11 @@ body.hw-hub-v2-page {
   font-size: 0.8125rem;
 }
 
+.hw-hub-v2-tools .hw-games-hub-btn {
+  width: auto;
+  max-width: none;
+}
+
 /* Mobile sticky bar */
 .hw-hub-v2-mobile-bar {
   position: fixed;

@@ -83,7 +83,7 @@
           <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
           <div class="hw-hub-tier-pick" id="hw-hub-tier-pick" hidden>
             <div class="hw-hub-tier-grid" role="group" aria-label="Choose a homework plan">
-              <article class="course-card course-card--locked hw-hub-tier-plan" data-hw-tier-plan="basic" data-hw-tier-detail="basic" tabindex="0">
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" data-hw-tier-plan="basic" data-hw-tier-detail="basic" tabindex="0">
                 <span class="course-card__lock" aria-hidden="true">
                   <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
@@ -98,46 +98,37 @@
                   <span class="course-card__price" aria-label="Price: five dollars per month">$5<span class="course-card__price-suffix">/mo</span></span>
                 </div>
               </article>
-              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" data-hw-tier-plan="premium" data-hw-tier-detail="premium" tabindex="0">
+              <article class="course-card course-card--locked hw-hub-tier-plan" data-hw-tier-plan="premium" data-hw-tier-detail="premium" tabindex="0">
                 <p class="hw-hub-tier-plan__badge">Popular</p>
                 <span class="course-card__lock" aria-hidden="true">
                   <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
                 </span>
                 <h2 class="course-card__title">Premium</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Weekly homework, extensive feedback, and full game access.</p>
+                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month, written feedback, AI tutor, and full game access.</p>
                 <div class="course-card__footer">
                   <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="premium" aria-label="View Premium plan details">
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
                     <span class="course-card__status-text course-card__status-text--unlock">Details</span>
                   </button>
-                  <span class="course-card__price" aria-label="Price: fifteen dollars per month">$15<span class="course-card__price-suffix">/mo</span></span>
+                  <span class="course-card__price" aria-label="Price: twenty dollars per month">$20<span class="course-card__price-suffix">/mo</span></span>
                 </div>
               </article>
-              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--video" data-hw-tier-plan="unlimited" data-hw-tier-detail="unlimited" tabindex="0">
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--video" data-hw-tier-plan="ultra" data-hw-tier-detail="ultra" tabindex="0">
                 <p class="hw-hub-tier-plan__badge hw-hub-tier-plan__badge--video">Video</p>
                 <span class="course-card__lock" aria-hidden="true">
                   <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
                 </span>
-                <h2 class="course-card__title">Unlimited</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Unlimited assignments with video feedback from JD.</p>
+                <h2 class="course-card__title">Ultra</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month with personal video feedback from JD on each.</p>
                 <div class="course-card__footer">
-                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="unlimited" aria-label="View Unlimited plan details">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="ultra" aria-label="View Ultra plan details">
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
                     <span class="course-card__status-text course-card__status-text--unlock">Details</span>
                   </button>
-                  <span class="course-card__price" aria-label="Price: ninety-nine dollars per month">$99<span class="course-card__price-suffix">/mo</span></span>
+                  <span class="course-card__price" aria-label="Price: forty-nine dollars per month">$49<span class="course-card__price-suffix">/mo</span></span>
                 </div>
-              </article>
-              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--addon" id="hw-hub-video-card" tabindex="0">
-                <span class="course-card__lock" aria-hidden="true">
-                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-                </span>
-                <h2 class="course-card__title">Video response</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
-                <div class="course-card__footer" id="hw-hub-video-footer"></div>
               </article>
             </div>
           </div>
@@ -199,7 +190,7 @@
                     <option value="student_special">Student Special</option>
                     <option value="tier1">Basic</option>
                     <option value="tier2">Premium</option>
-                    <option value="tier3">Unlimited</option>
+                    <option value="tier3">Ultra</option>
                   </select>
                 </label>
                 <div class="hw-maker-field hw-maker-field--wide hw-teacher-current-hw">
@@ -451,6 +442,13 @@
                 </div>
                 <a class="btn btn--ghost btn--sm" href="/game/obachan-counters/" target="_blank" rel="noopener noreferrer">Open hidden</a>
               </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Yūgen Gatherer — 幽玄の採集者</h3>
+                  <p class="hw-gamelab-item__desc">3D gathering adventure in the Japanese countryside. Locked on the student games hub — preview here only.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
             </ul>
           </section>
 
@@ -511,15 +509,16 @@
                 </div>
               </section>
 
-              <article class="course-card course-card--locked hw-addon-card hw-addon-card--compact hw-grid-video" id="hw-video-response-card" tabindex="0">
-                <span class="course-card__lock" aria-hidden="true">
-                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-                </span>
-                <h2 class="course-card__title">Video response</h2>
-                <p class="course-card__desc" id="hw-video-response-desc">Receive detailed, enriching video feedback from JD on each homework assignment.</p>
-                <div class="course-card__footer" id="hw-video-response-footer"></div>
-              </article>
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko" id="hw-sachiko-card" tabindex="0" aria-label="Talk to Sachiko — open study tutor">
+                <div class="hw-sachiko-card__row">
+                  <svg class="hw-sachiko-face" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+                  <div class="hw-sachiko-card__text">
+                    <h2 class="hw-platform-card__title">Talk to Sachiko</h2>
+                    <p class="hw-platform-card__desc hw-platform-card__desc--tight">Hints and grammar help — not answer keys.</p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-sachiko-open">Talk to Sachiko</button>
+              </section>
             </div>
 
             <div class="hw-grid-upload-col">
@@ -628,6 +627,46 @@
     </section>
   </main>
 
+  <svg class="hw-sachiko-sprite" aria-hidden="true" focusable="false">
+    <symbol id="hw-sachiko-face" viewBox="0 0 48 48">
+      <ellipse cx="24" cy="27" rx="17" ry="15" fill="#3d2c4a"/>
+      <circle cx="24" cy="27" r="13" fill="#f0c9a8"/>
+      <path d="M11 19 Q24 9 37 19 Q33 27 24 24 Q15 27 11 19 Z" fill="#3d2c4a"/>
+      <ellipse cx="19" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <ellipse cx="29" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <circle cx="19.7" cy="26.2" r="0.7" fill="#fff"/>
+      <circle cx="29.7" cy="26.2" r="0.7" fill="#fff"/>
+      <ellipse cx="15.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <ellipse cx="32.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <path d="M18 33 Q24 36.5 30 33" fill="none" stroke="#c4846c" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+
+  <div class="hw-sachiko-modal" id="hw-sachiko-modal" hidden>
+    <div class="hw-sachiko-modal__backdrop" aria-hidden="true"></div>
+    <div class="hw-sachiko-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-sachiko-title">
+      <button class="hw-sachiko-modal__close" type="button" data-sachiko-minimize aria-label="Minimize Sachiko">×</button>
+      <header class="hw-sachiko-modal__head">
+        <svg class="hw-sachiko-face hw-sachiko-face--lg" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+        <div>
+          <h2 class="hw-sachiko-modal__title" id="hw-sachiko-title">Sachiko</h2>
+          <p class="hw-sachiko-modal__sub">Study tutor — hints &amp; grammar</p>
+        </div>
+      </header>
+      <div class="hw-sachiko-modal__msgs" aria-live="polite"></div>
+      <div class="hw-sachiko-modal__suggestions" aria-label="Suggested prompts"></div>
+      <form class="hw-sachiko-modal__form">
+        <input class="hw-sachiko-modal__input" type="text" placeholder="Ask for a hint or grammar help…" autocomplete="off" maxlength="500" />
+        <button class="btn btn--primary btn--sm" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <button type="button" class="hw-sachiko-dock" id="hw-sachiko-dock" hidden aria-label="Open Sachiko">
+    <svg class="hw-sachiko-face hw-sachiko-face--dock" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+    <span class="hw-sachiko-dock__label">Sachiko</span>
+  </button>
+
   <div class="hw-breakdown-modal hw-tier-detail-modal" id="hw-tier-detail-modal" hidden>
     <div class="hw-breakdown-modal__backdrop" data-hw-tier-detail-close aria-hidden="true"></div>
     <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-tier-detail-title">
@@ -635,49 +674,43 @@
       <p class="section__eyebrow">Homework Hub</p>
       <h2 class="hw-breakdown-modal__title" id="hw-tier-detail-title">Plan details</h2>
 
-      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
+      <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
         <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
         <h3>Basic</h3>
         <ul class="hw-breakdown-card__list">
           <li>HW assignment once per month</li>
           <li>General written feedback/advice</li>
           <li>Phone or print — works either way</li>
-          <li>Limited learning game access</li>
+          <li>Full learning game access</li>
         </ul>
-        <div class="hw-breakdown-column__upgrade" role="note">
-          Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
-        </div>
       </article>
 
-      <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-premium" data-tier-detail-panel hidden>
+      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-premium" data-tier-detail-panel hidden>
         <p class="hw-breakdown-card__badge">Popular</p>
-        <p class="hw-breakdown-card__price">$15<span>/mo</span></p>
+        <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
         <h3>Premium</h3>
         <ul class="hw-breakdown-card__list">
-          <li>HW assignments <u>every week</u> (written/audio/video)</li>
-          <li><u>Extensive</u> written feedback/advice</li>
-          <li>Feedback within <u>24 hours</u></li>
+          <li><u>Four</u> HW assignments per month</li>
+          <li><u>Written</u> feedback and advice from JD</li>
+          <li>AI study tutor for hints and grammar help</li>
           <li>Phone or print — works either way</li>
           <li>Full learning game access</li>
           <li>Private Discord access</li>
         </ul>
-        <div class="hw-breakdown-column__upgrade" role="note">
-          Upgrade to receive detailed video responses <span class="hw-breakdown-column__upgrade-price">+$15/mo</span>
-        </div>
       </article>
 
-      <article class="hw-breakdown-card hw-breakdown-card--included hw-tier-detail-panel" id="hw-tier-detail-unlimited" data-tier-detail-panel hidden>
-        <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video</p>
-        <p class="hw-breakdown-card__price">$99<span>/mo</span></p>
-        <h3>Unlimited</h3>
+      <article class="hw-breakdown-card hw-breakdown-card--included hw-tier-detail-panel" id="hw-tier-detail-ultra" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
+        <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
+        <h3>Ultra</h3>
         <ul class="hw-breakdown-card__list">
-          <li><u>Unlimited</u> assignments per month</li>
-          <li>Extensive <u>video feedback</u> responses and advice</li>
-          <li><u>24/7 messaging with JD</u> for your questions</li>
+          <li><u>Four</u> HW assignments per month</li>
+          <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
+          <li>Everything in Premium (AI tutor, games, Discord)</li>
+          <li>Priority review queue</li>
           <li>Phone or print — works either way</li>
-          <li>Full access to learning games and beta versions</li>
-          <li>Private Discord access</li>
         </ul>
+        <p class="hw-platform-card__desc hw-platform-card__desc--tight">Video feedback is only on Ultra — not available as a separate add-on.</p>
       </article>
     </div>
   </div>
@@ -712,6 +745,7 @@
   <script src="/js/lantern-word-format.js?v=20260650" defer></script>
   <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-platform.js?v=20260689" defer></script>
+  <script src="/js/hw-sachiko.js?v=20260691" defer></script>
+  <script src="/js/hw-platform.js?v=20260690" defer></script>
 </body>
 </html>

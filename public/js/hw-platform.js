@@ -8,9 +8,6 @@
 
   const isTeacher = session.role === "teacher";
 
-  const VIDEO_RESPONSE_DESC =
-    "Receive detailed, enriching video feedback from JD on each homework assignment.";
-
   const greet = document.getElementById("hw-platform-greet");
   if (greet) {
     greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
@@ -40,13 +37,13 @@
   const TIER_DETAIL_TITLES = {
     basic: "Basic — what’s included",
     premium: "Premium — what’s included",
-    unlimited: "Unlimited — what’s included",
+    ultra: "Ultra — what’s included",
   };
 
   const HUB_PLAN_TIERS = {
     basic: "tier1",
     premium: "tier2",
-    unlimited: "tier3",
+    ultra: "tier3",
   };
 
   /** Stub until teacher-assigned plans ship — every student hub shows Basic as current. */
@@ -112,7 +109,7 @@
     pick?.querySelectorAll("[data-hw-tier-plan][data-hw-tier-detail]").forEach((card) => {
       card.addEventListener("click", () => {
         if (card.classList.contains("hw-hub-tier-plan--current")) return;
-        if (card.id === "hw-hub-video-card") return;
+        if (card.id === "hw-hub-ultra-card") return;
         openModal(card.getAttribute("data-hw-tier-detail") || "");
       });
     });
@@ -129,7 +126,7 @@
 
     const currentTier = HUB_CURRENT_PLAN_TIER;
     pick.querySelectorAll("[data-hw-tier-plan]").forEach((card) => {
-      if (card.id === "hw-hub-video-card") return;
+      if (card.id === "hw-hub-ultra-card") return;
 
       const planId = card.getAttribute("data-hw-tier-plan");
       const planTier = planId ? HUB_PLAN_TIERS[planId] : null;
@@ -156,7 +153,6 @@
     if (isTeacher) return;
     const pick = document.getElementById("hw-hub-tier-pick");
     const desc = document.getElementById("hw-hub-desc");
-    const stackVideo = document.getElementById("hw-video-response-card");
 
     if (pick) {
       pick.hidden = false;
@@ -164,8 +160,6 @@
       renderHubTierPlans();
       global.HwCheckout?.bindCheckoutControls?.(pick);
     }
-
-    if (stackVideo) stackVideo.hidden = true;
 
     if (desc) {
       desc.textContent =
@@ -177,7 +171,7 @@
     { label: "Village prototype", href: "/game/" },
     { label: "Tic Tac Toe", href: "/game/tictactoe-past/" },
     { label: "Lantern Word Hunt", href: "/game/lantern-hunt/" },
-    { label: "Yūgen Gatherer", href: "/game/yugen-gatherer/" },
+    { label: "Yūgen Gatherer", locked: true },
   ];
 
   function renderGamesHubCard() {
@@ -196,6 +190,15 @@
     card.classList.remove("course-card--locked");
 
     HUB_GAMES.forEach((game) => {
+      if (game.locked) {
+        const lock = document.createElement("span");
+        lock.className = "hw-games-hub-btn hw-games-hub-btn--locked";
+        lock.textContent = game.label;
+        lock.setAttribute("aria-disabled", "true");
+        lock.title = "Coming soon";
+        footer.append(lock);
+        return;
+      }
       const link = document.createElement("a");
       link.className = "hw-games-hub-btn";
       link.href = game.href;
@@ -283,78 +286,19 @@
     return link;
   }
 
-  function renderVideoResponseCard(catalog) {
-    const useHubRow = !isTeacher;
-    const card = document.getElementById(
-      useHubRow ? "hw-hub-video-card" : "hw-video-response-card"
-    );
-    const desc = document.getElementById("hw-video-response-desc");
-    const footer = document.getElementById(
-      useHubRow ? "hw-hub-video-footer" : "hw-video-response-footer"
-    );
-    if (!footer) return;
-    footer.replaceChildren();
+  function renderUltraReviewPlaylist(catalog) {
+    if (isTeacher || !HwAuth.hasVideoResponseAccess(session)) return;
 
     const media = getStudentMedia(catalog);
-    const price = document.createElement("span");
-    price.className = "course-card__price";
-    price.setAttribute("aria-label", "Price: " + HwAuth.VIDEO_RESPONSE_ADDON_PRICE + " dollars per month");
+    const playlistUrl = media.reviewPlaylistUrl;
+    if (!isYoutubeReady(playlistUrl)) return;
 
-    if (HwAuth.hasVideoResponseAccess(session)) {
-      card?.classList.add("hw-addon-card--active");
-      if (desc) desc.textContent = VIDEO_RESPONSE_DESC + " Open your review playlist below.";
-      price.textContent = "✓";
-      price.setAttribute("aria-label", "Video responses included");
-
-      const playlistUrl = media.reviewPlaylistUrl;
-      if (isYoutubeReady(playlistUrl)) {
-        footer.append(
-          courseStatusLink("Playlist", "Open", playlistUrl, "Open HW Review Playlist on YouTube"),
-          price
-        );
-      } else {
-        footer.append(
-          courseStatusButton("Soon", "Soon", null, "HW Review Playlist coming soon"),
-          price
-        );
-        footer.querySelector("button")?.setAttribute("disabled", "true");
-      }
-      return;
+    const lessonPlaylist = document.getElementById("hw-lesson-playlist");
+    if (lessonPlaylist && lessonPlaylist.hidden) {
+      lessonPlaylist.href = playlistUrl;
+      lessonPlaylist.textContent = "HW review playlist (video feedback)";
+      lessonPlaylist.hidden = false;
     }
-
-    card?.classList.remove("hw-addon-card--active");
-    price.textContent = "$" + HwAuth.VIDEO_RESPONSE_ADDON_PRICE;
-
-    const canSubscribeVideo =
-      useHubRow ||
-      HwAuth.canOfferVideoUnlock(session) ||
-      session.tier === "pending";
-
-    if (canSubscribeVideo) {
-      if (desc) desc.textContent = VIDEO_RESPONSE_DESC;
-      const videoPaypal =
-        global.HwCheckout?.buildCheckoutUrl?.("video-feedback", session) ||
-        HwAuth.PAYPAL?.videoFeedback;
-      footer.append(
-        videoPaypal
-          ? courseStatusLink(
-              "Locked",
-              "Subscribe",
-              videoPaypal,
-              "Subscribe to Video Feedback HW — fifteen dollars per four weeks"
-            )
-          : courseStatusButton("Locked", "Soon", null, "Video feedback subscription link coming soon"),
-        price
-      );
-      return;
-    }
-
-    if (desc) desc.textContent = VIDEO_RESPONSE_DESC + " Included on Unlimited (Tier 3).";
-    footer.append(
-      courseStatusButton("Tier 3", "Tier 3", null, "Video responses require Unlimited tier"),
-      price
-    );
-    footer.querySelector("button")?.setAttribute("disabled", "true");
   }
 
   document.getElementById("hw-platform-logout")?.addEventListener("click", () => {
@@ -1980,7 +1924,7 @@
 
     renderCurrentAssignmentCard(mine, active?.id);
     setLessonLinks(active, catalog);
-    renderVideoResponseCard(catalog);
+    renderUltraReviewPlaylist(catalog);
     bindPhotoUpload(active);
     bindVideoUpload(active);
 

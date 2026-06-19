@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Study tutor — layout options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1520;
+      --card: #1a2230;
+      --border: #2d3a4f;
+      --green: #55efc4;
+      --blue: #67c4eb;
+      --purple: #9b8ec4;
+      --muted: #8b9cb3;
+      --text: #e8edf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.25rem;
+      font-family: Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .sub {
+      margin: 0 0 1.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    @media (min-width: 720px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    .option {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+    }
+    .option--pick {
+      border-color: var(--green);
+      box-shadow: 0 0 0 1px rgba(85, 239, 196, 0.25);
+    }
+    .option__tag {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      background: rgba(85, 239, 196, 0.15);
+      color: var(--green);
+    }
+    .option__tag--skip {
+      background: rgba(139, 156, 179, 0.15);
+      color: var(--muted);
+    }
+    .option h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+    .mock {
+      aspect-ratio: 4 / 3;
+      border-radius: 10px;
+      background: #121820;
+      border: 1px solid var(--border);
+      padding: 0.55rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0;
+    }
+    .mock-row { display: flex; gap: 0.35rem; flex: 1; min-height: 0; }
+    .mock-bar {
+      height: 0.45rem;
+      border-radius: 3px;
+      background: #2a3548;
+    }
+    .mock-bar--hero { height: 0.7rem; background: #2d4a3e; width: 70%; }
+    .mock-block {
+      border-radius: 6px;
+      border: 1px dashed #3a4a62;
+      background: rgba(255,255,255,0.02);
+      flex: 1;
+      position: relative;
+    }
+    .mock-block--worksheet {
+      border-style: solid;
+      border-color: #3d5a80;
+      background: rgba(103, 196, 235, 0.06);
+    }
+    .mock-block--tutor {
+      border-color: var(--purple);
+      background: rgba(155, 142, 196, 0.12);
+    }
+    .mock-block--tutor-strong {
+      border: 2px solid var(--purple);
+      background: rgba(155, 142, 196, 0.18);
+    }
+    .mock-block--sidebar { flex: 0 0 28%; }
+    .mock-block--wide { flex: 1; }
+    .mock-line {
+      height: 0.35rem;
+      margin: 0.35rem 0.4rem;
+      border-radius: 2px;
+      background: #2a3548;
+      width: 55%;
+    }
+    .mock-line--short { width: 35%; }
+    .mock-pill {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 0.35rem;
+      padding: 0.2rem 0.45rem;
+      font-size: 0.55rem;
+      font-weight: 600;
+      color: var(--purple);
+      background: rgba(155, 142, 196, 0.25);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .mock-fab {
+      position: absolute;
+      right: 0.35rem;
+      bottom: 0.35rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 999px;
+      background: #4a5568;
+      border: 2px solid #6b7280;
+      opacity: 0.5;
+    }
+    .mock-fab::after {
+      content: "✕";
+      display: block;
+      font-size: 0.5rem;
+      text-align: center;
+      line-height: 1.1rem;
+      color: #9ca3af;
+    }
+    .mock-sheet {
+      position: absolute;
+      left: 0.5rem;
+      right: 0.5rem;
+      bottom: 0;
+      height: 42%;
+      border-radius: 10px 10px 0 0;
+      background: rgba(155, 142, 196, 0.2);
+      border: 1px solid var(--purple);
+      border-bottom: none;
+    }
+    .mock-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin: 0.3rem 0.4rem 0;
+    }
+    .mock-tab {
+      flex: 1;
+      height: 0.5rem;
+      border-radius: 3px;
+      background: #2a3548;
+    }
+    .mock-tab--on {
+      background: var(--blue);
+    }
+    .label-ja {
+      position: absolute;
+      top: 0.3rem;
+      left: 0.35rem;
+      font-size: 0.5rem;
+      font-weight: 600;
+      color: var(--purple);
+    }
+    .one-liner {
+      margin: 0.65rem 0 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .legend {
+      max-width: 1100px;
+      margin: 1.5rem auto 0;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.4rem; }
+    .swatch {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 3px;
+    }
+    .swatch--hw { background: rgba(103, 196, 235, 0.35); border: 1px solid #3d5a80; }
+    .swatch--tutor { background: rgba(155, 142, 196, 0.35); border: 1px solid var(--purple); }
+    .swatch--bad { background: #4a5568; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <h1>Where should the study tutor live?</h1>
+  <p class="sub">Purple = tutor · Blue = homework · Gray bubble = skip (feels generic)</p>
+
+  <div class="grid">
+    <section class="option option--pick">
+      <span class="option__tag">Recommended</span>
+      <h2>A — Sidebar card</h2>
+      <div class="mock" aria-hidden="true">
+        <div class="mock-bar mock-bar--hero"></div>
+        <div class="mock-row">
+          <div class="mock-block mock-block--worksheet mock-block--wide">
+            <div class="mock-line"></div>
+            <div class="mock-line mock-line--short"></div>
+          </div>
+          <div class="mock-block mock-block--tutor-strong mock-block--sidebar">
+            <span class="label-ja">Tutor</span>
+            <div class="mock-line" style="margin-top:1.1rem"></div>
+            <div class="mock-line mock-line--short"></div>
+          </div>
+        </div>
+      </div>
+      <p class="one-liner">Part of the hub — like mistakes &amp; notifications.</p>
+    </section>
+
+    <section class="option option--pick">
+      <span class="option__tag">Recommended</span>
+      <h2>B — Under each question</h2>
+      <div class="mock" aria-hidden="true">
+        <div class="mock-bar"></div>
+        <div class="mock-block mock-block--worksheet" style="flex:1.2">
+          <div class="mock-line"></div>
+          <div class="mock-line"></div>
+          <div class="mock-line mock-line--short"></div>
+        </div>
+        <div class="mock-block mock-block--tutor" style="flex:0.55">
+          <span class="mock-pill">Ask about this question</span>
+        </div>
+      </div>
+      <p class="one-liner">Opens right under the slide — knows which Q you’re on.</p>
+    </section>
+
+    <section class="option">
+      <span class="option__tag">Good on phone</span>
+      <h2>C — Bottom sheet</h2>
+      <div class="mock" aria-hidden="true" style="position:relative;overflow:hidden">
+        <div class="mock-bar mock-bar--hero"></div>
+        <div class="mock-block mock-block--worksheet" style="flex:1">
+          <div class="mock-line"></div>
+          <div class="mock-line mock-line--short"></div>
+        </div>
+        <div class="mock-sheet">
+          <div class="mock-line" style="margin-top:0.5rem"></div>
+          <div class="mock-line mock-line--short"></div>
+        </div>
+      </div>
+      <p class="one-liner">Sticky bar taps “Ask tutor” → half-screen panel. No corner orb.</p>
+    </section>
+
+    <section class="option">
+      <span class="option__tag">Focus mode</span>
+      <h2>D — Tab swap</h2>
+      <div class="mock" aria-hidden="true">
+        <div class="mock-tabs">
+          <div class="mock-tab mock-tab--on"></div>
+          <div class="mock-tab"></div>
+        </div>
+        <div class="mock-block mock-block--tutor" style="flex:1">
+          <div class="mock-line" style="margin-top:0.6rem"></div>
+          <div class="mock-line"></div>
+          <div class="mock-line mock-line--short"></div>
+        </div>
+      </div>
+      <p class="one-liner">Worksheet ↔ Tutor — same center stage, no overlap.</p>
+    </section>
+
+    <section class="option" style="grid-column: 1 / -1; max-width: 520px; margin: 0 auto; width: 100%;">
+      <span class="option__tag option__tag--skip">Skip</span>
+      <h2>E — Bottom-right bubble (usual)</h2>
+      <div class="mock" aria-hidden="true" style="position:relative">
+        <div class="mock-bar mock-bar--hero"></div>
+        <div class="mock-block mock-block--worksheet" style="flex:1">
+          <div class="mock-line"></div>
+          <div class="mock-line mock-line--short"></div>
+        </div>
+        <div class="mock-fab" title="Generic chatbot"></div>
+      </div>
+      <p class="one-liner">Feels like generic site support — not JD’s homework.</p>
+    </section>
+  </div>
+
+  <div class="legend">
+    <span><i class="swatch swatch--hw"></i> Homework</span>
+    <span><i class="swatch swatch--tutor"></i> Study tutor</span>
+    <span><i class="swatch swatch--bad"></i> Corner bubble — avoid</span>
+  </div>
+</body>
+</html>

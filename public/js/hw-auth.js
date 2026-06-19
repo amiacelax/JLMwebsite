@@ -19,21 +19,21 @@
       id: "tier1",
       name: "Basic",
       price: 5,
-      hwPerMonth: 2,
+      hwPerMonth: 1,
       videoIncluded: false,
     },
     tier2: {
       id: "tier2",
       name: "Premium",
-      price: 15,
+      price: 20,
       hwPerMonth: 4,
       videoIncluded: false,
     },
     tier3: {
       id: "tier3",
-      name: "Unlimited",
-      price: 99,
-      hwPerMonth: null,
+      name: "Ultra",
+      price: 49,
+      hwPerMonth: 4,
       videoIncluded: true,
     },
     student_special: {
@@ -52,16 +52,12 @@
     },
   };
 
-  const VIDEO_RESPONSE_ADDON_PRICE = 15;
-  const WEEKLY_HOMEWORK_UPGRADE_PRICE = 5;
-
-  /** PayPal billing plan subscribe URLs. */
   const PAYPAL = {
     premium:
       "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY",
-    videoFeedback:
-      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-15R38814RL5675323NIKHAIA",
   };
+
+  const WEEKLY_HOMEWORK_UPGRADE_PRICE = 5;
 
   /** @type {Record<string, object>} */
   const ACCOUNTS = {
@@ -217,11 +213,8 @@
     return Boolean(s && s.videoResponseUnlock);
   }
 
-  function canOfferVideoUnlock(session) {
-    const s = session || getSession();
-    if (!s || s.role === "teacher") return false;
-    if (hasVideoResponseAccess(s)) return false;
-    return s.tier === "tier1" || s.tier === "tier2" || s.tier === "student_special";
+  function canOfferVideoUnlock() {
+    return false;
   }
 
   function canShowWeeklyHomeworkUpgrade(session) {
@@ -393,7 +386,6 @@
     LOGIN_PATH,
     ACCOUNT_LABELS,
     TIERS,
-    VIDEO_RESPONSE_ADDON_PRICE,
     WEEKLY_HOMEWORK_UPGRADE_PRICE,
     PAYPAL,
     ACCOUNTS,
