@@ -51,9 +51,53 @@ function kanjiTexture(char, color) {
   return tex;
 }
 
+function lanternGlowTexture(hex) {
+  const key = `lantern-glow:${hex}`;
+  if (textureCache.has(key)) return textureCache.get(key);
+
+  const col = new THREE.Color(hex);
+  const r = (col.r * 255) | 0;
+  const g = (col.g * 255) | 0;
+  const b = (col.b * 255) | 0;
+  const w = 192;
+  const h = 160;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  ctx.globalCompositeOperation = "lighter";
+
+  const blob = (cx, cy, rx, ry, peak) => {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(rx, ry);
+    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    grad.addColorStop(0, `rgba(${r},${g},${b},${peak})`);
+    grad.addColorStop(0.4, `rgba(${r},${g},${b},${peak * 0.38})`);
+    grad.addColorStop(0.72, `rgba(${r},${g},${b},${peak * 0.1})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  };
+
+  blob(w * 0.5, h * 0.44, w * 0.34, h * 0.22, 0.55);
+  blob(w * 0.52, h * 0.3, w * 0.16, h * 0.42, 0.32);
+  blob(w * 0.47, h * 0.6, w * 0.28, h * 0.14, 0.18);
+  blob(w * 0.63, h * 0.46, w * 0.11, h * 0.18, 0.12);
+  blob(w * 0.36, h * 0.5, w * 0.09, h * 0.15, 0.1);
+
+  const tex = new THREE.CanvasTexture(c);
+  textureCache.set(key, tex);
+  return tex;
+}
+
 const glyphs = [];
 const snowflakes = [];
-const SHAPE_KINDS = new Set(["floor", "wall", "door", "chair", "ice"]);
+const SHAPE_KINDS = new Set(["floor", "wall", "door", "chair", "ice", "water"]);
 
 function addGlyph(kind, char, color, pos, scale = 0.5, roomId = "demo") {
   const shapeFirst = SHAPE_KINDS.has(kind);
@@ -76,53 +120,79 @@ function addGlyph(kind, char, color, pos, scale = 0.5, roomId = "demo") {
 
 const ROOM = 7;
 const HGT = 4;
-const palettes = {
-  demo: {
-    floor: "#3a6ea5",
-    wall: "#8a7fb5",
-    door: "#d9a441",
-    chair: "#5fb39a",
-  },
-  winter: {
-    floor: "#7a9eb8",
-    wall: "#9aafc8",
-    door: "#c9d4e0",
-    ice: "#b8e8f4",
-    snow: "#e8f4fc",
-  },
+
+/** Fixed colors per kanji/object — same in every room. */
+const OBJECT_COLORS = {
+  beacon: "#e8c070", // 光
+  door: "#b91c1c", // 扉
+  wall: "#8a7fb5", // 壁
+  floor: "#3a6ea5", // 床
+  earth: "#8b7355", // 土
+  chair: "#5fb39a", // 椅 子
+  ice: "#b8e8f4", // 氷
+  snow: "#e8f4fc", // 雪
+  sand: "#c9a066", // 砂
+  water: "#2d8fbf", // 水
 };
+
+function objectColor(kind, char) {
+  if (char === "土") return OBJECT_COLORS.earth;
+  if (char === "砂") return OBJECT_COLORS.sand;
+  if (char === "水") return OBJECT_COLORS.water;
+  return OBJECT_COLORS[kind] ?? "#ffffff";
+}
 
 const rand = (a) => (Math.random() - 0.5) * a;
 
 const FLOOR_STEP = 0.4;
+/** Top-layer footprints — floor glyphs skip these xz regions. */
+const floorMasks = [];
 
-function buildFloor(roomId, palette, char = "床") {
+function registerFloorMask(roomId, test) {
+  floorMasks.push({ roomId, test });
+}
+
+function floorBlocked(roomId, x, z) {
+  return floorMasks.some((m) => m.roomId === roomId && m.test(x, z));
+}
+
+function buildFloor(roomId, char = "床") {
   const y = 0.02;
+  const color = objectColor("floor", char);
   const cols = Math.round((2 * ROOM) / FLOOR_STEP) + 1;
 
   for (let row = 0; row < cols; row++) {
     for (let col = 0; col < cols; col++) {
       const x = -ROOM + ((2 * ROOM) * col) / (cols - 1);
       const z = -ROOM + ((2 * ROOM) * row) / (cols - 1);
+      if (floorBlocked(roomId, x, z)) continue;
       const edge = col === 0 || col === cols - 1 || row === 0 || row === cols - 1;
-      addGlyph("floor", char, palette.floor, new THREE.Vector3(x, y, z), edge ? 0.4 : 0.38, roomId);
+      addGlyph("floor", char, color, new THREE.Vector3(x, y, z), edge ? 0.4 : 0.38, roomId);
     }
   }
 }
 
-const inDoorway = (x, y) => x > -1.1 && x < 1.1 && y < 2.9;
+const inDoorway = (x, y) => x > DOOR_LEFT && x < DOOR_RIGHT && y < DOOR_TOP + 0.1;
 
-function buildWalls(roomId, palette) {
+function roomHasDoorway(roomId, wall) {
+  if (wall === "back") return true;
+  return wall === "front" && roomId === "demo";
+}
+
+function buildWalls(roomId) {
+  const color = objectColor("wall", "壁");
   for (let y = 0.4; y <= HGT; y += 0.55) {
     for (let x = -ROOM; x <= ROOM; x += 0.6) {
-      if (!inDoorway(x, y)) {
-        addGlyph("wall", "壁", palette.wall, new THREE.Vector3(x + rand(0.05), y, -ROOM), 0.65, roomId);
+      if (!(inDoorway(x, y) && roomHasDoorway(roomId, "back"))) {
+        addGlyph("wall", "壁", color, new THREE.Vector3(x + rand(0.05), y, -ROOM), 0.65, roomId);
       }
-      addGlyph("wall", "壁", palette.wall, new THREE.Vector3(x + rand(0.05), y, ROOM), 0.65, roomId);
+      if (!(inDoorway(x, y) && roomHasDoorway(roomId, "front"))) {
+        addGlyph("wall", "壁", color, new THREE.Vector3(x + rand(0.05), y, ROOM), 0.65, roomId);
+      }
     }
     for (let z = -ROOM; z <= ROOM; z += 0.6) {
-      addGlyph("wall", "壁", palette.wall, new THREE.Vector3(-ROOM, y, z + rand(0.05)), 0.65, roomId);
-      addGlyph("wall", "壁", palette.wall, new THREE.Vector3(ROOM, y, z + rand(0.05)), 0.65, roomId);
+      addGlyph("wall", "壁", color, new THREE.Vector3(-ROOM, y, z + rand(0.05)), 0.65, roomId);
+      addGlyph("wall", "壁", color, new THREE.Vector3(ROOM, y, z + rand(0.05)), 0.65, roomId);
     }
   }
 }
@@ -134,59 +204,74 @@ const DOOR_RIGHT = 0.9;
 const DOOR_BOTTOM = 0.4;
 const DOOR_TOP = 2.8;
 
-function buildDoor(roomId, palette) {
-  const z = -ROOM;
+function buildDoor(roomId, wall = "back") {
+  const color = objectColor("door", "扉");
+  const z = wall === "back" ? -ROOM : ROOM;
 
   for (let row = 0; row < DOOR_ROWS; row++) {
     const y = DOOR_BOTTOM + ((DOOR_TOP - DOOR_BOTTOM) * row) / (DOOR_ROWS - 1);
     for (let col = 0; col < DOOR_COLS; col++) {
       const x = DOOR_LEFT + ((DOOR_RIGHT - DOOR_LEFT) * col) / (DOOR_COLS - 1);
       const edge = col === 0 || col === DOOR_COLS - 1 || row === 0 || row === DOOR_ROWS - 1;
-      addGlyph("door", "扉", palette.door, new THREE.Vector3(x, y, z), edge ? 0.4 : 0.36, roomId);
+      addGlyph("door", "扉", color, new THREE.Vector3(x, y, z), edge ? 0.4 : 0.36, roomId);
     }
   }
 }
 
 const DOOR_CX = (DOOR_LEFT + DOOR_RIGHT) / 2;
-const DOOR_CY = (DOOR_BOTTOM + DOOR_TOP) / 2;
-const doorLights = [];
-const doorBeacons = [];
+const doorMarkers = [];
 
-function buildDoorMarkers(roomId, palette) {
-  const color = new THREE.Color(palette.door);
+function markerPosForWall(wall) {
+  const z = wall === "back" ? -ROOM + 0.3 : ROOM - 0.3;
+  return new THREE.Vector3(DOOR_CX, DOOR_TOP + 0.18, z);
+}
 
-  const light = new THREE.PointLight(color.getHex(), 0.48, 16, 2);
-  light.position.set(DOOR_CX, DOOR_CY, -ROOM + 0.35);
+function buildDoorMarkers(roomId, wall = "back") {
+  const hex = new THREE.Color(OBJECT_COLORS.beacon).getHex();
+  const pos = markerPosForWall(wall);
+
+  const light = new THREE.PointLight(hex, 0.9, 24, 1.6);
+  light.position.copy(pos);
   light.visible = false;
   scene.add(light);
-  doorLights.push({ light, roomId });
 
-  for (const x of [DOOR_LEFT + 0.15, DOOR_RIGHT - 0.15]) {
-    const mat = new THREE.SpriteMaterial({
-      map: kanjiTexture("灯", palette.door),
+  const halo = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: lanternGlowTexture(hex),
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      opacity: 0.14,
-    });
-    const sprite = new THREE.Sprite(mat);
-    sprite.position.set(x, DOOR_TOP + 0.22, -ROOM + 0.25);
-    sprite.scale.setScalar(0.22);
-    sprite.visible = false;
-    scene.add(sprite);
-    doorBeacons.push({ sprite, roomId });
-  }
+      opacity: 0.26,
+    }),
+  );
+  halo.position.copy(pos);
+  halo.scale.set(1.15, 0.82, 1);
+  halo.visible = false;
+  scene.add(halo);
+
+  const lantern = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: kanjiTexture("光", OBJECT_COLORS.beacon),
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      opacity: 0.48,
+    }),
+  );
+  lantern.position.copy(pos);
+  lantern.scale.setScalar(0.3);
+  lantern.visible = false;
+  scene.add(lantern);
+
+  doorMarkers.push({ roomId, wall, light, halo, lantern });
 }
 
 function updateDoorMarkers() {
-  const pulse = 0.13 + Math.sin(performance.now() * 0.0018) * 0.035;
-  for (const { light, roomId } of doorLights) {
-    light.visible = roomId === currentRoom;
-  }
-  for (const { sprite, roomId } of doorBeacons) {
-    const on = roomId === currentRoom;
-    sprite.visible = on;
-    if (on) sprite.material.opacity = pulse;
+  for (const m of doorMarkers) {
+    const on = m.roomId === currentRoom;
+    m.light.visible = on;
+    m.halo.visible = on;
+    m.lantern.visible = on;
   }
 }
 
@@ -194,8 +279,9 @@ const PAIR_HALF = 0.12;
 const CHAIR_STEP = 0.4;
 
 function addChairPair(cx, cy, cz, scale, roomId) {
-  addGlyph("chair", "椅", palettes.demo.chair, new THREE.Vector3(cx - PAIR_HALF, cy, cz), scale, roomId);
-  addGlyph("chair", "子", palettes.demo.chair, new THREE.Vector3(cx + PAIR_HALF, cy, cz), scale, roomId);
+  const color = objectColor("chair", "椅");
+  addGlyph("chair", "椅", color, new THREE.Vector3(cx - PAIR_HALF, cy, cz), scale, roomId);
+  addGlyph("chair", "子", color, new THREE.Vector3(cx + PAIR_HALF, cy, cz), scale, roomId);
 }
 
 function chairAt(cx, cz, roomId) {
@@ -228,7 +314,20 @@ const POND_RX = 2.0;
 const POND_RZ = 1.3;
 const ICE_STEP = 0.38;
 
-function buildPond(roomId, palette) {
+function inPond(x, z) {
+  const nx = (x - POND_CX) / POND_RX;
+  const nz = (z - POND_CZ) / POND_RZ;
+  return nx * nx + nz * nz <= 1;
+}
+
+function inChairFootprint(cx, cz, x, z) {
+  const dx = Math.abs(x - cx);
+  const dz = Math.abs(z - cz);
+  return dx <= CHAIR_STEP + PAIR_HALF + 0.1 && dz <= CHAIR_STEP + 0.55;
+}
+
+function buildPond(roomId) {
+  const color = objectColor("ice", "氷");
   const y = 0.03;
   for (let z = POND_CZ - POND_RZ; z <= POND_CZ + POND_RZ; z += ICE_STEP) {
     for (let x = POND_CX - POND_RX; x <= POND_CX + POND_RX; x += ICE_STEP) {
@@ -236,32 +335,107 @@ function buildPond(roomId, palette) {
       const nz = (z - POND_CZ) / POND_RZ;
       if (nx * nx + nz * nz > 1) continue;
       const edge = nx * nx + nz * nz > 0.72;
-      addGlyph("ice", "氷", palette.ice, new THREE.Vector3(x, y, z), edge ? 0.38 : 0.34, roomId);
+      addGlyph("ice", "氷", color, new THREE.Vector3(x, y, z), edge ? 0.38 : 0.34, roomId);
     }
   }
 }
 
+const WATER_STEP = 0.38;
+const WATER_DEPTH_RAMP = 2.2;
+const STAND_EYE_Y = 1.6;
+const WAIST_EYE_Y = 1.05;
+const WATER_WADE_SPEED = 2.1;
+const WAVE_OMEGA = 2.1;
+const WAVE_K = 1.35;
+const WAVE_Y_AMP = 0.13;
+const WAVE_Z_AMP = 0.055;
+const WAVE_SHORE_FALLOFF = 1.35;
+
+function shoreZ(x) {
+  return 4.2 + Math.sin(x * 0.35) * 0.35 + Math.cos(x * 0.15) * 0.15;
+}
+
+/** Wavy shoreline — sand near door, ocean toward the front. */
+function inWater(x, z) {
+  return z > shoreZ(x);
+}
+
+function waterDepthFactor(x, z) {
+  if (!inWater(x, z)) return 0;
+  return THREE.MathUtils.clamp((z - shoreZ(x)) / WATER_DEPTH_RAMP, 0, 1);
+}
+
+function placeWaterGlyph(roomId, color, x, y, z, scale, depth, layer) {
+  const entry = addGlyph("water", "水", color, new THREE.Vector3(x, y, z), scale, roomId);
+  if (roomId === "summer") {
+    entry.wave = {
+      baseX: x,
+      baseY: y,
+      baseZ: z,
+      depth,
+      layer,
+      phase: x * 0.47 + z * 0.19 + layer * 1.15,
+    };
+  }
+  return entry;
+}
+
+function buildWater(roomId) {
+  const color = objectColor("water", "水");
+
+  for (let z = -ROOM + 0.5; z <= ROOM - 0.5; z += WATER_STEP) {
+    for (let x = -ROOM + 0.5; x <= ROOM - 0.5; x += WATER_STEP) {
+      if (!inWater(x, z)) continue;
+      const depth = z - shoreZ(x);
+      const edge = depth < 0.55 || Math.abs(x) > ROOM - 1.2;
+      const scale = edge ? 0.38 : 0.34;
+
+      placeWaterGlyph(roomId, color, x, 0.03, z, scale, depth, 0);
+
+      if (depth > 0.9) {
+        placeWaterGlyph(roomId, color, x, 0.45, z, scale - 0.02, depth, 1);
+      }
+      if (depth > 1.7) {
+        placeWaterGlyph(roomId, color, x, 0.88, z, scale - 0.04, depth, 2);
+      }
+    }
+  }
+}
+
+function buildSummerRoom() {
+  registerFloorMask("summer", inWater);
+  buildFloor("summer", "砂");
+  buildWalls("summer");
+  buildDoor("summer", "back");
+  buildDoorMarkers("summer", "back");
+  buildWater("summer");
+}
+
 function buildDemoRoom() {
-  const p = palettes.demo;
-  buildFloor("demo", p);
-  buildWalls("demo", p);
-  buildDoor("demo", p);
-  buildDoorMarkers("demo", p);
-  chairAt(1.6, 1.2, "demo");
+  const chairX = 1.6;
+  const chairZ = 1.2;
+  registerFloorMask("demo", (x, z) => inChairFootprint(chairX, chairZ, x, z));
+  buildFloor("demo");
+  buildWalls("demo");
+  buildDoor("demo", "back");
+  buildDoorMarkers("demo", "back");
+  buildDoor("demo", "front");
+  buildDoorMarkers("demo", "front");
+  chairAt(chairX, chairZ, "demo");
 }
 
 function buildWinterRoom() {
-  const p = palettes.winter;
-  buildFloor("winter", p, "土");
-  buildWalls("winter", p);
-  buildDoor("winter", p);
-  buildDoorMarkers("winter", p);
-  buildPond("winter", p);
+  registerFloorMask("winter", inPond);
+  buildFloor("winter", "土");
+  buildWalls("winter");
+  buildDoor("winter", "back");
+  buildDoorMarkers("winter", "back");
+  buildPond("winter");
 }
 
 function addSnowflake() {
   const mat = new THREE.SpriteMaterial({
-    map: kanjiTexture("雪", palettes.winter.snow),
+    map: kanjiTexture("雪", OBJECT_COLORS.snow),
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
@@ -290,6 +464,7 @@ function resetSnowflake(s, spread = false) {
 
 buildDemoRoom();
 buildWinterRoom();
+buildSummerRoom();
 for (let i = 0; i < 100; i++) addSnowflake();
 
 const hud = document.createElement("div");
@@ -304,17 +479,35 @@ panel.appendChild(hud);
 const roomMeta = {
   demo: {
     title: "Room",
-    desc: "Walk through the back door to the winter room. Click · WASD · ESC.",
+    desc: "Back door → winter. Front door → summer beach. Click · WASD · ESC.",
     bg: 0x05060a,
     fog: 0.045,
   },
   winter: {
     title: "Winter Room",
-    desc: "雪 falls outside. Slide on the frozen 氷 pond. Return through the door. Click · WASD · ESC.",
+    desc: "雪 falls. Slide on the 氷 pond. Back door → demo room. Click · WASD · ESC.",
     bg: 0x141c28,
     fog: 0.038,
   },
+  summer: {
+    title: "Summer Room",
+    desc: "Beach — wade into the 水 at the far shore. Back door → demo front door. Click · WASD · ESC.",
+    bg: 0x05060a,
+    fog: 0.045,
+  },
 };
+
+const ROOM_PORTALS = {
+  demo: [
+    { wall: "back", target: "winter", spawnWall: "back" },
+    { wall: "front", target: "summer", spawnWall: "back" },
+  ],
+  winter: [{ wall: "back", target: "demo", spawnWall: "back" }],
+  summer: [{ wall: "back", target: "demo", spawnWall: "front" }],
+};
+
+const DOOR_PORTAL_BACK_Z = -ROOM + 0.85;
+const DOOR_PORTAL_FRONT_Z = ROOM - 0.85;
 
 let currentRoom = "demo";
 let doorCooldown = 0;
@@ -322,19 +515,32 @@ let doorCooldown = 0;
 function applyRoomAtmosphere(roomId) {
   const m = roomMeta[roomId];
   scene.background.setHex(m.bg);
-  scene.fog.color.setHex(m.bg);
-  scene.fog.density = m.fog;
+  if (m.fog > 0) {
+    if (!scene.fog) scene.fog = new THREE.FogExp2(m.bg, m.fog);
+    scene.fog.color.setHex(m.bg);
+    scene.fog.density = m.fog;
+  } else {
+    scene.fog = null;
+  }
   hudTitle.textContent = m.title;
   hudDesc.textContent = m.desc;
   updateDoorMarkers();
 }
 
-function setRoom(roomId) {
+function spawnPose(wall) {
+  if (wall === "back") {
+    return { pos: new THREE.Vector3(0, STAND_EYE_Y, -ROOM + 2.4), yaw: Math.PI };
+  }
+  return { pos: new THREE.Vector3(0, STAND_EYE_Y, ROOM - 2.4), yaw: 0 };
+}
+
+function setRoom(roomId, spawnWall = "back") {
   currentRoom = roomId;
   doorCooldown = 1.2;
   applyRoomAtmosphere(roomId);
-  camera.position.set(0, 1.6, -ROOM + 2.4);
-  euler.y = Math.PI;
+  const spawn = spawnPose(spawnWall);
+  camera.position.copy(spawn.pos);
+  euler.y = spawn.yaw;
   camera.quaternion.setFromEuler(euler);
   slideVelocity.set(0, 0, 0);
   wasOnIce = false;
@@ -370,7 +576,6 @@ const ICE_MAX_SPEED = 7;
 /** Closer to 1 = less friction, more slide. */
 const ICE_FRICTION = 0.994;
 const BOUND = ROOM - 0.6;
-const DOOR_PORTAL_Z = -ROOM + 0.85;
 const up = new THREE.Vector3(0, 1, 0);
 const forward = new THREE.Vector3();
 const right = new THREE.Vector3();
@@ -379,16 +584,25 @@ const slideVelocity = new THREE.Vector3();
 let wasOnIce = false;
 
 function onIce(x, z) {
-  const nx = (x - POND_CX) / POND_RX;
-  const nz = (z - POND_CZ) / POND_RZ;
-  return nx * nx + nz * nz <= 1;
+  return inPond(x, z);
+}
+
+function portalTriggered(wall, p) {
+  if (p.x < DOOR_LEFT || p.x > DOOR_RIGHT) return false;
+  if (wall === "back") return p.z <= DOOR_PORTAL_BACK_Z;
+  if (wall === "front") return p.z >= DOOR_PORTAL_FRONT_Z;
+  return false;
 }
 
 function checkDoorTransition() {
   if (doorCooldown > 0) return;
   const p = camera.position;
-  if (p.x < DOOR_LEFT || p.x > DOOR_RIGHT || p.z > DOOR_PORTAL_Z) return;
-  setRoom(currentRoom === "demo" ? "winter" : "demo");
+  const portals = ROOM_PORTALS[currentRoom] ?? [];
+  for (const link of portals) {
+    if (!portalTriggered(link.wall, p)) continue;
+    setRoom(link.target, link.spawnWall);
+    return;
+  }
 }
 
 function moveCamera(dt) {
@@ -406,6 +620,9 @@ function moveCamera(dt) {
   if (keys.KeyA) move.sub(right);
 
   const icy = currentRoom === "winter" && onIce(camera.position.x, camera.position.z);
+  const wade = currentRoom === "summer" && inWater(camera.position.x, camera.position.z);
+  const wadeDepth = wade ? waterDepthFactor(camera.position.x, camera.position.z) : 0;
+  const moveSpeed = wade ? THREE.MathUtils.lerp(SPEED, WATER_WADE_SPEED, wadeDepth) : SPEED;
 
   if (icy) {
     if (!wasOnIce && move.lengthSq() > 0) {
@@ -429,7 +646,7 @@ function moveCamera(dt) {
     slideVelocity.set(0, 0, 0);
     if (move.lengthSq() > 0) {
       move.normalize();
-      camera.position.addScaledVector(move, SPEED * dt);
+      camera.position.addScaledVector(move, moveSpeed * dt);
     }
   }
 
@@ -438,7 +655,9 @@ function moveCamera(dt) {
   const p = camera.position;
   p.x = THREE.MathUtils.clamp(p.x, -BOUND, BOUND);
   p.z = THREE.MathUtils.clamp(p.z, -BOUND, BOUND);
-  p.y = 1.6;
+  p.y = wade
+    ? THREE.MathUtils.lerp(STAND_EYE_Y, WAIST_EYE_Y, wadeDepth)
+    : STAND_EYE_Y;
 
   checkDoorTransition();
 }
@@ -460,28 +679,53 @@ function updateClarity() {
     }
 
     let d;
-    if (g.kind === "floor" || g.kind === "ice") {
+    if (g.kind === "floor" || g.kind === "ice" || g.kind === "water") {
       const dx = camera.position.x - g.sprite.position.x;
+      const dy = camera.position.y - g.sprite.position.y;
       const dz = camera.position.z - g.sprite.position.z;
-      d = Math.hypot(dx, dz);
+      d = Math.hypot(dx, dy, dz);
     } else {
       d = tmp.copy(g.sprite.position).sub(camera.position).length();
     }
 
     const revealFar =
-      g.kind === "floor" || g.kind === "ice" ? FLOOR_REVEAL_FAR : REVEAL_FAR;
+      g.kind === "floor" || g.kind === "ice" || g.kind === "water"
+        ? FLOOR_REVEAL_FAR
+        : REVEAL_FAR;
     const t = THREE.MathUtils.clamp((revealFar - d) / (revealFar - REVEAL_NEAR), 0, 1);
     const clarity = g.shapeFirst ? t * t : t * t * t;
 
     g.sprite.visible = clarity > 0.02;
 
     if (g.shapeFirst) {
-      g.sprite.material.opacity = clarity * SHAPE_OPACITY_MAX;
-      g.sprite.scale.setScalar(g.baseScale * (0.88 + clarity * SHAPE_SCALE_BOOST));
+      const crest = g.waveCrest ?? 0;
+      g.sprite.material.opacity = clarity * (SHAPE_OPACITY_MAX + crest * 0.14);
+      g.sprite.scale.setScalar(g.baseScale * (0.88 + clarity * (SHAPE_SCALE_BOOST + crest * 0.07)));
     } else {
       g.sprite.material.opacity = clarity * 0.95;
       g.sprite.scale.setScalar(g.baseScale * (0.55 + clarity * 0.65));
     }
+  }
+}
+
+function updateWaterWaves(time) {
+  if (currentRoom !== "summer") return;
+
+  for (const g of glyphs) {
+    if (g.roomId !== "summer" || g.kind !== "water" || !g.wave) continue;
+
+    const { baseX, baseY, baseZ, depth, layer, phase } = g.wave;
+    const shoreProx = THREE.MathUtils.clamp(1 - depth / WAVE_SHORE_FALLOFF, 0, 1);
+    const layerDamp = 1 - layer * 0.38;
+    const motion = 0.22 + 0.78 * shoreProx;
+
+    const theta = WAVE_K * baseZ - WAVE_OMEGA * time + phase;
+    const sinT = Math.sin(theta);
+    const yOff = WAVE_Y_AMP * motion * layerDamp * sinT;
+    const zOff = -WAVE_Z_AMP * motion * layerDamp * sinT;
+
+    g.sprite.position.set(baseX, baseY + yOff, baseZ + zOff);
+    g.waveCrest = ((sinT + 1) * 0.5) * shoreProx * layerDamp;
   }
 }
 
@@ -516,8 +760,8 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   if (doorCooldown > 0) doorCooldown -= dt;
   moveCamera(dt);
+  updateWaterWaves(clock.elapsedTime);
   updateClarity();
-  updateDoorMarkers();
   updateSnow(dt);
   renderer.render(scene, camera);
 }
