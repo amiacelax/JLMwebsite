@@ -162,9 +162,11 @@ function buildFloor(roomId, char = "床") {
   const cols = Math.round((2 * ROOM) / FLOOR_STEP) + 1;
 
   for (let row = 0; row < cols; row++) {
+    const rowOffset = row % 2 === 1 ? FLOOR_STEP * 0.5 : 0;
     for (let col = 0; col < cols; col++) {
-      const x = -ROOM + ((2 * ROOM) * col) / (cols - 1);
+      const x = -ROOM + ((2 * ROOM) * col) / (cols - 1) + rowOffset;
       const z = -ROOM + ((2 * ROOM) * row) / (cols - 1);
+      if (Math.abs(x) > ROOM) continue;
       if (floorBlocked(roomId, x, z)) continue;
       const edge = col === 0 || col === cols - 1 || row === 0 || row === cols - 1;
       addGlyph("floor", char, color, new THREE.Vector3(x, y, z), edge ? 0.4 : 0.38, roomId);
