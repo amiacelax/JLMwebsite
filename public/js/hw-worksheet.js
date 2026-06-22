@@ -103,6 +103,8 @@
     if (mode === "grammar-blank") return "Grammar";
     if (mode === "audio-listening") return "Listening";
     if (mode === "context-blank") return "Open response";
+    if (mode === "video-response") return "Video";
+    if (mode === "audio-prompt") return "Audio";
     return "Block";
   }
 
@@ -1262,7 +1264,7 @@
       "</p>" +
       (authoring
         ? '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>'
-        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video or audio prompts, record your answer in each block. JD will review your work.</p>');
+        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record and save each clip (or send homework — unsaved clips upload automatically). JD will review your work.</p>');
     metaTop.appendChild(metaText);
 
     meta.appendChild(metaTop);
@@ -1857,7 +1859,18 @@
     const lines = [];
     form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
       const mode = secEl.dataset.mode || "";
-      if (mode === "video-response" || mode === "audio-prompt") return;
+      if (mode === "video-response") {
+        secEl.querySelectorAll(".hw-worksheet__line--video").forEach((lineEl) => {
+          lines.push({ mode, lineEl });
+        });
+        return;
+      }
+      if (mode === "audio-prompt") {
+        secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((lineEl) => {
+          lines.push({ mode, lineEl });
+        });
+        return;
+      }
       secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl) => {
         lines.push({ mode, lineEl });
       });
@@ -1866,6 +1879,35 @@
     const total = lines.length;
     return lines
       .map(({ mode, lineEl }, index) => {
+        if (mode === "video-response") {
+          const num =
+            lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
+          const prompt =
+            lineEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "";
+          const saved = lineEl.querySelector('.hw-video-inline__card[data-state="saved"]');
+          return {
+            progress: index + 1 + " of " + total,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            prompt,
+            student: saved ? "(video submitted)" : "(video not saved)",
+          };
+        }
+        if (mode === "audio-prompt") {
+          const num =
+            lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
+          const prompt =
+            lineEl.querySelector(".hw-audio-prompt__text")?.textContent?.trim() || "";
+          const saved = lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]');
+          return {
+            progress: index + 1 + " of " + total,
+            blockType: blockTypeLabel(mode),
+            label: "Audio " + num,
+            prompt,
+            student: saved ? "(audio submitted)" : "(audio not saved)",
+          };
+        }
+
         const input = lineEl.querySelector(
           "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])"
         );

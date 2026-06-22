@@ -5723,6 +5723,8 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
 }
 
 .hw-video-prompt__recorder {
+  display: flex;
+  justify-content: center;
   margin-top: 0;
 }
 
@@ -5736,6 +5738,9 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
 /* Inline video recorder card */
 .hw-video-inline {
   max-width: 22rem;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .hw-video-inline__card {

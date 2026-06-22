@@ -4,6 +4,7 @@
 (function (global) {
   const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
   const MAX_VIDEO_MS = 3 * 60 * 1000;
+  const controllers = new WeakMap();
 
   function pickRecorderMimeType() {
     if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
@@ -25,6 +26,49 @@
     const min = Math.floor(totalSec / 60);
     const sec = totalSec % 60;
     return min + ":" + String(sec).padStart(2, "0");
+  }
+
+  function getState(mountEl) {
+    return mountEl?.querySelector(".hw-video-inline__card")?.dataset.state || "idle";
+  }
+
+  function mountsInForm(form) {
+    return form ? Array.from(form.querySelectorAll(".hw-video-inline[data-bound]")) : [];
+  }
+
+  /**
+   * Upload pending clips and verify every video prompt is saved before homework submit.
+   * @param {HTMLFormElement} form
+   * @returns {Promise<{ ok: boolean, message?: string }>}
+   */
+  async function prepareForSubmit(form) {
+    const mounts = mountsInForm(form);
+    if (!mounts.length) return { ok: true };
+
+    for (const el of mounts) {
+      if (getState(el) === "live") {
+        return { ok: false, message: "Stop recording before sending homework." };
+      }
+    }
+
+    for (const el of mounts) {
+      const ctrl = controllers.get(el);
+      if (!ctrl || getState(el) !== "preview") continue;
+      const result = await ctrl.upload();
+      if (!result.ok) {
+        return { ok: false, message: result.message || "Could not save a video answer." };
+      }
+    }
+
+    for (const el of mounts) {
+      const ctrl = controllers.get(el);
+      const label = ctrl?.meta?.promptLabel?.trim() || "Video answer";
+      if (getState(el) !== "saved") {
+        return { ok: false, message: "Record and save: " + label };
+      }
+    }
+
+    return { ok: true };
   }
 
   /**
@@ -71,7 +115,7 @@
       '<div class="hw-video-inline__saved" hidden>' +
       '<div class="hw-video-inline__saved-badge" aria-hidden="true">✓</div>' +
       '<p class="hw-video-inline__saved-title">Video saved</p>' +
-      '<p class="hw-video-inline__saved-hint">JD will review this answer.</p>' +
+      '<p class="hw-video-inline__saved-hint">Included when you send homework to JD.</p>' +
       '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__record-again">Record again</button>' +
       "</div>" +
       "</div>" +
@@ -264,10 +308,9 @@
       }
     }
 
-    async function saveRecording() {
+    async function uploadRecording() {
       if (!recordedBlob) {
-        setStatus("Record a clip first.", "error");
-        return;
+        return { ok: false, message: "Record a clip first." };
       }
 
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -301,9 +344,12 @@
         if (!res.ok) throw new Error(data.error || "Save failed.");
         clearRecording();
         showSaved();
-        setStatus(data.message || "Video saved successfully.", "success");
+        setStatus(data.message || "Video saved.", "success");
+        return { ok: true };
       } catch (err) {
-        setStatus((err && err.message) || "Save failed — try again.", "error");
+        const message = (err && err.message) || "Save failed — try again.";
+        setStatus(message, "error");
+        return { ok: false, message };
       } finally {
         if (saveBtn) {
           saveBtn.disabled = false;
@@ -311,6 +357,17 @@
         }
       }
     }
+
+    async function saveRecording() {
+      await uploadRecording();
+    }
+
+    const controller = {
+      meta,
+      upload: uploadRecording,
+      getState: () => getState(mount),
+    };
+    controllers.set(mount, controller);
 
     mount.querySelector(".hw-video-inline__start")?.addEventListener("click", startRecording);
     mount.querySelector(".hw-video-inline__stop")?.addEventListener("click", stopRecording);
@@ -332,5 +389,5 @@
     showIdle();
   }
 
-  global.HwVideoInline = { mount };
+  global.HwVideoInline = { mount, prepareForSubmit };
 })(window);

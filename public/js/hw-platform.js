@@ -597,11 +597,21 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const report = HwWorksheet.collectHomeworkAnswers(form);
-      HwWorksheet.renderCheckResults(form);
-
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn?.disabled) return;
+
+      if (global.HwVideoInline?.prepareForSubmit) {
+        if (saveStatus) saveStatus.textContent = "Checking video answers…";
+        const videoReady = await global.HwVideoInline.prepareForSubmit(form);
+        if (!videoReady.ok) {
+          if (saveStatus) saveStatus.textContent = videoReady.message || "Save your video answers first.";
+          showToast("Video required");
+          return;
+        }
+      }
+
+      const report = HwWorksheet.collectHomeworkAnswers(form);
+      HwWorksheet.renderCheckResults(form);
 
       const payload = HwWorksheet.buildSubmitPayload(
         form,
@@ -628,13 +638,13 @@
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
-      if (
-        !payload.section1?.length &&
-        !payload.section2?.length &&
-        !payload.listening?.length
-      ) {
+
+      const hasText =
+        payload.section1?.length || payload.section2?.length || payload.listening?.length;
+      const hasAnswers = payload.answers?.length;
+      if (!hasText && !hasAnswers) {
         if (saveStatus) {
-          saveStatus.textContent = "Fill in at least one blank before submitting.";
+          saveStatus.textContent = "Fill in at least one answer before submitting.";
         }
         showToast("Nothing to submit");
         if (submitBtn) submitBtn.disabled = false;

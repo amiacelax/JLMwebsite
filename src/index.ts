@@ -855,7 +855,8 @@ function validateHomeworkSubmit(data: HomeworkSubmitPayload): string | null {
   const s1 = data.section1?.length ?? 0;
   const s2 = data.section2?.length ?? 0;
   const listening = data.listening?.length ?? 0;
-  if (s1 + s2 + listening === 0) return "No answers to submit.";
+  const ordered = data.answers?.length ?? 0;
+  if (s1 + s2 + listening + ordered === 0) return "No answers to submit.";
   return null;
 }
 
