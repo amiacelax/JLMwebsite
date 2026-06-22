@@ -840,7 +840,8 @@
 
     const instruction = document.createElement("p");
     instruction.className = "hw-video-prompt__instruction";
-    instruction.textContent = "Record a short video answering the question above, then save it.";
+    instruction.textContent =
+      "Choose video or audio-only, record your answer in Japanese, then save it.";
     wrap.appendChild(instruction);
 
     const recorderMount = document.createElement("div");

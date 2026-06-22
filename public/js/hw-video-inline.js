@@ -1,12 +1,14 @@
 /**
  * Inline video record + save for worksheet video prompts.
+ * Students may choose video or audio-only before recording.
  */
 (function (global) {
   const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
-  const MAX_VIDEO_MS = 3 * 60 * 1000;
+  const MAX_AUDIO_BYTES = 12 * 1024 * 1024;
+  const MAX_RECORD_MS = 3 * 60 * 1000;
   const controllers = new WeakMap();
 
-  function pickRecorderMimeType() {
+  function pickVideoRecorderMimeType() {
     if (global.HwCompat?.pickRecorderMimeType) {
       return global.HwCompat.pickRecorderMimeType();
     }
@@ -20,7 +22,34 @@
     return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
   }
 
-  function extensionForMime(mimeType) {
+  function pickAudioRecorderMimeType() {
+    if (global.HwCompat?.pickRecorderMimeType) {
+      return global.HwCompat.pickRecorderMimeType([
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+        "audio/mpeg",
+      ]);
+    }
+    if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
+    const types = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/mp4",
+      "audio/mpeg",
+    ];
+    return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+  }
+
+  function extensionForMime(mimeType, mode) {
+    if (mode === "audio") {
+      if (mimeType.includes("mp4")) return "m4a";
+      if (mimeType.includes("mpeg")) return "mp3";
+      if (mimeType.includes("ogg")) return "ogg";
+      return "webm";
+    }
     return mimeType.includes("mp4") ? "mp4" : "webm";
   }
 
@@ -59,13 +88,13 @@
       if (!ctrl || getState(el) !== "preview") continue;
       const result = await ctrl.upload();
       if (!result.ok) {
-        return { ok: false, message: result.message || "Could not save a video answer." };
+        return { ok: false, message: result.message || "Could not save your answer." };
       }
     }
 
     for (const el of mounts) {
       const ctrl = controllers.get(el);
-      const label = ctrl?.meta?.promptLabel?.trim() || "Video answer";
+      const label = ctrl?.meta?.promptLabel?.trim() || "Answer";
       if (getState(el) !== "saved") {
         return { ok: false, message: "Record and save: " + label };
       }
@@ -87,6 +116,10 @@
     mount.innerHTML =
       '<div class="hw-video-inline__card">' +
       '<div class="hw-video-inline__idle">' +
+      '<div class="hw-video-inline__mode" role="group" aria-label="Recording type">' +
+      '<button type="button" class="hw-video-inline__mode-btn is-active" data-mode="video">Video</button>' +
+      '<button type="button" class="hw-video-inline__mode-btn" data-mode="audio">Audio only</button>' +
+      "</div>" +
       '<div class="hw-video-inline__placeholder" aria-hidden="true">' +
       '<span class="hw-video-inline__camera-icon">▶</span>' +
       '<p class="hw-video-inline__idle-label">Record your spoken answer</p>' +
@@ -95,10 +128,15 @@
       '<button type="button" class="btn btn--primary hw-video-inline__start">Start recording</button>' +
       "</div>" +
       '<div class="hw-video-inline__live" hidden>' +
-      '<div class="hw-video-inline__viewport">' +
+      '<div class="hw-video-inline__viewport hw-video-inline__live-viewport">' +
       '<video class="hw-video-inline__live-video" playsinline muted autoplay aria-hidden="true"></video>' +
       '<span class="hw-video-inline__rec-badge"><span class="hw-video-inline__rec-dot"></span>REC</span>' +
       '<span class="hw-video-inline__timer" aria-live="polite">0:00</span>' +
+      "</div>" +
+      '<div class="hw-video-inline__audio-live" hidden>' +
+      '<p class="hw-video-inline__audio-rec-label" aria-live="polite">Recording…</p>' +
+      '<span class="hw-video-inline__rec-badge hw-video-inline__rec-badge--inline"><span class="hw-video-inline__rec-dot"></span>REC</span>' +
+      '<span class="hw-video-inline__audio-timer" aria-live="polite">0:00</span>' +
       "</div>" +
       '<div class="hw-video-inline__toolbar">' +
       '<button type="button" class="btn btn--primary hw-video-inline__stop">Stop recording</button>' +
@@ -106,9 +144,10 @@
       "</div>" +
       "</div>" +
       '<div class="hw-video-inline__preview" hidden>' +
-      '<div class="hw-video-inline__viewport">' +
+      '<div class="hw-video-inline__viewport hw-video-inline__preview-viewport">' +
       '<video class="hw-video-inline__playback" playsinline controls aria-label="Recorded answer preview"></video>' +
       "</div>" +
+      '<audio class="hw-video-inline__audio-playback" controls hidden aria-label="Recorded answer preview"></audio>' +
       '<p class="hw-video-inline__preview-label">Review your clip, then save it.</p>' +
       '<div class="hw-video-inline__toolbar">' +
       '<button type="button" class="btn btn--primary hw-video-inline__save">Save video</button>' +
@@ -117,7 +156,7 @@
       "</div>" +
       '<div class="hw-video-inline__saved" hidden>' +
       '<div class="hw-video-inline__saved-badge" aria-hidden="true">✓</div>' +
-      '<p class="hw-video-inline__saved-title">Video saved</p>' +
+      '<p class="hw-video-inline__saved-title">Answer saved</p>' +
       '<p class="hw-video-inline__saved-hint">Included when you send homework to JD.</p>' +
       '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__record-again">Record again</button>' +
       "</div>" +
@@ -129,11 +168,22 @@
     const liveEl = mount.querySelector(".hw-video-inline__live");
     const previewEl = mount.querySelector(".hw-video-inline__preview");
     const savedEl = mount.querySelector(".hw-video-inline__saved");
+    const liveViewportEl = mount.querySelector(".hw-video-inline__live-viewport");
+    const previewViewportEl = mount.querySelector(".hw-video-inline__preview-viewport");
+    const audioLiveEl = mount.querySelector(".hw-video-inline__audio-live");
     const liveVideo = mount.querySelector(".hw-video-inline__live-video");
     const playbackVideo = mount.querySelector(".hw-video-inline__playback");
+    const playbackAudio = mount.querySelector(".hw-video-inline__audio-playback");
     const timerEl = mount.querySelector(".hw-video-inline__timer");
+    const audioTimerEl = mount.querySelector(".hw-video-inline__audio-timer");
+    const idleHintEl = mount.querySelector(".hw-video-inline__idle-hint");
+    const idleIconEl = mount.querySelector(".hw-video-inline__camera-icon");
+    const saveBtn = mount.querySelector(".hw-video-inline__save");
+    const savedTitleEl = mount.querySelector(".hw-video-inline__saved-title");
     const statusEl = mount.querySelector(".hw-video-inline__status");
+    const modeBtns = mount.querySelectorAll(".hw-video-inline__mode-btn");
 
+    let recordMode = "video";
     let mediaStream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -143,6 +193,10 @@
     let recordStartedAt = 0;
     let recordTimerId = null;
 
+    function isAudioMode() {
+      return recordMode === "audio";
+    }
+
     function setStatus(msg, tone) {
       if (!statusEl) return;
       statusEl.textContent = msg || "";
@@ -151,6 +205,39 @@
 
     function setCardState(state) {
       if (cardEl) cardEl.dataset.state = state;
+    }
+
+    function saveButtonLabel() {
+      return isAudioMode() ? "Save audio" : "Save video";
+    }
+
+    function updateIdleCopy() {
+      if (idleHintEl) {
+        idleHintEl.textContent = isAudioMode()
+          ? "Microphone only · up to 3 minutes"
+          : "Camera + mic · up to 3 minutes";
+      }
+      if (idleIconEl) idleIconEl.textContent = isAudioMode() ? "🎙" : "▶";
+      if (saveBtn) saveBtn.textContent = saveButtonLabel();
+    }
+
+    function setMode(mode) {
+      if (recordMode === mode) return;
+      recordMode = mode === "audio" ? "audio" : "video";
+      modeBtns.forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.mode === recordMode);
+      });
+      updateIdleCopy();
+    }
+
+    function setModeLocked(locked) {
+      modeBtns.forEach((btn) => {
+        btn.disabled = locked;
+      });
+    }
+
+    function activeTimerEl() {
+      return isAudioMode() ? audioTimerEl : timerEl;
     }
 
     function stopTimer() {
@@ -179,6 +266,10 @@
         playbackVideo.removeAttribute("src");
         playbackVideo.load();
       }
+      if (playbackAudio) {
+        playbackAudio.removeAttribute("src");
+        playbackAudio.load();
+      }
     }
 
     function hideAllPanels() {
@@ -195,13 +286,24 @@
       hideAllPanels();
       idleEl?.removeAttribute("hidden");
       setCardState("idle");
+      setModeLocked(false);
       if (timerEl) timerEl.textContent = "0:00";
+      if (audioTimerEl) audioTimerEl.textContent = "0:00";
+      updateIdleCopy();
     }
 
     function showLive() {
       hideAllPanels();
       liveEl?.removeAttribute("hidden");
       setCardState("live");
+      setModeLocked(true);
+      if (isAudioMode()) {
+        liveViewportEl?.setAttribute("hidden", "");
+        audioLiveEl?.removeAttribute("hidden");
+      } else {
+        liveViewportEl?.removeAttribute("hidden");
+        audioLiveEl?.setAttribute("hidden", "");
+      }
     }
 
     function showPreview() {
@@ -210,12 +312,23 @@
       hideAllPanels();
       previewEl?.removeAttribute("hidden");
       setCardState("preview");
+      if (isAudioMode()) {
+        previewViewportEl?.setAttribute("hidden", "");
+        playbackAudio?.removeAttribute("hidden");
+      } else {
+        previewViewportEl?.removeAttribute("hidden");
+        playbackAudio?.setAttribute("hidden", "");
+      }
+      if (saveBtn) saveBtn.textContent = saveButtonLabel();
     }
 
     function showSaved() {
       hideAllPanels();
       savedEl?.removeAttribute("hidden");
       setCardState("saved");
+      if (savedTitleEl) {
+        savedTitleEl.textContent = isAudioMode() ? "Audio saved" : "Video saved";
+      }
     }
 
     function resetUi() {
@@ -230,13 +343,19 @@
         return;
       }
       recordedBlob = new Blob(recordedChunks, { type: recordedMimeType });
-      if (recordedBlob.size > MAX_VIDEO_BYTES) {
-        setStatus("Too large (max 24 MB). Record a shorter clip.", "error");
+      const maxBytes = isAudioMode() ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES;
+      const maxLabel = isAudioMode() ? "12 MB" : "24 MB";
+      if (recordedBlob.size > maxBytes) {
+        setStatus("Too large (max " + maxLabel + "). Record a shorter clip.", "error");
         resetUi();
         return;
       }
       previewObjectUrl = URL.createObjectURL(recordedBlob);
-      if (playbackVideo) playbackVideo.src = previewObjectUrl;
+      if (isAudioMode()) {
+        if (playbackAudio) playbackAudio.src = previewObjectUrl;
+      } else if (playbackVideo) {
+        playbackVideo.src = previewObjectUrl;
+      }
       showPreview();
       setStatus("");
     }
@@ -246,6 +365,50 @@
         mediaRecorder.stop();
       }
       stopTimer();
+    }
+
+    async function startVideoRecording() {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: true,
+      });
+      if (liveVideo) {
+        liveVideo.srcObject = mediaStream;
+        await liveVideo.play();
+      }
+
+      recordedMimeType = pickVideoRecorderMimeType() || "video/webm";
+      try {
+        mediaRecorder = new MediaRecorder(mediaStream, {
+          mimeType: recordedMimeType,
+          videoBitsPerSecond: 900000,
+          audioBitsPerSecond: 96000,
+        });
+      } catch {
+        try {
+          mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
+        } catch {
+          mediaRecorder = new MediaRecorder(mediaStream);
+        }
+      }
+    }
+
+    async function startAudioRecording() {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      recordedMimeType = pickAudioRecorderMimeType() || "audio/webm";
+      try {
+        mediaRecorder = new MediaRecorder(mediaStream, {
+          mimeType: recordedMimeType,
+          audioBitsPerSecond: 96000,
+        });
+      } catch {
+        try {
+          mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
+        } catch {
+          mediaRecorder = new MediaRecorder(mediaStream);
+        }
+      }
     }
 
     async function startRecording() {
@@ -262,29 +425,12 @@
       setStatus("");
 
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true,
-        });
-        if (liveVideo) {
-          liveVideo.srcObject = mediaStream;
-          await liveVideo.play();
+        if (isAudioMode()) {
+          await startAudioRecording();
+        } else {
+          await startVideoRecording();
         }
 
-        recordedMimeType = pickRecorderMimeType() || "video/webm";
-        try {
-          mediaRecorder = new MediaRecorder(mediaStream, {
-            mimeType: recordedMimeType,
-            videoBitsPerSecond: 900000,
-            audioBitsPerSecond: 96000,
-          });
-        } catch {
-          try {
-            mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
-          } catch {
-            mediaRecorder = new MediaRecorder(mediaStream);
-          }
-        }
         recordedMimeType = mediaRecorder.mimeType || recordedMimeType;
         recordedChunks = [];
 
@@ -300,13 +446,20 @@
         mediaRecorder.start(1000);
         recordStartedAt = Date.now();
         showLive();
+        const timerTarget = activeTimerEl();
+        if (timerTarget) timerTarget.textContent = "0:00";
         recordTimerId = setInterval(() => {
           const elapsed = Date.now() - recordStartedAt;
-          if (timerEl) timerEl.textContent = formatTimer(elapsed);
-          if (elapsed >= MAX_VIDEO_MS) stopRecording();
+          const label = formatTimer(elapsed);
+          if (timerEl) timerEl.textContent = label;
+          if (audioTimerEl) audioTimerEl.textContent = label;
+          if (elapsed >= MAX_RECORD_MS) stopRecording();
         }, 500);
       } catch {
-        setStatus("Camera access denied or unavailable.", "error");
+        setStatus(
+          isAudioMode() ? "Microphone access denied or unavailable." : "Camera access denied or unavailable.",
+          "error"
+        );
         resetUi();
       }
     }
@@ -317,29 +470,36 @@
       }
 
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const ext = extensionForMime(recordedMimeType);
+      const ext = extensionForMime(recordedMimeType, recordMode);
       const file = new File([recordedBlob], "prompt-" + (meta.promptId || stamp) + "." + ext, {
         type: recordedMimeType,
       });
 
-      const saveBtn = mount.querySelector(".hw-video-inline__save");
       if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.textContent = "Saving…";
       }
-      setStatus("Saving video…", "pending");
+      setStatus(isAudioMode() ? "Saving audio…" : "Saving video…", "pending");
 
       const body = new FormData();
-      body.append("video", file);
+      body.append(isAudioMode() ? "audio" : "video", file);
       body.append("username", meta.username || "");
       body.append("displayName", meta.displayName || meta.username || "");
-      body.append("assignmentId", meta.assignmentId || "video-homework");
-      body.append("lessonName", meta.lessonName || "Video homework");
+      body.append(
+        "assignmentId",
+        meta.assignmentId || (isAudioMode() ? "audio-homework" : "video-homework")
+      );
+      body.append(
+        "lessonName",
+        meta.lessonName || (isAudioMode() ? "Audio homework" : "Video homework")
+      );
       if (meta.promptId) body.append("promptId", meta.promptId);
       if (meta.promptLabel) body.append("promptLabel", meta.promptLabel);
 
+      const endpoint = isAudioMode() ? "/api/homework-audio-upload" : "/api/homework-video-upload";
+
       try {
-        const res = await fetch("/api/homework-video-upload", {
+        const res = await fetch(endpoint, {
           method: "POST",
           body,
         });
@@ -347,7 +507,7 @@
         if (!res.ok) throw new Error(data.error || "Save failed.");
         clearRecording();
         showSaved();
-        setStatus(data.message || "Video saved.", "success");
+        setStatus(data.message || (isAudioMode() ? "Audio saved." : "Video saved."), "success");
         return { ok: true };
       } catch (err) {
         const message = (err && err.message) || "Save failed — try again.";
@@ -356,7 +516,7 @@
       } finally {
         if (saveBtn) {
           saveBtn.disabled = false;
-          saveBtn.textContent = "Save video";
+          saveBtn.textContent = saveButtonLabel();
         }
       }
     }
@@ -371,6 +531,13 @@
       getState: () => getState(mount),
     };
     controllers.set(mount, controller);
+
+    modeBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (getState(mount) !== "idle" || btn.disabled) return;
+        setMode(btn.dataset.mode || "video");
+      });
+    });
 
     mount.querySelector(".hw-video-inline__start")?.addEventListener("click", startRecording);
     mount.querySelector(".hw-video-inline__stop")?.addEventListener("click", stopRecording);
