@@ -740,13 +740,6 @@
     audio.src = clipUrl;
     audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
     wrap.appendChild(audio);
-    const link = document.createElement("a");
-    link.className = "hw-audio-player__link";
-    link.href = clipUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = "Open audio clip";
-    wrap.appendChild(link);
     if (!options.inline) {
       const hint = document.createElement("p");
       hint.className = "hw-audio-player__hint";
@@ -788,10 +781,22 @@
     wrap.className = "hw-video-prompt";
     wrap.dataset.itemId = item.id || "";
 
-    const prompt = document.createElement("p");
-    prompt.className = "hw-video-prompt__text";
-    prompt.textContent = item.prompt || "Answer this question on video.";
-    wrap.appendChild(prompt);
+    const label = document.createElement("p");
+    label.className = "hw-video-prompt__label";
+    label.textContent = "Video question — answer in Japanese";
+    wrap.appendChild(label);
+
+    const promptText = item.prompt || "Answer this question on video.";
+    const question = document.createElement("p");
+    question.className = "hw-video-prompt__text hw-video-prompt__question";
+    question.setAttribute("lang", "ja");
+    question.textContent = promptText;
+    wrap.appendChild(question);
+
+    const instruction = document.createElement("p");
+    instruction.className = "hw-video-prompt__instruction";
+    instruction.textContent = "Record a short video answering the question above, then save it.";
+    wrap.appendChild(instruction);
 
     const recorderMount = document.createElement("div");
     recorderMount.className = "hw-video-prompt__recorder";
@@ -1768,7 +1773,9 @@
           videoPrompts.push({
             label: num,
             prompt:
-              promptEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "",
+              promptEl.querySelector(".hw-video-prompt__question")?.textContent?.trim() ||
+              promptEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() ||
+              "",
             student: "(submitted via video upload)",
           });
         });
@@ -1883,7 +1890,9 @@
           const num =
             lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
           const prompt =
-            lineEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() || "";
+            lineEl.querySelector(".hw-video-prompt__question")?.textContent?.trim() ||
+            lineEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() ||
+            "";
           const saved = lineEl.querySelector('.hw-video-inline__card[data-state="saved"]');
           return {
             progress: index + 1 + " of " + total,

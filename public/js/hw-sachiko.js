@@ -102,6 +102,8 @@
     if (!session || session.role === "teacher") return;
 
     const card = document.getElementById("hw-sachiko-card");
+    if (!card || card.classList.contains("hw-sachiko-card--soon")) return;
+
     const openBtn = document.getElementById("hw-sachiko-open");
     const modal = document.getElementById("hw-sachiko-modal");
     const dock = document.getElementById("hw-sachiko-dock");

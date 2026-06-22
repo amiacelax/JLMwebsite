@@ -509,15 +509,18 @@
                 </div>
               </section>
 
-              <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko" id="hw-sachiko-card" tabindex="0" aria-label="Talk to Sachiko — open study tutor">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko hw-sachiko-card--soon" id="hw-sachiko-card" aria-label="Talk to Sachiko — coming soon">
+                <span class="hw-sachiko-card__badge">Coming soon</span>
                 <div class="hw-sachiko-card__row">
-                  <svg class="hw-sachiko-face" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+                  <div class="hw-sachiko-face-wrap" aria-hidden="true">
+                    <svg class="hw-sachiko-face hw-sachiko-face--card" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+                  </div>
                   <div class="hw-sachiko-card__text">
                     <h2 class="hw-platform-card__title">Talk to Sachiko</h2>
-                    <p class="hw-platform-card__desc hw-platform-card__desc--tight">Hints and grammar help — not answer keys.</p>
+                    <p class="hw-platform-card__desc hw-platform-card__desc--tight">AI study tutor for hints and grammar — not answer keys.</p>
                   </div>
                 </div>
-                <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-sachiko-open">Talk to Sachiko</button>
+                <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-sachiko-open" disabled>Coming soon</button>
               </section>
             </div>
 
@@ -629,9 +632,9 @@
 
   <svg class="hw-sachiko-sprite" aria-hidden="true" focusable="false">
     <symbol id="hw-sachiko-face" viewBox="0 0 48 48">
-      <ellipse cx="24" cy="27" rx="17" ry="15" fill="#3d2c4a"/>
+      <ellipse cx="24" cy="27" rx="17" ry="15" fill="#5c4470"/>
       <circle cx="24" cy="27" r="13" fill="#f0c9a8"/>
-      <path d="M11 19 Q24 9 37 19 Q33 27 24 24 Q15 27 11 19 Z" fill="#3d2c4a"/>
+      <path d="M11 19 Q24 8 37 19 Q33 27 24 24 Q15 27 11 19 Z" fill="#7a5a8f" stroke="#c4a8d8" stroke-width="0.6"/>
       <ellipse cx="19" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
       <ellipse cx="29" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
       <circle cx="19.7" cy="26.2" r="0.7" fill="#fff"/>
