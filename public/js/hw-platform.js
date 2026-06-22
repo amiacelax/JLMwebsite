@@ -437,11 +437,34 @@
     }
   }
 
+  const ASSIGNMENT_SESSION_PREFIX = "jlm-hw-assignment-v2-";
+
+  function assignmentSessionKey(id) {
+    return ASSIGNMENT_SESSION_PREFIX + id;
+  }
+
+  function purgeLegacyAssignmentSessionKeys(id) {
+    try {
+      if (id) {
+        sessionStorage.removeItem("jlm-hw-assignment-" + id);
+        return;
+      }
+      Object.keys(sessionStorage).forEach((k) => {
+        if (k.startsWith("jlm-hw-assignment-") && !k.startsWith(ASSIGNMENT_SESSION_PREFIX)) {
+          sessionStorage.removeItem(k);
+        }
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   function invalidateAssignmentCache(id) {
     if (id) {
       assignmentMemoryCache.delete(id);
       try {
-        sessionStorage.removeItem("jlm-hw-assignment-" + id);
+        sessionStorage.removeItem(assignmentSessionKey(id));
+        purgeLegacyAssignmentSessionKeys(id);
       } catch {
         /* ignore */
       }
@@ -455,6 +478,13 @@
     } catch {
       /* ignore */
     }
+  }
+
+  function studentAssignmentFetchOptions(options) {
+    if (isTeacher) {
+      return options?.bypassCache ? { bypassCache: true } : undefined;
+    }
+    return { bypassCache: true };
   }
 
   async function fetchCatalog(options) {
@@ -521,7 +551,8 @@
       return finalizeAssignment(assignmentMemoryCache.get(id));
     }
 
-    const sessionKey = "jlm-hw-assignment-" + id;
+    purgeLegacyAssignmentSessionKeys(id);
+    const sessionKey = assignmentSessionKey(id);
     if (!options.bypassCache) {
       const cached = readSessionJson(sessionKey);
       if (cached?.data?.sections?.length) {
@@ -1913,12 +1944,10 @@
       options.bypassCache ? { bypassCache: true } : undefined
     );
     const speculativeId = hashId || guessId;
+    const assignmentFetchOpts = studentAssignmentFetchOptions(options);
     const speculativeAssignmentPromise =
       speculativeId && !options.skipWorksheet
-        ? fetchAssignmentJson(
-            speculativeId,
-            options.bypassCache ? { bypassCache: true } : undefined
-          ).catch(() => null)
+        ? fetchAssignmentJson(speculativeId, assignmentFetchOpts).catch(() => null)
         : null;
 
     let catalog;
@@ -1978,10 +2007,7 @@
     }
     if (!assignment) {
       try {
-        assignment = await fetchAssignmentJson(
-          active.id,
-          options.bypassCache ? { bypassCache: true } : undefined
-        );
+        assignment = await fetchAssignmentJson(active.id, assignmentFetchOpts);
       } catch {
         if (intro) intro.textContent = "Could not load this worksheet.";
         scheduleStudentMistakesLoad({

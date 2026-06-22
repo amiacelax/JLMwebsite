@@ -5520,12 +5520,19 @@ button.course-card__status:disabled {
   border: none;
   border-radius: 0;
   background: transparent;
+  width: 100%;
+  align-self: stretch;
+}
+
+.hw-listen-card .hw-audio-player {
+  width: 100%;
+  align-self: stretch;
 }
 
 .hw-listen-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 0.5rem;
   width: 100%;
   max-width: 28rem;
@@ -5679,8 +5686,20 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   display: block;
   width: 100%;
   max-width: 28rem;
-  height: 2.25rem;
+  min-height: 2.75rem;
+  height: auto;
   margin: 0;
+  color-scheme: light;
+}
+
+.hw-listen-card .hw-audio-player__el {
+  max-width: 100%;
+}
+
+body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
+  color-scheme: light;
+  background: #f3f4f6;
+  border-radius: var(--radius-sm);
 }
 
 .hw-audio-player__hint,

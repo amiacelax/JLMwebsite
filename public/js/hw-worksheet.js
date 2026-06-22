@@ -113,12 +113,17 @@
       if (section.mode !== "audio-listening") return;
       const sectionAudio = String(section.audioUrl || "").trim();
       const sectionImage = String(section.imageUrl || "").trim();
+      const firstItem = section.items?.[0];
+      const fallbackAudio =
+        sectionAudio || String(firstItem?.audioUrl || "").trim();
+      const fallbackImage =
+        sectionImage || String(firstItem?.imageUrl || "").trim();
       (section.items || []).forEach((item) => {
-        if (!String(item.audioUrl || "").trim() && sectionAudio) {
-          item.audioUrl = sectionAudio;
+        if (!String(item.audioUrl || "").trim() && fallbackAudio) {
+          item.audioUrl = fallbackAudio;
         }
-        if (!String(item.imageUrl || "").trim() && sectionImage) {
-          item.imageUrl = sectionImage;
+        if (!String(item.imageUrl || "").trim() && fallbackImage) {
+          item.imageUrl = fallbackImage;
         }
       });
       if (!sectionAudio && section.items?.[0]?.audioUrl) {
@@ -758,7 +763,12 @@
     audio.controls = true;
     audio.preload = "metadata";
     audio.className = "hw-audio-player__el";
-    audio.src = clipUrl;
+    try {
+      audio.src = clipUrl;
+    } catch {
+      wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip could not be loaded.</p>';
+      return wrap;
+    }
     audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
     wrap.appendChild(audio);
     if (!options.inline) {
