@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Homework Hub v5 — Coming soon</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=1">
+  <script src="/js/hw-auth.js"></script>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else document.documentElement.setAttribute('data-theme', 'dark');
+      HwAuth.requireAuth('/homework.html');
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework hw-hub-v3-page">
+  <main class="hw-hub-v2-shell" style="text-align:center;padding-top:3rem">
+    <p class="hw-hub-v2-top__hello">Hub v5</p>
+    <h1 class="hw-hub-v2-top__title" style="font-size:1.5rem">Sketch coming soon</h1>
+    <p class="hw-hub-v2-top__tagline">This slot is reserved for a future prototype iteration.</p>
+    <a class="btn btn--ghost" href="/homework/platform.html?tab=hubv2">← Teacher hub</a>
+  </main>
+  <script>
+    (function () {
+      var s = HwAuth.getSession();
+      if (!s || s.role !== 'teacher') {
+        document.body.innerHTML = '<main style="padding:2rem;text-align:center"><h1>Teacher preview only</h1></main>';
+      }
+    })();
+  </script>
+</body>
+</html>

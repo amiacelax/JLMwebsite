@@ -1672,6 +1672,54 @@
     }
   }
 
+  function initHubVersionPicker() {
+    const buttons = document.querySelectorAll("[data-hub-version]");
+    const iframe = document.getElementById("hw-hub-version-iframe");
+    const openLink = document.getElementById("hw-hub-version-open");
+    if (!buttons.length || !iframe) return;
+
+    const paths = {
+      "2": "/homework/hub-v2-preview.html",
+      "3": "/homework/hub-v3-preview.html",
+      "4": "/homework/hub-v4-preview.html",
+      "5": "/homework/hub-v5-preview.html",
+    };
+
+    function setVersion(version) {
+      const path = paths[version] || paths["3"];
+      iframe.src = path;
+      iframe.title = "Homework Hub v" + version + " prototype";
+      if (openLink) openLink.href = path;
+      buttons.forEach((btn) => {
+        const on = btn.getAttribute("data-hub-version") === version;
+        btn.classList.toggle("btn--primary", on);
+        btn.classList.toggle("btn--ghost", !on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      try {
+        localStorage.setItem("jlm-hw-teacher-hub-version", version);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    let saved = "3";
+    try {
+      saved = localStorage.getItem("jlm-hw-teacher-hub-version") || "3";
+    } catch {
+      /* ignore */
+    }
+    if (!paths[saved]) saved = "3";
+    setVersion(saved);
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const version = btn.getAttribute("data-hub-version");
+        if (version) setVersion(version);
+      });
+    });
+  }
+
   function initTeacherTabs() {
     const tablist = document.querySelector(".hw-teacher-tabs");
     if (!tablist || tablist.dataset.bound === "true") return;
@@ -1779,13 +1827,28 @@
     });
 
     document.getElementById("hw-hubv2-reset-onboard")?.addEventListener("click", () => {
+      let version = "3";
       try {
-        localStorage.removeItem("jlm-hw-v2-onboarding-done");
+        version = localStorage.getItem("jlm-hw-teacher-hub-version") || "3";
       } catch {
         /* ignore */
       }
-      showToast("Onboarding reset — reload the v2 preview to see it again.");
+      const keys = {
+        "2": "jlm-hw-v2-onboarding-done",
+        "3": "jlm-hw-v3-onboarding-done",
+      };
+      const key = keys[version] || keys["3"];
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+      const iframe = document.getElementById("hw-hub-version-iframe");
+      if (iframe?.src) iframe.src = iframe.src;
+      showToast("Onboarding reset — preview reloaded.");
     });
+
+    initHubVersionPicker();
 
     activate(initial);
     return activate;

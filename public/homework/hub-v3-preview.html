@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1a2744">
+  <title>Homework Hub v3 — Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=1">
+  <script src="/js/hw-auth.js"></script>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else document.documentElement.setAttribute('data-theme', 'dark');
+      HwAuth.requireAuth('/homework.html');
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework hw-hub-v3-page">
+  <a class="skip-link" href="#hw-v2-main">Skip to content</a>
+
+  <div class="hw-hub-v2-banner" role="status">
+    Hub v3 — worksheet-first · mock data only
+  </div>
+
+  <div class="hw-hub-v2-demo-bar" aria-label="Prototype demo controls">
+    <span class="hw-hub-v2-demo-bar__label">Simulate:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="not_started">New</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="in_progress">Working</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="submitted">With JD</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v2-demo-status="reviewed">Feedback ready</button>
+    <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html?tab=hubv2" style="text-decoration:none">← Teacher hub</a>
+  </div>
+
+  <main id="hw-v2-main" class="hw-hub-v2-shell">
+    <span id="hw-current-assignment-title" class="visually-hidden">よく・あまり</span>
+
+    <header class="hw-hub-v2-top" aria-labelledby="hw-v2-title">
+      <p class="hw-hub-v2-top__hello" id="hw-v2-hello">Loading…</p>
+      <h1 class="hw-hub-v2-top__title" id="hw-v2-title">よく・あまり</h1>
+      <p class="hw-hub-v2-top__tagline" id="hw-v2-tagline"></p>
+      <p class="hw-hub-v2-top__status" id="hw-v2-status-line" hidden></p>
+      <button type="button" class="btn btn--primary hw-hub-v2-top__cta" id="hw-v2-cta-primary" data-action="scroll-worksheet">
+        Open homework
+      </button>
+    </header>
+
+    <div class="hw-hub-v2-quick" aria-label="While you work">
+      <a class="hw-hub-v2-quick__link" id="hw-v2-lesson-link" href="#">Lesson recording</a>
+      <span class="hw-hub-v2-quick__sep" aria-hidden="true">·</span>
+      <button type="button" class="hw-hub-v2-quick__link hw-hub-v2-quick__link--btn" id="hw-v3-sachiko-open">
+        Ask Sachiko
+      </button>
+    </div>
+
+    <section class="hw-hub-v2-feedback" id="hw-v2-feedback" hidden aria-labelledby="hw-v2-feedback-title">
+      <h2 class="hw-hub-v2-feedback__title" id="hw-v2-feedback-title">From JD</h2>
+      <p class="hw-hub-v2-feedback__body" id="hw-v2-feedback-body"></p>
+    </section>
+
+    <section class="hw-hub-v2-worksheet" id="hw-v2-worksheet-zone" aria-labelledby="hw-v2-worksheet-heading">
+      <h2 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h2>
+      <div id="hw-v2-worksheet-mount" lang="ja"></div>
+    </section>
+
+    <details class="hw-hub-v2-fold" id="hw-v2-past-fold">
+      <summary class="hw-hub-v2-fold__summary">Past homework</summary>
+      <ul class="hw-hub-v2-past-list" id="hw-v2-history"></ul>
+    </details>
+
+    <details class="hw-hub-v2-fold hw-hub-v2-fold--muted" id="hw-v2-elsewhere-fold">
+      <summary class="hw-hub-v2-fold__summary">Elsewhere</summary>
+      <p class="hw-hub-v2-fold__intro">Games and other practice — not part of this week's sheet.</p>
+      <div class="hw-hub-v2-elsewhere-links">
+        <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Lantern Word Hunt</a>
+        <a class="btn btn--ghost btn--sm" href="/games.html">All games</a>
+        <a class="btn btn--ghost btn--sm" href="/homework.html">Plans &amp; info</a>
+      </div>
+    </details>
+  </main>
+
+  <svg class="hw-sachiko-sprite" aria-hidden="true" focusable="false">
+    <symbol id="hw-sachiko-face" viewBox="0 0 48 48">
+      <ellipse cx="24" cy="27" rx="17" ry="15" fill="#5c4470"/>
+      <circle cx="24" cy="27" r="13" fill="#f0c9a8"/>
+      <path d="M11 19 Q24 8 37 19 Q33 27 24 24 Q15 27 11 19 Z" fill="#7a5a8f" stroke="#c4a8d8" stroke-width="0.6"/>
+      <ellipse cx="19" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <ellipse cx="29" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <circle cx="19.7" cy="26.2" r="0.7" fill="#fff"/>
+      <circle cx="29.7" cy="26.2" r="0.7" fill="#fff"/>
+      <ellipse cx="15.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <ellipse cx="32.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <path d="M18 33 Q24 36.5 30 33" fill="none" stroke="#c4846c" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+
+  <div class="hw-sachiko-modal" id="hw-sachiko-modal" hidden>
+    <div class="hw-sachiko-modal__backdrop" aria-hidden="true"></div>
+    <div class="hw-sachiko-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-sachiko-title">
+      <button class="hw-sachiko-modal__close" type="button" data-sachiko-minimize aria-label="Minimize Sachiko">×</button>
+      <header class="hw-sachiko-modal__head">
+        <svg class="hw-sachiko-face hw-sachiko-face--lg" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+        <div>
+          <h2 class="hw-sachiko-modal__title" id="hw-sachiko-title">Sachiko</h2>
+          <p class="hw-sachiko-modal__sub">Hints &amp; grammar — not answer keys</p>
+        </div>
+      </header>
+      <div class="hw-sachiko-modal__msgs" aria-live="polite"></div>
+      <div class="hw-sachiko-modal__suggestions" aria-label="Suggested prompts"></div>
+      <form class="hw-sachiko-modal__form">
+        <input class="hw-sachiko-modal__input" type="text" placeholder="Ask for a hint or grammar help…" autocomplete="off" maxlength="500" />
+        <button class="btn btn--primary btn--sm" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <button type="button" class="hw-sachiko-dock" id="hw-sachiko-dock" hidden aria-label="Open Sachiko">
+    <svg class="hw-sachiko-face hw-sachiko-face--dock" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+    <span class="hw-sachiko-dock__label">Sachiko</span>
+  </button>
+
+  <div class="hw-hub-v2-onboard" id="hw-v2-onboard" hidden>
+    <div class="hw-hub-v2-onboard__card" role="dialog" aria-labelledby="hw-v2-onboard-title">
+      <p class="hw-hub-v2-onboard__step" id="hw-v2-onboard-step">1 of 2</p>
+      <h2 class="hw-hub-v2-onboard__title" id="hw-v2-onboard-title">Welcome</h2>
+      <p class="hw-hub-v2-onboard__text" id="hw-v2-onboard-text"></p>
+      <button type="button" class="btn btn--primary" id="hw-v2-onboard-next">Next</button>
+      <button type="button" class="btn btn--ghost" id="hw-v2-onboard-skip" style="margin-top:0.5rem">Skip</button>
+    </div>
+  </div>
+
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260693" defer></script>
+  <script src="/js/hw-sachiko.js?v=20260693" defer></script>
+  <script src="/js/hw-hub-v3.js?v=1" defer></script>
+</body>
+</html>

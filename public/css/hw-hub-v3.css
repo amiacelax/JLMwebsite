@@ -1,0 +1,337 @@
+/* Hub v2 prototype — worksheet-first, minimal chrome */
+
+body.hw-hub-v3-page {
+  --hw-v2-accent: var(--color-green);
+}
+
+.hw-hub-v2-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0.45rem 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.03em;
+  color: #0d1b2a;
+  background: linear-gradient(90deg, #55efc4, #67c4eb);
+}
+
+.hw-hub-v2-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.65rem 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hw-hub-v2-demo-bar__label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-hub-v2-demo-bar__btn {
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.hw-hub-v2-demo-bar__btn:hover,
+.hw-hub-v2-demo-bar__btn.is-active {
+  border-color: var(--color-brand-blue);
+  background: color-mix(in srgb, var(--color-brand-blue) 12%, var(--color-bg-card));
+}
+
+.hw-hub-v2-shell {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+@media (min-width: 768px) {
+  .hw-hub-v2-shell {
+    padding: 2rem 1.5rem 3rem;
+  }
+}
+
+/* Top — one title, one button */
+.hw-hub-v2-top {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.hw-hub-v2-top__hello {
+  margin: 0 0 0.25rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v2-top__title {
+  margin: 0 0 0.5rem;
+  font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+.hw-hub-v2-top__tagline {
+  margin: 0 auto 0.65rem;
+  max-width: 28rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v2-top__status {
+  margin: 0 0 0.85rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hw-v2-accent);
+}
+
+.hw-hub-v2-top__cta {
+  min-width: 12rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  font-size: 1rem;
+}
+
+/* Quiet shortcuts */
+.hw-hub-v2-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 1.25rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+}
+
+.hw-hub-v2-quick__link {
+  color: var(--color-brand-blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hw-hub-v2-quick__link:hover {
+  text-decoration: underline;
+}
+
+.hw-hub-v2-quick__link--btn {
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-brand-blue);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.hw-hub-v2-quick__link--btn:hover {
+  text-decoration: underline;
+}
+
+.hw-hub-v2-quick__sep {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* JD feedback — only when reviewed */
+.hw-hub-v2-feedback {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--hw-v2-accent) 35%, var(--color-border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--hw-v2-accent) 8%, var(--color-bg-card));
+}
+
+.hw-hub-v2-feedback__title {
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--hw-v2-accent);
+}
+
+.hw-hub-v2-feedback__body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+/* Worksheet — the page */
+.hw-hub-v2-worksheet {
+  margin-bottom: 1.5rem;
+}
+
+.hw-hub-v2-worksheet .hw-worksheet {
+  margin: 0;
+}
+
+/* Folded extras — past HW, elsewhere */
+.hw-hub-v2-fold {
+  margin-bottom: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+}
+
+.hw-hub-v2-fold--muted {
+  opacity: 0.92;
+}
+
+.hw-hub-v2-fold__summary {
+  padding: 0.65rem 0.85rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.hw-hub-v2-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.hw-hub-v2-fold__summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.hw-hub-v2-fold[open] .hw-hub-v2-fold__summary::before {
+  transform: rotate(90deg);
+}
+
+.hw-hub-v2-fold__intro {
+  margin: 0;
+  padding: 0 0.85rem 0.5rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v2-past-list {
+  margin: 0;
+  padding: 0 0.85rem 0.75rem;
+  list-style: none;
+}
+
+.hw-hub-v2-past-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--color-border);
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+}
+
+.hw-hub-v2-past-list__item time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v2-elsewhere-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+/* Onboarding */
+.hw-hub-v2-onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.hw-hub-v2-onboard[hidden] {
+  display: none;
+}
+
+.hw-hub-v2-onboard__card {
+  width: min(22rem, 100%);
+  padding: 1.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  text-align: center;
+}
+
+.hw-hub-v2-onboard__step {
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v2-onboard__title {
+  margin: 0 0 0.5rem;
+  font-family: "Josefin Sans", Inter, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-hub-v2-onboard__text {
+  margin: 0 0 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* Sachiko on hub v2 — dock visible by default */
+body.hw-hub-v3-page .hw-sachiko-dock {
+  z-index: 90;
+}
+
+body.hw-hub-v3-page.hw-sachiko-open .hw-sachiko-dock {
+  display: none;
+}
+
+/* Teacher embed */
+.hw-teacher-hubv2-embed iframe {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}

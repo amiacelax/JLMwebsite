@@ -40,8 +40,24 @@
 
   function botReply(userText) {
     const t = userText.toLowerCase();
+    const title = homeworkContext().title;
+    const isYokuAmari = /よく|あまり/.test(title);
+
     if (/answer|fill in|what goes|solution/.test(t) && !/hint/.test(t)) {
       return "I can explain the **pattern**, but I won't fill in blanks while you're working.\n\nTry asking for a **hint** or a **grammar note** instead.";
+    }
+    if (isYokuAmari && /explain|grammar|よく|あまり|how/.test(t)) {
+      return (
+        "**よく** = often (positive verb).\n\n" +
+        "**あまり** = not very much — use with a **negative**: あまり〜ません / あまり〜ない.\n\n" +
+        "If the sentence ends in ません or ない, reach for あまり."
+      );
+    }
+    if (isYokuAmari && /hint/.test(t)) {
+      return "Hint: read the end of the sentence. Positive ending → often **よく**. Negative ending → **あまり** before the verb.";
+    }
+    if (isYokuAmari && /wrong|mistake|why/.test(t)) {
+      return "Common slip: putting **よく** in a negative sentence, or **あまり** without ません/ない. Check the sentence ending first.";
     }
     if (/explain|grammar|how/.test(t)) {
       return "Think about the **verb stem + たい** for wants, and **たくない** for negatives.\n\nIf you tell me which question you're on, I can narrow it down.";
@@ -96,15 +112,7 @@
     if (dock) dock.hidden = false;
   }
 
-  function init() {
-    if (initialized) return;
-    const session = global.HwAuth?.getSession?.();
-    if (!session || session.role === "teacher") return;
-
-    const card = document.getElementById("hw-sachiko-card");
-    if (!card || card.classList.contains("hw-sachiko-card--soon")) return;
-
-    const openBtn = document.getElementById("hw-sachiko-open");
+  function bindSachikoModal(openTriggers) {
     const modal = document.getElementById("hw-sachiko-modal");
     const dock = document.getElementById("hw-sachiko-dock");
     const closeBtn = modal?.querySelector("[data-sachiko-minimize]");
@@ -114,8 +122,7 @@
     const msgs = modal?.querySelector(".hw-sachiko-modal__msgs");
     const suggestions = modal?.querySelector(".hw-sachiko-modal__suggestions");
 
-    if (!card || !modal) return;
-    initialized = true;
+    if (!modal) return null;
 
     function open() {
       openModal(modal, dock);
@@ -125,34 +132,25 @@
       minimizeModal(modal, dock);
     }
 
-    openBtn?.addEventListener("click", open);
-    card.addEventListener("click", (e) => {
-      if (e.target.closest("#hw-sachiko-open")) return;
-      if (e.target.closest("a, button")) return;
-      open();
-    });
-    card.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        open();
-      }
-    });
-
+    openTriggers.forEach((el) => el?.addEventListener("click", open));
     dock?.addEventListener("click", open);
     closeBtn?.addEventListener("click", minimize);
     backdrop?.addEventListener("click", minimize);
 
-    SUGGESTIONS.forEach((text) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "hw-sachiko-suggest";
-      btn.textContent = text;
-      btn.addEventListener("click", () => {
-        addMessage(msgs, text, "user");
-        setTimeout(() => addMessage(msgs, botReply(text), "bot"), 400);
+    if (suggestions && !suggestions.dataset.bound) {
+      suggestions.dataset.bound = "true";
+      SUGGESTIONS.forEach((text) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "hw-sachiko-suggest";
+        btn.textContent = text;
+        btn.addEventListener("click", () => {
+          addMessage(msgs, text, "user");
+          setTimeout(() => addMessage(msgs, botReply(text), "bot"), 400);
+        });
+        suggestions.appendChild(btn);
       });
-      suggestions?.appendChild(btn);
-    });
+    }
 
     form?.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -166,6 +164,48 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !modal.hidden) minimize();
     });
+
+    return { open, minimize, modal, dock };
+  }
+
+  function init() {
+    if (initialized) return;
+    const session = global.HwAuth?.getSession?.();
+    if (!session || session.role === "teacher") return;
+
+    const card = document.getElementById("hw-sachiko-card");
+    if (!card || card.classList.contains("hw-sachiko-card--soon")) return;
+
+    const openBtn = document.getElementById("hw-sachiko-open");
+    if (!bindSachikoModal([openBtn])) return;
+    initialized = true;
+
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("#hw-sachiko-open")) return;
+      if (e.target.closest("a, button")) return;
+      openBtn?.click();
+    });
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openBtn?.click();
+      }
+    });
+  }
+
+  function initHubPreview() {
+    const isV3 = document.body.classList.contains("hw-hub-v3-page");
+    const isV2 = document.body.classList.contains("hw-hub-v2-page");
+    if (!isV2 && !isV3) return;
+    const openBtn = document.getElementById(isV3 ? "hw-v3-sachiko-open" : "hw-v2-sachiko-open");
+    if (!bindSachikoModal([openBtn])) return;
+    const dock = document.getElementById("hw-sachiko-dock");
+    if (dock && isV3) dock.hidden = false;
+  }
+
+  /** @deprecated use initHubPreview */
+  function initHubV2() {
+    initHubPreview();
   }
 
   if (document.readyState === "loading") {
@@ -174,5 +214,5 @@
     init();
   }
 
-  global.HwSachiko = { init, openModal, minimizeModal };
+  global.HwSachiko = { init, initHubPreview, initHubV2, openModal, minimizeModal };
 })(window);

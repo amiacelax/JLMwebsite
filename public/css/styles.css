@@ -6512,6 +6512,32 @@ body.hw-role-teacher #hw-teacher-hub {
   display: none !important;
 }
 
+.hw-teacher-hub-versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.hw-teacher-hub-versions__btn {
+  min-width: 5.5rem;
+}
+
+.hw-teacher-hubv2-embed {
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.hw-teacher-hubv2-embed iframe {
+  display: block;
+  width: 100%;
+  height: min(78vh, 52rem);
+  border: none;
+}
+
 .hw-teacher-ideas {
   margin-bottom: 1.75rem;
 }
