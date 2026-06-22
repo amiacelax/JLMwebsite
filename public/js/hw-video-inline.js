@@ -61,13 +61,13 @@
   }
 
   const ICON_CAMERA =
-    '<svg class="hw-video-inline__glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<svg class="hw-video-inline__glyph hw-video-inline__glyph--camera" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>' +
     '<circle cx="12" cy="13" r="3"/>' +
     "</svg>";
 
   const ICON_MIC =
-    '<svg class="hw-video-inline__glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<svg class="hw-video-inline__glyph hw-video-inline__glyph--mic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>' +
     '<path d="M19 10v2a7 7 0 0 1-14 0v-2"/>' +
     '<line x1="12" x2="12" y1="19" y2="22"/>' +
@@ -141,7 +141,7 @@
       '<div class="hw-video-inline__placeholder" aria-hidden="true">' +
       '<span class="hw-video-inline__media-icon">' +
       ICON_CAMERA +
-      ICON_MIC.replace("<svg", '<svg hidden="hidden"') +
+      ICON_MIC +
       "</span>" +
       '<p class="hw-video-inline__idle-label">Record your spoken answer</p>' +
       '<p class="hw-video-inline__idle-hint">Camera + mic · up to 3 minutes</p>' +
@@ -198,9 +198,6 @@
     const timerEl = mount.querySelector(".hw-video-inline__timer");
     const audioTimerEl = mount.querySelector(".hw-video-inline__audio-timer");
     const idleHintEl = mount.querySelector(".hw-video-inline__idle-hint");
-    const mediaIconEl = mount.querySelector(".hw-video-inline__media-icon");
-    const placeholderCameraIcon = mediaIconEl?.querySelector(".hw-video-inline__glyph:first-child");
-    const placeholderMicIcon = mediaIconEl?.querySelector(".hw-video-inline__glyph:last-child");
     const saveBtn = mount.querySelector(".hw-video-inline__save");
     const savedTitleEl = mount.querySelector(".hw-video-inline__saved-title");
     const statusEl = mount.querySelector(".hw-video-inline__status");
@@ -241,8 +238,6 @@
           ? "Microphone only · up to 3 minutes"
           : "Camera + mic · up to 3 minutes";
       }
-      if (placeholderCameraIcon) placeholderCameraIcon.hidden = isAudioMode();
-      if (placeholderMicIcon) placeholderMicIcon.hidden = !isAudioMode();
       if (saveBtn) saveBtn.textContent = saveButtonLabel();
     }
 

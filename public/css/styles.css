@@ -5822,6 +5822,7 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
 }
 
 .hw-video-inline__media-icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5835,6 +5836,11 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
 .hw-video-inline__media-icon .hw-video-inline__glyph {
   width: 1.35rem;
   height: 1.35rem;
+}
+
+.hw-video-inline__mode[data-mode="video"] ~ .hw-video-inline__placeholder .hw-video-inline__glyph--mic,
+.hw-video-inline__mode[data-mode="audio"] ~ .hw-video-inline__placeholder .hw-video-inline__glyph--camera {
+  display: none;
 }
 
 .hw-video-inline__glyph {
