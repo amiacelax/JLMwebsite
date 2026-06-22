@@ -1,5 +1,5 @@
 /**
- * Compact inline video record + upload for worksheet video prompts.
+ * Inline video record + save for worksheet video prompts.
  */
 (function (global) {
   const MAX_VIDEO_BYTES = 24 * 1024 * 1024;
@@ -36,28 +36,52 @@
     mount.dataset.bound = "true";
     meta = meta || {};
 
+    mount.className = "hw-video-inline";
     mount.innerHTML =
+      '<div class="hw-video-inline__card">' +
       '<div class="hw-video-inline__idle">' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__start">Record your answer</button>' +
+      '<div class="hw-video-inline__placeholder" aria-hidden="true">' +
+      '<span class="hw-video-inline__camera-icon">▶</span>' +
+      '<p class="hw-video-inline__idle-label">Record your spoken answer</p>' +
+      '<p class="hw-video-inline__idle-hint">Camera + mic · up to 3 minutes</p>' +
+      "</div>" +
+      '<button type="button" class="btn btn--primary hw-video-inline__start">Start recording</button>' +
       "</div>" +
       '<div class="hw-video-inline__live" hidden>' +
+      '<div class="hw-video-inline__viewport">' +
       '<video class="hw-video-inline__live-video" playsinline muted autoplay aria-hidden="true"></video>' +
-      '<p class="hw-video-inline__timer" aria-live="polite">0:00</p>' +
-      '<button type="button" class="btn btn--primary btn--sm hw-video-inline__stop">Stop</button>' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__cancel">Cancel</button>' +
+      '<span class="hw-video-inline__rec-badge"><span class="hw-video-inline__rec-dot"></span>REC</span>' +
+      '<span class="hw-video-inline__timer" aria-live="polite">0:00</span>' +
+      "</div>" +
+      '<div class="hw-video-inline__toolbar">' +
+      '<button type="button" class="btn btn--primary hw-video-inline__stop">Stop recording</button>' +
+      '<button type="button" class="btn btn--ghost hw-video-inline__cancel">Cancel</button>' +
+      "</div>" +
       "</div>" +
       '<div class="hw-video-inline__preview" hidden>' +
+      '<div class="hw-video-inline__viewport">' +
       '<video class="hw-video-inline__playback" playsinline controls aria-label="Recorded answer preview"></video>' +
-      '<div class="hw-video-inline__preview-actions">' +
-      '<button type="button" class="btn btn--primary btn--sm hw-video-inline__upload">Send video</button>' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__retake">Record again</button>' +
+      "</div>" +
+      '<p class="hw-video-inline__preview-label">Review your clip, then save it.</p>' +
+      '<div class="hw-video-inline__toolbar">' +
+      '<button type="button" class="btn btn--primary hw-video-inline__save">Save video</button>' +
+      '<button type="button" class="btn btn--ghost hw-video-inline__retake">Re-record</button>' +
+      "</div>" +
+      "</div>" +
+      '<div class="hw-video-inline__saved" hidden>' +
+      '<div class="hw-video-inline__saved-badge" aria-hidden="true">✓</div>' +
+      '<p class="hw-video-inline__saved-title">Video saved</p>' +
+      '<p class="hw-video-inline__saved-hint">JD will review this answer.</p>' +
+      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__record-again">Record again</button>' +
       "</div>" +
       "</div>" +
       '<p class="hw-video-inline__status" role="status" aria-live="polite"></p>';
 
+    const cardEl = mount.querySelector(".hw-video-inline__card");
     const idleEl = mount.querySelector(".hw-video-inline__idle");
     const liveEl = mount.querySelector(".hw-video-inline__live");
     const previewEl = mount.querySelector(".hw-video-inline__preview");
+    const savedEl = mount.querySelector(".hw-video-inline__saved");
     const liveVideo = mount.querySelector(".hw-video-inline__live-video");
     const playbackVideo = mount.querySelector(".hw-video-inline__playback");
     const timerEl = mount.querySelector(".hw-video-inline__timer");
@@ -72,8 +96,14 @@
     let recordStartedAt = 0;
     let recordTimerId = null;
 
-    function setStatus(msg) {
-      if (statusEl) statusEl.textContent = msg || "";
+    function setStatus(msg, tone) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || "";
+      statusEl.dataset.tone = tone || "";
+    }
+
+    function setCardState(state) {
+      if (cardEl) cardEl.dataset.state = state;
     }
 
     function stopTimer() {
@@ -104,28 +134,41 @@
       }
     }
 
+    function hideAllPanels() {
+      idleEl?.setAttribute("hidden", "");
+      liveEl?.setAttribute("hidden", "");
+      previewEl?.setAttribute("hidden", "");
+      savedEl?.setAttribute("hidden", "");
+    }
+
     function showIdle() {
       stopStream();
       stopTimer();
       mediaRecorder = null;
+      hideAllPanels();
       idleEl?.removeAttribute("hidden");
-      liveEl?.setAttribute("hidden", "");
-      previewEl?.setAttribute("hidden", "");
+      setCardState("idle");
       if (timerEl) timerEl.textContent = "0:00";
     }
 
     function showLive() {
-      idleEl?.setAttribute("hidden", "");
+      hideAllPanels();
       liveEl?.removeAttribute("hidden");
-      previewEl?.setAttribute("hidden", "");
+      setCardState("live");
     }
 
     function showPreview() {
       stopStream();
       stopTimer();
-      idleEl?.setAttribute("hidden", "");
-      liveEl?.setAttribute("hidden", "");
+      hideAllPanels();
       previewEl?.removeAttribute("hidden");
+      setCardState("preview");
+    }
+
+    function showSaved() {
+      hideAllPanels();
+      savedEl?.removeAttribute("hidden");
+      setCardState("saved");
     }
 
     function resetUi() {
@@ -135,20 +178,20 @@
 
     function finishRecording() {
       if (!recordedChunks.length) {
-        setStatus("No video recorded — try again.");
+        setStatus("Nothing was recorded — try again.", "error");
         resetUi();
         return;
       }
       recordedBlob = new Blob(recordedChunks, { type: recordedMimeType });
       if (recordedBlob.size > MAX_VIDEO_BYTES) {
-        setStatus("Too large (max 24 MB). Record a shorter clip.");
+        setStatus("Too large (max 24 MB). Record a shorter clip.", "error");
         resetUi();
         return;
       }
       previewObjectUrl = URL.createObjectURL(recordedBlob);
       if (playbackVideo) playbackVideo.src = previewObjectUrl;
       showPreview();
-      setStatus("Preview your clip, then send it.");
+      setStatus("");
     }
 
     function stopRecording() {
@@ -160,11 +203,11 @@
 
     async function startRecording() {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setStatus("Recording not supported in this browser.");
+        setStatus("Recording is not supported in this browser.", "error");
         return;
       }
       if (typeof MediaRecorder === "undefined") {
-        setStatus("Recording not supported — use the Video section below to upload.");
+        setStatus("Recording is not supported in this browser.", "error");
         return;
       }
 
@@ -203,7 +246,7 @@
         };
         mediaRecorder.onstop = finishRecording;
         mediaRecorder.onerror = () => {
-          setStatus("Recording error — try again.");
+          setStatus("Recording error — try again.", "error");
           resetUi();
         };
 
@@ -216,14 +259,14 @@
           if (elapsed >= MAX_VIDEO_MS) stopRecording();
         }, 500);
       } catch {
-        setStatus("Camera access denied or unavailable.");
+        setStatus("Camera access denied or unavailable.", "error");
         resetUi();
       }
     }
 
-    async function uploadRecording() {
+    async function saveRecording() {
       if (!recordedBlob) {
-        setStatus("Record a clip first.");
+        setStatus("Record a clip first.", "error");
         return;
       }
 
@@ -233,9 +276,12 @@
         type: recordedMimeType,
       });
 
-      const uploadBtn = mount.querySelector(".hw-video-inline__upload");
-      if (uploadBtn) uploadBtn.disabled = true;
-      setStatus("Uploading…");
+      const saveBtn = mount.querySelector(".hw-video-inline__save");
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving…";
+      }
+      setStatus("Saving video…", "pending");
 
       const body = new FormData();
       body.append("video", file);
@@ -252,13 +298,17 @@
           body,
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Upload failed.");
-        setStatus(data.message || "Video sent — JD will review it.");
-        resetUi();
+        if (!res.ok) throw new Error(data.error || "Save failed.");
+        clearRecording();
+        showSaved();
+        setStatus(data.message || "Video saved successfully.", "success");
       } catch (err) {
-        setStatus((err && err.message) || "Upload failed.");
+        setStatus((err && err.message) || "Save failed — try again.", "error");
       } finally {
-        if (uploadBtn) uploadBtn.disabled = false;
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save video";
+        }
       }
     }
 
@@ -273,7 +323,11 @@
       resetUi();
       setStatus("");
     });
-    mount.querySelector(".hw-video-inline__upload")?.addEventListener("click", uploadRecording);
+    mount.querySelector(".hw-video-inline__record-again")?.addEventListener("click", () => {
+      resetUi();
+      setStatus("");
+    });
+    mount.querySelector(".hw-video-inline__save")?.addEventListener("click", saveRecording);
 
     showIdle();
   }
