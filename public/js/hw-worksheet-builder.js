@@ -1531,6 +1531,9 @@
       if (global.HwWorksheet?.enrichGrammarVariants) {
         global.HwWorksheet.enrichGrammarVariants(assignment);
       }
+      if (global.HwWorksheet?.enrichAssignmentMedia) {
+        global.HwWorksheet.enrichAssignmentMedia(assignment);
+      }
       return assignment;
     }
 

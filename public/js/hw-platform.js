@@ -505,20 +505,29 @@
     return data;
   }
 
+  function finalizeAssignment(assignment) {
+    if (!assignment?.sections?.length) return assignment;
+    if (global.HwWorksheet?.enrichAssignmentMedia) {
+      global.HwWorksheet.enrichAssignmentMedia(assignment);
+    }
+    return assignment;
+  }
+
   async function fetchAssignmentJson(id, options) {
     options = options || {};
     if (!id) throw new Error("assignment");
 
     if (!options.bypassCache && assignmentMemoryCache.has(id)) {
-      return assignmentMemoryCache.get(id);
+      return finalizeAssignment(assignmentMemoryCache.get(id));
     }
 
     const sessionKey = "jlm-hw-assignment-" + id;
     if (!options.bypassCache) {
       const cached = readSessionJson(sessionKey);
       if (cached?.data?.sections?.length) {
-        assignmentMemoryCache.set(id, cached.data);
-        return cached.data;
+        const assignment = finalizeAssignment(cached.data);
+        assignmentMemoryCache.set(id, assignment);
+        return assignment;
       }
     }
 
@@ -528,7 +537,7 @@
     try {
       const res = await fetch(apiUrl, fetchOpts);
       if (res.ok) {
-        const assignment = normalizeAssignmentPayload(await res.json());
+        const assignment = finalizeAssignment(normalizeAssignmentPayload(await res.json()));
         if (assignment?.sections?.length) {
           assignmentMemoryCache.set(id, assignment);
           writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
@@ -544,7 +553,7 @@
       fetchOpts
     );
     if (!staticRes.ok) throw new Error("assignment");
-    const assignment = normalizeAssignmentPayload(await staticRes.json());
+    const assignment = finalizeAssignment(normalizeAssignmentPayload(await staticRes.json()));
     if (!assignment?.sections?.length) throw new Error("assignment");
     assignmentMemoryCache.set(id, assignment);
     writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });

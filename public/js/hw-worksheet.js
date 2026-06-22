@@ -112,13 +112,20 @@
     (assignment?.sections || []).forEach((section) => {
       if (section.mode !== "audio-listening") return;
       const sectionAudio = String(section.audioUrl || "").trim();
+      const sectionImage = String(section.imageUrl || "").trim();
       (section.items || []).forEach((item) => {
         if (!String(item.audioUrl || "").trim() && sectionAudio) {
           item.audioUrl = sectionAudio;
         }
+        if (!String(item.imageUrl || "").trim() && sectionImage) {
+          item.imageUrl = sectionImage;
+        }
       });
       if (!sectionAudio && section.items?.[0]?.audioUrl) {
         section.audioUrl = String(section.items[0].audioUrl).trim();
+      }
+      if (!sectionImage && section.items?.[0]?.imageUrl) {
+        section.imageUrl = String(section.items[0].imageUrl).trim();
       }
     });
     return assignment;
@@ -643,6 +650,20 @@
       audioLabel.appendChild(audioInput);
       content.appendChild(audioLabel);
 
+      const audioPreviewMount = document.createElement("div");
+      audioPreviewMount.className = "hw-author-audio-preview";
+      content.appendChild(audioPreviewMount);
+
+      function syncAuthorAudioPreview() {
+        audioPreviewMount.innerHTML = "";
+        const url = String(audioInput.value || "").trim();
+        if (!url) return;
+        audioPreviewMount.appendChild(renderAudioPlayer(url, { inline: true }));
+      }
+      syncAuthorAudioPreview();
+      audioInput.addEventListener("input", syncAuthorAudioPreview);
+      audioInput.addEventListener("change", syncAuthorAudioPreview);
+
       const imageLabel = document.createElement("label");
       imageLabel.className = "hw-author-audio-url";
       imageLabel.textContent = "Screenshot URL (Immersion Kit)";
@@ -925,19 +946,21 @@
   function renderLine(item, index, sectionMode, lineOptions) {
     lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
-    const line = document.createElement(openBlock ? "div" : "p");
+    const listenBlock = sectionMode === "audio-listening";
+    const useBlockLayout = openBlock || listenBlock;
+    const line = document.createElement(useBlockLayout ? "div" : "p");
     line.className =
       "hw-worksheet__line" +
       (item.negative ? " hw-worksheet__line--negative" : "") +
       (openBlock ? " hw-worksheet__line--open-response" : "") +
-      (sectionMode === "audio-listening" ? " hw-worksheet__line--listen" : "");
+      (listenBlock ? " hw-worksheet__line--listen" : "");
     line.dataset.itemId = item.id || "";
 
     if (lineOptions.itemNum) {
       appendLineNumber(line, lineOptions.itemNum);
     }
 
-    const content = document.createElement(openBlock ? "div" : "span");
+    const content = document.createElement(useBlockLayout ? "div" : "span");
     content.className = "hw-worksheet__content";
 
     let listenCard = null;
@@ -1992,6 +2015,7 @@
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,
+    enrichAssignmentMedia,
     applyAnswerVariants,
     isImmersionKitMediaUrl,
     parseImmersionKitMediaPaste,

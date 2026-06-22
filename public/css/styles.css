@@ -5669,6 +5669,12 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   margin: 0;
 }
 
+.hw-author-audio-preview {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0.35rem 0 0.65rem;
+}
+
 .hw-audio-player__el {
   display: block;
   width: 100%;
