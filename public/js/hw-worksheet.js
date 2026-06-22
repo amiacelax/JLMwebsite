@@ -38,12 +38,16 @@
     urls.forEach((url) => {
       if (!isImmersionKitMediaUrl(url)) return;
       const lower = url.toLowerCase();
+      if (/\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(lower)) {
+        if (!imageUrl) imageUrl = url;
+        return;
+      }
       if (/\.(mp3|m4a|wav|ogg|aac)(\?|#|$)/i.test(lower)) {
         if (!audioUrl) audioUrl = url;
         return;
       }
-      if (/\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(lower)) {
-        if (!imageUrl) imageUrl = url;
+      if (!audioUrl && !/\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(lower)) {
+        if (!audioUrl) audioUrl = url;
       }
     });
     return { audioUrl, imageUrl };
@@ -93,6 +97,29 @@
     col.className = "hw-worksheet__line-num";
     col.appendChild(createItemLabel(num));
     line.appendChild(col);
+  }
+
+  function blockTypeLabel(mode) {
+    if (mode === "grammar-blank") return "Grammar";
+    if (mode === "audio-listening") return "Listening";
+    if (mode === "context-blank") return "Open response";
+    return "Block";
+  }
+
+  function enrichAssignmentMedia(assignment) {
+    (assignment?.sections || []).forEach((section) => {
+      if (section.mode !== "audio-listening") return;
+      const sectionAudio = String(section.audioUrl || "").trim();
+      (section.items || []).forEach((item) => {
+        if (!String(item.audioUrl || "").trim() && sectionAudio) {
+          item.audioUrl = sectionAudio;
+        }
+      });
+      if (!sectionAudio && section.items?.[0]?.audioUrl) {
+        section.audioUrl = String(section.items[0].audioUrl).trim();
+      }
+    });
+    return assignment;
   }
 
   function labelFromLineEl(el, mode, fallback) {
@@ -711,6 +738,13 @@
     audio.src = clipUrl;
     audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
     wrap.appendChild(audio);
+    const link = document.createElement("a");
+    link.className = "hw-audio-player__link";
+    link.href = clipUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Open audio clip";
+    wrap.appendChild(link);
     if (!options.inline) {
       const hint = document.createElement("p");
       hint.className = "hw-audio-player__hint";
@@ -1199,7 +1233,7 @@
   function render(mount, assignment, options) {
     options = options || {};
     const authoring = Boolean(options.authoring);
-    const prepared = JSON.parse(JSON.stringify(assignment || { sections: [] }));
+    const prepared = enrichAssignmentMedia(JSON.parse(JSON.stringify(assignment || { sections: [] })));
     if (!options.preview && !authoring) {
       options = { ...options, assignment: prepared };
     }
@@ -1696,7 +1730,9 @@
     if (!content) return (answerText || "").trim() || "(blank)";
     const clone = content.cloneNode(true);
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
-    clone.querySelectorAll(".hw-negative-badge, .hw-question-badge").forEach((el) => el.remove());
+    clone.querySelectorAll(
+      ".hw-negative-badge, .hw-question-badge, .hw-register-badge, .hw-tense-badge, .hw-line-pills"
+    ).forEach((el) => el.remove());
     clone.querySelectorAll(".ja-reading").forEach((el) => {
       el.replaceWith(document.createTextNode(el.textContent || ""));
     });
@@ -1810,6 +1846,43 @@
     return clone.textContent.replace(/\s+/g, " ").trim();
   }
 
+  function collectOrderedAnswers(form, report) {
+    const byName = new Map();
+    [...(report.section1 || []), ...(report.section2 || []), ...(report.listening || [])].forEach(
+      (row) => {
+        if (row.name) byName.set(row.name, row);
+      }
+    );
+
+    const lines = [];
+    form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
+      const mode = secEl.dataset.mode || "";
+      if (mode === "video-response" || mode === "audio-prompt") return;
+      secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl) => {
+        lines.push({ mode, lineEl });
+      });
+    });
+
+    const total = lines.length;
+    return lines
+      .map(({ mode, lineEl }, index) => {
+        const input = lineEl.querySelector(
+          "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])"
+        );
+        const row = input?.name ? byName.get(input.name) : null;
+        if (!row) return null;
+        return {
+          progress: index + 1 + " of " + total,
+          blockType: blockTypeLabel(mode),
+          label: row.label,
+          prompt: row.prompt,
+          student: row.student,
+          completed: row.completed,
+        };
+      })
+      .filter(Boolean);
+  }
+
   function buildSubmitPayload(form, meta, report) {
     const section1 = (report.section1 || []).map((row) => ({
       label: row.label,
@@ -1842,6 +1915,7 @@
       section1,
       section2,
       listening,
+      answers: collectOrderedAnswers(form, report),
     };
   }
 

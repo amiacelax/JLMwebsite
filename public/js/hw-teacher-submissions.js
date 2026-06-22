@@ -168,8 +168,8 @@
       detail.appendChild(video);
     } else {
       detail.append(
-        renderAnswerSection("Section 1", entry.section1),
-        renderAnswerSection("Section 2 — student response", entry.section2),
+        renderAnswerSection("Grammar", entry.section1),
+        renderAnswerSection("Open response", entry.section2),
         entry.listening?.length
           ? renderAnswerSection("Listening", entry.listening)
           : null

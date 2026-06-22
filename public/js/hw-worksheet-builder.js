@@ -27,12 +27,6 @@
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
           items: [1, 2, 3, 4, 5].map((n) => grammarItem(n)),
         },
-        {
-          mode: "context-blank",
-          title: "Section 2 — Your words",
-          instructions: "Write your own sentences using this grammar in the boxes below.",
-          items: [1, 2, 3].map((n) => openItem(n, "s2")),
-        },
       ],
     },
     application: {

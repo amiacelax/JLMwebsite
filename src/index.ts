@@ -117,6 +117,11 @@ interface HomeworkAnswerRow {
   completed?: string;
 }
 
+interface HomeworkOrderedAnswerRow extends HomeworkAnswerRow {
+  progress?: string;
+  blockType?: string;
+}
+
 interface HomeworkSubmitPayload {
   username?: string;
   displayName?: string;
@@ -129,6 +134,8 @@ interface HomeworkSubmitPayload {
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
   listening?: HomeworkAnswerRow[];
+  /** Worksheet-order answers with block progress (preferred for Discord). */
+  answers?: HomeworkOrderedAnswerRow[];
 }
 
 interface ContactPayload {
@@ -710,27 +717,43 @@ async function handlePromoSignupDelete(request: Request, env: Env): Promise<Resp
   }
 }
 
-function formatSection1Discord(rows: HomeworkAnswerRow[] | undefined): string {
-  if (!rows?.length) return "(none)";
-  return rows
-    .map((row) => {
-      const label = row.label?.trim() || "—";
-      const yours = row.student?.trim() || "(blank)";
-      const sentence = row.completed?.trim() || "";
-      return `${label} ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
-    })
-    .join("\n");
+function formatHomeworkAnswerDiscord(row: HomeworkOrderedAnswerRow): string {
+  const progress = row.progress?.trim();
+  const blockType = row.blockType?.trim();
+  const prefix = [progress, blockType].filter(Boolean).join(" · ");
+  const header = prefix ? `${prefix}` : row.label?.trim() || "—";
+  const yours = row.student?.trim() || "(blank)";
+  const sentence = row.completed?.trim() || "";
+  if (sentence && sentence !== yours) {
+    return `${header}\n   ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
+  }
+  return `${header}\n   ${yours}`;
 }
 
-function formatSection2Discord(rows: HomeworkAnswerRow[] | undefined): string {
+function formatOrderedAnswersDiscord(rows: HomeworkOrderedAnswerRow[] | undefined): string {
   if (!rows?.length) return "(none)";
-  return rows
-    .map((row) => {
-      const label = row.label?.trim() || "—";
-      const sentence = row.completed?.trim() || row.student?.trim() || "(blank)";
-      return `${label} ${sentence}`;
-    })
-    .join("\n");
+  return rows.map((row) => formatHomeworkAnswerDiscord(row)).join("\n\n");
+}
+
+function legacyAnswersInWorksheetOrder(data: HomeworkSubmitPayload): HomeworkOrderedAnswerRow[] {
+  const listening = (data.listening || []).map((row) => ({
+    ...row,
+    blockType: "Listening",
+  }));
+  const grammar = (data.section1 || []).map((row) => ({
+    ...row,
+    blockType: "Grammar",
+  }));
+  const open = (data.section2 || []).map((row) => ({
+    ...row,
+    blockType: "Open response",
+  }));
+  const combined = [...grammar, ...open, ...listening];
+  const total = combined.length;
+  return combined.map((row, index) => ({
+    ...row,
+    progress: total ? `${index + 1} of ${total}` : undefined,
+  }));
 }
 
 function buildHomeworkDiscordDescription(
@@ -738,22 +761,14 @@ function buildHomeworkDiscordDescription(
   student: string,
   lesson: string
 ): string {
+  const ordered =
+    data.answers?.length ? data.answers : legacyAnswersInWorksheetOrder(data);
   const lines = [
     `Student: ${student}`,
     `Lesson: ${lesson}`,
-    data.title?.trim() ? `Grammar: ${data.title.trim()}` : null,
-    data.register?.trim() ? `Register: ${data.register.trim()}` : null,
+    data.title?.trim() ? `Worksheet: ${data.title.trim()}` : null,
     "",
-    "Section 1",
-    "",
-    formatSection1Discord(data.section1),
-    "",
-    "Section 2 — your response",
-    "",
-    formatSection2Discord(data.section2),
-    data.listening?.length
-      ? ["", "Listening", "", formatSection1Discord(data.listening)].join("\n")
-      : null,
+    formatOrderedAnswersDiscord(ordered),
   ];
   return lines.filter((line) => line != null).join("\n");
 }
@@ -1086,7 +1101,11 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     if (!username) return jsonResponse({ error: "Username is required." }, 400);
     if (!isUploadedFile(file)) return jsonResponse({ error: "Video is required." }, 400);
     if (!file.type.startsWith("video/")) {
-      return jsonResponse({ error: "Please upload a video file." }, 400);
+      const inferred = String(file.name || "").toLowerCase();
+      const looksVideo = /\.(webm|mp4|mov|mkv)(\?|$)/i.test(inferred);
+      if (!looksVideo) {
+        return jsonResponse({ error: "Please upload a video file." }, 400);
+      }
     }
     if (file.size > 24 * 1024 * 1024) {
       return jsonResponse({ error: "Video must be under 24 MB." }, 400);
@@ -1208,7 +1227,11 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     if (!username) return jsonResponse({ error: "Username is required." }, 400);
     if (!isUploadedFile(file)) return jsonResponse({ error: "Audio is required." }, 400);
     if (!file.type.startsWith("audio/")) {
-      return jsonResponse({ error: "Please upload an audio file." }, 400);
+      const inferred = String(file.name || "").toLowerCase();
+      const looksAudio = /\.(webm|mp4|m4a|mp3|ogg)(\?|$)/i.test(inferred);
+      if (!looksAudio) {
+        return jsonResponse({ error: "Please upload an audio file." }, 400);
+      }
     }
     if (file.size > 12 * 1024 * 1024) {
       return jsonResponse({ error: "Audio must be under 12 MB." }, 400);

@@ -1496,12 +1496,39 @@ async function storeSubmissionPhoto(
   return { id, mimeType, name: String(file.name || "").trim() || undefined };
 }
 
+function normalizeSubmissionMediaMime(mimeType: string): string {
+  return String(mimeType || "")
+    .trim()
+    .toLowerCase()
+    .split(";")[0];
+}
+
+function inferSubmissionMediaMime(name: string, fallback: string): string {
+  const lower = String(name || "").toLowerCase();
+  if (lower.endsWith(".webm")) return "video/webm";
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".mov")) return "video/quicktime";
+  if (lower.endsWith(".mkv")) return "video/x-matroska";
+  if (lower.endsWith(".ogg")) return "video/ogg";
+  if (lower.endsWith(".m4a")) return "audio/mp4";
+  if (lower.endsWith(".mp3")) return "audio/mpeg";
+  return fallback;
+}
+
+function isAllowedSubmissionMedia(mimeType: string): boolean {
+  const base = normalizeSubmissionMediaMime(mimeType);
+  if (!base) return false;
+  return SUBMISSION_VIDEO_TYPES.has(base);
+}
+
 async function storeSubmissionVideo(
   kv: KVNamespace,
   file: File
 ): Promise<HomeworkSubmissionVideo> {
-  const mimeType = String(file.type || "").trim().toLowerCase();
-  if (!SUBMISSION_VIDEO_TYPES.has(mimeType)) throw new Error("VIDEO_TYPE");
+  const mimeType =
+    normalizeSubmissionMediaMime(file.type) ||
+    inferSubmissionMediaMime(String(file.name || ""), "video/webm");
+  if (!isAllowedSubmissionMedia(mimeType)) throw new Error("VIDEO_TYPE");
   if (file.size > SUBMISSION_VIDEO_MAX_BYTES) throw new Error("VIDEO_TOO_LARGE");
 
   const id = makeSubmissionVideoId();

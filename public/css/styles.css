@@ -5685,6 +5685,19 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   line-height: 1.4;
 }
 
+.hw-audio-player__link {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.hw-audio-player__link:hover {
+  opacity: 0.85;
+}
+
 .hw-open-topic {
   margin: 0 0 0.5rem;
   font-family: "Noto Sans JP", Inter, sans-serif;
