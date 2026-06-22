@@ -6,6 +6,15 @@
   const MAX_AUDIO_MS = 3 * 60 * 1000;
 
   function pickRecorderMimeType() {
+    if (global.HwCompat?.pickRecorderMimeType) {
+      return global.HwCompat.pickRecorderMimeType([
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+        "audio/mpeg",
+      ]);
+    }
     if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
     const types = [
       "audio/webm;codecs=opus",

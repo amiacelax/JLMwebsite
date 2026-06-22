@@ -5690,6 +5690,11 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   height: auto;
   margin: 0;
   color-scheme: light;
+  flex: 0 0 auto;
+}
+
+.hw-listen-card .hw-audio-player {
+  min-height: 2.75rem;
 }
 
 .hw-listen-card .hw-audio-player__el {

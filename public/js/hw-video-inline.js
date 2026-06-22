@@ -7,6 +7,9 @@
   const controllers = new WeakMap();
 
   function pickRecorderMimeType() {
+    if (global.HwCompat?.pickRecorderMimeType) {
+      return global.HwCompat.pickRecorderMimeType();
+    }
     if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
     const types = [
       "video/webm;codecs=vp9,opus",

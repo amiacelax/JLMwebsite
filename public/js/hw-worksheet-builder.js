@@ -1170,7 +1170,9 @@
           preview.controls = true;
           preview.preload = "none";
           preview.className = "hw-builder__audio-preview";
-          preview.src = block.audioUrl;
+          preview.src = global.HwCompat?.normalizeMediaUrl
+            ? global.HwCompat.normalizeMediaUrl(block.audioUrl)
+            : block.audioUrl;
           preview.setAttribute("aria-label", "Preview audio clip");
           partsWrap.appendChild(preview);
         }

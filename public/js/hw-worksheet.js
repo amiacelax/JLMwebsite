@@ -754,22 +754,36 @@
     const wrap = document.createElement("div");
     wrap.className =
       "hw-audio-player" + (options.inline ? " hw-audio-player--inline" : "");
-    const clipUrl = String(url || "").trim();
+    const clipUrl = global.HwCompat?.normalizeMediaUrl
+      ? global.HwCompat.normalizeMediaUrl(url)
+      : String(url || "").trim();
     if (!clipUrl) {
       wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip not set yet.</p>';
       return wrap;
     }
     const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "metadata";
     audio.className = "hw-audio-player__el";
-    try {
-      audio.src = clipUrl;
-    } catch {
+    const bound = global.HwCompat?.enhanceAudioElement
+      ? global.HwCompat.enhanceAudioElement(audio, clipUrl)
+      : (function () {
+          audio.controls = true;
+          audio.preload = "metadata";
+          audio.src = clipUrl;
+          return true;
+        })();
+    if (!bound) {
       wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip could not be loaded.</p>';
       return wrap;
     }
     audio.setAttribute("aria-label", "Listening clip — play as many times as you need");
+    audio.addEventListener("error", () => {
+      if (wrap.querySelector(".hw-audio-player__missing")) return;
+      const note = document.createElement("p");
+      note.className = "hw-audio-player__missing";
+      note.textContent =
+        "Audio could not load in this browser. Try refreshing the page.";
+      wrap.appendChild(note);
+    });
     wrap.appendChild(audio);
     if (!options.inline) {
       const hint = document.createElement("p");
@@ -1583,8 +1597,9 @@
     document.body.classList.remove("hw-hw-focus-mode");
     section?.querySelector(".hw-focus-bar")?.setAttribute("hidden", "");
     section?.querySelector("[data-hw-focus]")?.removeAttribute("hidden");
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    const exitFs = global.HwCompat?.exitFullscreen || (() => document.exitFullscreen?.());
+    if (global.HwCompat?.getFullscreenElement?.() || document.fullscreenElement) {
+      Promise.resolve(exitFs()).catch(() => {});
     }
   }
 
@@ -1633,8 +1648,11 @@
       focusBar.hidden = false;
       focusBtn.hidden = true;
       section.scrollTop = 0;
+      const reqFs =
+        global.HwCompat?.requestFullscreen ||
+        ((el) => el.requestFullscreen?.() || document.documentElement.requestFullscreen());
       try {
-        await (section.requestFullscreen?.() || document.documentElement.requestFullscreen());
+        await reqFs(section);
       } catch (_) {
         /* overlay-only focus is fine when fullscreen is blocked */
       }
@@ -1645,11 +1663,17 @@
 
     if (!section.dataset.hwFocusBound) {
       section.dataset.hwFocusBound = "1";
-      document.addEventListener("fullscreenchange", () => {
-        if (!document.fullscreenElement && document.body.classList.contains("hw-hw-focus-mode")) {
+      const onFsChange = () => {
+        const fsEl = global.HwCompat?.getFullscreenElement?.() || document.fullscreenElement;
+        if (!fsEl && document.body.classList.contains("hw-hw-focus-mode")) {
           exitHomeworkFocusMode();
         }
-      });
+      };
+      if (global.HwCompat?.bindFullscreenChange) {
+        global.HwCompat.bindFullscreenChange(onFsChange);
+      } else {
+        document.addEventListener("fullscreenchange", onFsChange);
+      }
       document.addEventListener("keydown", (e) => {
         if (e.key !== "Escape" || !document.body.classList.contains("hw-hw-focus-mode")) return;
         e.preventDefault();

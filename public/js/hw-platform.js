@@ -1266,6 +1266,9 @@
     }
 
     function pickRecorderMimeType() {
+      if (global.HwCompat?.pickRecorderMimeType) {
+        return global.HwCompat.pickRecorderMimeType();
+      }
       if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
       const types = [
         "video/webm;codecs=vp9,opus",
@@ -2089,6 +2092,21 @@
   }
 
   function init() {
+    if (!global.HwWorksheet?.render) {
+      const mount = document.getElementById("hw-worksheet-mount");
+      const intro = document.getElementById("hw-worksheet-intro");
+      if (intro) {
+        intro.textContent =
+          "Homework could not load in this browser. Hard refresh (Ctrl+Shift+R) or try Firefox/Safari.";
+      }
+      if (mount) {
+        mount.innerHTML =
+          '<p class="hw-worksheet__status">If this keeps happening, clear site data for this page and sign in again.</p>';
+      }
+      console.error("HwWorksheet failed to load — check hw-worksheet.js and hw-compat.js.");
+      return;
+    }
+
     if (isTeacher) {
       initTeacherEditor();
       void loadTeacherHub();
