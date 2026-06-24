@@ -997,6 +997,13 @@
       const screenshot = renderListenScreenshot(imageUrl);
       if (screenshot) listenCard.appendChild(screenshot);
       listenCard.appendChild(renderAudioPlayer(audioUrl, { inline: true }));
+      const listenInstruction = String(lineOptions.listenInstruction || "").trim();
+      if (listenInstruction) {
+        const hint = document.createElement("p");
+        hint.className = "hw-listen-instruction";
+        hint.textContent = listenInstruction;
+        listenCard.appendChild(hint);
+      }
       content.appendChild(listenCard);
     }
 
@@ -1061,7 +1068,7 @@
       (section.mode === "audio-listening"
         ? "Listen to the clip and write down what you think it's saying."
         : "");
-    if (sectionIntro) {
+    if (sectionIntro && (authoring || section.mode !== "audio-listening")) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";
       intro.textContent = sectionIntro;
@@ -1070,12 +1077,14 @@
 
     const sectionAudioUrl =
       section.mode === "audio-listening" ? String(section.audioUrl || "").trim() : "";
+    const listenInstruction =
+      !authoring && section.mode === "audio-listening" ? sectionIntro : "";
 
     (section.items || []).forEach((item, i) => {
       const itemCounter = renderOptions.itemCounter;
       if (itemCounter) itemCounter.value += 1;
       const itemNum = itemCounter ? itemCounter.value : i + 1;
-      const lineOpts = { sectionAudioUrl, itemNum };
+      const lineOpts = { sectionAudioUrl, itemNum, listenInstruction };
 
       if (section.mode === "video-response") {
         if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i, lineOpts));
@@ -1236,19 +1245,27 @@
       .filter((url) => url && /youtube\.com|youtu\.be/i.test(url));
     if (!explanation && !videos.length) return null;
 
-    const wrap = document.createElement("div");
+    const wrap = document.createElement("details");
     wrap.className = "hw-worksheet__topic-brief";
 
-    const heading = document.createElement("h4");
+    const summary = document.createElement("summary");
+    summary.className = "hw-worksheet__topic-brief-summary";
+
+    const heading = document.createElement("span");
     heading.className = "hw-worksheet__topic-brief-title";
     heading.textContent = "Grammar description";
-    wrap.appendChild(heading);
+
+    summary.appendChild(heading);
+    wrap.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "hw-worksheet__topic-brief-body";
 
     if (explanation) {
       const p = document.createElement("p");
       p.className = "hw-worksheet__topic-explanation";
       p.textContent = explanation;
-      wrap.appendChild(p);
+      body.appendChild(p);
     }
 
     if (videos.length) {
@@ -1266,9 +1283,15 @@
         li.appendChild(link);
         list.appendChild(li);
       });
-      wrap.appendChild(list);
+      body.appendChild(list);
+    } else if (explanation) {
+      const soon = document.createElement("p");
+      soon.className = "hw-worksheet__topic-video-soon";
+      soon.textContent = "Video explanation — coming soon";
+      body.appendChild(soon);
     }
 
+    wrap.appendChild(body);
     return wrap;
   }
 
@@ -1311,21 +1334,36 @@
 
     const metaText = document.createElement("div");
     metaText.className = "hw-worksheet__meta-text";
-    metaText.innerHTML =
-      '<p class="hw-worksheet__meta-title">' +
-      escapeHtml(prepared.title || "Homework") +
-      "</p>" +
-      (authoring
-        ? '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>'
-        : '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record and save each clip (or send homework — unsaved clips upload automatically). JD will review your work.</p>');
-    metaTop.appendChild(metaText);
-
-    meta.appendChild(metaTop);
+    const omitMetaTitle = Boolean(options.omitMetaTitle);
+    const omitMetaHint = Boolean(options.omitMetaHint);
+    let metaInner = "";
+    if (!omitMetaTitle) {
+      metaInner +=
+        '<p class="hw-worksheet__meta-title">' +
+        escapeHtml(prepared.title || "Homework") +
+        "</p>";
+    }
+    if (authoring) {
+      metaInner +=
+        '<p class="hw-worksheet__meta-hint">Teacher preview — use the block builder to edit layout.</p>';
+    } else if (!omitMetaHint) {
+      metaInner +=
+        '<p class="hw-worksheet__meta-hint">Fill in each blank, then submit. For video prompts, record and save each clip (or send homework — unsaved clips upload automatically). JD will review your work.</p>';
+    }
+    if (metaInner) {
+      metaText.innerHTML = metaInner;
+      metaTop.appendChild(metaText);
+      meta.appendChild(metaTop);
+    }
 
     const topicBrief = renderTopicBrief(prepared);
     if (topicBrief) meta.appendChild(topicBrief);
 
-    form.appendChild(meta);
+    if (omitMetaTitle) form.dataset.omitMetaTitle = "1";
+    if (omitMetaHint) form.dataset.omitMetaHint = "1";
+    if (omitMetaTitle && omitMetaHint) form.classList.add("hw-worksheet--hub-chromeless");
+
+    if (meta.childElementCount) form.appendChild(meta);
 
     const itemCounter = { value: 0 };
     (prepared.sections || []).forEach((section) => {
@@ -1445,7 +1483,7 @@
 
     const nav = document.createElement("div");
     nav.className = "hw-worksheet__slide-nav";
-    nav.setAttribute("role", "region");
+    nav.setAttribute("role", "navigation");
     nav.setAttribute("aria-label", "Homework question navigation");
 
     const prevBtn = document.createElement("button");
@@ -1454,17 +1492,9 @@
     prevBtn.setAttribute("aria-label", "Previous question");
     prevBtn.textContent = "←";
 
-    const counterWrap = document.createElement("div");
-    counterWrap.className = "hw-worksheet__slide-counter-wrap";
-
     const counter = document.createElement("p");
     counter.className = "hw-worksheet__slide-counter";
     counter.setAttribute("aria-live", "polite");
-
-    const sectionLabel = document.createElement("p");
-    sectionLabel.className = "hw-worksheet__slide-section";
-
-    counterWrap.append(counter, sectionLabel);
 
     const nextBtn = document.createElement("button");
     nextBtn.type = "button";
@@ -1472,52 +1502,31 @@
     nextBtn.setAttribute("aria-label", "Next question");
     nextBtn.textContent = "→";
 
-    const toggleBtn = document.createElement("button");
-    toggleBtn.type = "button";
-    toggleBtn.className = "btn btn--ghost btn--sm hw-worksheet__slide-toggle";
-    toggleBtn.textContent = "See all HW";
-
-    const navControls = document.createElement("div");
-    navControls.className = "hw-worksheet__slide-controls";
-    navControls.append(prevBtn, toggleBtn, nextBtn);
-
-    nav.append(counterWrap, navControls);
+    nav.append(prevBtn, counter, nextBtn);
 
     const firstSection = form.querySelector(".hw-worksheet__section");
     const insertBefore = firstSection || form.querySelector(".hw-worksheet__actions");
     const brief = form.querySelector(".hw-worksheet__topic-brief");
     const stickyHead = document.createElement("div");
     stickyHead.className = "hw-worksheet__slide-sticky-head";
+    stickyHead.appendChild(nav);
     if (brief) {
       brief.classList.add("hw-worksheet__topic-brief--slide");
       stickyHead.appendChild(brief);
     }
-    stickyHead.appendChild(nav);
     form.insertBefore(stickyHead, insertBefore);
 
     form.classList.add("hw-worksheet--slide-mode", "hw-worksheet--hide-line-nums");
 
     const hint = form.querySelector(".hw-worksheet__meta-hint");
-    if (hint) {
-      hint.textContent =
-        "One question at a time — use the arrows to move, or see all homework at once.";
-    }
-
-    function sectionMetaForLine(line) {
-      const section = line.closest(".hw-worksheet__section");
-      if (!section) return "";
-      const title = section.querySelector(".hw-worksheet__section-title")?.textContent?.trim() || "";
-      return title;
+    if (hint && !form.dataset.omitMetaHint) {
+      hint.textContent = "One question at a time — use the arrows above to move.";
     }
 
     function applySlideView() {
       if (seeAll) {
         form.classList.remove("hw-worksheet--slide-mode");
-        nav.hidden = false;
-        counterWrap.hidden = true;
-        prevBtn.hidden = true;
-        nextBtn.hidden = true;
-        toggleBtn.textContent = "One at a time";
+        nav.hidden = true;
         form.querySelectorAll(".hw-worksheet__section").forEach((sec) => {
           sec.hidden = false;
         });
@@ -1528,12 +1537,8 @@
       }
 
       form.classList.add("hw-worksheet--slide-mode");
-      counterWrap.hidden = false;
-      prevBtn.hidden = false;
-      nextBtn.hidden = false;
-      toggleBtn.textContent = "See all HW";
+      nav.hidden = false;
       counter.textContent = current + 1 + " of " + lines.length;
-      sectionLabel.textContent = sectionMetaForLine(lines[current]) || "";
 
       prevBtn.disabled = current <= 0;
       nextBtn.disabled = current >= lines.length - 1;
@@ -1557,11 +1562,6 @@
     prevBtn.addEventListener("click", () => goTo(current - 1));
     nextBtn.addEventListener("click", () => goTo(current + 1));
 
-    toggleBtn.addEventListener("click", () => {
-      seeAll = !seeAll;
-      applySlideView();
-    });
-
     form.addEventListener("keydown", (e) => {
       if (seeAll || e.target.closest("input, textarea, select")) return;
       if (e.key === "ArrowLeft") {
@@ -1582,6 +1582,9 @@
             seeAll = true;
             applySlideView();
           }
+          form.querySelectorAll(".hw-worksheet__topic-brief").forEach((el) => {
+            el.open = true;
+          });
         },
         true
       );
@@ -1965,7 +1968,9 @@
             lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
           const prompt =
             lineEl.querySelector(".hw-audio-prompt__text")?.textContent?.trim() || "";
-          const saved = lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]');
+          const saved =
+            lineEl.querySelector('[data-hw-answer-saved="true"]') ||
+            lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]');
           return {
             progress: index + 1 + " of " + total,
             blockType: blockTypeLabel(mode),
@@ -1990,6 +1995,40 @@
         };
       })
       .filter(Boolean);
+  }
+
+  const STUDENT_BLANK_SELECTOR =
+    "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])";
+
+  function getStudentQuestionLines(form) {
+    if (!form) return [];
+    return Array.from(
+      form.querySelectorAll(".hw-worksheet__line:not(.hw-worksheet__line--author)")
+    );
+  }
+
+  function isWorksheetLineAnswered(lineEl) {
+    if (!lineEl) return false;
+    if (lineEl.classList.contains("hw-worksheet__line--video")) {
+      return Boolean(lineEl.querySelector('.hw-video-inline__card[data-state="saved"]'));
+    }
+    if (lineEl.classList.contains("hw-worksheet__line--audio-prompt")) {
+      return Boolean(
+        lineEl.querySelector('[data-hw-answer-saved="true"]') ||
+          lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]')
+      );
+    }
+    const blanks = lineEl.querySelectorAll(STUDENT_BLANK_SELECTOR);
+    if (!blanks.length) return false;
+    return Array.from(blanks).every((el) => String(el.value || "").trim());
+  }
+
+  function totalQuestions(form) {
+    return getStudentQuestionLines(form).length;
+  }
+
+  function countAnsweredQuestions(form) {
+    return getStudentQuestionLines(form).filter(isWorksheetLineAnswered).length;
   }
 
   function buildSubmitPayload(form, meta, report) {
@@ -2044,6 +2083,9 @@
     normalizeAnswer,
     answersMatch,
     buildSubmitPayload,
+    totalQuestions,
+    countAnsweredQuestions,
+    isWorksheetLineAnswered,
     enableSeeAnswers,
     revealTeacherAnswers,
     hasListenTeacherAnswers,

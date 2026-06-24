@@ -379,6 +379,12 @@
     return Boolean(account && account.role === "student");
   }
 
+  function possessiveHubTitle(name) {
+    const label = String(name || "").trim();
+    if (!label) return "Your hub";
+    return label + "'s hub";
+  }
+
   global.HwAuth = {
     SESSION_KEY,
     VIDEO_UNLOCK_PREFIX,
@@ -407,5 +413,6 @@
     enableVideoResponseUnlock,
     listStudentAccounts,
     isStudentAccount,
+    possessiveHubTitle,
   };
 })(window);

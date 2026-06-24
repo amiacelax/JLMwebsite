@@ -1,14 +1,13 @@
 /**
- * Homework Hub v3 — isolated prototype (mock data only).
- * Worksheet-first, one primary action, minimal status chrome.
+ * Homework Hub v4 — live platform layout with v3 worksheet on top (mock preview).
  */
 (function (global) {
   "use strict";
 
   const STORAGE = {
-    status: "jlm-hw-v3-demo-status",
-    onboarding: "jlm-hw-v3-onboarding-done",
-    answers: "jlm-hw-v3-demo-answers",
+    status: "jlm-hw-v4-demo-status",
+    onboarding: "jlm-hw-v4-onboarding-done",
+    answers: "jlm-hw-v4-demo-answers",
   };
 
   const DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-uxrsqyd.json";
@@ -19,28 +18,12 @@
     studentName: "Alex",
     lessonUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     lessonMeta: "2026-06-17 ・ よく ・ あまり",
+    assignmentLabel: "2026-06-17 ・ よく ・ あまり",
     games: [
       { label: "Village prototype", href: "/game/" },
       { label: "Tic Tac Toe", href: "/game/tictactoe-past/" },
       { label: "Lantern Word Hunt", href: "/game/lantern-hunt/" },
       { label: "Yūgen Gatherer", locked: true },
-    ],
-    mistakes: [
-      {
-        wrong: "あまり食べます",
-        right: "あまり食べません",
-        note: "あまり always pairs with a negative verb",
-      },
-      {
-        wrong: "よく寝ません",
-        right: "あまり寝ません",
-        note: "For \"not much\" use あまり, not よく",
-      },
-      {
-        wrong: "あまり行きます",
-        right: "あまり行きません",
-        note: "Same pattern — あまり + ません",
-      },
     ],
     feedbackNote:
       "Nice work on よく! Watch あまり — it always pairs with a negative (ません / ない). You had one blank where よく crept into a negative sentence.",
@@ -57,8 +40,8 @@
       text: "This isn't an instant right-or-wrong app. Work through the sheet at your pace — JD will look over your answers and get back to you.",
     },
     {
-      title: "Stuck? Ask Sachiko",
-      text: "Sachiko can explain grammar or nudge you with hints. She won't fill in the blanks for you.",
+      title: "Everything else is below",
+      text: "Lesson links, games, and your mistake list sit under the homework — same hub, homework first.",
     },
   ];
 
@@ -227,53 +210,42 @@
     });
   }
 
+  function renderAssignmentCard() {
+    /* Title/status live in worksheet card header on v4 */
+  }
+
   function renderLessons() {
-    const meta = document.getElementById("hw-v3-lesson-meta");
-    const playlist = document.getElementById("hw-v3-lesson-playlist");
+    const meta = document.getElementById("hw-lesson-meta");
+    const lessonBtn = document.getElementById("hw-latest-lesson");
+    const playlist = document.getElementById("hw-lesson-playlist");
+
     if (meta) meta.textContent = MOCK.lessonMeta;
-    if (playlist) playlist.href = MOCK.lessonUrl;
+    if (lessonBtn) {
+      lessonBtn.href = MOCK.lessonUrl;
+      lessonBtn.textContent = "Watch lesson (YouTube link coming soon)";
+    }
+    if (playlist) {
+      playlist.href = MOCK.lessonUrl;
+      playlist.hidden = false;
+    }
   }
 
   function renderMistakes() {
-    const list = document.getElementById("hw-v3-mistake-list");
-    const empty = document.getElementById("hw-v3-mistakes-empty");
-    if (!list) return;
-
-    list.replaceChildren();
-    if (!MOCK.mistakes.length) {
-      list.hidden = true;
-      if (empty) empty.hidden = false;
-      return;
+    const empty = document.getElementById("hw-student-mistakes-empty");
+    const main = document.getElementById("hw-student-mistakes-main");
+    if (empty) empty.hidden = false;
+    if (main) {
+      main.querySelectorAll(".hw-mistake-feed-fold, .hw-mistake-feed-single").forEach((el) => {
+        el.hidden = true;
+      });
     }
-
-    list.hidden = false;
-    if (empty) empty.hidden = true;
-
-    MOCK.mistakes.forEach((m) => {
-      const li = document.createElement("li");
-      li.className = "hw-mistake-feed__item";
-      li.innerHTML =
-        '<div class="hw-mistake-feed__row">' +
-        '<div class="hw-mistake-feed__body">' +
-        '<span class="hw-mistake-feed__pair">' +
-        '<span class="hw-mistake-feed__wrong">' +
-        escapeHtml(m.wrong) +
-        "</span>" +
-        '<span class="hw-mistake-feed__right">' +
-        escapeHtml(m.right) +
-        "</span>" +
-        "</span>" +
-        (m.note
-          ? '<span class="hw-mistake-feed__meta">' + escapeHtml(m.note) + "</span>"
-          : "") +
-        "</div></div>";
-      list.appendChild(li);
-    });
   }
 
   function renderGames() {
-    const footer = document.getElementById("hw-v3-games-hub-footer");
+    const footer = document.getElementById("hw-games-hub-footer");
+    const card = document.getElementById("hw-games-hub-card");
     if (!footer) return;
+    if (card) card.hidden = false;
     footer.replaceChildren();
     MOCK.games.forEach((game) => {
       if (game.locked) {
@@ -298,6 +270,7 @@
   function renderAll() {
     renderTop();
     renderHistory();
+    renderAssignmentCard();
     renderLessons();
     renderMistakes();
     renderGames();
@@ -309,6 +282,13 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function requestPrint() {
+    const form = worksheetForm || document.getElementById("hw-worksheet-form");
+    if (!form || typeof global.HwWorksheet?.printBlank !== "function") return;
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+    global.HwWorksheet.printBlank(form);
   }
 
   function mockSubmit() {
@@ -336,16 +316,14 @@
     }
 
     const titleEl = document.getElementById("hw-v2-title");
-    const hiddenTitle = document.getElementById("hw-current-assignment-title");
     if (titleEl && assignment.title) titleEl.textContent = assignment.title;
-    if (hiddenTitle && assignment.title) hiddenTitle.textContent = assignment.title;
 
     mount.replaceChildren();
     worksheetForm = global.HwWorksheet.render(mount, assignment, {
       omitMetaTitle: true,
       omitMetaHint: true,
       studentMeta: {
-        username: "demo_v3",
+        username: "demo_v4",
         displayName: MOCK.studentName,
         assignmentId: assignment.id || "sheet-uxrsqyd",
         lessonName: assignment.title || "よく・あまり",
@@ -430,14 +408,24 @@
     });
   }
 
-  function bindActions() {
-    document.getElementById("hw-v2-lesson-link")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      window.open(MOCK.lessonUrl, "_blank", "noopener,noreferrer");
-    });
+  function renderHubTitle() {
+    const titleEl = document.getElementById("hw-hub-title");
+    if (!titleEl) return;
+    const session = global.HwAuth?.getSession?.();
+    const name = session?.displayName || session?.username || MOCK.studentName;
+    titleEl.textContent = global.HwAuth?.possessiveHubTitle
+      ? global.HwAuth.possessiveHubTitle(name)
+      : name + "'s hub";
+  }
 
+  function bindActions() {
+    document.getElementById("hw-pill-print")?.addEventListener("click", requestPrint);
     document.getElementById("hw-v2-onboard-next")?.addEventListener("click", nextOnboard);
     document.getElementById("hw-v2-onboard-skip")?.addEventListener("click", skipOnboard);
+
+    const greet = document.getElementById("hw-platform-greet");
+    if (greet) greet.textContent = MOCK.studentName;
+    renderHubTitle();
   }
 
   async function init() {
@@ -446,10 +434,6 @@
     bindActions();
     initOnboarding();
     await mountWorksheet();
-
-    if (global.HwSachiko?.initHubPreview) {
-      global.HwSachiko.initHubPreview();
-    }
   }
 
   if (document.readyState === "loading") {
@@ -460,7 +444,7 @@
     init().catch(() => {});
   }
 
-  global.HwHubV3 = {
+  global.HwHubV4 = {
     init,
     setDemoStatus,
     MOCK,

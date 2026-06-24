@@ -120,6 +120,10 @@
    * @param {HTMLElement} mount
    * @param {{ username?: string, displayName?: string, assignmentId?: string, lessonName?: string, promptId?: string, promptLabel?: string }} meta
    */
+  function emitWorksheetAnswerChange(el) {
+    el?.closest("form")?.dispatchEvent(new CustomEvent("hw-worksheet-answer", { bubbles: true }));
+  }
+
   function mount(mount, meta) {
     if (!mount || mount.dataset.bound === "true") return;
     mount.dataset.bound = "true";
@@ -353,6 +357,7 @@
       if (savedTitleEl) {
         savedTitleEl.textContent = isAudioMode() ? "Audio saved" : "Video saved";
       }
+      emitWorksheetAnswerChange(mount);
     }
 
     function resetUi() {
@@ -571,12 +576,15 @@
       setStatus("");
     });
     mount.querySelector(".hw-video-inline__retake")?.addEventListener("click", () => {
+      const wasSaved = getState(mount) === "saved";
       resetUi();
       setStatus("");
+      if (wasSaved) emitWorksheetAnswerChange(mount);
     });
     mount.querySelector(".hw-video-inline__record-again")?.addEventListener("click", () => {
       resetUi();
       setStatus("");
+      emitWorksheetAnswerChange(mount);
     });
     mount.querySelector(".hw-video-inline__save")?.addEventListener("click", saveRecording);
 

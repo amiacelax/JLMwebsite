@@ -1,0 +1,32 @@
+/* Hub v4 — live platform cards below, v3 worksheet on top */
+
+body.hw-hub-v4-page {
+  --hw-v2-accent: var(--color-green);
+}
+
+.hw-hub-v4-homework {
+  max-width: 52rem;
+  margin: 0 auto 2rem;
+}
+
+.hw-hub-v4-homework .hw-hub-v2-worksheet {
+  margin-bottom: 1rem;
+}
+
+.hw-hub-v4-below {
+  margin-bottom: 0;
+}
+
+.hw-hub-v4-page .hw-worksheet__meta-title,
+.hw-hub-v4-page .hw-worksheet__meta-hint {
+  display: none !important;
+}
+
+/* Worksheet is already on screen — hide redundant jump link */
+.hw-hub-v4-page #hw-pill-online {
+  display: none;
+}
+
+.hw-hub-v4-page .hw-current-assignment__pills {
+  gap: 0.5rem;
+}

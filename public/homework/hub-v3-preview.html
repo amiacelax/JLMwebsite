@@ -10,14 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=1">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=8">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       else document.documentElement.setAttribute('data-theme', 'dark');
-      HwAuth.requireAuth('/homework.html');
     })();
   </script>
 </head>
@@ -40,30 +39,18 @@
   <main id="hw-v2-main" class="hw-hub-v2-shell">
     <span id="hw-current-assignment-title" class="visually-hidden">よく・あまり</span>
 
-    <header class="hw-hub-v2-top" aria-labelledby="hw-v2-title">
-      <p class="hw-hub-v2-top__hello" id="hw-v2-hello">Loading…</p>
-      <h1 class="hw-hub-v2-top__title" id="hw-v2-title">よく・あまり</h1>
-      <p class="hw-hub-v2-top__tagline" id="hw-v2-tagline"></p>
-      <p class="hw-hub-v2-top__status" id="hw-v2-status-line" hidden></p>
-      <button type="button" class="btn btn--primary hw-hub-v2-top__cta" id="hw-v2-cta-primary" data-action="scroll-worksheet">
-        Open homework
-      </button>
-    </header>
-
-    <div class="hw-hub-v2-quick" aria-label="While you work">
-      <a class="hw-hub-v2-quick__link" id="hw-v2-lesson-link" href="#">Lesson recording</a>
-      <span class="hw-hub-v2-quick__sep" aria-hidden="true">·</span>
-      <button type="button" class="hw-hub-v2-quick__link hw-hub-v2-quick__link--btn" id="hw-v3-sachiko-open">
-        Ask Sachiko
-      </button>
-    </div>
-
     <section class="hw-hub-v2-feedback" id="hw-v2-feedback" hidden aria-labelledby="hw-v2-feedback-title">
       <h2 class="hw-hub-v2-feedback__title" id="hw-v2-feedback-title">From JD</h2>
       <p class="hw-hub-v2-feedback__body" id="hw-v2-feedback-body"></p>
     </section>
 
-    <section class="hw-hub-v2-worksheet" id="hw-v2-worksheet-zone" aria-labelledby="hw-v2-worksheet-heading">
+    <section class="hw-hub-v2-worksheet hw-hub-worksheet-card" id="hw-v2-worksheet-zone" aria-labelledby="hw-v2-worksheet-heading">
+      <header class="hw-hub-v2-top hw-hub-v2-top--in-card" aria-labelledby="hw-v2-title">
+        <p class="hw-hub-v2-top__hello" id="hw-v2-hello">Loading…</p>
+        <h1 class="hw-hub-v2-top__title" id="hw-v2-title">よく・あまり</h1>
+        <p class="hw-hub-v2-top__tagline" id="hw-v2-tagline"></p>
+        <p class="hw-hub-v2-top__status" id="hw-v2-status-line" hidden></p>
+      </header>
       <h2 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h2>
       <div id="hw-v2-worksheet-mount" lang="ja"></div>
     </section>
@@ -73,15 +60,76 @@
       <ul class="hw-hub-v2-past-list" id="hw-v2-history"></ul>
     </details>
 
-    <details class="hw-hub-v2-fold hw-hub-v2-fold--muted" id="hw-v2-elsewhere-fold">
-      <summary class="hw-hub-v2-fold__summary">Elsewhere</summary>
-      <p class="hw-hub-v2-fold__intro">Games and other practice — not part of this week's sheet.</p>
-      <div class="hw-hub-v2-elsewhere-links">
-        <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Lantern Word Hunt</a>
-        <a class="btn btn--ghost btn--sm" href="/games.html">All games</a>
-        <a class="btn btn--ghost btn--sm" href="/homework.html">Plans &amp; info</a>
+    <div class="hw-platform-grid hw-hub-v3-below" aria-label="Lessons, practice, and games">
+      <div class="hw-grid-stack">
+        <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+          <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+          <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-v3-lesson-meta"></p>
+          <div class="hw-lesson-actions">
+            <a class="btn btn--ghost btn--full btn--sm" id="hw-v2-lesson-link" href="#">Watch lesson (YouTube link coming soon)</a>
+            <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-v3-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer">Lesson playlist on YouTube</a>
+          </div>
+        </section>
+
+        <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko" id="hw-v3-sachiko-card" aria-label="Talk to Sachiko">
+          <div class="hw-sachiko-card__row">
+            <div class="hw-sachiko-face-wrap" aria-hidden="true">
+              <svg class="hw-sachiko-face hw-sachiko-face--card" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+            </div>
+            <div class="hw-sachiko-card__text">
+              <h2 class="hw-platform-card__title">Talk to Sachiko</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Speak with a chatbot designed after my actual host mom :)</p>
+            </div>
+          </div>
+          <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-v3-sachiko-open">Ask Sachiko</button>
+        </section>
       </div>
-    </details>
+
+      <div class="hw-grid-upload-col">
+        <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-v3-mistakes-card">
+          <h2 class="hw-platform-card__title">Recent mistakes</h2>
+          <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
+          <ul class="hw-mistake-feed" id="hw-v3-mistake-list"></ul>
+          <p class="hw-mistake-feed__empty" id="hw-v3-mistakes-empty" hidden>No mistakes on your list — nice work!</p>
+          <div class="hw-student-mistakes__footer">
+            <button type="button" class="hw-student-mistakes__trash-btn" aria-label="View deleted mistakes" title="Demo only" disabled>
+              <svg class="hw-student-mistakes__trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-v3-games-hub-card">
+          <div class="hw-games-pixel-scene" aria-hidden="true">
+            <svg class="hw-games-pixel-art" viewBox="0 0 80 52" role="presentation" focusable="false">
+              <g class="hw-games-pixel-stars">
+                <rect x="6" y="4" width="2" height="2" rx="0.5"/>
+                <rect x="58" y="8" width="2" height="2" rx="0.5"/>
+                <rect x="72" y="18" width="2" height="2" rx="0.5"/>
+                <rect x="12" y="22" width="2" height="2" rx="0.5"/>
+                <rect x="68" y="34" width="2" height="2" rx="0.5"/>
+              </g>
+              <g class="hw-games-pixel-invader">
+                <rect x="32" y="6" width="4" height="4"/><rect x="36" y="6" width="4" height="4"/><rect x="40" y="6" width="4" height="4"/><rect x="44" y="6" width="4" height="4"/><rect x="48" y="6" width="4" height="4"/>
+                <rect x="28" y="10" width="4" height="4"/><rect x="32" y="10" width="4" height="4"/><rect x="36" y="10" width="4" height="4"/><rect x="40" y="10" width="4" height="4"/><rect x="44" y="10" width="4" height="4"/><rect x="48" y="10" width="4" height="4"/><rect x="52" y="10" width="4" height="4"/>
+                <rect x="24" y="14" width="4" height="4"/><rect x="28" y="14" width="4" height="4"/><rect x="32" y="14" width="4" height="4"/><rect x="36" y="14" width="4" height="4"/><rect x="40" y="14" width="4" height="4"/><rect x="44" y="14" width="4" height="4"/><rect x="48" y="14" width="4" height="4"/><rect x="52" y="14" width="4" height="4"/><rect x="56" y="14" width="4" height="4"/>
+                <rect x="24" y="18" width="4" height="4"/><rect x="28" y="18" width="4" height="4"/><rect x="32" y="18" width="4" height="4"/><rect x="36" y="18" width="4" height="4"/><rect x="40" y="18" width="4" height="4"/><rect x="44" y="18" width="4" height="4"/><rect x="48" y="18" width="4" height="4"/><rect x="52" y="18" width="4" height="4"/><rect x="56" y="18" width="4" height="4"/>
+                <rect x="28" y="22" width="4" height="4"/><rect x="32" y="22" width="4" height="4"/><rect x="36" y="22" width="4" height="4"/><rect x="40" y="22" width="4" height="4"/><rect x="44" y="22" width="4" height="4"/><rect x="48" y="22" width="4" height="4"/><rect x="52" y="22" width="4" height="4"/>
+                <rect x="28" y="26" width="4" height="4"/><rect x="52" y="26" width="4" height="4"/>
+                <rect x="24" y="30" width="4" height="4"/><rect x="36" y="30" width="4" height="4"/><rect x="48" y="30" width="4" height="4"/><rect x="56" y="30" width="4" height="4"/>
+              </g>
+              <g class="hw-games-pixel-missiles">
+                <rect class="hw-games-pixel-missile hw-games-pixel-missile--1" x="37" y="34" width="2" height="8"/>
+                <rect class="hw-games-pixel-missile hw-games-pixel-missile--2" x="43" y="36" width="2" height="8"/>
+                <rect class="hw-games-pixel-missile hw-games-pixel-missile--3" x="49" y="34" width="2" height="8"/>
+              </g>
+            </svg>
+          </div>
+          <h2 class="course-card__title">Learning Games 👾</h2>
+          <div class="course-card__footer hw-games-hub-links" id="hw-v3-games-hub-footer"></div>
+          <p class="hw-games-hub-soon">…more coming soon</p>
+        </article>
+      </div>
+    </div>
   </main>
 
   <svg class="hw-sachiko-sprite" aria-hidden="true" focusable="false">
@@ -135,8 +183,11 @@
   </div>
 
   <script src="/js/subpage.js" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260693" defer></script>
-  <script src="/js/hw-sachiko.js?v=20260693" defer></script>
-  <script src="/js/hw-hub-v3.js?v=1" defer></script>
+  <script src="/js/hw-compat.js?v=20260694" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260704" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260704" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260704" defer></script>
+  <script src="/js/hw-sachiko.js?v=20260694" defer></script>
+  <script src="/js/hw-hub-v3.js?v=9" defer></script>
 </body>
 </html>

@@ -57,7 +57,7 @@ body.hw-hub-v3-page {
 }
 
 .hw-hub-v2-shell {
-  max-width: 42rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
 }
@@ -68,10 +68,75 @@ body.hw-hub-v3-page {
   }
 }
 
+/* Worksheet on top, platform cards below */
+.hw-hub-v3-below {
+  margin-top: 1.5rem;
+  margin-bottom: 0;
+}
+
+@media (min-width: 640px) {
+  .hw-hub-v3-below {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "stack upload";
+  }
+}
+
+.hw-hub-v3-below .hw-grid-mistakes .hw-mistake-feed {
+  max-height: 14rem;
+}
+
+body.hw-hub-v3-page .hw-worksheet__meta-title,
+body.hw-hub-v3-page .hw-worksheet__meta-hint {
+  display: none !important;
+}
+
 /* Top — one title, one button */
 .hw-hub-v2-top {
   margin-bottom: 1rem;
   text-align: center;
+}
+
+.hw-hub-worksheet-card {
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.hw-hub-worksheet-card .hw-hub-v2-top--in-card {
+  margin: 0;
+  padding: 1.5rem 1.5rem 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.hw-hub-worksheet-card #hw-v2-worksheet-mount {
+  padding: 0;
+}
+
+.hw-hub-worksheet-card .hw-worksheet {
+  border: none !important;
+  border-radius: 0;
+  padding: 1rem 1.5rem 1.75rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hw-hub-worksheet-card .hw-worksheet__meta {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.75rem;
+}
+
+.hw-worksheet--hub-chromeless .hw-worksheet__meta {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.hw-worksheet--hub-chromeless .hw-worksheet__meta-hint,
+.hw-worksheet--hub-chromeless .hw-worksheet__meta-title {
+  display: none !important;
 }
 
 .hw-hub-v2-top__hello {
@@ -102,7 +167,7 @@ body.hw-hub-v3-page {
 }
 
 .hw-hub-v2-top__status {
-  margin: 0 0 0.85rem;
+  margin: 0;
   font-family: Inter, sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
@@ -111,11 +176,9 @@ body.hw-hub-v3-page {
   color: var(--hw-v2-accent);
 }
 
-.hw-hub-v2-top__cta {
-  min-width: 12rem;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  font-size: 1rem;
+.hw-worksheet__slide-sticky-head .hw-hub-v2-top__status--below-nav {
+  margin: 0 0 0.65rem;
+  text-align: center;
 }
 
 /* Quiet shortcuts */

@@ -8118,44 +8118,38 @@ body.hw-role-teacher #hw-teacher-hub {
 
 .hw-worksheet__slide-nav {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-  padding: 0.85rem 1rem;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.hw-worksheet__slide-controls {
-  display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.75rem;
+  padding: 0;
 }
 
-.hw-worksheet__slide-counter-wrap {
-  width: 100%;
-  min-width: 0;
+.hw-worksheet__slide-sticky-head .hw-worksheet__slide-nav {
+  margin-top: 0;
+  margin-bottom: 0.65rem;
+}
+
+.hw-listen-instruction {
+  margin: 0.35rem 0 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
   text-align: center;
+}
+
+body.hw-hw-focus-mode .hw-listen-instruction {
+  color: rgba(232, 237, 245, 0.72);
 }
 
 .hw-worksheet__slide-counter {
   margin: 0;
+  min-width: 4.5rem;
+  text-align: center;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text);
-}
-
-.hw-worksheet__slide-section {
-  margin: 0.2rem 0 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .hw-worksheet__slide-btn {
@@ -8186,12 +8180,6 @@ body.hw-role-teacher #hw-teacher-hub {
 .hw-worksheet__slide-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-}
-
-.hw-worksheet__slide-toggle {
-  flex-shrink: 0;
-  min-width: 7.5rem;
-  padding-inline: 0.75rem;
 }
 
 .hw-worksheet--slide-mode .hw-worksheet__line[hidden],
@@ -8335,8 +8323,7 @@ body.hw-hw-focus-mode .hw-worksheet__meta {
 }
 
 body.hw-hw-focus-mode .hw-worksheet__slide-nav {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
+  margin-top: 0.65rem;
 }
 
 body.hw-hw-focus-mode .hw-worksheet__slide-counter {
@@ -8462,9 +8449,37 @@ button.hw-register__pill {
   background: var(--color-bg-elevated);
 }
 
+.hw-worksheet__topic-brief-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hw-worksheet__topic-brief-summary::-webkit-details-marker {
+  display: none;
+}
+
+.hw-worksheet__topic-brief-summary::before {
+  content: "▸";
+  flex-shrink: 0;
+  margin-right: 0.15rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  color: var(--color-brand-blue);
+  transition: transform 0.15s ease;
+}
+
+.hw-worksheet__topic-brief[open] > .hw-worksheet__topic-brief-summary::before {
+  transform: rotate(90deg);
+}
+
 .hw-worksheet__topic-brief--slide {
   margin-top: 0;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0;
   padding: 0.65rem 0.75rem;
 }
 
@@ -8477,18 +8492,20 @@ button.hw-register__pill {
   background: var(--color-bg-card);
 }
 
-.hw-worksheet__slide-sticky-head .hw-worksheet__slide-nav {
-  margin-bottom: 0;
-}
-
 .hw-worksheet__topic-brief-title {
-  margin: 0 0 0.45rem;
+  margin: 0;
   font-family: Inter, sans-serif;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-brand-blue);
+}
+
+.hw-worksheet__topic-brief-body {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .hw-worksheet__topic-explanation {
@@ -8523,6 +8540,14 @@ button.hw-register__pill {
   text-decoration: underline;
 }
 
+.hw-worksheet__topic-video-soon {
+  margin: 0.75rem 0 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
 body.hw-hw-focus-mode .hw-worksheet__topic-brief {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
@@ -8534,6 +8559,14 @@ body.hw-hw-focus-mode .hw-worksheet__slide-sticky-head {
 
 body.hw-hw-focus-mode .hw-worksheet__topic-explanation {
   color: #e8edf5;
+}
+
+body.hw-hw-focus-mode .hw-worksheet__topic-video-soon {
+  color: rgba(232, 237, 245, 0.65);
+}
+
+body.hw-hw-focus-mode .hw-worksheet__topic-brief-body {
+  border-top-color: rgba(255, 255, 255, 0.1);
 }
 
 body.hw-hw-focus-mode .hw-worksheet__topic-video-link {

@@ -442,6 +442,7 @@
 
     mount.replaceChildren();
     worksheetForm = global.HwWorksheet.render(mount, DEMO_ASSIGNMENT, {
+      omitMetaTitle: true,
       studentMeta: {
         username: "demo_v2",
         displayName: MOCK.studentName,
@@ -739,20 +740,7 @@
     });
   }
 
-  function requireTeacherPreview() {
-    if (!global.HwAuth) return false;
-    const session = global.HwAuth.getSession();
-    if (!session || session.role !== "teacher") {
-      document.body.innerHTML =
-        '<main style="padding:2rem;font-family:Inter,sans-serif;text-align:center"><h1>Teacher preview only</h1><p>This prototype is linked from the teacher hub. <a href="/homework/platform.html">Back to platform</a></p></main>';
-      return false;
-    }
-    return true;
-  }
-
   function init() {
-    if (!requireTeacherPreview()) return;
-
     demoStatus = getDemoStatus();
     initDemoBar();
     bindActions();

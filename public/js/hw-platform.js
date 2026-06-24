@@ -13,6 +13,13 @@
     greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
   }
 
+  if (!isTeacher) {
+    const hubTitle = document.getElementById("hw-hub-title");
+    if (hubTitle) {
+      hubTitle.textContent = HwAuth.possessiveHubTitle(session.displayName || session.username);
+    }
+  }
+
   function renderAccountBar() {
     const badges = document.getElementById("hw-platform-badges");
     if (!badges || isTeacher) return;

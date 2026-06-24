@@ -44,6 +44,10 @@
    * @param {HTMLElement} mount
    * @param {{ username?: string, displayName?: string, assignmentId?: string, lessonName?: string, promptId?: string, promptLabel?: string }} meta
    */
+  function emitWorksheetAnswerChange(el) {
+    el?.closest("form")?.dispatchEvent(new CustomEvent("hw-worksheet-answer", { bubbles: true }));
+  }
+
   function mount(mount, meta) {
     if (!mount || mount.dataset.bound === "true") return;
     mount.dataset.bound = "true";
@@ -179,6 +183,7 @@
         return;
       }
 
+      delete mount.dataset.hwAnswerSaved;
       clearRecording();
       setStatus("");
 
@@ -256,8 +261,10 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Upload failed.");
+        mount.dataset.hwAnswerSaved = "true";
         setStatus(data.message || "Audio sent — JD will review it.");
         resetUi();
+        emitWorksheetAnswerChange(mount);
       } catch (err) {
         setStatus((err && err.message) || "Upload failed.");
       } finally {
