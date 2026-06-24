@@ -106,7 +106,7 @@
     if (mode === "video-response") return "Video";
     if (mode === "audio-prompt") return "Audio";
     if (mode === "translation") return "Translation";
-    if (mode === "star-order") return "Star";
+    if (mode === "star-order") return "Order";
     return "Block";
   }
 
@@ -411,7 +411,10 @@
     const listenStyle = Boolean(options.listenStyle);
     wrap.className =
       "hw-blank-wrap" +
-      (part.multiline && !listenStyle ? " hw-blank-wrap--multiline" : "") +
+      (options.translationStyle ? " hw-blank-wrap--translation" : "") +
+      (part.multiline && !listenStyle && !options.translationStyle
+        ? " hw-blank-wrap--multiline"
+        : "") +
       (listenStyle ? " hw-blank-wrap--listen" : "");
 
     let field;
@@ -420,6 +423,11 @@
       field.type = "text";
       field.className = "hw-blank hw-blank--wide hw-blank--listen";
       field.setAttribute("aria-label", "What you heard");
+    } else if (options.translationStyle) {
+      field = document.createElement("input");
+      field.type = "text";
+      field.className = "hw-blank hw-blank--wide hw-blank--translation";
+      field.setAttribute("aria-label", "Your translation");
     } else if (part.multiline) {
       field = document.createElement("textarea");
       field.rows = 6;
@@ -1004,9 +1012,12 @@
 
     const blankPart =
       (item.parts || []).find((p) => p.type === "blank") ||
-      { type: "blank", name: item.id, wide: true, multiline: true };
+      { type: "blank", name: item.id, wide: true };
     content.appendChild(
-      renderBlankWithHint(blankPart, { omitAnswers: true, listenStyle: false })
+      renderBlankWithHint(
+        { ...blankPart, multiline: false, wide: true },
+        { omitAnswers: true, listenStyle: false, translationStyle: true }
+      )
     );
 
     line.appendChild(content);
@@ -1019,19 +1030,13 @@
     line.dataset.itemId = item.id || "";
 
     const pieces = (item.pieces || []).map((p) => String(p).trim()).filter(Boolean);
-    const starIndex = Math.max(0, Math.min(Number(item.starIndex) || 0, Math.max(0, pieces.length - 1)));
     line.dataset.pieceCount = String(pieces.length);
-    line.dataset.starIndex = String(starIndex);
+    line.dataset.pieces = JSON.stringify(pieces);
 
     if (lineOptions.itemNum) appendLineNumber(line, lineOptions.itemNum);
 
     const content = document.createElement("div");
     content.className = "hw-worksheet__content";
-
-    const hint = document.createElement("p");
-    hint.className = "hw-star-block__hint";
-    hint.textContent = "Choose the term that goes where the ★ is.";
-    content.appendChild(hint);
 
     const sentence = document.createElement("div");
     sentence.className = "hw-star-block__sentence";
@@ -1044,15 +1049,9 @@
 
     pieces.forEach((piece, pi) => {
       const slot = document.createElement("span");
-      slot.className =
-        "hw-star-block__slot" + (pi === starIndex ? " hw-star-block__slot--star" : "");
+      slot.className = "hw-star-block__slot";
       slot.dataset.slotIndex = String(pi);
-      if (pi === starIndex) {
-        slot.innerHTML = '<span class="hw-star-block__star" aria-hidden="true">★</span>';
-        slot.setAttribute("aria-label", "Star slot");
-      } else {
-        slot.setAttribute("aria-label", "Blank " + (pi + 1));
-      }
+      slot.setAttribute("aria-label", "Blank " + (pi + 1));
       sentence.appendChild(slot);
     });
 
@@ -1068,10 +1067,11 @@
     pool.setAttribute("aria-label", "Sentence pieces");
     shufflePieces(pieces).forEach((piece) => {
       const origIndex = pieces.indexOf(piece);
+      const colorNum = ((origIndex >= 0 ? origIndex : 0) % 4) + 1;
       const chip = document.createElement("div");
-      chip.className =
-        "hw-star-block__chip hw-star-block__chip--" + (((origIndex >= 0 ? origIndex : 0) % 4) + 1);
+      chip.className = "hw-star-block__chip hw-star-block__chip--" + colorNum;
       chip.dataset.piece = piece;
+      chip.dataset.color = String(colorNum);
       chip.textContent = piece;
       chip.draggable = true;
       chip.setAttribute("role", "button");
@@ -1080,6 +1080,14 @@
       pool.appendChild(chip);
     });
     content.appendChild(pool);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "btn btn--ghost btn--sm hw-star-block__reset";
+    resetBtn.textContent = "Reset answers";
+    resetBtn.disabled = true;
+    content.appendChild(resetBtn);
+
     line.appendChild(content);
 
     const hidden = document.createElement("input");

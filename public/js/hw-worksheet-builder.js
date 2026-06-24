@@ -6,7 +6,7 @@
     { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "translation-line", label: "Translation", hint: "Japanese → English blank" },
-    { type: "star-line", label: "Star order", hint: "JLPT-style ★ drag & drop" },
+    { type: "star-line", label: "Sentence order", hint: "Drag & drop pieces" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
     { type: "audio-prompt", label: "Audio prompt", hint: "Student records an answer" },
     { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
@@ -276,7 +276,6 @@
               type: "blank",
               name: id,
               wide: true,
-              multiline: true,
               answer: "I went to school today.",
             },
           ],
@@ -287,9 +286,7 @@
           type,
           prefix: "今日",
           suffix: "。",
-          starIndex: 2,
           pieces: ["は", "学校", "に", "行きました"],
-          starAnswer: "に",
         };
       default:
         return null;
@@ -421,9 +418,7 @@
             type: "star-line",
             prefix: item.prefix || "",
             suffix: item.suffix || "。",
-            starIndex: Number(item.starIndex) || 0,
             pieces: (item.pieces || []).slice(),
-            starAnswer: item.starAnswer || item.pieces?.[item.starIndex] || "",
           });
         }
       });
@@ -538,7 +533,7 @@
           id: uid("sec"),
           mode: "star-order",
           title: "",
-          instructions: "Choose the term that goes where the ★ is.",
+          instructions: "Drag each piece into the sentence.",
           items: [],
         };
         while (i < blocks.length && blocks[i].type === "star-line") {
@@ -592,7 +587,6 @@
       type: "blank",
       name: block.id || out.id,
       wide: true,
-      multiline: true,
     };
     if (answer) blank.answer = answer;
     out.parts.push(blank);
@@ -601,14 +595,11 @@
 
   function blockToStarItem(block, index) {
     const pieces = (block.pieces || []).map((p) => String(p).trim()).filter(Boolean);
-    const starIndex = Math.max(0, Math.min(Number(block.starIndex) || 0, Math.max(0, pieces.length - 1)));
     return {
       id: block.id || "star-" + (index + 1),
       prefix: String(block.prefix || "").trim(),
       suffix: String(block.suffix || "。").trim(),
-      starIndex,
       pieces,
-      starAnswer: String(block.starAnswer || pieces[starIndex] || "").trim(),
     };
   }
 
@@ -1079,9 +1070,9 @@
       if (block.type === "star-line") {
         const preview =
           String(block.prefix || "") +
-          " … ★ … " +
+          " _ … _ " +
           String(block.suffix || "");
-        return clip(preview) || "Star order";
+        return clip(preview) || "Sentence order";
       }
       return "Block";
     }
@@ -1385,8 +1376,6 @@
       if (block.type === "star-line") {
         if (!Array.isArray(block.pieces) || !block.pieces.length) {
           block.pieces = ["は", "学校", "に", "行きました"];
-          block.starIndex = 2;
-          block.starAnswer = "に";
         }
 
         const prefixLabel = document.createElement("label");
@@ -1410,10 +1399,6 @@
 
         function syncStarFromPieces() {
           block.pieces = pieceInputs.map((input) => input.value.trim()).filter(Boolean);
-          const max = Math.max(0, block.pieces.length - 1);
-          if (block.starIndex > max) block.starIndex = max;
-          starSelect.max = String(block.pieces.length || 1);
-          block.starAnswer = block.pieces[block.starIndex] || "";
           if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         }
@@ -1449,26 +1434,6 @@
           syncStarFromPieces();
         });
         body.appendChild(addPieceBtn);
-
-        const starLabel = document.createElement("label");
-        starLabel.className = "hw-builder__field-label";
-        starLabel.textContent = "★ slot (1 = first blank)";
-        const starSelect = document.createElement("select");
-        starSelect.className = "hw-builder__field hw-builder__field--sm";
-        (block.pieces || []).forEach((piece, pi) => {
-          const opt = document.createElement("option");
-          opt.value = String(pi);
-          opt.textContent = pi + 1 + (piece ? " — " + piece : "");
-          if (pi === block.starIndex) opt.selected = true;
-          starSelect.appendChild(opt);
-        });
-        starSelect.addEventListener("change", () => {
-          block.starIndex = parseInt(starSelect.value, 10) || 0;
-          block.starAnswer = block.pieces[block.starIndex] || "";
-          notifyChange();
-        });
-        starLabel.appendChild(starSelect);
-        body.appendChild(starLabel);
 
         const suffixLabel = document.createElement("label");
         suffixLabel.className = "hw-builder__field-label";
