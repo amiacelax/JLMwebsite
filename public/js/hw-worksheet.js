@@ -1025,10 +1025,13 @@
 
     if (lineOptions.itemNum) appendLineNumber(line, lineOptions.itemNum);
 
+    const content = document.createElement("div");
+    content.className = "hw-worksheet__content";
+
     const hint = document.createElement("p");
     hint.className = "hw-star-block__hint";
     hint.textContent = "Choose the term that goes where the ★ is.";
-    line.appendChild(hint);
+    content.appendChild(hint);
 
     const sentence = document.createElement("div");
     sentence.className = "hw-star-block__sentence";
@@ -1057,15 +1060,17 @@
     suffix.className = "hw-star-block__suffix";
     suffix.textContent = String(item.suffix || "。");
     sentence.appendChild(suffix);
-    line.appendChild(sentence);
+    content.appendChild(sentence);
 
     const pool = document.createElement("div");
     pool.className = "hw-star-block__pool";
     pool.setAttribute("role", "list");
     pool.setAttribute("aria-label", "Sentence pieces");
-    shufflePieces(pieces).forEach((piece, ci) => {
+    shufflePieces(pieces).forEach((piece) => {
+      const origIndex = pieces.indexOf(piece);
       const chip = document.createElement("div");
-      chip.className = "hw-star-block__chip hw-star-block__chip--" + ((ci % 4) + 1);
+      chip.className =
+        "hw-star-block__chip hw-star-block__chip--" + (((origIndex >= 0 ? origIndex : 0) % 4) + 1);
       chip.dataset.piece = piece;
       chip.textContent = piece;
       chip.draggable = true;
@@ -1074,7 +1079,8 @@
       chip.setAttribute("aria-label", "Drag " + piece + " into a slot");
       pool.appendChild(chip);
     });
-    line.appendChild(pool);
+    content.appendChild(pool);
+    line.appendChild(content);
 
     const hidden = document.createElement("input");
     hidden.type = "hidden";
