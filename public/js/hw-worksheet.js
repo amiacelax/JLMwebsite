@@ -1196,10 +1196,12 @@
     wrap.appendChild(head);
 
     const sectionIntro =
-      String(section.instructions || "").trim() ||
-      (section.mode === "audio-listening"
-        ? "Listen to the clip and write down what you think it's saying."
-        : "");
+      section.mode === "star-order"
+        ? "Drag/drop the words to form the best answer!"
+        : String(section.instructions || "").trim() ||
+          (section.mode === "audio-listening"
+            ? "Listen to the clip and write down what you think it's saying."
+            : "");
     if (sectionIntro && (authoring || section.mode !== "audio-listening")) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";

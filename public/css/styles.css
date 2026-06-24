@@ -8253,7 +8253,7 @@ input.hw-blank.hw-blank--translation {
 
 .hw-star-block__slot--filled {
   border-style: solid;
-  font-weight: 600;
+  font-weight: 400;
   gap: 0.15rem;
   padding-right: 0.3rem;
 }
@@ -8325,7 +8325,7 @@ input.hw-blank.hw-blank--translation {
   padding: 0.7rem 0.85rem;
   font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 400;
   text-align: center;
   border: 2px solid transparent;
   border-radius: var(--radius-md);

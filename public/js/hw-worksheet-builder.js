@@ -533,7 +533,7 @@
           id: uid("sec"),
           mode: "star-order",
           title: "",
-          instructions: "Drag each piece into the sentence.",
+          instructions: "Drag/drop the words to form the best answer!",
           items: [],
         };
         while (i < blocks.length && blocks[i].type === "star-line") {
