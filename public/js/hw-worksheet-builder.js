@@ -5,6 +5,8 @@
   const PALETTE = [
     { type: "grammar-line", label: "Blank sentence", hint: "Use {answer} for the blank" },
     { type: "open-line", label: "Open response", hint: "Written answer box" },
+    { type: "translation-line", label: "Translation", hint: "Japanese → English blank" },
+    { type: "star-line", label: "Star order", hint: "JLPT-style ★ drag & drop" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
     { type: "audio-prompt", label: "Audio prompt", hint: "Student records an answer" },
     { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
@@ -263,6 +265,32 @@
           englishAnswer: "",
           parts: [{ type: "blank", name: id, wide: true, answer: "" }],
         });
+      case "translation-line":
+        return {
+          id,
+          type,
+          japanese: "今日は学校に行きました。",
+          englishAnswer: "I went to school today.",
+          parts: [
+            {
+              type: "blank",
+              name: id,
+              wide: true,
+              multiline: true,
+              answer: "I went to school today.",
+            },
+          ],
+        };
+      case "star-line":
+        return {
+          id,
+          type,
+          prefix: "今日",
+          suffix: "。",
+          starIndex: 2,
+          pieces: ["は", "学校", "に", "行きました"],
+          starAnswer: "に",
+        };
       default:
         return null;
     }
@@ -378,6 +406,25 @@
             prompt: item.prompt || "",
             recordLabel: item.recordLabel || "Record your answer",
           });
+        } else if (sec.mode === "translation") {
+          const blank = (item.parts || []).find((p) => p.type === "blank");
+          blocks.push({
+            id: item.id || uid("blk"),
+            type: "translation-line",
+            japanese: item.japanese || "",
+            englishAnswer: blank?.answer || "",
+            parts: JSON.parse(JSON.stringify(item.parts || [])),
+          });
+        } else if (sec.mode === "star-order") {
+          blocks.push({
+            id: item.id || uid("blk"),
+            type: "star-line",
+            prefix: item.prefix || "",
+            suffix: item.suffix || "。",
+            starIndex: Number(item.starIndex) || 0,
+            pieces: (item.pieces || []).slice(),
+            starAnswer: item.starAnswer || item.pieces?.[item.starIndex] || "",
+          });
         }
       });
     });
@@ -469,6 +516,40 @@
         continue;
       }
 
+      if (block.type === "translation-line") {
+        const sec = {
+          id: uid("sec"),
+          mode: "translation",
+          title: "",
+          instructions: "",
+          items: [],
+        };
+        while (i < blocks.length && blocks[i].type === "translation-line") {
+          const item = blockToTranslationItem(blocks[i], sec.items.length);
+          if (item.japanese) sec.items.push(item);
+          i++;
+        }
+        if (sec.items.length) sections.push(sec);
+        continue;
+      }
+
+      if (block.type === "star-line") {
+        const sec = {
+          id: uid("sec"),
+          mode: "star-order",
+          title: "",
+          instructions: "Choose the term that goes where the ★ is.",
+          items: [],
+        };
+        while (i < blocks.length && blocks[i].type === "star-line") {
+          const item = blockToStarItem(blocks[i], sec.items.length);
+          if (item.pieces?.length) sec.items.push(item);
+          i++;
+        }
+        if (sec.items.length) sections.push(sec);
+        continue;
+      }
+
       i++;
     }
 
@@ -498,6 +579,37 @@
       }
     });
     return out;
+  }
+
+  function blockToTranslationItem(block, index) {
+    const out = {
+      id: block.id || "tr-" + (index + 1),
+      japanese: String(block.japanese || "").trim(),
+      parts: [],
+    };
+    const answer = String(block.englishAnswer || "").trim();
+    const blank = {
+      type: "blank",
+      name: block.id || out.id,
+      wide: true,
+      multiline: true,
+    };
+    if (answer) blank.answer = answer;
+    out.parts.push(blank);
+    return out;
+  }
+
+  function blockToStarItem(block, index) {
+    const pieces = (block.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    const starIndex = Math.max(0, Math.min(Number(block.starIndex) || 0, Math.max(0, pieces.length - 1)));
+    return {
+      id: block.id || "star-" + (index + 1),
+      prefix: String(block.prefix || "").trim(),
+      suffix: String(block.suffix || "。").trim(),
+      starIndex,
+      pieces,
+      starAnswer: String(block.starAnswer || pieces[starIndex] || "").trim(),
+    };
   }
 
   function blockToOpenItem(block, index) {
@@ -961,6 +1073,16 @@
       if (block.type === "grammar-line") {
         return clip(grammarSentenceFromBlock(block)) || "Blank sentence";
       }
+      if (block.type === "translation-line") {
+        return clip(block.japanese) || "Translation";
+      }
+      if (block.type === "star-line") {
+        const preview =
+          String(block.prefix || "") +
+          " … ★ … " +
+          String(block.suffix || "");
+        return clip(preview) || "Star order";
+      }
       return "Block";
     }
 
@@ -980,12 +1102,6 @@
 
       const head = document.createElement("div");
       head.className = "hw-builder__block-head";
-
-      const numBadge = document.createElement("span");
-      numBadge.className = "hw-item-num hw-item-num--builder";
-      numBadge.setAttribute("aria-label", "Block " + (index + 1));
-      numBadge.textContent = String(index + 1);
-      head.appendChild(numBadge);
 
       const dragHandle = document.createElement("span");
       dragHandle.className = "hw-builder__block-drag";
@@ -1227,6 +1343,146 @@
         });
         topicLabel.appendChild(topicInput);
         body.appendChild(topicLabel);
+        return el;
+      }
+
+      if (block.type === "translation-line") {
+        const jpLabel = document.createElement("label");
+        jpLabel.className = "hw-builder__field-label";
+        jpLabel.textContent = "Japanese";
+        const jpInput = document.createElement("textarea");
+        jpInput.className =
+          "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
+        jpInput.rows = 2;
+        jpInput.value = block.japanese || "";
+        jpInput.addEventListener("input", () => {
+          block.japanese = jpInput.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        jpLabel.appendChild(jpInput);
+        body.appendChild(jpLabel);
+
+        const enLabel = document.createElement("label");
+        enLabel.className = "hw-builder__field-label";
+        enLabel.textContent = "English answer (for JD / See Answers)";
+        const enInput = document.createElement("textarea");
+        enInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
+        enInput.rows = 2;
+        enInput.value = block.englishAnswer || "";
+        enInput.addEventListener("input", () => {
+          block.englishAnswer = enInput.value;
+          const blank = (block.parts || []).find((p) => p.type === "blank");
+          if (blank) blank.answer = enInput.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        enLabel.appendChild(enInput);
+        body.appendChild(enLabel);
+        return el;
+      }
+
+      if (block.type === "star-line") {
+        if (!Array.isArray(block.pieces) || !block.pieces.length) {
+          block.pieces = ["は", "学校", "に", "行きました"];
+          block.starIndex = 2;
+          block.starAnswer = "に";
+        }
+
+        const prefixLabel = document.createElement("label");
+        prefixLabel.className = "hw-builder__field-label";
+        prefixLabel.textContent = "Fixed start (before slots)";
+        const prefixInput = document.createElement("input");
+        prefixInput.type = "text";
+        prefixInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
+        prefixInput.value = block.prefix || "";
+        prefixInput.addEventListener("input", () => {
+          block.prefix = prefixInput.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        prefixLabel.appendChild(prefixInput);
+        body.appendChild(prefixLabel);
+
+        const piecesWrap = document.createElement("div");
+        piecesWrap.className = "hw-builder__star-pieces";
+        const pieceInputs = [];
+
+        function syncStarFromPieces() {
+          block.pieces = pieceInputs.map((input) => input.value.trim()).filter(Boolean);
+          const max = Math.max(0, block.pieces.length - 1);
+          if (block.starIndex > max) block.starIndex = max;
+          starSelect.max = String(block.pieces.length || 1);
+          block.starAnswer = block.pieces[block.starIndex] || "";
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        }
+
+        function renderPieceInputs() {
+          piecesWrap.replaceChildren();
+          pieceInputs.length = 0;
+          (block.pieces || []).forEach((piece, pi) => {
+            const row = document.createElement("div");
+            row.className = "hw-builder__star-piece-row";
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
+            input.value = piece;
+            input.placeholder = "Piece " + (pi + 1);
+            input.addEventListener("input", syncStarFromPieces);
+            pieceInputs.push(input);
+            row.appendChild(input);
+            piecesWrap.appendChild(row);
+          });
+        }
+
+        renderPieceInputs();
+        body.appendChild(piecesWrap);
+
+        const addPieceBtn = document.createElement("button");
+        addPieceBtn.type = "button";
+        addPieceBtn.className = "btn btn--ghost btn--sm";
+        addPieceBtn.textContent = "Add piece";
+        addPieceBtn.addEventListener("click", () => {
+          block.pieces = (block.pieces || []).concat([""]);
+          renderPieceInputs();
+          syncStarFromPieces();
+        });
+        body.appendChild(addPieceBtn);
+
+        const starLabel = document.createElement("label");
+        starLabel.className = "hw-builder__field-label";
+        starLabel.textContent = "★ slot (1 = first blank)";
+        const starSelect = document.createElement("select");
+        starSelect.className = "hw-builder__field hw-builder__field--sm";
+        (block.pieces || []).forEach((piece, pi) => {
+          const opt = document.createElement("option");
+          opt.value = String(pi);
+          opt.textContent = pi + 1 + (piece ? " — " + piece : "");
+          if (pi === block.starIndex) opt.selected = true;
+          starSelect.appendChild(opt);
+        });
+        starSelect.addEventListener("change", () => {
+          block.starIndex = parseInt(starSelect.value, 10) || 0;
+          block.starAnswer = block.pieces[block.starIndex] || "";
+          notifyChange();
+        });
+        starLabel.appendChild(starSelect);
+        body.appendChild(starLabel);
+
+        const suffixLabel = document.createElement("label");
+        suffixLabel.className = "hw-builder__field-label";
+        suffixLabel.textContent = "Ending punctuation";
+        const suffixInput = document.createElement("input");
+        suffixInput.type = "text";
+        suffixInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
+        suffixInput.value = block.suffix || "。";
+        suffixInput.addEventListener("input", () => {
+          block.suffix = suffixInput.value;
+          notifyChange();
+        });
+        suffixLabel.appendChild(suffixInput);
+        body.appendChild(suffixLabel);
         return el;
       }
 

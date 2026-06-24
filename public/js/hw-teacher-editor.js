@@ -957,6 +957,15 @@
       const context = assignment.sections.find((s) => s.mode === "context-blank");
       if (context?.items?.length) return true;
 
+      const translation = assignment.sections.find((s) => s.mode === "translation");
+      if (translation?.items?.length) return true;
+
+      const star = assignment.sections.find((s) => s.mode === "star-order");
+      if (star?.items?.length) return true;
+
+      const audio = assignment.sections.find((s) => s.mode === "audio-prompt");
+      if (audio?.items?.length) return true;
+
       return false;
     }
 

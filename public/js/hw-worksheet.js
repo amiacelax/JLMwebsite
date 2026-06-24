@@ -105,6 +105,8 @@
     if (mode === "context-blank") return "Open response";
     if (mode === "video-response") return "Video";
     if (mode === "audio-prompt") return "Audio";
+    if (mode === "translation") return "Translation";
+    if (mode === "star-order") return "Star";
     return "Block";
   }
 
@@ -968,6 +970,122 @@
     return wrap;
   }
 
+  function shufflePieces(list) {
+    const arr = list.slice();
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  function renderTranslationLine(item, lineOptions) {
+    const line = document.createElement("div");
+    line.className = "hw-worksheet__line hw-worksheet__line--translation";
+    line.dataset.itemId = item.id || "";
+
+    if (lineOptions.itemNum) appendLineNumber(line, lineOptions.itemNum);
+
+    const content = document.createElement("div");
+    content.className = "hw-worksheet__content";
+
+    const jp = document.createElement("p");
+    jp.className = "hw-translation-block__japanese";
+    jp.setAttribute("lang", "ja");
+    jp.textContent = item.japanese || "";
+    content.appendChild(jp);
+
+    const instruction = document.createElement("p");
+    instruction.className = "hw-translation-block__instruction";
+    instruction.textContent = "Translate into English";
+    content.appendChild(instruction);
+
+    const blankPart =
+      (item.parts || []).find((p) => p.type === "blank") ||
+      { type: "blank", name: item.id, wide: true, multiline: true };
+    content.appendChild(
+      renderBlankWithHint(blankPart, { omitAnswers: true, listenStyle: false })
+    );
+
+    line.appendChild(content);
+    return line;
+  }
+
+  function renderStarLine(item, lineOptions) {
+    const line = document.createElement("div");
+    line.className = "hw-worksheet__line hw-worksheet__line--star";
+    line.dataset.itemId = item.id || "";
+
+    const pieces = (item.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    const starIndex = Math.max(0, Math.min(Number(item.starIndex) || 0, Math.max(0, pieces.length - 1)));
+    line.dataset.pieceCount = String(pieces.length);
+    line.dataset.starIndex = String(starIndex);
+
+    if (lineOptions.itemNum) appendLineNumber(line, lineOptions.itemNum);
+
+    const hint = document.createElement("p");
+    hint.className = "hw-star-block__hint";
+    hint.textContent = "Choose the term that goes where the ★ is.";
+    line.appendChild(hint);
+
+    const sentence = document.createElement("div");
+    sentence.className = "hw-star-block__sentence";
+    sentence.setAttribute("lang", "ja");
+
+    const prefix = document.createElement("span");
+    prefix.className = "hw-star-block__prefix";
+    prefix.textContent = String(item.prefix || "");
+    sentence.appendChild(prefix);
+
+    pieces.forEach((piece, pi) => {
+      const slot = document.createElement("span");
+      slot.className =
+        "hw-star-block__slot" + (pi === starIndex ? " hw-star-block__slot--star" : "");
+      slot.dataset.slotIndex = String(pi);
+      if (pi === starIndex) {
+        slot.innerHTML = '<span class="hw-star-block__star" aria-hidden="true">★</span>';
+        slot.setAttribute("aria-label", "Star slot");
+      } else {
+        slot.setAttribute("aria-label", "Blank " + (pi + 1));
+      }
+      sentence.appendChild(slot);
+    });
+
+    const suffix = document.createElement("span");
+    suffix.className = "hw-star-block__suffix";
+    suffix.textContent = String(item.suffix || "。");
+    sentence.appendChild(suffix);
+    line.appendChild(sentence);
+
+    const pool = document.createElement("div");
+    pool.className = "hw-star-block__pool";
+    pool.setAttribute("role", "list");
+    pool.setAttribute("aria-label", "Sentence pieces");
+    shufflePieces(pieces).forEach((piece, ci) => {
+      const chip = document.createElement("div");
+      chip.className = "hw-star-block__chip hw-star-block__chip--" + ((ci % 4) + 1);
+      chip.dataset.piece = piece;
+      chip.textContent = piece;
+      chip.draggable = true;
+      chip.setAttribute("role", "button");
+      chip.tabIndex = 0;
+      chip.setAttribute("aria-label", "Drag " + piece + " into a slot");
+      pool.appendChild(chip);
+    });
+    line.appendChild(pool);
+
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.className = "hw-blank hw-star-block__answer";
+    hidden.name = item.id || "star-" + lineOptions.itemNum;
+    hidden.dataset.answer = JSON.stringify(pieces);
+    line.appendChild(hidden);
+
+    return line;
+  }
+
   function renderLine(item, index, sectionMode, lineOptions) {
     lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
@@ -1094,6 +1212,14 @@
       if (section.mode === "audio-prompt") {
         if (authoring) wrap.appendChild(renderAuthorAudioItem(item, i, lineOpts));
         else wrap.appendChild(renderAudioRecordCue(item, i, { ...renderOptions, ...lineOpts }));
+        return;
+      }
+      if (section.mode === "translation") {
+        wrap.appendChild(renderTranslationLine(item, lineOpts));
+        return;
+      }
+      if (section.mode === "star-order") {
+        wrap.appendChild(renderStarLine(item, lineOpts));
         return;
       }
       if (authoring) {
@@ -1405,6 +1531,9 @@
       initSlideMode(form);
       initFocusMode(form);
       initSeeAnswers(form);
+    }
+    if (!authoring && global.HwStarBlock?.initForm) {
+      global.HwStarBlock.initForm(form);
     }
 
     return form;
@@ -2017,6 +2146,21 @@
         lineEl.querySelector('[data-hw-answer-saved="true"]') ||
           lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]')
       );
+    }
+    if (lineEl.classList.contains("hw-worksheet__line--star")) {
+      const hidden = lineEl.querySelector(".hw-star-block__answer");
+      if (!hidden?.value) return false;
+      try {
+        const order = JSON.parse(hidden.value);
+        const need = Number(lineEl.dataset.pieceCount) || 0;
+        return (
+          Array.isArray(order) &&
+          order.length === need &&
+          order.every((part) => String(part || "").trim())
+        );
+      } catch {
+        return false;
+      }
     }
     const blanks = lineEl.querySelectorAll(STUDENT_BLANK_SELECTOR);
     if (!blanks.length) return false;
