@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=2">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=3">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -80,9 +80,18 @@
 
           <section class="hw-hub-v5-complete hw-hub-worksheet-card" id="hw-v5-complete-card" aria-labelledby="hw-v5-complete-title">
             <h2 class="hw-hub-v5-complete__title" id="hw-v5-complete-title">You've finished your assignment!</h2>
-            <p class="hw-hub-v5-complete__sub">JD received your answers. Here's what you can do next.</p>
 
-            <h3 class="hw-hub-v5-sellup-heading" id="hw-v5-sellup-heading" hidden>Keep learning</h3>
+            <div class="hw-hub-v5-pending" id="hw-v5-pending-note" hidden>
+              <p class="hw-hub-v5-pending__line">
+                <span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>
+                <strong>JD is looking at your answers now.</strong>
+              </p>
+              <p class="hw-hub-v5-pending__sub">He'll send his notes back ASAP — watch for a Discord ping.</p>
+            </div>
+
+            <div class="hw-hub-v5-sellup-heading" id="hw-v5-sellup-heading" hidden>
+              <p class="hw-hub-v5-sellup-heading__text" id="hw-v5-sellup-heading-text"></p>
+            </div>
             <div class="hw-hub-v5-sellup" id="hw-v5-sellup" aria-label="Upgrade options"></div>
 
             <div class="hw-hub-v5-complete__actions">
@@ -197,6 +206,6 @@
   <script src="/js/hw-worksheet.js?v=20260718" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-checkout.js" defer></script>
-  <script src="/js/hw-hub-v5.js?v=2" defer></script>
+  <script src="/js/hw-hub-v5.js?v=3" defer></script>
 </body>
 </html>

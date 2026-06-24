@@ -320,9 +320,46 @@
     return article;
   }
 
+  function setSellupHeading(heading, headingText, variant) {
+    if (!heading || !headingText) return;
+    heading.hidden = false;
+    heading.className = "hw-hub-v5-sellup-heading hw-hub-v5-sellup-heading--" + variant;
+    headingText.innerHTML = "";
+    if (variant === "upgrade-lessons") {
+      headingText.innerHTML =
+        '<span class="hw-hub-v5-sellup-heading__accent">Let\u2019s keep learning!</span>' +
+        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 upgrade or take lessons</span>';
+    } else if (variant === "weekly") {
+      headingText.innerHTML =
+        '<span class="hw-hub-v5-sellup-heading__accent">Level up your lesson plan</span>' +
+        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 add weekly homework</span>';
+    } else if (variant === "tiers") {
+      headingText.innerHTML =
+        '<span class="hw-hub-v5-sellup-heading__accent">Want more from Homework Hub?</span>' +
+        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 pick your next tier</span>';
+    } else if (variant === "lessons") {
+      headingText.innerHTML =
+        '<span class="hw-hub-v5-sellup-heading__accent">Ready for live coaching?</span>' +
+        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 lessons pair perfectly with HW</span>';
+    }
+  }
+
+  function renderCompleteCard(status) {
+    const pending = document.getElementById("hw-v5-pending-note");
+    const title = document.getElementById("hw-v5-complete-title");
+    if (pending) pending.hidden = status !== "submitted";
+    if (title) {
+      title.textContent =
+        status === "reviewed"
+          ? "JD reviewed your assignment!"
+          : "You've finished your assignment!";
+    }
+  }
+
   function renderSellup() {
     const mount = document.getElementById("hw-v5-sellup");
     const heading = document.getElementById("hw-v5-sellup-heading");
+    const headingText = document.getElementById("hw-v5-sellup-heading-text");
     if (!mount) return;
 
     const session = getPreviewSession();
@@ -331,20 +368,19 @@
     mount.hidden = offers.length === 0;
 
     if (heading) {
+      heading.hidden = true;
+      heading.className = "hw-hub-v5-sellup-heading";
+    }
+    if (headingText) headingText.innerHTML = "";
+
+    if (heading && headingText && offers.length) {
       const hasTiers = offers.some((o) => o.kind === "tier");
       const hasWeekly = offers.some((o) => o.kind === "weekly_homework");
-      if (hasWeekly) {
-        heading.textContent = "Add weekly homework to your lesson plan";
-      } else if (hasTiers && offers.some((o) => o.kind === "lessons")) {
-        heading.textContent = "Keep learning — upgrade or take lessons";
-      } else if (hasTiers) {
-        heading.textContent = "Want more from Homework Hub?";
-      } else if (offers.some((o) => o.kind === "lessons")) {
-        heading.textContent = "Ready for live coaching?";
-      } else {
-        heading.textContent = "";
-      }
-      heading.hidden = !heading.textContent;
+      const hasLessons = offers.some((o) => o.kind === "lessons");
+      if (hasWeekly) setSellupHeading(heading, headingText, "weekly");
+      else if (hasTiers && hasLessons) setSellupHeading(heading, headingText, "upgrade-lessons");
+      else if (hasTiers) setSellupHeading(heading, headingText, "tiers");
+      else if (hasLessons) setSellupHeading(heading, headingText, "lessons");
     }
 
     offers.forEach((offer) => {
@@ -447,6 +483,7 @@
     const status = getDemoStatus();
     renderDemoBar(status);
     renderWorksheetZone(status);
+    renderCompleteCard(status);
     renderSellup();
     renderFeedback(status);
     renderLessons();
