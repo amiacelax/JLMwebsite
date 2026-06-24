@@ -8231,6 +8231,7 @@ input.hw-blank.hw-blank--translation {
   font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
   font-size: 1.2rem;
   line-height: 1.6;
+  overflow: visible;
 }
 
 .hw-star-block__prefix,
@@ -8252,10 +8253,10 @@ input.hw-blank.hw-blank--translation {
 }
 
 .hw-star-block__slot--filled {
+  position: relative;
   border-style: solid;
   font-weight: 400;
-  gap: 0.15rem;
-  padding-right: 0.3rem;
+  padding: 0.2rem 0.45rem;
 }
 
 .hw-star-block__slot--color-1 {
@@ -8283,22 +8284,27 @@ input.hw-blank.hw-blank--translation {
 }
 
 .hw-star-block__slot-clear {
+  position: absolute;
+  top: -0.42rem;
+  left: -0.42rem;
+  z-index: 2;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
   margin: 0;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: color-mix(in srgb, #000 38%, transparent);
+  background: color-mix(in srgb, #000 55%, transparent);
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .hw-star-block__slot-clear:hover {
@@ -8317,6 +8323,8 @@ input.hw-blank.hw-blank--translation {
   margin: 0 auto 0.5rem;
   max-width: 22rem;
   width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hw-star-block__chip {
@@ -8336,7 +8344,7 @@ input.hw-blank.hw-blank--translation {
 }
 
 .hw-star-block__chip--dragging {
-  opacity: 0.55;
+  opacity: 0;
 }
 
 .hw-star-block__chip--placed {

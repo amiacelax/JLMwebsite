@@ -61,6 +61,26 @@
     slot.setAttribute("aria-label", "Blank " + (Number(idx) + 1));
   }
 
+  function setChipDragImage(e, chip) {
+    const ghost = chip.cloneNode(true);
+    ghost.classList.remove("hw-star-block__chip--placed", "hw-star-block__chip--dragging");
+    ghost.style.position = "fixed";
+    ghost.style.top = "-1000px";
+    ghost.style.left = "-1000px";
+    ghost.style.opacity = "1";
+    ghost.style.pointerEvents = "none";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+    chip._dragGhost = ghost;
+  }
+
+  function removeChipDragImage(chip) {
+    if (chip._dragGhost) {
+      chip._dragGhost.remove();
+      chip._dragGhost = null;
+    }
+  }
+
   function renderFilledSlot(slot, piece, colorIndex) {
     slot.dataset.value = piece;
     slot.dataset.color = colorIndex;
@@ -69,17 +89,17 @@
     slot.setAttribute("aria-label", "Filled: " + piece);
     slot.replaceChildren();
 
-    const text = document.createElement("span");
-    text.className = "hw-star-block__slot-text";
-    text.textContent = piece;
-    slot.appendChild(text);
-
     const clearBtn = document.createElement("button");
     clearBtn.type = "button";
     clearBtn.className = "hw-star-block__slot-clear";
     clearBtn.setAttribute("aria-label", "Remove " + piece);
     clearBtn.innerHTML = '<span aria-hidden="true">×</span>';
     slot.appendChild(clearBtn);
+
+    const text = document.createElement("span");
+    text.className = "hw-star-block__slot-text";
+    text.textContent = piece;
+    slot.appendChild(text);
 
     return clearBtn;
   }
@@ -182,10 +202,12 @@
         }
         e.dataTransfer.setData("text/plain", chip.dataset.piece || "");
         e.dataTransfer.effectAllowed = "move";
+        setChipDragImage(e, chip);
         chip.classList.add("hw-star-block__chip--dragging");
       });
       chip.addEventListener("dragend", () => {
         chip.classList.remove("hw-star-block__chip--dragging");
+        removeChipDragImage(chip);
       });
       chip.addEventListener("click", () => {
         if (chip.classList.contains("hw-star-block__chip--placed")) return;
