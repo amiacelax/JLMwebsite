@@ -39,8 +39,8 @@
     student_special: {
       id: "student_special",
       name: "Student Special Tier",
-      price: null,
-      hwPerMonth: null,
+      price: 10,
+      hwPerMonth: 4,
       videoIncluded: false,
     },
     pending: {
@@ -57,7 +57,7 @@
       "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY",
   };
 
-  const WEEKLY_HOMEWORK_UPGRADE_PRICE = 5;
+  const WEEKLY_HOMEWORK_UPGRADE_PRICE = 10;
 
   /** @type {Record<string, object>} */
   const ACCOUNTS = {
@@ -225,6 +225,55 @@
         s.accountLabel === "current_student" &&
         s.tier === "student_special"
     );
+  }
+
+  /**
+   * Post-submission upsell offers (Hub v5 completion zone).
+   * @param {object|null} session
+   * @returns {Array<{ kind: 'tier'|'weekly_homework'|'lessons', plan?: string }>}
+   */
+  function getPostSubmitSellupOffers(session) {
+    const s = session || getSession();
+    if (!s || s.role !== "student") return [];
+
+    const tier = s.tier || "pending";
+    const label = s.accountLabel || "homework_only";
+
+    if (label === "current_student" && tier === "student_special") {
+      return [{ kind: "weekly_homework" }];
+    }
+
+    if (tier === "pending" || !hasActiveSubscription(s)) {
+      return [
+        { kind: "tier", plan: "basic" },
+        { kind: "tier", plan: "premium" },
+        { kind: "tier", plan: "ultra" },
+        { kind: "lessons" },
+      ];
+    }
+
+    if (label === "homework_only") {
+      if (tier === "tier3") return [{ kind: "lessons" }];
+      if (tier === "tier2") {
+        return [
+          { kind: "tier", plan: "ultra" },
+          { kind: "lessons" },
+        ];
+      }
+      if (tier === "tier1") {
+        return [
+          { kind: "tier", plan: "premium" },
+          { kind: "tier", plan: "ultra" },
+          { kind: "lessons" },
+        ];
+      }
+    }
+
+    if (label === "current_student") {
+      return [{ kind: "lessons" }];
+    }
+
+    return [];
   }
 
   function getTierMeta(session) {
@@ -409,6 +458,7 @@
     hasVideoResponseAccess,
     canOfferVideoUnlock,
     canShowWeeklyHomeworkUpgrade,
+    getPostSubmitSellupOffers,
     getTierMeta,
     enableVideoResponseUnlock,
     listStudentAccounts,

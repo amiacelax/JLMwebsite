@@ -326,10 +326,16 @@
     if (!card || !btn || btn.dataset.bound === "true") return;
     btn.dataset.bound = "true";
     card.hidden = !HwAuth.canShowWeeklyHomeworkUpgrade(session);
+    const price = HwAuth.WEEKLY_HOMEWORK_UPGRADE_PRICE;
+    const priceEl = card.querySelector(".course-card__price");
+    if (priceEl) {
+      priceEl.textContent = "$" + price;
+      priceEl.setAttribute("aria-label", "Price: " + price + " dollars per month");
+    }
     btn.addEventListener("click", () => {
       showToast(
         "Weekly homework add-on ($" +
-          HwAuth.WEEKLY_HOMEWORK_UPGRADE_PRICE +
+          price +
           "/mo) — PayPal coming soon. Message JD to sign up."
       );
     });

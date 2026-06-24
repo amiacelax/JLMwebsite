@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=9">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=1">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=2">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -34,6 +34,13 @@
     <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="in_progress">Working on HW</button>
     <button type="button" class="hw-hub-v2-demo-bar__btn is-active" data-v5-demo-status="submitted">Just submitted</button>
     <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="reviewed">JD reviewed</button>
+    <span class="hw-hub-v2-demo-bar__label">Account:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn is-active" data-v5-demo-account="noplan">No plan</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_basic">HW Basic</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_premium">HW Premium</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_ultra">HW Ultra</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_no_hw">Student no HW</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_lessons">Student</button>
     <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html?tab=hubv2" style="text-decoration:none">← Teacher hub</a>
   </div>
 
@@ -75,24 +82,8 @@
             <h2 class="hw-hub-v5-complete__title" id="hw-v5-complete-title">You've finished your assignment!</h2>
             <p class="hw-hub-v5-complete__sub">JD received your answers. Here's what you can do next.</p>
 
-            <div class="hw-hub-v5-complete__upgrade">
-              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" tabindex="0">
-                <p class="hw-hub-tier-plan__badge">Popular</p>
-                <span class="course-card__lock" aria-hidden="true">
-                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
-                </span>
-                <h3 class="course-card__title">Premium</h3>
-                <p class="hw-hub-tier-tip" role="tooltip">Weekly homework, AI tutor, and full game access.</p>
-                <div class="course-card__footer">
-                  <button type="button" class="course-card__status" id="hw-v5-upgrade-btn" aria-label="View Premium plan details">
-                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
-                    <span class="course-card__status-text course-card__status-text--unlock">Upgrade</span>
-                  </button>
-                  <span class="course-card__price" aria-label="Price: twenty dollars per month">$20<span class="course-card__price-suffix">/mo</span></span>
-                </div>
-              </article>
-            </div>
+            <h3 class="hw-hub-v5-sellup-heading" id="hw-v5-sellup-heading" hidden>Keep learning</h3>
+            <div class="hw-hub-v5-sellup" id="hw-v5-sellup" aria-label="Upgrade options"></div>
 
             <div class="hw-hub-v5-complete__actions">
               <button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">View past assignments</button>
@@ -152,10 +143,60 @@
     </section>
   </main>
 
+  <div class="hw-breakdown-modal hw-tier-detail-modal" id="hw-tier-detail-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-tier-detail-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-tier-detail-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-tier-detail-close aria-label="Close plan details">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-tier-detail-title">Plan details</h2>
+
+      <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+        <h3>Basic</h3>
+        <ul class="hw-breakdown-card__list">
+          <li>HW assignment once per month</li>
+          <li>General written feedback/advice</li>
+          <li>Phone or print — works either way</li>
+          <li>Full learning game access</li>
+        </ul>
+      </article>
+
+      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-premium" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge">Popular</p>
+        <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
+        <h3>Premium</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Four</u> HW assignments per month</li>
+          <li><u>Written</u> feedback and advice from JD</li>
+          <li>AI study tutor for hints and grammar help</li>
+          <li>Phone or print — works either way</li>
+          <li>Full learning game access</li>
+          <li>Private Discord access</li>
+        </ul>
+        <button type="button" class="btn btn--primary btn--full" data-hw-checkout="premium">Subscribe — Premium</button>
+      </article>
+
+      <article class="hw-breakdown-card hw-breakdown-card--included hw-tier-detail-panel" id="hw-tier-detail-ultra" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
+        <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
+        <h3>Ultra</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Four</u> HW assignments per month</li>
+          <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
+          <li>Everything in Premium (AI tutor, games, Discord)</li>
+          <li>Priority review queue</li>
+          <li>Phone or print — works either way</li>
+        </ul>
+        <a class="btn btn--primary btn--full" href="/#contact" data-service="Homework Hub" data-hw-tier-detail-close>Ask about Ultra</a>
+      </article>
+    </div>
+  </div>
+
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-compat.js?v=20260694" defer></script>
   <script src="/js/hw-worksheet.js?v=20260718" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
-  <script src="/js/hw-hub-v5.js?v=1" defer></script>
+  <script src="/js/hw-checkout.js" defer></script>
+  <script src="/js/hw-hub-v5.js?v=2" defer></script>
 </body>
 </html>

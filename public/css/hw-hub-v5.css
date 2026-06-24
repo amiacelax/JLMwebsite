@@ -17,20 +17,76 @@
 }
 
 .hw-hub-v5-complete__sub {
-  margin: 0 0 1.35rem;
+  margin: 0 0 1.15rem;
   font-family: Inter, sans-serif;
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--color-text-muted);
 }
 
-.hw-hub-v5-complete__upgrade {
-  max-width: 14rem;
-  margin: 0 auto 1.35rem;
+.hw-hub-v5-sellup-heading {
+  margin: 0 0 0.85rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
-.hw-hub-v5-complete__upgrade .course-card__title {
+.hw-hub-v5-sellup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin: 0 auto 1.25rem;
+  max-width: 48rem;
+}
+
+.hw-hub-v5-sellup[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-sellup .hw-hub-tier-plan,
+.hw-hub-v5-sellup .hw-hub-v5-sellup-card {
+  flex: 1 1 9.5rem;
+  max-width: 14rem;
+  min-width: 9rem;
+  margin: 0;
+  text-align: left;
+}
+
+.hw-hub-v5-sellup .course-card__title {
   font-size: 1rem;
+}
+
+.hw-hub-v5-sellup-card--lessons {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  padding: 1rem 1rem 0.85rem;
+}
+
+.hw-hub-v5-sellup-card--lessons .course-card__desc {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v5-sellup-card__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: auto;
+}
+
+.hw-hub-v5-sellup-card--weekly .course-card__desc {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
 }
 
 .hw-hub-v5-complete__actions {
@@ -43,4 +99,12 @@
 
 .hw-hub-v5-complete__actions .btn {
   width: 100%;
+}
+
+@media (max-width: 520px) {
+  .hw-hub-v5-sellup .hw-hub-tier-plan,
+  .hw-hub-v5-sellup .hw-hub-v5-sellup-card {
+    flex: 1 1 100%;
+    max-width: 18rem;
+  }
 }
