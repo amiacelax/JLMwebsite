@@ -4071,11 +4071,13 @@ button.course-card__status:disabled {
   flex-direction: column;
 }
 
-.hw-photo-upload--assignment {
+.hw-photo-upload--assignment,
+.hw-photo-upload--worksheet {
   margin-top: 0.5rem;
 }
 
-.hw-photo-upload--assignment .hw-photo-upload__status {
+.hw-photo-upload--assignment .hw-photo-upload__status,
+.hw-photo-upload--worksheet .hw-photo-upload__status {
   margin: 0.35rem 0 0;
   min-height: 1.25rem;
 }
@@ -8507,7 +8509,8 @@ body.hw-hw-focus-mode .subpage__main .section .container--wide {
   padding: 0;
 }
 
-body.hw-hw-focus-mode .hw-worksheet-section {
+body.hw-hw-focus-mode .hw-worksheet-section,
+body.hw-hw-focus-mode #hw-hub-v4-homework {
   position: fixed;
   inset: 0;
   z-index: 400;
@@ -8519,6 +8522,11 @@ body.hw-hw-focus-mode .hw-worksheet-section {
   background: #0a0a0c;
   overflow: hidden;
   scroll-margin-top: 0;
+}
+
+body.hw-hw-focus-mode .hw-hub-v4-homework {
+  max-width: none;
+  margin: 0;
 }
 
 .hw-focus-bar {
@@ -8568,7 +8576,8 @@ body.hw-hw-focus-mode .hw-worksheet-section {
   text-overflow: ellipsis;
 }
 
-body.hw-hw-focus-mode #hw-worksheet-mount {
+body.hw-hw-focus-mode #hw-worksheet-mount,
+body.hw-hw-focus-mode #hw-v2-worksheet-mount {
   flex: 1;
   display: flex;
   align-items: safe center;
@@ -9348,15 +9357,76 @@ textarea.hw-blank.hw-blank--open {
 
 .hw-worksheet__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   justify-content: center;
-  align-items: center;
-  align-content: center;
+  align-items: stretch;
   width: 100%;
-  gap: 0.75rem;
+  gap: 0;
   margin-top: 1.5rem;
   font-family: Inter, sans-serif;
   text-align: center;
+}
+
+.hw-worksheet__actions-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hw-worksheet__submit-tracker {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-green);
+}
+
+.hw-worksheet__submit-tracker--ready {
+  color: var(--color-green);
+}
+
+.hw-worksheet__actions-submit {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.hw-worksheet__actions-primary .hw-worksheet__status--inline {
+  margin: 0.35rem 0 0;
+  min-height: 1.1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-worksheet:has(.hw-worksheet__actions-tools) {
+  padding-bottom: 0;
+}
+
+.hw-worksheet__actions-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0 0.4rem;
+  box-sizing: border-box;
+}
+
+.hw-worksheet__actions-submit .btn--primary {
+  width: min(100%, 16rem);
 }
 
 body.hw-hw-focus-mode .hw-worksheet__actions {
@@ -9506,8 +9576,20 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
   }
 
   .hw-worksheet__actions {
+    align-items: center;
+  }
+
+  .hw-worksheet__actions-tools {
     flex-direction: column;
     align-items: center;
+  }
+
+  .hw-worksheet__actions-tools .btn {
+    width: min(100%, 16rem);
+  }
+
+  .hw-worksheet__actions-submit .btn--primary {
+    width: min(100%, 16rem);
   }
 
   .hw-worksheet__actions .btn {
@@ -9759,19 +9841,14 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
     page-break-inside: avoid;
   }
 
-  body.hw-print-active .hw-item-num {
-    color: #fff !important;
-    background: #3d6f9c !important;
-    border: 1px solid #2d5578 !important;
-    box-shadow: none !important;
+  body.hw-print-active .hw-item-num,
+  body.hw-print-active .hw-worksheet__line-num {
+    display: none !important;
+    visibility: hidden !important;
   }
 
-  body.hw-print-active .hw-worksheet--hide-line-nums .hw-worksheet__line-num {
-    display: block !important;
-  }
-
-  body.hw-print-active .hw-worksheet--hide-line-nums .hw-worksheet__line > .hw-worksheet__content {
-    grid-column: auto !important;
+  body.hw-print-active .hw-worksheet__line > .hw-worksheet__content {
+    grid-column: 1 / -1 !important;
   }
 
   body.hw-print-active .hw-blank {
@@ -9817,6 +9894,18 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
     color: #fff !important;
     background: #0d47a1 !important;
     border: 1px solid #0a3d91 !important;
+  }
+
+  body.hw-print-active .hw-worksheet__line[hidden],
+  body.hw-print-active .hw-worksheet__section[hidden] {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  body.hw-print-active .hw-worksheet__slide-sticky-head,
+  body.hw-print-active .hw-worksheet__slide-nav {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   body.hw-print-active .hw-worksheet__actions,

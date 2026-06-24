@@ -1,0 +1,46 @@
+/* Hub v5 — post-submission completion zone (prototype only) */
+
+.hw-hub-v5-complete {
+  max-width: 52rem;
+  margin: 0 auto 2rem;
+  padding: 1.75rem 1.5rem 1.5rem;
+  text-align: center;
+}
+
+.hw-hub-v5-complete__title {
+  margin: 0 0 0.45rem;
+  font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
+  font-size: clamp(1.5rem, 4.5vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+.hw-hub-v5-complete__sub {
+  margin: 0 0 1.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v5-complete__upgrade {
+  max-width: 14rem;
+  margin: 0 auto 1.35rem;
+}
+
+.hw-hub-v5-complete__upgrade .course-card__title {
+  font-size: 1rem;
+}
+
+.hw-hub-v5-complete__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-width: 18rem;
+  margin: 0 auto;
+}
+
+.hw-hub-v5-complete__actions .btn {
+  width: 100%;
+}

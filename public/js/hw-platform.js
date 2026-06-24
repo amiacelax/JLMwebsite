@@ -20,6 +20,110 @@
     }
   }
 
+  /** Hub v4: worksheet on top, cards below. Legacy bottom worksheet for noplan only. */
+  function usesHubV4Layout() {
+    if (isTeacher) return false;
+    return session.username !== "noplan";
+  }
+
+  let hubV4WorksheetForm = null;
+
+  function applyHubLayout() {
+    if (isTeacher) return;
+    const v4 = usesHubV4Layout();
+    document.body.classList.toggle("hw-hub-v4-page", v4);
+    document.body.classList.toggle("hw-hub-v3-page", v4);
+
+    const v4Homework = document.getElementById("hw-hub-v4-homework");
+    const legacySection = document.getElementById("hw-worksheet-section");
+    const grid = document.getElementById("hw-student-grid");
+    const assignCard = document.getElementById("hw-current-assignment-card");
+
+    if (v4Homework) v4Homework.hidden = !v4;
+    if (legacySection) legacySection.hidden = v4;
+    if (grid) grid.classList.toggle("hw-hub-v4-below", v4);
+
+    if (assignCard) {
+      assignCard.classList.toggle("hw-hub-v4-actions-card", v4);
+    }
+    placePhotoUploadShell();
+  }
+
+  function placePhotoUploadShell() {
+    const photoForm = document.getElementById("hw-photo-upload-form");
+    if (!photoForm) return;
+    const target = usesHubV4Layout()
+      ? document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet")
+      : document.getElementById("hw-worksheet-section");
+    if (target && photoForm.parentElement !== target) {
+      target.appendChild(photoForm);
+    }
+  }
+
+  function getWorksheetMount() {
+    if (usesHubV4Layout()) {
+      return document.getElementById("hw-v2-worksheet-mount");
+    }
+    return document.getElementById("hw-worksheet-mount");
+  }
+
+  function placeHubV4Progress() {
+    const statusLine = document.getElementById("hw-v2-status-line");
+    const nav = hubV4WorksheetForm?.querySelector(".hw-worksheet__slide-nav");
+    if (!statusLine || !nav) return;
+    if (statusLine.previousElementSibling !== nav) {
+      nav.after(statusLine);
+      statusLine.classList.add("hw-hub-v2-top__status--below-nav");
+    }
+  }
+
+  function renderHubV4Top(assignment, form) {
+    if (!usesHubV4Layout()) return;
+    hubV4WorksheetForm = form || hubV4WorksheetForm;
+
+    const titleEl = document.getElementById("hw-v2-title");
+    const tagline = document.getElementById("hw-v2-tagline");
+    const statusLine = document.getElementById("hw-v2-status-line");
+    const v4Intro = document.getElementById("hw-v4-worksheet-intro");
+
+    if (titleEl) {
+      titleEl.textContent =
+        assignment?.title || assignment?.lessonName || titleEl.textContent || "Homework";
+    }
+
+    const answered =
+      hubV4WorksheetForm && global.HwWorksheet?.countAnsweredQuestions
+        ? global.HwWorksheet.countAnsweredQuestions(hubV4WorksheetForm)
+        : 0;
+    const total =
+      hubV4WorksheetForm && global.HwWorksheet?.totalQuestions
+        ? global.HwWorksheet.totalQuestions(hubV4WorksheetForm)
+        : 0;
+
+    if (tagline) {
+      tagline.hidden = true;
+      tagline.textContent = "";
+    }
+    if (statusLine) {
+      statusLine.hidden = true;
+    }
+    if (v4Intro) v4Intro.hidden = true;
+    placeHubV4Progress();
+  }
+
+  function bindHubV4WorksheetChrome(form, assignment) {
+    if (!usesHubV4Layout() || !form) return;
+    hubV4WorksheetForm = form;
+    renderHubV4Top(assignment, form);
+
+    if (form.dataset.hubV4Bound === "true") return;
+    form.dataset.hubV4Bound = "true";
+
+    const refresh = () => renderHubV4Top(assignment, form);
+    form.addEventListener("input", refresh);
+    form.addEventListener("hw-worksheet-answer", refresh);
+  }
+
   function renderAccountBar() {
     const badges = document.getElementById("hw-platform-badges");
     if (!badges || isTeacher) return;
@@ -613,14 +717,7 @@
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
     const submittedKey = `jlm-hw-submitted-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll("input.hw-blank, textarea.hw-blank");
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
-      inputs.forEach((inp) => {
-        if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
-      });
-    } catch (_) {}
-
-    const saveStatus = document.getElementById("hw-save-status");
+    const saveStatus = form.querySelector("#hw-save-status");
     const SUBMIT_COOLDOWN_MS = 2000;
     let submitCooldownTimer = null;
 
@@ -629,9 +726,32 @@
       submitBtn.disabled = true;
       clearTimeout(submitCooldownTimer);
       submitCooldownTimer = setTimeout(() => {
-        submitBtn.disabled = false;
+        if (global.HwWorksheet?.updateSubmitButtonState) {
+          global.HwWorksheet.updateSubmitButtonState(form);
+        } else {
+          submitBtn.disabled = false;
+        }
       }, SUBMIT_COOLDOWN_MS);
     }
+
+    function showSavedInBrowser() {
+      if (saveStatus) saveStatus.textContent = "Saved in your browser.";
+    }
+
+    function hasStoredAnswers(saved) {
+      return Object.keys(saved || {}).some((key) => String(saved[key] ?? "").length > 0);
+    }
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      inputs.forEach((inp) => {
+        if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
+      });
+      if (hasStoredAnswers(saved)) showSavedInBrowser();
+      if (global.HwWorksheet?.updateSubmitButtonState) {
+        global.HwWorksheet.updateSubmitButtonState(form);
+      }
+    } catch (_) {}
 
     form.addEventListener("input", () => {
       const data = {};
@@ -639,13 +759,22 @@
         if (inp.name) data[inp.name] = inp.value;
       });
       localStorage.setItem(storageKey, JSON.stringify(data));
-      if (saveStatus) saveStatus.textContent = "Saved in your browser.";
+      showSavedInBrowser();
+      if (usesHubV4Layout()) renderHubV4Top(assignmentMeta, form);
     });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn?.disabled) return;
+
+      if (global.HwWorksheet?.isWorksheetComplete && !global.HwWorksheet.isWorksheetComplete(form)) {
+        if (saveStatus) {
+          saveStatus.textContent = "Answer every question before submitting.";
+        }
+        showToast("Complete all questions first");
+        return;
+      }
 
       if (global.HwVideoInline?.prepareForSubmit) {
         if (saveStatus) saveStatus.textContent = "Checking video answers…";
@@ -731,7 +860,11 @@
             "Could not submit. Answers are still saved in this browser.";
         }
         showToast("Submit failed");
-        if (submitBtn) submitBtn.disabled = false;
+        if (global.HwWorksheet?.updateSubmitButtonState) {
+          global.HwWorksheet.updateSubmitButtonState(form);
+        } else if (submitBtn) {
+          submitBtn.disabled = false;
+        }
       }
     });
 
@@ -769,24 +902,14 @@
 
   function bindCurrentAssignmentPills(active) {
     const pillOnline = document.getElementById("hw-pill-online");
-    const pillPrint = document.getElementById("hw-pill-print");
     const pillsWrap = document.getElementById("hw-current-assignment-pills");
-    const takePictureBtn = document.getElementById("hw-photo-take-picture");
-    const chooseFileBtn = document.getElementById("hw-photo-choose-file");
-    const photoForm = document.getElementById("hw-photo-upload-form");
 
-    if (!active) {
+    if (!active || usesHubV4Layout()) {
       if (pillsWrap) pillsWrap.hidden = true;
-      if (takePictureBtn) takePictureBtn.hidden = true;
-      if (chooseFileBtn) chooseFileBtn.hidden = true;
-      if (photoForm) photoForm.hidden = true;
       return;
     }
 
     if (pillsWrap) pillsWrap.hidden = false;
-    if (takePictureBtn) takePictureBtn.hidden = false;
-    if (chooseFileBtn) chooseFileBtn.hidden = false;
-    if (photoForm) photoForm.hidden = false;
     if (pillOnline) {
       pillOnline.hidden = false;
       pillOnline.href = "#hw-worksheet-section";
@@ -797,37 +920,6 @@
         }
       };
     }
-    if (pillPrint) {
-      pillPrint.onclick = () => requestPrintHomework(active);
-    }
-  }
-
-  function requestPrintHomework(active) {
-    const tryPrint = () => {
-      const form = document.getElementById("hw-worksheet-form");
-      if (!form || typeof window.HwWorksheet?.printBlank !== "function") return false;
-      form.scrollIntoView({ behavior: "smooth", block: "start" });
-      return window.HwWorksheet.printBlank(form);
-    };
-
-    if (tryPrint()) return;
-
-    if (active?.id) {
-      const targetHash = "hw-" + active.id;
-      if (window.location.hash !== "#" + targetHash) {
-        window.location.hash = targetHash;
-      }
-    }
-
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      if (tryPrint() || ++attempts > 50) {
-        window.clearInterval(timer);
-        if (attempts > 50) {
-          showToast("Homework is still loading — try again in a moment.");
-        }
-      }
-    }, 150);
   }
 
   function renderCurrentAssignmentCard(assignments, currentId) {
@@ -1007,8 +1099,6 @@
     const form = document.getElementById("hw-photo-upload-form");
     const fileInput = document.getElementById("hw-photo-file");
     const status = document.getElementById("hw-photo-upload-status");
-    const takePictureBtn = document.getElementById("hw-photo-take-picture");
-    const chooseFileBtn = document.getElementById("hw-photo-choose-file");
     const captureWrap = document.getElementById("hw-photo-capture");
     const captureBtn = document.getElementById("hw-photo-capture-btn");
     const cancelBtn = document.getElementById("hw-photo-cancel-camera");
@@ -1017,6 +1107,9 @@
     const videoEl = document.getElementById("hw-photo-capture-video");
     const previewImg = document.getElementById("hw-photo-capture-img");
     if (!form) return;
+
+    placePhotoUploadShell();
+    form.hidden = !activeAssignment;
     form.dataset.assignmentId = activeAssignment?.id || "printed-homework";
     const photoMeta = activeAssignment
       ? studentViewMeta(null, activeAssignment)
@@ -1030,13 +1123,23 @@
     let previewObjectUrl = "";
     let uploading = false;
 
+    function worksheetPhotoButtons() {
+      const wsForm = document.getElementById("hw-worksheet-form");
+      if (!wsForm) return { take: null, choose: null };
+      return {
+        take: wsForm.querySelector("[data-hw-photo-take]"),
+        choose: wsForm.querySelector("[data-hw-photo-choose]"),
+      };
+    }
+
     function setStatus(message) {
       if (status) status.textContent = message || "";
     }
 
     function setPhotoButtonsDisabled(disabled) {
-      if (takePictureBtn) takePictureBtn.disabled = disabled;
-      if (chooseFileBtn) chooseFileBtn.disabled = disabled;
+      const { take, choose } = worksheetPhotoButtons();
+      if (take) take.disabled = disabled;
+      if (choose) choose.disabled = disabled;
     }
 
     function stopCamera() {
@@ -1198,12 +1301,15 @@
       );
     }
 
-    takePictureBtn?.addEventListener("click", () => {
-      openCamera();
-    });
-
-    chooseFileBtn?.addEventListener("click", () => {
-      fileInput?.click();
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-hw-photo-take]")) {
+        e.preventDefault();
+        openCamera();
+      }
+      if (e.target.closest("[data-hw-photo-choose]")) {
+        e.preventDefault();
+        fileInput?.click();
+      }
     });
 
     captureBtn?.addEventListener("click", () => {
@@ -2007,9 +2113,10 @@
     if (teacherHub) teacherHub.hidden = true;
     if (studentOnly) studentOnly.hidden = false;
 
-    const mount = document.getElementById("hw-worksheet-mount");
+    const mount = getWorksheetMount();
     const heading = document.getElementById("hw-worksheet-heading");
     const intro = document.getElementById("hw-worksheet-intro");
+    const v4Intro = document.getElementById("hw-v4-worksheet-intro");
 
     const hashId = window.location.hash.replace(/^#hw-/, "");
     const guessId = options.skipWorksheet ? null : guessedAssignmentId();
@@ -2052,8 +2159,13 @@
     if (!active || !mount) {
       if (heading) heading.textContent = "Current homework";
       if (intro) intro.textContent = "No assignment is linked to your account yet.";
+      if (v4Intro) {
+        v4Intro.textContent = "No assignment is linked to your account yet.";
+        v4Intro.hidden = false;
+      }
       mount.innerHTML = "";
       studentMountedAssignmentId = null;
+      hubV4WorksheetForm = null;
       scheduleStudentMistakesLoad({
         background: Boolean(options.background),
         bypassCache: Boolean(options.bypassCache),
@@ -2099,8 +2211,11 @@
       intro.textContent =
         "One question at a time — fill in each blank, then submit when you're done.";
     }
+    if (v4Intro) v4Intro.hidden = true;
 
     const renderOptions = {
+      omitMetaTitle: usesHubV4Layout(),
+      omitMetaHint: usesHubV4Layout(),
       studentMeta: {
         username: session.username || "",
         displayName: session.displayName || session.username || "",
@@ -2125,6 +2240,7 @@
         form.setAttribute("data-assignment-id", saveMeta.id);
       }
       bindWorksheetSave(form, saveMeta);
+      bindHubV4WorksheetChrome(form, saveMeta);
       return form;
     }
 
@@ -2163,7 +2279,7 @@
 
   function init() {
     if (!global.HwWorksheet?.render) {
-      const mount = document.getElementById("hw-worksheet-mount");
+      const mount = getWorksheetMount() || document.getElementById("hw-worksheet-mount");
       const intro = document.getElementById("hw-worksheet-intro");
       if (intro) {
         intro.textContent =
@@ -2183,6 +2299,7 @@
       requestAnimationFrame(ensureTeacherEditorMounted);
       setTimeout(ensureTeacherEditorMounted, 0);
     } else {
+      applyHubLayout();
       renderAccountBar();
       renderStudentHubHeader();
       renderGamesHubCard();

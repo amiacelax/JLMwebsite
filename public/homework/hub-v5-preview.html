@@ -4,9 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>Homework Hub v5 — Coming soon</title>
+  <meta name="theme-color" content="#1a2744">
+  <title>Homework Hub v5 — Post-submit prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=1">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=9">
+  <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=1">
+  <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -15,12 +22,140 @@
     })();
   </script>
 </head>
-<body class="subpage subpage--homework hw-hub-v3-page">
-  <main class="hw-hub-v2-shell" style="text-align:center;padding-top:3rem">
-    <p class="hw-hub-v2-top__hello">Hub v5</p>
-    <h1 class="hw-hub-v2-top__title" style="font-size:1.5rem">Sketch coming soon</h1>
-    <p class="hw-hub-v2-top__tagline">This slot is reserved for a future prototype iteration.</p>
-    <a class="btn btn--ghost" href="/homework/platform.html?tab=hubv2">← Teacher hub</a>
+<body class="subpage subpage--homework subpage--platform hw-hub-v3-page hw-hub-v4-page">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="hw-hub-v2-banner" role="status">
+    Hub v5 — post-submission zone · replaces worksheet after send · mock data only
+  </div>
+
+  <div class="hw-hub-v2-demo-bar" aria-label="Prototype demo controls">
+    <span class="hw-hub-v2-demo-bar__label">Simulate:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="in_progress">Working on HW</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn is-active" data-v5-demo-status="submitted">Just submitted</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="reviewed">JD reviewed</button>
+    <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html?tab=hubv2" style="text-decoration:none">← Teacher hub</a>
+  </div>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="nav__brand" href="/">
+        <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
+        <span class="nav__brand-text brand-wordmark">
+          <span class="brand-wordmark__line brand-wordmark__line--primary">Japanese</span>
+          <span class="brand-wordmark__line brand-wordmark__line--secondary">Language Mentor</span>
+        </span>
+      </a>
+    </nav>
+  </header>
+
+  <div class="hw-platform-bar">
+    <div class="container hw-platform-bar__inner">
+      <div class="hw-platform-bar__identity">
+        <p class="hw-platform-bar__user">Logged in as <strong id="hw-platform-greet">Alex</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <main id="main" class="subpage__main">
+    <section class="section">
+      <div class="container container--wide">
+        <div class="section__header section__header--platform">
+          <p class="section__eyebrow">Homework Hub</p>
+          <h1 class="section__title" id="hw-hub-title">Your hub</h1>
+        </div>
+
+        <div class="hw-hub-v4-homework" id="hw-v5-homework-zone">
+          <section class="hw-hub-v2-feedback" id="hw-v2-feedback" hidden aria-labelledby="hw-v2-feedback-title">
+            <h3 class="hw-hub-v2-feedback__title" id="hw-v2-feedback-title">From JD</h3>
+            <p class="hw-hub-v2-feedback__body" id="hw-v2-feedback-body"></p>
+          </section>
+
+          <section class="hw-hub-v5-complete hw-hub-worksheet-card" id="hw-v5-complete-card" aria-labelledby="hw-v5-complete-title">
+            <h2 class="hw-hub-v5-complete__title" id="hw-v5-complete-title">You've finished your assignment!</h2>
+            <p class="hw-hub-v5-complete__sub">JD received your answers. Here's what you can do next.</p>
+
+            <div class="hw-hub-v5-complete__upgrade">
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" tabindex="0">
+                <p class="hw-hub-tier-plan__badge">Popular</p>
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h3 class="course-card__title">Premium</h3>
+                <p class="hw-hub-tier-tip" role="tooltip">Weekly homework, AI tutor, and full game access.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" id="hw-v5-upgrade-btn" aria-label="View Premium plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Upgrade</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: twenty dollars per month">$20<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+            </div>
+
+            <div class="hw-hub-v5-complete__actions">
+              <button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">View past assignments</button>
+              <button type="button" class="btn btn--ghost btn--full" id="hw-v5-mistakes-btn">Work on your mistakes</button>
+            </div>
+          </section>
+
+          <section class="hw-hub-v2-worksheet hw-hub-worksheet-card" id="hw-v5-worksheet-card" hidden aria-labelledby="hw-v2-worksheet-heading">
+            <header class="hw-hub-v2-top hw-hub-v2-top--in-card" aria-labelledby="hw-v2-title">
+              <h2 class="hw-hub-v2-top__title" id="hw-v2-title">よく・あまり</h2>
+            </header>
+            <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
+            <div id="hw-v2-worksheet-mount" lang="ja"></div>
+          </section>
+
+          <details class="hw-hub-v2-fold" id="hw-v5-past-fold">
+            <summary class="hw-hub-v2-fold__summary">Past homework</summary>
+            <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
+          </details>
+        </div>
+
+        <div class="hw-platform-grid hw-platform-grid--student hw-hub-v4-below" id="hw-student-grid">
+          <div class="hw-grid-stack" id="hw-grid-stack">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+              <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
+              <div class="hw-lesson-actions">
+                <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+              </div>
+            </section>
+          </div>
+
+          <div class="hw-grid-upload-col">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+              <h2 class="hw-platform-card__title">Recent mistakes</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
+              <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty">No mistakes on your list — nice work!</p>
+            </section>
+
+            <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
+              <h2 class="course-card__title">Learning Games 👾</h2>
+              <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
+            </article>
+          </div>
+
+          <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
+            <h2 class="hw-platform-card__title">Notifications</h2>
+            <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready.</p>
+            <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
+          </section>
+        </div>
+
+        <p class="subpage-back">
+          <a class="btn btn--ghost" href="/homework.html">← Homework info &amp; plans</a>
+        </p>
+      </div>
+    </section>
   </main>
+
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-compat.js?v=20260694" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260718" defer></script>
+  <script src="/js/hw-star-block.js?v=20260713" defer></script>
+  <script src="/js/hw-hub-v5.js?v=1" defer></script>
 </body>
 </html>

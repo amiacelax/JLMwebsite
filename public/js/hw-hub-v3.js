@@ -194,13 +194,11 @@
     const total = totalBlanks(worksheetForm);
     const copy = heroCopy(status, answered, total);
 
-    const hello = document.getElementById("hw-v2-hello");
     const tagline = document.getElementById("hw-v2-tagline");
     const statusLine = document.getElementById("hw-v2-status-line");
     const feedback = document.getElementById("hw-v2-feedback");
     const feedbackBody = document.getElementById("hw-v2-feedback-body");
 
-    if (hello) hello.textContent = MOCK.studentName;
     if (tagline) {
       tagline.textContent = copy.tagline;
       tagline.hidden = !copy.tagline;

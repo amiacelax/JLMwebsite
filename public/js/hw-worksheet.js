@@ -1518,20 +1518,28 @@
     const actions = document.createElement("div");
     actions.className = "hw-worksheet__actions";
     if (!authoring) {
+      let toolsHtml =
+        '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>';
+      if (!options.preview) {
+        toolsHtml +=
+          '<button type="button" class="btn btn--ghost" data-hw-photo-take>Take Picture</button>' +
+          '<button type="button" class="btn btn--ghost" data-hw-photo-choose>Choose file</button>';
+      }
       actions.innerHTML =
-        '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>' +
         (options.preview
           ? ""
-          : '<button type="submit" class="btn btn--primary">Send Homework to JD</button>');
+          : '<section class="hw-worksheet__actions-primary">' +
+            '<p class="hw-worksheet__submit-tracker" data-hw-submit-tracker aria-live="polite"></p>' +
+            '<div class="hw-worksheet__actions-submit">' +
+            '<button type="submit" class="btn btn--primary" disabled>Send Homework to JD</button>' +
+            "</div>" +
+            '<p class="hw-worksheet__status hw-worksheet__status--inline" id="hw-save-status" role="status" aria-live="polite"></p>' +
+            "</section>") +
+        '<section class="hw-worksheet__actions-tools">' +
+        toolsHtml +
+        "</section>";
       form.appendChild(actions);
     }
-
-    const status = document.createElement("p");
-    status.id = "hw-save-status";
-    status.className = "hw-worksheet__status";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    form.appendChild(status);
 
     const results = document.createElement("div");
     results.id = "hw-check-results";
@@ -1547,6 +1555,7 @@
       initSlideMode(form);
       initFocusMode(form);
       initSeeAnswers(form);
+      initSubmitGate(form);
     }
     if (!authoring && global.HwStarBlock?.initForm) {
       global.HwStarBlock.initForm(form);
@@ -1607,12 +1616,69 @@
     btn.hidden = true;
     btn.addEventListener("click", () => revealTeacherAnswers(form));
 
+    const tools = actions.querySelector(".hw-worksheet__actions-tools");
     const submitBtn = actions.querySelector('button[type="submit"]');
-    if (submitBtn) {
+    if (tools) {
+      tools.appendChild(btn);
+    } else if (submitBtn) {
       actions.insertBefore(btn, submitBtn);
     } else {
       actions.appendChild(btn);
     }
+  }
+
+  function hasMeaningfulStudentAnswer(value) {
+    return String(value ?? "").trim().length > 0;
+  }
+
+  function questionsLeftLabel(form) {
+    const total = totalQuestions(form);
+    if (!total) return "";
+    const left = Math.max(0, total - countAnsweredQuestions(form));
+    if (left === 0) return "Ready to send";
+    return left === 1 ? "1 question left" : left + " questions left";
+  }
+
+  function updateSubmitButtonState(form) {
+    const submitBtn = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
+    const tracker = form?.querySelector("[data-hw-submit-tracker]");
+    const total = totalQuestions(form);
+    const answered = countAnsweredQuestions(form);
+    const left = Math.max(0, total - answered);
+    const complete = total > 0 && left === 0;
+
+    if (tracker) {
+      if (!total) {
+        tracker.hidden = true;
+        tracker.textContent = "";
+      } else {
+        tracker.hidden = false;
+        tracker.textContent = questionsLeftLabel(form);
+        tracker.classList.toggle("hw-worksheet__submit-tracker--ready", complete);
+      }
+    }
+
+    if (!submitBtn) return;
+    submitBtn.disabled = !complete;
+    if (!complete && total > 0) {
+      submitBtn.title = questionsLeftLabel(form) + ".";
+    } else {
+      submitBtn.removeAttribute("title");
+    }
+  }
+
+  function initSubmitGate(form) {
+    updateSubmitButtonState(form);
+    const refresh = () => updateSubmitButtonState(form);
+    form.addEventListener("input", refresh);
+    form.addEventListener("change", refresh);
+    form.addEventListener("hw-worksheet-answer", refresh);
+  }
+
+  function isWorksheetComplete(form) {
+    const total = totalQuestions(form);
+    if (!total) return false;
+    return countAnsweredQuestions(form) >= total;
   }
 
   /**
@@ -1718,23 +1784,6 @@
       }
     });
 
-    const printBtn = form.querySelector("[data-hw-print]");
-    if (printBtn) {
-      printBtn.addEventListener(
-        "click",
-        () => {
-          if (form.classList.contains("hw-worksheet--slide-mode")) {
-            seeAll = true;
-            applySlideView();
-          }
-          form.querySelectorAll(".hw-worksheet__topic-brief").forEach((el) => {
-            el.open = true;
-          });
-        },
-        true
-      );
-    }
-
     applySlideView();
   }
 
@@ -1742,7 +1791,9 @@
    * @returns {void}
    */
   function exitHomeworkFocusMode() {
-    const section = document.getElementById("hw-worksheet-section");
+    const section =
+      document.getElementById("hw-worksheet-section") ||
+      document.getElementById("hw-hub-v4-homework");
     document.body.classList.remove("hw-hw-focus-mode");
     section?.querySelector(".hw-focus-bar")?.setAttribute("hidden", "");
     section?.querySelector("[data-hw-focus]")?.removeAttribute("hidden");
@@ -1757,7 +1808,7 @@
    * @param {HTMLFormElement} form
    */
   function initFocusMode(form) {
-    const section = form.closest("#hw-worksheet-section");
+    const section = form.closest("#hw-worksheet-section, #hw-hub-v4-homework");
     if (!section) return;
 
     const focusBtn = document.createElement("button");
@@ -1766,8 +1817,11 @@
     focusBtn.setAttribute("data-hw-focus", "");
     focusBtn.textContent = "Focus mode";
 
+    const tools = form.querySelector(".hw-worksheet__actions-tools");
     const actions = form.querySelector(".hw-worksheet__actions");
-    if (actions) {
+    if (tools) {
+      tools.insertBefore(focusBtn, tools.firstChild);
+    } else if (actions) {
       actions.insertBefore(focusBtn, actions.firstChild);
     }
 
@@ -1839,6 +1893,10 @@
   function printBlank(formEl) {
     const form = formEl || document.getElementById("hw-worksheet-form");
     if (!form) return false;
+
+    form.querySelectorAll(".hw-worksheet__topic-brief").forEach((el) => {
+      el.open = true;
+    });
 
     document.body.classList.add("hw-print-active");
     const inputs = form.querySelectorAll(".hw-blank");
@@ -2180,7 +2238,7 @@
     }
     const blanks = lineEl.querySelectorAll(STUDENT_BLANK_SELECTOR);
     if (!blanks.length) return false;
-    return Array.from(blanks).every((el) => String(el.value || "").trim());
+    return Array.from(blanks).every((el) => hasMeaningfulStudentAnswer(el.value));
   }
 
   function totalQuestions(form) {
@@ -2246,6 +2304,9 @@
     totalQuestions,
     countAnsweredQuestions,
     isWorksheetLineAnswered,
+    isWorksheetComplete,
+    updateSubmitButtonState,
+    hasMeaningfulStudentAnswer,
     enableSeeAnswers,
     revealTeacherAnswers,
     hasListenTeacherAnswers,

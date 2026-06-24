@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css?v=20260694">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=10">
+  <link rel="stylesheet" href="/css/hw-hub-v4.css?v=4">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -476,18 +478,17 @@
 
         <!-- Everything below here is student-only (hidden for teachers) -->
         <div id="hw-platform-student-only">
-          <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
-            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
-              <h2 class="hw-platform-card__title">Current assignment</h2>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
-              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
-              <div class="hw-current-assignment__pills" id="hw-current-assignment-pills">
-                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Start Homework</a>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-pill-print">Print Homework</button>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-take-picture" hidden>Take Picture</button>
-                <button type="button" class="btn btn--ghost btn--full hw-current-assignment__pill" id="hw-photo-choose-file" hidden>Choose file</button>
-              </div>
-              <form class="hw-photo-upload hw-photo-upload--assignment" id="hw-photo-upload-form" hidden>
+          <div class="hw-hub-v4-homework" id="hw-hub-v4-homework" hidden>
+            <section class="hw-hub-v2-worksheet hw-hub-worksheet-card" aria-labelledby="hw-v2-worksheet-heading">
+              <header class="hw-hub-v2-top hw-hub-v2-top--in-card" aria-labelledby="hw-v2-title">
+                <h2 class="hw-hub-v2-top__title" id="hw-v2-title">Loading…</h2>
+                <p class="hw-hub-v2-top__tagline" id="hw-v2-tagline" hidden></p>
+                <p class="hw-hub-v2-top__status" id="hw-v2-status-line" hidden></p>
+              </header>
+              <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
+              <p class="hw-worksheet-intro hw-hub-v4-intro" id="hw-v4-worksheet-intro" hidden>Loading worksheet…</p>
+              <div id="hw-v2-worksheet-mount" lang="ja"></div>
+              <form class="hw-photo-upload hw-photo-upload--worksheet" id="hw-photo-upload-form" hidden>
                 <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
                 <div class="hw-photo-capture" id="hw-photo-capture" hidden>
                   <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
@@ -504,6 +505,17 @@
                 </div>
                 <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
               </form>
+            </section>
+          </div>
+
+          <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
+              <h2 class="hw-platform-card__title">Current assignment</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
+              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
+              <div class="hw-current-assignment__pills" id="hw-current-assignment-pills">
+                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Start Homework</a>
+              </div>
             </section>
 
             <div class="hw-grid-stack" id="hw-grid-stack">
@@ -738,7 +750,7 @@
   <script src="/js/hw-compat.js?v=20260690" defer></script>
   <script src="/js/hw-video-inline.js?v=20260694" defer></script>
   <script src="/js/hw-audio-inline.js?v=20260690" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260713" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260720" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260683" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260713" defer></script>
@@ -758,6 +770,6 @@
   <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260704" defer></script>
+  <script src="/js/hw-platform.js?v=20260720" defer></script>
 </body>
 </html>

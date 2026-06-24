@@ -27,6 +27,30 @@ body.hw-hub-v4-page {
   display: none;
 }
 
-.hw-hub-v4-page .hw-current-assignment__pills {
-  gap: 0.5rem;
+.hw-hub-v4-page #hw-current-assignment-title {
+  display: none;
+}
+
+.hw-hub-v4-homework .hw-hub-v4-intro {
+  margin: 0 0 0.75rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.hw-hub-v4-homework .hw-hub-v4-intro[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v4-page #hw-v2-status-line,
+.hw-hub-v4-page #hw-v2-tagline {
+  display: none !important;
+}
+
+.hw-hub-v4-page #hw-current-assignment-card {
+  display: none;
+}
+
+.hw-hub-v4-homework .hw-photo-upload--worksheet {
+  margin-top: 0.75rem;
 }

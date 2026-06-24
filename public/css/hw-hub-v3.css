@@ -122,6 +122,10 @@ body.hw-hub-v3-page .hw-worksheet__meta-hint {
   box-shadow: none;
 }
 
+.hw-hub-worksheet-card .hw-worksheet:has(.hw-worksheet__actions-tools) {
+  padding-bottom: 0;
+}
+
 .hw-hub-worksheet-card .hw-worksheet__meta {
   border-bottom: none;
   padding-bottom: 0;
@@ -140,11 +144,7 @@ body.hw-hub-v3-page .hw-worksheet__meta-hint {
 }
 
 .hw-hub-v2-top__hello {
-  margin: 0 0 0.25rem;
-  font-family: Inter, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
+  display: none !important;
 }
 
 .hw-hub-v2-top__title {
