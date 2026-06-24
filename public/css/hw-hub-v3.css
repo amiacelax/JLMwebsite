@@ -6,8 +6,9 @@ body.hw-hub-v3-page {
 
 .hw-hub-v2-banner {
   position: sticky;
-  top: 0;
-  z-index: 50;
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0));
+  z-index: 95;
+  margin-top: calc(var(--header-height) + env(safe-area-inset-top, 0));
   padding: 0.45rem 1rem;
   font-family: Inter, sans-serif;
   font-size: 0.8125rem;
@@ -19,6 +20,9 @@ body.hw-hub-v3-page {
 }
 
 .hw-hub-v2-demo-bar {
+  position: sticky;
+  top: calc(var(--header-height) + env(safe-area-inset-top, 0) + 2.125rem);
+  z-index: 94;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -54,6 +58,11 @@ body.hw-hub-v3-page {
 .hw-hub-v2-demo-bar__btn.is-active {
   border-color: var(--color-brand-blue);
   background: color-mix(in srgb, var(--color-brand-blue) 12%, var(--color-bg-card));
+}
+
+/* Proto banner + demo bar sit above the fixed header in DOM — offset once here. */
+body.hw-hub-v3-page.subpage--platform .hw-platform-bar {
+  margin-top: 0;
 }
 
 .hw-hub-v2-shell {
