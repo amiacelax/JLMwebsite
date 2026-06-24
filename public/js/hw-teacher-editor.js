@@ -17,6 +17,7 @@
   let editingAssignmentId = null;
   let editorOptions = null;
   let worksheetBuilder = null;
+  let loadedCurrentHomeworkId = "";
 
   const WORKSHEET_MRU_KEY = "jlm-hw-worksheet-mru";
   const WORKSHEET_MRU_MAX = 50;
@@ -227,38 +228,48 @@
     }
   }
 
-  function renderCurrentHomework(studentUsername, profile) {
-    const el = document.getElementById("hw-teacher-current-hw");
-    if (!el) return;
+  function populateCurrentHomeworkSelect(studentUsername, profile) {
+    const selectEl = document.getElementById("hw-teacher-current-hw");
+    if (!selectEl) return;
 
     const student = String(studentUsername || "").trim().toLowerCase();
-    if (!student) {
-      el.textContent = "Choose a student to see their active sheet.";
-      el.classList.remove("hw-teacher-current-hw__value--set");
-      return;
+    let currentId = "";
+    if (student) {
+      currentId =
+        String(profile?.currentHomeworkId || "").trim() ||
+        String(catalogStudentProfiles[student]?.currentHomeworkId || "").trim();
     }
+    loadedCurrentHomeworkId = currentId;
 
-    const id =
-      String(profile?.currentHomeworkId || "").trim() ||
-      String(catalogStudentProfiles[student]?.currentHomeworkId || "").trim();
-    if (!id) {
-      el.textContent = "No homework assigned yet.";
-      el.classList.remove("hw-teacher-current-hw__value--set");
-      return;
-    }
+    const list = allAssignments().sort((a, b) =>
+      String(b.date || b.id).localeCompare(String(a.date || a.id))
+    );
 
-    const title =
-      String(profile?.currentHomeworkTitle || "").trim() ||
-      String(getCatalogEntry(id)?.title || "").trim();
-    el.textContent = title ? id + " — " + title : id;
-    el.classList.add("hw-teacher-current-hw__value--set");
+    selectEl.innerHTML =
+      '<option value="">No homework assigned yet.</option>' +
+      list
+        .map((e) => {
+          return (
+            '<option value="' +
+            e.id +
+            '"' +
+            (e.id === currentId ? " selected" : "") +
+            ">" +
+            worksheetOptionLabel(e) +
+            "</option>"
+          );
+        })
+        .join("");
+
+    selectEl.disabled = !student;
+    selectEl.classList.toggle("hw-teacher-current-hw__select--set", !!currentId);
   }
 
   async function loadStudentProfileFields(form, studentUsername) {
     if (!form) return;
     const student = String(studentUsername || "").trim().toLowerCase();
     applyStudentProfileFields(form, student);
-    renderCurrentHomework(student, null);
+    populateCurrentHomeworkSelect(student, null);
 
     if (!student) return;
 
@@ -296,7 +307,7 @@
           currentHomeworkId: profile.currentHomeworkId,
         };
       }
-      renderCurrentHomework(student, profile);
+      populateCurrentHomeworkSelect(student, profile);
     } catch {
       /* keep catalog / legacy defaults */
     }
@@ -597,6 +608,10 @@
       updatePublishHint();
       populateWorksheetSelect(makerEditSelect, assignmentId);
       populatePublishWorksheetSelect(publishWorksheet, assignmentId);
+      populateCurrentHomeworkSelect(
+        document.getElementById("hw-teacher-account-student")?.value,
+        null
+      );
     }
 
     function updateMakerDockHint() {
@@ -1275,8 +1290,14 @@
         return;
       }
 
+      const selectedHomeworkId = String(
+        accountForm.querySelector('[name="currentHomeworkId"]')?.value || ""
+      ).trim();
+      const homeworkChanged =
+        selectedHomeworkId && selectedHomeworkId !== loadedCurrentHomeworkId;
+
       if (accountSaveBtn) accountSaveBtn.disabled = true;
-      setAccountStatus("Saving " + media.studentUsername + "'s links…");
+      setAccountStatus("Saving " + media.studentUsername + "'s info…");
 
       try {
         const res = await fetch("/api/homework-student-profile", {
@@ -1300,6 +1321,17 @@
           youtubeUrl: media.youtubeUrl || undefined,
           lessonPlaylistUrl: media.lessonPlaylistUrl || undefined,
         };
+
+        if (homeworkChanged) {
+          setAccountStatus("Saved links — assigning “" + selectedHomeworkId + "”…");
+          await publishWorksheetToStudent({
+            student: media.studentUsername,
+            worksheetId: selectedHomeworkId,
+            setStatus: setAccountStatus,
+            sendBtn: accountSaveBtn,
+          });
+          return;
+        }
 
         setAccountStatus(data.message || "Saved!");
         showToast("Student info saved");
@@ -1339,7 +1371,7 @@
         if (accountStudentSelect.value) {
           setAccountStatus("Loaded " + accountStudentSelect.value + "'s info.");
         } else {
-          renderCurrentHomework("", null);
+          populateCurrentHomeworkSelect("", null);
         }
       });
 
@@ -1432,7 +1464,10 @@
   }
 
   function syncPublishPicker() {
-    /* publish picker removed from Student info — send via Worksheet maker dock */
+    populateCurrentHomeworkSelect(
+      document.getElementById("hw-teacher-account-student")?.value,
+      null
+    );
   }
 
   global.HwTeacherEditor = {

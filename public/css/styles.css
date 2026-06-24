@@ -7844,6 +7844,10 @@ body.hw-role-teacher #hw-teacher-hub {
   background: var(--color-bg-elevated);
 }
 
+.hw-teacher-current-hw select.hw-teacher-current-hw__select--set {
+  border-left: 3px solid var(--color-brand-blue);
+}
+
 .hw-teacher-current-hw__value--set {
   color: var(--color-text);
   border-left: 3px solid var(--color-brand-blue);
