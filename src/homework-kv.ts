@@ -326,7 +326,8 @@ async function saveStudentAccountSettings(
 
 export async function getStudentProfileForTeacher(
   data: { teacherUsername?: string; studentUsername?: string },
-  env: KvEnv
+  env: KvEnv,
+  staticStudentProfiles?: CatalogFile["studentProfiles"]
 ): Promise<StudentProfileView> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
@@ -338,10 +339,13 @@ export async function getStudentProfileForTeacher(
   if (!student) throw new Error("STUDENT_REQUIRED");
   if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
 
-  const youtubeUrl = String((await kv.get(studentYoutubeKey(student))) || "").trim();
-  const lessonPlaylistUrl = String(
-    (await kv.get(studentLessonPlaylistKey(student))) || ""
-  ).trim();
+  const staticProfile = staticStudentProfiles?.[student] || {};
+  const youtubeUrl =
+    String((await kv.get(studentYoutubeKey(student))) || "").trim() ||
+    String(staticProfile.latestLessonUrl || staticProfile.youtubeUrl || "").trim();
+  const lessonPlaylistUrl =
+    String((await kv.get(studentLessonPlaylistKey(student))) || "").trim() ||
+    String(staticProfile.lessonPlaylistUrl || staticProfile.reviewPlaylistUrl || "").trim();
   const account = await getStudentAccountSettings(student, env);
 
   const currentHomeworkId = String(
@@ -397,10 +401,19 @@ export async function saveStudentProfile(
   if (!student) throw new Error("STUDENT_REQUIRED");
   if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
 
-  await applyStudentMedia(kv, student, {
-    youtubeUrl: data.youtubeUrl,
-    lessonPlaylistUrl: data.lessonPlaylistUrl,
-  });
+  const mediaOpts: { youtubeUrl?: string; lessonPlaylistUrl?: string } = {};
+  if (data.youtubeUrl !== undefined) {
+    mediaOpts.youtubeUrl = data.youtubeUrl;
+  }
+  if (data.lessonPlaylistUrl !== undefined) {
+    const playlist = String(data.lessonPlaylistUrl || "").trim();
+    if (playlist) {
+      mediaOpts.lessonPlaylistUrl = playlist;
+    }
+  }
+  if (Object.keys(mediaOpts).length) {
+    await applyStudentMedia(kv, student, mediaOpts);
+  }
 
   const playlist = String(data.lessonPlaylistUrl || "").trim();
   if (playlist) {

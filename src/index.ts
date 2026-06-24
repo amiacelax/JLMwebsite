@@ -1532,12 +1532,14 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
   if (request.method === "GET") {
     try {
       const url = new URL(request.url);
+      const staticCatalog = await loadStaticCatalog(env);
       const profile = await getStudentProfileForTeacher(
         {
           teacherUsername: url.searchParams.get("teacherUsername") || "",
           studentUsername: url.searchParams.get("studentUsername") || "",
         },
-        env
+        env,
+        staticCatalog.studentProfiles
       );
       return jsonResponse({ success: true, profile });
     } catch (err) {

@@ -18,6 +18,7 @@
   let editorOptions = null;
   let worksheetBuilder = null;
   let loadedCurrentHomeworkId = "";
+  let profileLoadGen = 0;
 
   const WORKSHEET_MRU_KEY = "jlm-hw-worksheet-mru";
   const WORKSHEET_MRU_MAX = 50;
@@ -265,13 +266,58 @@
     selectEl.classList.toggle("hw-teacher-current-hw__select--set", !!currentId);
   }
 
+  function catalogProfileForStudent(studentUsername) {
+    const student = String(studentUsername || "").trim().toLowerCase();
+    return catalogStudentProfiles[student] || {};
+  }
+
+  function resolveProfilePlaylist(studentUsername, profile) {
+    const student = String(studentUsername || "").trim().toLowerCase();
+    const fromProfile = String(profile?.lessonPlaylistUrl || "").trim();
+    if (fromProfile) return fromProfile;
+    const catalog = catalogProfileForStudent(student);
+    return String(catalog.lessonPlaylistUrl || catalog.reviewPlaylistUrl || "").trim();
+  }
+
+  function resolveProfileYoutube(studentUsername, profile) {
+    const student = String(studentUsername || "").trim().toLowerCase();
+    const fromProfile = String(profile?.youtubeUrl || "").trim();
+    if (fromProfile) return fromProfile;
+    const catalog = catalogProfileForStudent(student);
+    return String(catalog.latestLessonUrl || catalog.youtubeUrl || "").trim();
+  }
+
+  function studentProfilePayloadFromForm(media) {
+    const payload = {
+      studentUsername: media.studentUsername,
+      accountLabel: media.accountLabel,
+      tier: media.tier,
+      youtubeUrl: media.youtubeUrl,
+    };
+    if (media.lessonPlaylistUrl) {
+      payload.lessonPlaylistUrl = media.lessonPlaylistUrl;
+    }
+    return payload;
+  }
+
   async function loadStudentProfileFields(form, studentUsername) {
+    const loadGen = ++profileLoadGen;
+    const isStale = () => loadGen !== profileLoadGen;
+
     if (!form) return;
     const student = String(studentUsername || "").trim().toLowerCase();
-    applyStudentProfileFields(form, student);
+
+    await ensureCatalogLoaded();
+    if (isStale()) return;
+
     populateCurrentHomeworkSelect(student, null);
 
-    if (!student) return;
+    if (!student) {
+      applyStudentProfileFields(form, "");
+      return;
+    }
+
+    applyStudentProfileFields(form, student);
 
     const legacy = legacyAccountDefaults(student);
     applyAccountSettingsFields(form, legacy);
@@ -290,23 +336,21 @@
         Date.now();
       const res = await fetch(url, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return;
+      if (!res.ok || isStale()) return;
       const profile = data.profile || {};
-      if (profile.youtubeUrl !== undefined) {
-        const youtubeInput = form.querySelector('[name="youtubeUrl"]');
-        if (youtubeInput) youtubeInput.value = profile.youtubeUrl || "";
-      }
-      if (profile.lessonPlaylistUrl !== undefined) {
-        const playlistInput = form.querySelector('[name="lessonPlaylistUrl"]');
-        if (playlistInput) playlistInput.value = profile.lessonPlaylistUrl || "";
-      }
+      const playlist = resolveProfilePlaylist(student, profile);
+      const youtube = resolveProfileYoutube(student, profile);
+      const youtubeInput = form.querySelector('[name="youtubeUrl"]');
+      const playlistInput = form.querySelector('[name="lessonPlaylistUrl"]');
+      if (youtubeInput) youtubeInput.value = youtube;
+      if (playlistInput) playlistInput.value = playlist;
       applyAccountSettingsFields(form, profile);
-      if (profile.currentHomeworkId) {
-        catalogStudentProfiles[student] = {
-          ...(catalogStudentProfiles[student] || {}),
-          currentHomeworkId: profile.currentHomeworkId,
-        };
-      }
+      catalogStudentProfiles[student] = {
+        ...(catalogStudentProfiles[student] || {}),
+        ...(playlist ? { lessonPlaylistUrl: playlist } : {}),
+        ...(youtube ? { latestLessonUrl: youtube, youtubeUrl: youtube } : {}),
+        ...(profile.currentHomeworkId ? { currentHomeworkId: profile.currentHomeworkId } : {}),
+      };
       populateCurrentHomeworkSelect(student, profile);
     } catch {
       /* keep catalog / legacy defaults */
@@ -320,14 +364,13 @@
   function applyStudentProfileFields(form, studentUsername) {
     if (!form) return;
     const student = String(studentUsername || "").toLowerCase();
-    const profile = catalogStudentProfiles[student] || {};
     const youtubeInput = form.querySelector('[name="youtubeUrl"]');
     const playlistInput = form.querySelector('[name="lessonPlaylistUrl"]');
     if (youtubeInput) {
-      youtubeInput.value = profile.latestLessonUrl || profile.youtubeUrl || "";
+      youtubeInput.value = resolveProfileYoutube(student, {});
     }
     if (playlistInput) {
-      playlistInput.value = profile.lessonPlaylistUrl || profile.reviewPlaylistUrl || "";
+      playlistInput.value = resolveProfilePlaylist(student, {});
     }
   }
 
@@ -1244,8 +1287,8 @@
             studentUsername: student,
             assignment,
             catalogEntry,
-            youtubeUrl: media.youtubeUrl,
-            lessonPlaylistUrl: media.lessonPlaylistUrl,
+            ...(media.youtubeUrl ? { youtubeUrl: media.youtubeUrl } : {}),
+            ...(media.lessonPlaylistUrl ? { lessonPlaylistUrl: media.lessonPlaylistUrl } : {}),
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -1304,12 +1347,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            ...studentProfilePayloadFromForm(media),
             teacherUsername: session.username,
-            studentUsername: media.studentUsername,
-            youtubeUrl: media.youtubeUrl,
-            lessonPlaylistUrl: media.lessonPlaylistUrl,
-            accountLabel: media.accountLabel,
-            tier: media.tier,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -1390,7 +1429,6 @@
     ensureCatalogLoaded().then(() => {
       populateWorksheetSelect(makerEditSelect);
       populatePublishWorksheetSelect(publishWorksheet);
-      applyStudentProfileFields(accountForm, accountStudentSelect?.value);
     });
   }
 
@@ -1400,10 +1438,10 @@
     if (students) catalogStudents = students;
     populateAllStudentSelects();
     populateWorksheetSelect(document.getElementById("hw-teacher-maker-edit-select"));
-    void loadStudentProfileFields(
-      getAccountForm(),
-      document.getElementById("hw-teacher-account-student")?.value
-    );
+    const accountStudent = document.getElementById("hw-teacher-account-student")?.value;
+    if (accountStudent) {
+      void loadStudentProfileFields(getAccountForm(), accountStudent);
+    }
   }
 
   function bootstrap() {
