@@ -57,32 +57,34 @@
     slot.dataset.value = "";
     delete slot.dataset.color;
     slot.className = "hw-star-block__slot";
+    slot.draggable = false;
     slot.innerHTML = "";
     slot.setAttribute("aria-label", "Blank " + (Number(idx) + 1));
   }
 
-  function setChipDragImage(e, chip) {
-    const rect = chip.getBoundingClientRect();
+  function createDragGhost(rect, piece, colorIndex) {
     const ghost = document.createElement("div");
     ghost.className =
-      "hw-star-block__chip hw-star-block__chip--drag-ghost " +
-      Array.from(chip.classList)
-        .filter((c) => c.startsWith("hw-star-block__chip--") && c !== "hw-star-block__chip--placed")
-        .join(" ");
-    ghost.textContent = chip.dataset.piece || chip.textContent;
+      "hw-star-block__chip hw-star-block__chip--drag-ghost hw-star-block__chip--" + colorIndex;
+    ghost.textContent = piece;
     ghost.style.width = rect.width + "px";
     ghost.style.height = rect.height + "px";
     ghost.style.left = "-9999px";
     ghost.style.top = "0";
     document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
-    chip._dragGhost = ghost;
+    return ghost;
   }
 
-  function removeChipDragImage(chip) {
-    if (chip._dragGhost) {
-      chip._dragGhost.remove();
-      chip._dragGhost = null;
+  function setDragImage(e, rect, piece, colorIndex, sourceEl) {
+    const ghost = createDragGhost(rect, piece, colorIndex);
+    e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+    sourceEl._dragGhost = ghost;
+  }
+
+  function removeDragGhost(sourceEl) {
+    if (sourceEl._dragGhost) {
+      sourceEl._dragGhost.remove();
+      sourceEl._dragGhost = null;
     }
   }
 
@@ -91,7 +93,8 @@
     slot.dataset.color = colorIndex;
     slot.className =
       "hw-star-block__slot hw-star-block__slot--filled hw-star-block__slot--color-" + colorIndex;
-    slot.setAttribute("aria-label", "Filled: " + piece);
+    slot.draggable = true;
+    slot.setAttribute("aria-label", "Filled: " + piece + ". Drag to move.");
     slot.replaceChildren();
 
     const clearBtn = document.createElement("button");
@@ -117,53 +120,88 @@
     syncLine(line);
   }
 
+  function markDrop(line) {
+    if (line._starDrag) line._starDrag.dropped = true;
+  }
+
   function placeInSlot(slot, piece, pool, line) {
-    if (!piece || slot.dataset.value) return;
+    if (!piece || slot.dataset.value) return false;
     const chip = findChip(pool, piece);
-    if (!chip || chip.classList.contains("hw-star-block__chip--placed")) return;
+    if (!chip) return false;
+
+    const drag = line._starDrag;
+    const fromPool = !drag || drag.fromPool;
+
+    if (fromPool && chip.classList.contains("hw-star-block__chip--placed")) {
+      return false;
+    }
+
     const colorIndex = chip.dataset.color || colorIndexForPiece(line, piece);
     renderFilledSlot(slot, piece, colorIndex);
     hideChip(pool, piece);
     syncLine(line);
+    return true;
+  }
+
+  function finishDrag(line, pool) {
+    const drag = line._starDrag;
+    if (!drag) return;
+
+    if (!drag.dropped && drag.fromSlot && !drag.fromSlot.dataset.value) {
+      const colorIndex =
+        drag.colorIndex || colorIndexForPiece(line, drag.piece);
+      renderFilledSlot(drag.fromSlot, drag.piece, colorIndex);
+      hideChip(pool, drag.piece);
+      syncLine(line);
+    }
+
+    if (drag.fromSlot) {
+      drag.fromSlot.classList.remove("hw-star-block__slot--dragging");
+    }
+
+    line._starDrag = null;
   }
 
   function animateFlyback(fromRect, toRect, colorClass, text) {
     const travelMs = 620;
-    const boingMs = Math.round(travelMs / 5);
+    const boingMs = 32;
     return new Promise((resolve) => {
       const ghost = document.createElement("div");
       ghost.className = "hw-star-block__chip hw-star-block__flyback " + colorClass;
       ghost.textContent = text;
-      ghost.style.left = fromRect.left + "px";
-      ghost.style.top = fromRect.top + "px";
-      ghost.style.width = fromRect.width + "px";
-      ghost.style.height = fromRect.height + "px";
+
+      const startLeft = fromRect.left + fromRect.width / 2 - toRect.width / 2;
+      const startTop = fromRect.top + fromRect.height / 2 - toRect.height / 2;
+      ghost.style.left = startLeft + "px";
+      ghost.style.top = startTop + "px";
+      ghost.style.width = toRect.width + "px";
+      ghost.style.height = toRect.height + "px";
       document.body.appendChild(ghost);
 
-      const scaleX = toRect.width / Math.max(fromRect.width, 1);
-      const scaleY = toRect.height / Math.max(fromRect.height, 1);
-      const dx =
-        toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
-      const dy =
-        toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
+      const dx = toRect.left - startLeft;
+      const dy = toRect.top - startTop;
 
       requestAnimationFrame(() => {
         ghost.style.transition =
-          "transform " + boingMs + "ms cubic-bezier(0.22, 1.45, 0.42, 1)";
-        ghost.style.transform = "scale(1.14, 0.86)";
+          "transform " + boingMs + "ms cubic-bezier(0.34, 1.25, 0.68, 1)";
+        ghost.style.transform = "scale(1.04, 0.97)";
       });
 
       window.setTimeout(() => {
+        ghost.style.transition = "transform 18ms ease-out";
+        ghost.style.transform = "scale(1, 1)";
+      }, boingMs);
+
+      window.setTimeout(() => {
         ghost.style.transition =
-          "transform " + travelMs + "ms cubic-bezier(0.22, 0.92, 0.36, 1)";
-        ghost.style.transform =
-          "translate(" + dx + "px, " + dy + "px) scale(" + scaleX + ", " + scaleY + ")";
-      }, boingMs + 16);
+          "transform " + travelMs + "ms cubic-bezier(0.25, 0.85, 0.35, 1)";
+        ghost.style.transform = "translate(" + dx + "px, " + dy + "px)";
+      }, boingMs + 22);
 
       window.setTimeout(() => {
         ghost.remove();
         resolve();
-      }, boingMs + travelMs + 56);
+      }, boingMs + travelMs + 72);
     });
   }
 
@@ -212,14 +250,19 @@
           e.preventDefault();
           return;
         }
-        e.dataTransfer.setData("text/plain", chip.dataset.piece || "");
+        const piece = chip.dataset.piece || "";
+        line._starDrag = { piece, fromPool: true, dropped: false };
+        e.dataTransfer.setData("text/plain", piece);
         e.dataTransfer.effectAllowed = "move";
-        setChipDragImage(e, chip);
+        const rect = chip.getBoundingClientRect();
+        const colorIndex = chip.dataset.color || colorIndexForPiece(line, piece);
+        setDragImage(e, rect, piece, colorIndex, chip);
         chip.classList.add("hw-star-block__chip--dragging");
       });
       chip.addEventListener("dragend", () => {
         chip.classList.remove("hw-star-block__chip--dragging");
-        removeChipDragImage(chip);
+        removeDragGhost(chip);
+        finishDrag(line, pool);
       });
       chip.addEventListener("click", () => {
         if (chip.classList.contains("hw-star-block__chip--placed")) return;
@@ -235,7 +278,52 @@
       });
     });
 
+    pool.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      pool.classList.add("hw-star-block__pool--over");
+    });
+    pool.addEventListener("dragleave", (e) => {
+      if (!pool.contains(e.relatedTarget)) {
+        pool.classList.remove("hw-star-block__pool--over");
+      }
+    });
+    pool.addEventListener("drop", (e) => {
+      e.preventDefault();
+      pool.classList.remove("hw-star-block__pool--over");
+      const piece = e.dataTransfer.getData("text/plain");
+      if (!piece) return;
+      markDrop(line);
+      showChip(pool, piece);
+      syncLine(line);
+    });
+
     slots.forEach((slot) => {
+      slot.addEventListener("dragstart", (e) => {
+        if (!slot.dataset.value || e.target.closest(".hw-star-block__slot-clear")) {
+          e.preventDefault();
+          return;
+        }
+        const piece = slot.dataset.value;
+        const colorIndex = slot.dataset.color || colorIndexForPiece(line, piece);
+        line._starDrag = {
+          piece,
+          fromPool: false,
+          fromSlot: slot,
+          colorIndex,
+          dropped: false,
+        };
+        e.dataTransfer.setData("text/plain", piece);
+        e.dataTransfer.effectAllowed = "move";
+        const rect = slot.getBoundingClientRect();
+        setDragImage(e, rect, piece, colorIndex, slot);
+        slot.classList.add("hw-star-block__slot--dragging");
+        emptySlot(slot);
+        syncLine(line);
+      });
+      slot.addEventListener("dragend", () => {
+        removeDragGhost(slot);
+        finishDrag(line, pool);
+      });
       slot.addEventListener("dragover", (e) => {
         e.preventDefault();
         if (!slot.dataset.value) slot.classList.add("hw-star-block__slot--over");
@@ -247,7 +335,9 @@
         e.preventDefault();
         slot.classList.remove("hw-star-block__slot--over");
         const piece = e.dataTransfer.getData("text/plain");
-        placeInSlot(slot, piece, pool, line);
+        if (placeInSlot(slot, piece, pool, line)) {
+          markDrop(line);
+        }
       });
       slot.addEventListener("click", (e) => {
         const clearBtn = e.target.closest(".hw-star-block__slot-clear");

@@ -8257,6 +8257,12 @@ input.hw-blank.hw-blank--translation {
   border-style: solid;
   font-weight: 400;
   padding: 0.2rem 0.45rem;
+  cursor: grab;
+}
+
+.hw-star-block__slot--dragging {
+  opacity: 0.35;
+  border-style: dashed;
 }
 
 .hw-star-block__slot--color-1 {
@@ -8325,6 +8331,12 @@ input.hw-blank.hw-blank--translation {
   width: 100%;
   user-select: none;
   -webkit-user-select: none;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+
+.hw-star-block__pool--over {
+  background: color-mix(in srgb, var(--color-brand-blue) 8%, transparent);
 }
 
 .hw-star-block__chip {
@@ -8370,6 +8382,11 @@ input.hw-blank.hw-blank--translation {
   box-sizing: border-box;
   will-change: transform;
   transform-origin: center center;
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hw-star-block__reset {
