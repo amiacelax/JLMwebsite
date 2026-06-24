@@ -8343,6 +8343,16 @@ input.hw-blank.hw-blank--translation {
   touch-action: none;
 }
 
+.hw-star-block__chip--drag-ghost {
+  position: fixed;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  opacity: 1;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
 .hw-star-block__chip--dragging {
   opacity: 0;
 }
@@ -8359,6 +8369,7 @@ input.hw-blank.hw-blank--translation {
   pointer-events: none;
   box-sizing: border-box;
   will-change: transform;
+  transform-origin: center center;
 }
 
 .hw-star-block__reset {

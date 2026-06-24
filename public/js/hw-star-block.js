@@ -62,15 +62,20 @@
   }
 
   function setChipDragImage(e, chip) {
-    const ghost = chip.cloneNode(true);
-    ghost.classList.remove("hw-star-block__chip--placed", "hw-star-block__chip--dragging");
-    ghost.style.position = "fixed";
-    ghost.style.top = "-1000px";
-    ghost.style.left = "-1000px";
-    ghost.style.opacity = "1";
-    ghost.style.pointerEvents = "none";
+    const rect = chip.getBoundingClientRect();
+    const ghost = document.createElement("div");
+    ghost.className =
+      "hw-star-block__chip hw-star-block__chip--drag-ghost " +
+      Array.from(chip.classList)
+        .filter((c) => c.startsWith("hw-star-block__chip--") && c !== "hw-star-block__chip--placed")
+        .join(" ");
+    ghost.textContent = chip.dataset.piece || chip.textContent;
+    ghost.style.width = rect.width + "px";
+    ghost.style.height = rect.height + "px";
+    ghost.style.left = "-9999px";
+    ghost.style.top = "0";
     document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+    e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
     chip._dragGhost = ghost;
   }
 
@@ -122,8 +127,9 @@
     syncLine(line);
   }
 
-  function animateFlyback(fromRect, toRect, colorClass, text, duration) {
-    duration = duration || 620;
+  function animateFlyback(fromRect, toRect, colorClass, text) {
+    const travelMs = 620;
+    const boingMs = Math.round(travelMs / 5);
     return new Promise((resolve) => {
       const ghost = document.createElement("div");
       ghost.className = "hw-star-block__chip hw-star-block__flyback " + colorClass;
@@ -143,15 +149,21 @@
 
       requestAnimationFrame(() => {
         ghost.style.transition =
-          "transform " + duration + "ms cubic-bezier(0.18, 1.25, 0.42, 1)";
+          "transform " + boingMs + "ms cubic-bezier(0.22, 1.45, 0.42, 1)";
+        ghost.style.transform = "scale(1.14, 0.86)";
+      });
+
+      window.setTimeout(() => {
+        ghost.style.transition =
+          "transform " + travelMs + "ms cubic-bezier(0.22, 0.92, 0.36, 1)";
         ghost.style.transform =
           "translate(" + dx + "px, " + dy + "px) scale(" + scaleX + ", " + scaleY + ")";
-      });
+      }, boingMs + 16);
 
       window.setTimeout(() => {
         ghost.remove();
         resolve();
-      }, duration + 40);
+      }, boingMs + travelMs + 56);
     });
   }
 
