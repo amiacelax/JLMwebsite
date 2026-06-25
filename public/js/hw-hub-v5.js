@@ -136,6 +136,10 @@
     return readStorage(STORAGE.status, "submitted");
   }
 
+  function isCompleteView(status) {
+    return status === "submitted" || status === "reviewed";
+  }
+
   function setDemoStatus(status) {
     writeStorage(STORAGE.status, status);
     renderAll();
@@ -165,6 +169,20 @@
     };
   }
 
+  const TAB_IDS = ["homework", "lessons", "mistakes", "notifications", "games"];
+
+  const TAB_ALIASES = {
+    lesson: "lessons",
+    study: "mistakes",
+    more: "notifications",
+  };
+
+  function normalizeTabId(tabId) {
+    const key = String(tabId || "").trim().toLowerCase();
+    const mapped = TAB_ALIASES[key] || key;
+    return TAB_IDS.includes(mapped) ? mapped : "homework";
+  }
+
   function isMobileTabs() {
     return global.matchMedia("(max-width: 767px)").matches;
   }
@@ -173,12 +191,8 @@
     const app = document.getElementById("hw-v5-app");
     if (!app) return;
 
-    const tab = tabId || "homework";
+    const tab = normalizeTabId(tabId);
     app.dataset.v5ActiveTab = tab;
-
-    if (isMobileTabs()) {
-      writeStorage(STORAGE.tab, tab);
-    }
 
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       const active = btn.getAttribute("data-v5-tab") === tab;
@@ -196,6 +210,7 @@
   function applyTabPanels(tab) {
     const homeworkPanel = document.getElementById("hw-v5-panel-homework");
     const belowPanels = document.querySelectorAll("#hw-v5-below [data-v5-panel]");
+    const activeTab = normalizeTabId(tab);
 
     if (!isMobileTabs()) {
       homeworkPanel?.classList.add("is-active");
@@ -207,13 +222,13 @@
       return;
     }
 
-    const onHomework = tab === "homework";
+    const onHomework = activeTab === "homework";
     homeworkPanel?.classList.toggle("is-active", onHomework);
     if (onHomework) homeworkPanel?.removeAttribute("hidden");
     else homeworkPanel?.setAttribute("hidden", "");
 
     belowPanels.forEach((panel) => {
-      const active = panel.getAttribute("data-v5-panel") === tab;
+      const active = panel.getAttribute("data-v5-panel") === activeTab;
       panel.classList.toggle("is-active", active);
       if (active) panel.removeAttribute("hidden");
       else panel.setAttribute("hidden", "");
@@ -221,10 +236,14 @@
   }
 
   function initMobileTabs() {
-    const saved = readStorage(STORAGE.tab, "homework");
-    setActiveTab(saved);
+    try {
+      localStorage.removeItem(STORAGE.tab);
+    } catch {
+      /* ignore */
+    }
+    setActiveTab("homework");
     global.matchMedia("(max-width: 767px)").addEventListener("change", () => {
-      setActiveTab(readStorage(STORAGE.tab, "homework"));
+      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
     });
   }
 
@@ -557,6 +576,9 @@
     renderLessons();
     renderGames();
     renderHistory();
+    if (isMobileTabs()) {
+      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
+    }
   }
 
   async function mountWorksheet() {
@@ -626,17 +648,6 @@
       if (!isMobileTabs()) {
         fold?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    });
-
-    document.getElementById("hw-v5-mistakes-btn")?.addEventListener("click", () => {
-      if (isMobileTabs()) {
-        setActiveTab("mistakes", { scrollTop: true });
-        return;
-      }
-      document.getElementById("hw-student-mistakes-card")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
     });
 
     bindMobileTabs();

@@ -462,6 +462,10 @@ body.hw-hub-v5-page .hw-hub-v5-app {
     display: none !important;
   }
 
+  .hw-hub-v5-panel--homework.is-active {
+    display: block;
+  }
+
   .hw-hub-v5-below {
     display: block;
     margin-bottom: 1rem;
