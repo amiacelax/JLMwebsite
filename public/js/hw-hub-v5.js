@@ -8,6 +8,7 @@
     status: "jlm-hw-v5-demo-status",
     answers: "jlm-hw-v5-demo-answers",
     account: "jlm-hw-v5-demo-account",
+    tab: "jlm-hw-v5-demo-tab",
   };
 
   const DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-uxrsqyd.json";
@@ -164,8 +165,75 @@
     };
   }
 
-  function isCompleteView(status) {
-    return status === "submitted" || status === "reviewed";
+  function isMobileTabs() {
+    return global.matchMedia("(max-width: 767px)").matches;
+  }
+
+  function setActiveTab(tabId, options) {
+    const app = document.getElementById("hw-v5-app");
+    if (!app) return;
+
+    const tab = tabId || "homework";
+    app.dataset.v5ActiveTab = tab;
+
+    if (isMobileTabs()) {
+      writeStorage(STORAGE.tab, tab);
+    }
+
+    document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
+      const active = btn.getAttribute("data-v5-tab") === tab;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    applyTabPanels(tab);
+
+    if (options?.scrollTop) {
+      app.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function applyTabPanels(tab) {
+    const homeworkPanel = document.getElementById("hw-v5-panel-homework");
+    const belowPanels = document.querySelectorAll("#hw-v5-below [data-v5-panel]");
+
+    if (!isMobileTabs()) {
+      homeworkPanel?.classList.add("is-active");
+      homeworkPanel?.removeAttribute("hidden");
+      belowPanels.forEach((panel) => {
+        panel.classList.add("is-active");
+        panel.removeAttribute("hidden");
+      });
+      return;
+    }
+
+    const onHomework = tab === "homework";
+    homeworkPanel?.classList.toggle("is-active", onHomework);
+    if (onHomework) homeworkPanel?.removeAttribute("hidden");
+    else homeworkPanel?.setAttribute("hidden", "");
+
+    belowPanels.forEach((panel) => {
+      const active = panel.getAttribute("data-v5-panel") === tab;
+      panel.classList.toggle("is-active", active);
+      if (active) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+    });
+  }
+
+  function initMobileTabs() {
+    const saved = readStorage(STORAGE.tab, "homework");
+    setActiveTab(saved);
+    global.matchMedia("(max-width: 767px)").addEventListener("change", () => {
+      setActiveTab(readStorage(STORAGE.tab, "homework"));
+    });
+  }
+
+  function bindMobileTabs() {
+    document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setActiveTab(btn.getAttribute("data-v5-tab") || "homework", { scrollTop: true });
+      });
+    });
   }
 
   function escapeHtml(s) {
@@ -550,17 +618,30 @@
     });
 
     document.getElementById("hw-v5-past-btn")?.addEventListener("click", () => {
+      if (isMobileTabs()) {
+        setActiveTab("more", { scrollTop: true });
+        const fold = document.getElementById("hw-v5-past-fold");
+        if (fold && !fold.open) fold.open = true;
+        return;
+      }
       document.getElementById("hw-v5-past-fold")?.scrollIntoView({ behavior: "smooth", block: "start" });
       const fold = document.getElementById("hw-v5-past-fold");
       if (fold && !fold.open) fold.open = true;
     });
 
     document.getElementById("hw-v5-mistakes-btn")?.addEventListener("click", () => {
+      if (isMobileTabs()) {
+        setActiveTab("study", { scrollTop: true });
+        return;
+      }
       document.getElementById("hw-student-mistakes-card")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     });
+
+    bindMobileTabs();
+    initMobileTabs();
   }
 
   function init() {

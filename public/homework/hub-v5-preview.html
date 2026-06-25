@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=5">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=7">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -22,7 +22,7 @@
     })();
   </script>
 </head>
-<body class="subpage subpage--homework subpage--platform hw-hub-v3-page hw-hub-v4-page">
+<body class="subpage subpage--homework subpage--platform hw-hub-v3-page hw-hub-v4-page hw-hub-v5-page">
   <a class="skip-link" href="#main">Skip to content</a>
 
   <div class="hw-hub-v2-banner" role="status">
@@ -72,6 +72,15 @@
           <h1 class="section__title" id="hw-hub-title">Your hub</h1>
         </div>
 
+        <div class="hw-hub-v5-app" id="hw-v5-app" data-v5-active-tab="homework">
+          <nav class="hw-hub-v5-tabs" role="tablist" aria-label="Hub sections" id="hw-v5-tabs">
+            <button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">Homework</button>
+            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lesson" data-v5-tab="lesson" aria-selected="false" aria-controls="hw-v5-panel-lesson">Lesson</button>
+            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-study" data-v5-tab="study" aria-selected="false" aria-controls="hw-v5-panel-study">Study</button>
+            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-more" data-v5-tab="more" aria-selected="false" aria-controls="hw-v5-panel-more">More</button>
+          </nav>
+
+          <div class="hw-hub-v5-panel hw-hub-v5-panel--homework is-active" id="hw-v5-panel-homework" data-v5-panel="homework" role="tabpanel" aria-labelledby="hw-v5-tab-homework">
         <div class="hw-hub-v4-homework" id="hw-v5-homework-zone">
           <section class="hw-hub-v2-feedback hw-hub-jd-memo" id="hw-v2-feedback" hidden aria-labelledby="hw-v2-feedback-title">
             <div class="hw-hub-jd-memo__sheet">
@@ -109,45 +118,53 @@
             <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
             <div id="hw-v2-worksheet-mount" lang="ja"></div>
           </section>
-
-          <details class="hw-hub-v2-fold" id="hw-v5-past-fold">
-            <summary class="hw-hub-v2-fold__summary">Past homework</summary>
-            <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
-          </details>
         </div>
-
-        <div class="hw-platform-grid hw-platform-grid--student hw-hub-v4-below" id="hw-student-grid">
-          <div class="hw-grid-stack" id="hw-grid-stack">
-            <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
-              <h2 class="hw-platform-card__title">Your most recent lesson</h2>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
-              <div class="hw-lesson-actions">
-                <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
-              </div>
-            </section>
           </div>
 
-          <div class="hw-grid-upload-col">
-            <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
-              <h2 class="hw-platform-card__title">Recent mistakes</h2>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
-              <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty">No mistakes on your list — nice work!</p>
-            </section>
+          <div class="hw-hub-v5-below hw-platform-grid hw-platform-grid--student hw-hub-v4-below" id="hw-v5-below">
+            <div class="hw-hub-v5-panel" id="hw-v5-panel-lesson" data-v5-panel="lesson" role="tabpanel" aria-labelledby="hw-v5-tab-lesson" hidden>
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
+                <div class="hw-lesson-actions">
+                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+                </div>
+              </section>
+            </div>
 
-            <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
-              <h2 class="course-card__title">Learning Games 👾</h2>
-              <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
-            </article>
+            <div class="hw-hub-v5-panel" id="hw-v5-panel-study" data-v5-panel="study" role="tabpanel" aria-labelledby="hw-v5-tab-study" hidden>
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+                <h2 class="hw-platform-card__title">Recent mistakes</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
+                <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty">No mistakes on your list — nice work!</p>
+              </section>
+
+              <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
+                <h2 class="course-card__title">Learning Games 👾</h2>
+                <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
+              </article>
+            </div>
+
+            <div class="hw-hub-v5-panel" id="hw-v5-panel-more" data-v5-panel="more" role="tabpanel" aria-labelledby="hw-v5-tab-more" hidden>
+              <details class="hw-hub-v2-fold hw-hub-v2-fold--open" id="hw-v5-past-fold">
+                <summary class="hw-hub-v2-fold__summary">Past homework</summary>
+                <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
+              </details>
+
+              <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
+                <h2 class="hw-platform-card__title">Notifications</h2>
+                <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready.</p>
+                <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
+              </section>
+
+              <p class="subpage-back hw-hub-v5-more-back">
+                <a class="btn btn--ghost" href="/homework.html">← Homework info &amp; plans</a>
+              </p>
+            </div>
           </div>
-
-          <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
-            <h2 class="hw-platform-card__title">Notifications</h2>
-            <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready.</p>
-            <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
-          </section>
         </div>
 
-        <p class="subpage-back">
+        <p class="subpage-back hw-hub-v5-desktop-back">
           <a class="btn btn--ghost" href="/homework.html">← Homework info &amp; plans</a>
         </p>
       </div>
@@ -208,6 +225,6 @@
   <script src="/js/hw-worksheet.js?v=20260718" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-checkout.js" defer></script>
-  <script src="/js/hw-hub-v5.js?v=3" defer></script>
+  <script src="/js/hw-hub-v5.js?v=4" defer></script>
 </body>
 </html>
