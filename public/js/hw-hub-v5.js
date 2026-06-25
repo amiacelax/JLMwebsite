@@ -619,19 +619,18 @@
 
     document.getElementById("hw-v5-past-btn")?.addEventListener("click", () => {
       if (isMobileTabs()) {
-        setActiveTab("more", { scrollTop: true });
-        const fold = document.getElementById("hw-v5-past-fold");
-        if (fold && !fold.open) fold.open = true;
-        return;
+        setActiveTab("homework", { scrollTop: true });
       }
-      document.getElementById("hw-v5-past-fold")?.scrollIntoView({ behavior: "smooth", block: "start" });
       const fold = document.getElementById("hw-v5-past-fold");
       if (fold && !fold.open) fold.open = true;
+      if (!isMobileTabs()) {
+        fold?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
 
     document.getElementById("hw-v5-mistakes-btn")?.addEventListener("click", () => {
       if (isMobileTabs()) {
-        setActiveTab("study", { scrollTop: true });
+        setActiveTab("mistakes", { scrollTop: true });
         return;
       }
       document.getElementById("hw-student-mistakes-card")?.scrollIntoView({
