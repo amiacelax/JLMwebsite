@@ -1,0 +1,241 @@
+/* Magnifying glass (虫眼鏡) — scoped to homework card */
+
+.hw-mg-host {
+  position: relative;
+}
+
+.hw-mg-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hw-mg-host.hw-mg-armed .hw-worksheet,
+.hw-mg-host.hw-mg-armed .hw-worksheet * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232d6a4f' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3Cpath d='M15 15l6 6'/%3E%3C/svg%3E")
+      10 10,
+    crosshair !important;
+}
+
+.hw-mg-host.hw-mg-armed .hw-mg-lens,
+.hw-mg-host.hw-mg-armed .hw-mg-lens * {
+  cursor: grab !important;
+}
+
+.hw-mg-lens {
+  position: absolute;
+  z-index: 42;
+  width: 3rem;
+  height: 3rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  color: var(--color-green, #2d6a4f);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
+  border: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.hw-mg-lens:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+}
+
+.hw-mg-lens.is-armed {
+  color: #fff;
+  background: var(--color-green, #2d6a4f);
+  border-color: var(--color-green, #2d6a4f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent),
+    0 6px 22px rgba(0, 0, 0, 0.2);
+}
+
+.hw-mg-lens.is-dragging {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  transition: none;
+}
+
+.hw-mg-lens__icon {
+  width: 1.45rem;
+  height: 1.45rem;
+  pointer-events: none;
+}
+
+.hw-mg-lens__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hw-mg-snap-hint {
+  position: absolute;
+  z-index: 41;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 45%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.6);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.hw-mg-snap-hint.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.hw-mg-snap-hint.is-target {
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 55%, transparent);
+  transform: translate(-50%, -50%) scale(1.35);
+}
+
+.hw-mg-popup {
+  position: absolute;
+  z-index: 43;
+  min-width: min(14rem, calc(100% - 1.5rem));
+  max-width: min(18rem, calc(100% - 1.5rem));
+  padding: 0.85rem 0.95rem 0.75rem;
+  border-radius: var(--radius-md, 0.65rem);
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid var(--color-border-strong, rgba(0, 0, 0, 0.12));
+  box-shadow: var(--shadow-md, 0 8px 28px rgba(0, 0, 0, 0.14));
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  pointer-events: auto;
+  animation: hw-mg-pop 0.16s ease;
+}
+
+@keyframes hw-mg-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.hw-mg-popup__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.hw-mg-popup__reading {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-green, #2d6a4f);
+  letter-spacing: 0.03em;
+}
+
+.hw-mg-popup__def {
+  margin: 0 0 0.65rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.hw-mg-popup__more {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-green, #2d6a4f);
+  text-decoration: none;
+}
+
+.hw-mg-popup__more:hover {
+  text-decoration: underline;
+}
+
+.hw-mg-popup--loading {
+  padding: 0.65rem 0.85rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.hw-mg-popup__empty {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-mg-popup__close {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.hw-mg-popup__close:hover {
+  background: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
+  color: var(--color-text);
+}
+
+.hw-mg-toast {
+  position: absolute;
+  z-index: 44;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  max-width: calc(100% - 1.5rem);
+  text-align: center;
+}
+
+.hw-mg-toast.is-visible {
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .hw-mg-lens {
+    width: 3.35rem;
+    height: 3.35rem;
+  }
+
+  .hw-mg-lens__icon {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+}

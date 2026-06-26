@@ -1,0 +1,635 @@
+/**
+ * Magnifying glass (虫眼鏡) — draggable click-to-lookup inside the homework card.
+ */
+(function (global) {
+  const STORAGE_KEY = "hw-mg-position-v2";
+  const DEFAULT_LENS = { x: 114, y: 40 };
+  const SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
+  const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
+  const SKIP_SELECTOR =
+    "input, textarea, select, button, a, label, video, audio, .hw-mg-lens, .hw-mg-popup, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
+
+  const LENS_ICON =
+    '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
+    '<circle cx="10" cy="10" r="6.5"/>' +
+    '<path d="M15 15l6 6"/>' +
+    "</svg>";
+
+  let hostEl = null;
+  let shellEl = null;
+  let lensEl = null;
+  let popupEl = null;
+  let toastEl = null;
+  let snapHintEl = null;
+  let resizeObserver = null;
+  let armed = false;
+  let lensSnapId = null;
+  let lensPosition = { ...DEFAULT_LENS };
+  let dragState = null;
+  let lookupBusy = false;
+  let built = false;
+
+  function enabled() {
+    return global.HwFeatureFlags?.magnifyingGlass?.() === true;
+  }
+
+  function findHost() {
+    const v4 = document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet");
+    if (v4 && !v4.hidden && !v4.closest("[hidden]")) return v4;
+    const legacy = document.getElementById("hw-worksheet-section");
+    if (legacy && !legacy.hidden && !legacy.closest("[hidden]")) return legacy;
+    return v4 || legacy || document.querySelector(".hw-hub-v2-worksheet");
+  }
+
+  function hostIsVisible(box) {
+    return Boolean(box && !box.hidden && !box.closest("[hidden]") && box.getClientRects().length);
+  }
+
+  function katakanaToHiragana(str) {
+    return String(str || "").replace(/[\u30a1-\u30f6]/g, (ch) =>
+      String.fromCharCode(ch.charCodeAt(0) - 0x60)
+    );
+  }
+
+  function snapPoints() {
+    const box = hostEl;
+    const pad = 12;
+    const w = box?.clientWidth || 320;
+    const h = box?.clientHeight || 480;
+    const midY = h * 0.5;
+    return {
+      tl: { x: pad, y: pad },
+      tc: { x: w * 0.5, y: pad },
+      tr: { x: w - pad, y: pad },
+      ml: { x: pad, y: midY },
+      mr: { x: w - pad, y: midY },
+      bl: { x: pad, y: h - pad },
+      bc: { x: w * 0.5, y: h - pad },
+      br: { x: w - pad, y: h - pad },
+    };
+  }
+
+  function clampLocal(x, y) {
+    const pad = 8;
+    const w = hostEl?.clientWidth || 0;
+    const h = hostEl?.clientHeight || 0;
+    return {
+      x: Math.max(pad, Math.min(x, w - pad)),
+      y: Math.max(pad, Math.min(y, h - pad)),
+    };
+  }
+
+  function clientToLocal(clientX, clientY) {
+    const rect = hostEl.getBoundingClientRect();
+    return clampLocal(clientX - rect.left, clientY - rect.top);
+  }
+
+  function nearestSnap(localX, localY) {
+    const points = snapPoints();
+    let bestId = lensSnapId || "tr";
+    let bestDist = Infinity;
+    SNAP_IDS.forEach((id) => {
+      const p = points[id];
+      const dx = p.x - localX;
+      const dy = p.y - localY;
+      const dist = dx * dx + dy * dy;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = id;
+      }
+    });
+    return bestDist <= 64 * 64 ? bestId : null;
+  }
+
+  function setLensPosition(localX, localY) {
+    if (!lensEl) return;
+    lensEl.style.left = localX + "px";
+    lensEl.style.top = localY + "px";
+  }
+
+  function saveLensPosition() {
+    try {
+      if (lensSnapId) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ snap: lensSnapId }));
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: lensPosition.x, y: lensPosition.y }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function loadLensPosition() {
+    lensSnapId = null;
+    lensPosition = { ...DEFAULT_LENS };
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      if (SNAP_IDS.includes(raw)) {
+        lensSnapId = raw;
+        return;
+      }
+      const data = JSON.parse(raw);
+      if (data.snap && SNAP_IDS.includes(data.snap)) {
+        lensSnapId = data.snap;
+      } else if (typeof data.x === "number" && typeof data.y === "number") {
+        lensPosition = { x: data.x, y: data.y };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function applyLensPosition() {
+    if (!lensEl || !hostEl) return;
+    if (lensSnapId) {
+      const p = snapPoints()[lensSnapId] || snapPoints().tr;
+      lensPosition = { x: p.x, y: p.y };
+    } else {
+      lensPosition = clampLocal(lensPosition.x, lensPosition.y);
+    }
+    setLensPosition(lensPosition.x, lensPosition.y);
+  }
+
+  function placeLens(id) {
+    if (!lensEl || !hostEl) return;
+    lensSnapId = id || lensSnapId;
+    applyLensPosition();
+    saveLensPosition();
+  }
+
+  function setFreeLensPosition(localX, localY) {
+    lensSnapId = null;
+    lensPosition = clampLocal(localX, localY);
+    setLensPosition(lensPosition.x, lensPosition.y);
+    saveLensPosition();
+  }
+
+  function showToast(text) {
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.classList.add("is-visible");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toastEl.classList.remove("is-visible"), 2200);
+  }
+
+  function setArmed(next) {
+    armed = !!next;
+    hostEl?.classList.toggle("hw-mg-armed", armed);
+    lensEl?.classList.toggle("is-armed", armed);
+    if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
+    if (armed) {
+      closePopup();
+      showToast("Tap a word to look it up · Esc to cancel");
+    }
+  }
+
+  function closePopup() {
+    lookupBusy = false;
+    if (popupEl) {
+      popupEl.remove();
+      popupEl = null;
+    }
+  }
+
+  function isLookupTarget(el) {
+    if (!el || !(el instanceof Element) || !hostEl?.contains(el)) return false;
+    if (el.closest(".hw-mg-popup") || el.closest(".hw-mg-lens")) return false;
+    if (el.closest(SKIP_SELECTOR)) return false;
+    return Boolean(
+      el.closest(
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, [lang='ja']"
+      )
+    );
+  }
+
+  function caretOffsetIn(container, clientX, clientY) {
+    let range = null;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(clientX, clientY);
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(clientX, clientY);
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.setEnd(pos.offsetNode, pos.offset);
+      }
+    }
+    if (!range || !container.contains(range.startContainer)) return -1;
+    const pre = document.createRange();
+    pre.selectNodeContents(container);
+    pre.setEnd(range.startContainer, range.startOffset);
+    return pre.toString().length;
+  }
+
+  function expandRangeToJapaneseWord(range) {
+    if (!range || !range.startContainer) return "";
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return range.toString().trim();
+    const text = node.textContent || "";
+    let start = range.startOffset;
+    let end = range.endOffset;
+    while (start > 0 && JA_CHAR.test(text[start - 1])) start -= 1;
+    while (end < text.length && JA_CHAR.test(text[end])) end += 1;
+    return text.slice(start, end).trim();
+  }
+
+  function wordAtPoint(x, y) {
+    let range = null;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(x, y);
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) {
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.setEnd(pos.offsetNode, pos.offset);
+      }
+    }
+    if (!range) return "";
+    return expandRangeToJapaneseWord(range);
+  }
+
+  async function tokenizeText(text) {
+    const auto = global.HwFuriganaAuto;
+    if (!auto?.ensureTokenizer) return [];
+    try {
+      const tokenizer = await auto.ensureTokenizer();
+      return tokenizer.tokenize(String(text || ""));
+    } catch {
+      return [];
+    }
+  }
+
+  function tokenAtOffset(tokens, text, offset, fallback) {
+    if (!tokens.length) return null;
+    let pos = 0;
+    for (const token of tokens) {
+      const sf = token.surface_form || "";
+      const idx = text.indexOf(sf, pos);
+      const start = idx >= 0 ? idx : pos;
+      const end = start + sf.length;
+      if (offset >= start && offset < end) return token;
+      pos = Math.max(pos, end);
+    }
+    const target = String(fallback || "").trim();
+    if (!target) return tokens[0] || null;
+    return (
+      tokens.find((t) => t.surface_form === target) ||
+      tokens.find((t) => target.includes(t.surface_form) && t.surface_form.length > 1) ||
+      tokens.find((t) => t.surface_form.includes(target)) ||
+      tokens[0]
+    );
+  }
+
+  async function resolveLookup(target, clientX, clientY) {
+    const container =
+      target.closest(
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']"
+      ) || target;
+    const text = (container.textContent || "").replace(/\s+/g, " ").trim();
+    const fallback = wordAtPoint(clientX, clientY);
+    if (!fallback && !text) return null;
+
+    const offset = caretOffsetIn(container, clientX, clientY);
+    const tokens = await tokenizeText(text);
+    const token = tokenAtOffset(tokens, text, offset, fallback);
+    const word = token?.surface_form || fallback;
+    if (!word) return null;
+
+    return {
+      word,
+      reading: katakanaToHiragana(token?.reading || token?.pronunciation || ""),
+    };
+  }
+
+  async function fetchLookup(word) {
+    const q = String(word || "").trim();
+    if (!q) return null;
+    try {
+      const res = await fetch("/api/ja-lookup?q=" + encodeURIComponent(q));
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  function positionPopup(localX, localY) {
+    if (!popupEl || !hostEl) return;
+    const pad = 8;
+    const boxW = hostEl.clientWidth;
+    const boxH = hostEl.clientHeight;
+    const rect = popupEl.getBoundingClientRect();
+    let left = localX + 10;
+    let top = localY + 10;
+    if (left + rect.width > boxW - pad) left = localX - rect.width - 10;
+    if (top + rect.height > boxH - pad) top = localY - rect.height - 10;
+    left = Math.max(pad, Math.min(left, boxW - rect.width - pad));
+    top = Math.max(pad, Math.min(top, boxH - rect.height - pad));
+    popupEl.style.left = left + "px";
+    popupEl.style.top = top + "px";
+  }
+
+  function bindPopupClose(popup) {
+    popup.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    popup.addEventListener("click", (ev) => ev.stopPropagation());
+    popup.querySelector(".hw-mg-popup__close")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closePopup();
+    });
+  }
+
+  function renderPopup(result, localX, localY) {
+    closePopup();
+    if (!shellEl) return;
+
+    popupEl = document.createElement("div");
+    popupEl.className = "hw-mg-popup";
+    popupEl.setAttribute("role", "dialog");
+    popupEl.setAttribute("aria-label", "Word lookup");
+
+    const head = document.createElement("div");
+    head.className = "hw-mg-popup__head";
+
+    const readingEl = document.createElement("p");
+    readingEl.className = "hw-mg-popup__reading";
+    readingEl.textContent = result.reading || "—";
+    head.appendChild(readingEl);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "hw-mg-popup__close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.textContent = "×";
+    head.appendChild(closeBtn);
+    popupEl.appendChild(head);
+
+    if (result.definition) {
+      const defEl = document.createElement("p");
+      defEl.className = "hw-mg-popup__def";
+      defEl.textContent = result.definition;
+      popupEl.appendChild(defEl);
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "hw-mg-popup__empty";
+      empty.textContent = result.reading ? "No short definition found." : "Could not read this word.";
+      popupEl.appendChild(empty);
+    }
+
+    if (result.jishoUrl) {
+      const link = document.createElement("a");
+      link.className = "hw-mg-popup__more";
+      link.href = result.jishoUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "See more on Jisho →";
+      popupEl.appendChild(link);
+    }
+
+    shellEl.appendChild(popupEl);
+    bindPopupClose(popupEl);
+    positionPopup(localX, localY);
+  }
+
+  async function handleLookupClick(e) {
+    if (!armed || !hostEl?.contains(e.target)) return;
+    if (e.target.closest(".hw-mg-popup") || e.target.closest(".hw-mg-lens")) return;
+    if (!isLookupTarget(e.target)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    closePopup();
+
+    const local = clientToLocal(e.clientX, e.clientY);
+    lookupBusy = true;
+
+    const loading = document.createElement("div");
+    loading.className = "hw-mg-popup hw-mg-popup--loading";
+    loading.style.left = local.x + 10 + "px";
+    loading.style.top = local.y + 10 + "px";
+    loading.textContent = "…";
+    shellEl.appendChild(loading);
+    popupEl = loading;
+    bindPopupClose(loading);
+
+    try {
+      const data = await resolveLookup(e.target, e.clientX, e.clientY);
+      if (!data?.word) {
+        closePopup();
+        showToast("No Japanese word here — try again");
+        return;
+      }
+      const lookup = (await fetchLookup(data.word)) || {};
+      renderPopup(
+        {
+          reading: lookup.reading || data.reading || "",
+          definition: lookup.definition || "",
+          jishoUrl: lookup.jishoUrl || "https://jisho.org/search/" + encodeURIComponent(data.word),
+        },
+        local.x,
+        local.y
+      );
+    } catch {
+      closePopup();
+      showToast("Lookup failed — try again");
+    } finally {
+      lookupBusy = false;
+    }
+  }
+
+  function onPointerDown(e) {
+    if (!lensEl || e.button !== 0) return;
+    e.stopPropagation();
+    dragState = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+    lensEl.classList.add("is-dragging");
+    lensEl.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.moved && dx * dx + dy * dy > 16) {
+      dragState.moved = true;
+      if (armed) setArmed(false);
+    }
+    if (!dragState.moved) return;
+
+    const local = clientToLocal(e.clientX, e.clientY);
+    setLensPosition(local.x, local.y);
+
+    const snapId = nearestSnap(local.x, local.y);
+    if (snapHintEl && snapId) {
+      const p = snapPoints()[snapId];
+      snapHintEl.style.left = p.x + "px";
+      snapHintEl.style.top = p.y + "px";
+      snapHintEl.classList.add("is-visible", "is-target");
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    lensEl.classList.remove("is-dragging");
+    snapHintEl?.classList.remove("is-visible", "is-target");
+
+    if (dragState.moved) {
+      const local = clientToLocal(e.clientX, e.clientY);
+      const snapId = nearestSnap(local.x, local.y);
+      if (snapId) placeLens(snapId);
+      else setFreeLensPosition(local.x, local.y);
+    } else {
+      setArmed(!armed);
+    }
+
+    dragState = null;
+    try {
+      lensEl.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Escape") {
+      if (popupEl) {
+        closePopup();
+        e.preventDefault();
+        return;
+      }
+      if (armed) {
+        setArmed(false);
+        e.preventDefault();
+      }
+    }
+  }
+
+  function onContextMenu(e) {
+    if (!hostEl?.contains(e.target)) return;
+    if (armed) {
+      setArmed(false);
+      e.preventDefault();
+    } else if (popupEl && !e.target.closest(".hw-mg-popup")) {
+      closePopup();
+    }
+  }
+
+  function onDocumentClick(e) {
+    if (!popupEl || armed) return;
+    if (!e.target.closest(".hw-mg-popup")) closePopup();
+  }
+
+  function buildUi() {
+    if (built) return;
+
+    snapHintEl = document.createElement("span");
+    snapHintEl.className = "hw-mg-snap-hint";
+    snapHintEl.setAttribute("aria-hidden", "true");
+
+    toastEl = document.createElement("div");
+    toastEl.className = "hw-mg-toast";
+    toastEl.setAttribute("aria-live", "polite");
+
+    lensEl = document.createElement("button");
+    lensEl.type = "button";
+    lensEl.id = "hw-mg-lens";
+    lensEl.className = "hw-mg-lens";
+    lensEl.innerHTML = LENS_ICON + '<span class="hw-mg-lens__label">Magnifying glass lookup</span>';
+    lensEl.setAttribute("aria-pressed", "false");
+    lensEl.addEventListener("pointerdown", onPointerDown);
+    lensEl.addEventListener("pointermove", onPointerMove);
+    lensEl.addEventListener("pointerup", onPointerUp);
+    lensEl.addEventListener("pointercancel", onPointerUp);
+    lensEl.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+
+    document.addEventListener("click", handleLookupClick, true);
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("contextmenu", onContextMenu);
+    document.addEventListener("click", onDocumentClick);
+
+    built = true;
+  }
+
+  function attachHost() {
+    if (!enabled()) {
+      destroy();
+      return false;
+    }
+    buildUi();
+    const nextHost = findHost();
+    if (!nextHost || !hostIsVisible(nextHost)) return false;
+
+    if (hostEl === nextHost && shellEl?.parentElement === nextHost) {
+      applyLensPosition();
+      return true;
+    }
+
+    closePopup();
+    setArmed(false);
+    hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
+
+    hostEl = nextHost;
+    hostEl.classList.add("hw-mg-host");
+
+    shellEl = hostEl.querySelector(".hw-mg-shell");
+    if (!shellEl) {
+      shellEl = document.createElement("div");
+      shellEl.className = "hw-mg-shell";
+      shellEl.setAttribute("aria-hidden", "true");
+      hostEl.appendChild(shellEl);
+    }
+
+    shellEl.append(snapHintEl, toastEl, lensEl);
+
+    loadLensPosition();
+    applyLensPosition();
+
+    if (resizeObserver) resizeObserver.disconnect();
+    resizeObserver = new ResizeObserver(() => applyLensPosition());
+    resizeObserver.observe(hostEl);
+
+    return true;
+  }
+
+  function init() {
+    if (!enabled()) return;
+    attachHost();
+    if (!hostEl) {
+      const retry = () => {
+        if (attachHost()) observer.disconnect();
+      };
+      const observer = new MutationObserver(retry);
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+    }
+  }
+
+  function refresh() {
+    if (!enabled()) {
+      destroy();
+      return;
+    }
+    attachHost();
+  }
+
+  function destroy() {
+    closePopup();
+    setArmed(false);
+    hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
+    resizeObserver?.disconnect();
+    shellEl?.remove();
+    hostEl = null;
+    shellEl = null;
+  }
+
+  global.HwMagnifyingGlass = { init, refresh, destroy, setArmed };
+})(window);

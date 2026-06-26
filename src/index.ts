@@ -2822,6 +2822,77 @@ async function handleLanternWordSetDelete(request: Request, env: Env): Promise<R
   }
 }
 
+function katakanaToHiragana(text: string): string {
+  return String(text || "").replace(/[\u30a1-\u30f6]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+
+interface JishoApiEntry {
+  japanese?: Array<{ word?: string; reading?: string }>;
+  senses?: Array<{ english_definitions?: string[]; parts_of_speech?: string[] }>;
+  is_common?: boolean;
+}
+
+function pickBestJishoEntry(items: JishoApiEntry[], query: string): JishoApiEntry | null {
+  if (!items.length) return null;
+  const q = query.trim();
+  const score = (entry: JishoApiEntry): number => {
+    const word = entry.japanese?.[0]?.word || "";
+    const reading = entry.japanese?.[0]?.reading || "";
+    let s = 0;
+    if (word === q) s += 120;
+    if (reading === q) s += 110;
+    if (word.length === q.length) s += 60;
+    if (word && q.startsWith(word)) s += 20;
+    if (word.length === 1 && q.length > 1) s -= 50;
+    if (entry.is_common) s += 8;
+    const pos = entry.senses?.[0]?.parts_of_speech || [];
+    if (q.length > 1 && pos.some((p) => /kana-only|hiragana/i.test(p))) s -= 30;
+    return s;
+  };
+  return [...items].sort((a, b) => score(b) - score(a))[0] || null;
+}
+
+async function handleJaLookup(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim().slice(0, 48);
+  if (!q) return jsonResponse({ error: "Missing q parameter." }, 400);
+
+  try {
+    const res = await fetch(
+      "https://jisho.org/api/v1/search/words?keyword=" + encodeURIComponent(q)
+    );
+    if (!res.ok) return jsonResponse({ error: "Dictionary lookup failed." }, 502);
+    const data = (await res.json()) as { data?: JishoApiEntry[] };
+    const best = pickBestJishoEntry(data.data || [], q);
+    const reading = katakanaToHiragana(best?.japanese?.[0]?.reading || "");
+    const definition = (best?.senses?.[0]?.english_definitions || [])
+      .slice(0, 3)
+      .join(", ");
+    return jsonResponse(
+      {
+        query: q,
+        reading,
+        definition,
+        jishoUrl: "https://jisho.org/search/" + encodeURIComponent(q),
+      },
+      200,
+      { "Cache-Control": "public, max-age=86400" }
+    );
+  } catch (err) {
+    console.error("ja-lookup failed:", err);
+    return jsonResponse({ error: "Dictionary lookup failed." }, 502);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -2834,6 +2905,10 @@ export default {
       target.searchParams.set("teacherUsername", teacher);
       if (url.searchParams.has("d")) target.searchParams.set("download", "1");
       return handleHomeworkSubmissionVideo(new Request(target.toString(), request), env);
+    }
+
+    if (url.pathname === "/api/ja-lookup") {
+      return handleJaLookup(request);
     }
 
     if (url.pathname === "/api/contact") {

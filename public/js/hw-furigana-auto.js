@@ -198,5 +198,6 @@
     hasManualReadings,
     withTimeout,
     preload,
+    ensureTokenizer,
   };
 })(window);

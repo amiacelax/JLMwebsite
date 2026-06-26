@@ -9341,52 +9341,6 @@ button.hw-tense-pill {
   margin: 0 0.1rem;
 }
 
-/* Hover reading — e.g. 食べました → たべました on hover */
-.hw-worksheet__content .ja-reading,
-.hw-worksheet__teacher-answer .ja-reading {
-  position: relative;
-  cursor: help;
-  border-bottom: 1px dotted color-mix(in srgb, var(--color-text-muted) 50%, transparent);
-}
-
-.hw-worksheet__content .ja-reading::after,
-.hw-worksheet__teacher-answer .ja-reading::after {
-  content: attr(data-reading);
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 0.3rem);
-  transform: translateX(-50%);
-  padding: 0.22rem 0.5rem;
-  border-radius: 0.35rem;
-  font-size: 0.88em;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  color: var(--color-text);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-strong);
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.12s ease, visibility 0.12s ease;
-  z-index: 20;
-}
-
-.hw-worksheet__content .ja-reading:hover::after,
-.hw-worksheet__content .ja-reading:focus-visible::after,
-.hw-worksheet__teacher-answer .ja-reading:hover::after,
-.hw-worksheet__teacher-answer .ja-reading:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
-}
-
-body.hw-hw-focus-mode .hw-worksheet__teacher-answer .ja-reading::after {
-  background: #1e2433;
-  border-color: rgba(255, 255, 255, 0.14);
-  color: #e8edf5;
-}
-
 .hw-worksheet__content .ja-okuri,
 .hw-worksheet__teacher-answer .ja-okuri {
   font-size: inherit;

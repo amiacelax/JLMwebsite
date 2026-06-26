@@ -47,6 +47,9 @@
       assignCard.classList.toggle("hw-hub-v4-actions-card", v4);
     }
     placePhotoUploadShell();
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+      global.HwMagnifyingGlass.refresh();
+    }
   }
 
   function placePhotoUploadShell() {
@@ -2251,31 +2254,15 @@
     }
 
     mountWorksheet(assignment);
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+      global.HwMagnifyingGlass.refresh();
+    }
     studentMountedAssignmentId = active.id;
 
     scheduleStudentMistakesLoad({
       background: Boolean(options.background),
       bypassCache: Boolean(options.bypassCache),
     });
-
-    if (
-      global.HwFuriganaAuto?.annotateAssignment &&
-      global.HwFuriganaAuto.assignmentNeedsAnnotation?.(assignment)
-    ) {
-      void (async () => {
-        try {
-          const annotated = JSON.parse(JSON.stringify(assignment));
-          const annotate = global.HwFuriganaAuto.annotateAssignment(annotated);
-          const timed = global.HwFuriganaAuto.withTimeout
-            ? global.HwFuriganaAuto.withTimeout(annotate, 8000, "reading-timeout")
-            : annotate;
-          await timed;
-          mountWorksheet(annotated);
-        } catch (err) {
-          console.warn("Hover readings skipped:", err);
-        }
-      })();
-    }
   }
 
   function ensureTeacherEditorMounted() {
@@ -2340,6 +2327,9 @@
         } else {
           setTimeout(preload, 1500);
         }
+      }
+      if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.init) {
+        global.HwMagnifyingGlass.init();
       }
     }
   }

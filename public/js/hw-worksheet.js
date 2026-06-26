@@ -371,18 +371,6 @@
 
   function renderRubySegment(seg) {
     const text = seg.text || "";
-    const reading = String(seg.rt || "").trim();
-    const showReading =
-      reading && normalizeAnswer(reading) !== normalizeAnswer(text);
-    if (showReading) {
-      const span = document.createElement("span");
-      span.className = "ja-reading";
-      span.textContent = text;
-      span.setAttribute("data-reading", reading);
-      span.setAttribute("title", reading);
-      span.setAttribute("aria-label", text + " — " + reading);
-      return span;
-    }
     if (!text) return document.createTextNode("");
     const plain = document.createElement("span");
     plain.className = "ja-okuri";

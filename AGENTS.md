@@ -24,3 +24,10 @@ Deploy docs: `docs/DEPLOY.md`. Future platform: `docs/NIHONGO-WEEKLY-PLATFORM.md
 - Don’t commit `.dev.vars` or webhook URLs.
 - PayPal course links use `REPLACE_*` hosted_button_id placeholders until user supplies real URLs.
 - Re-encode lesson video with ffmpeg (command in `docs/ARCHITECTURE.md`) if source `.mov` changes.
+
+## Production vs local (“remove from live”)
+
+- **`npm run deploy` uploads all of `public/`** — there is no separate “live-only” tree. Local-only behavior must use **feature flags** (`public/js/hw-feature-flags.js`), not deleted files or uncommitted local-only copies.
+- **“Remove from live” / “disable in production”** → turn the feature off for production hostnames in `hw-feature-flags.js`. Do **not** delete source files, strip script tags, or remove local wiring unless the user explicitly asks to remove the feature from the **codebase**.
+- **Before deleting** any feature’s JS/CSS or HTML includes, confirm the user wants it gone from the repo — not just off production.
+- WIP example: magnifying glass is gated by `HwFeatureFlags.magnifyingGlass()` (on at `localhost` / `127.0.0.1` only). Production override for testing: `localStorage.setItem('hw-mg-dev','1')`.
