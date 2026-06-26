@@ -5,7 +5,7 @@
   const win = typeof window !== "undefined" ? window : globalThis;
 
   const MISTAKES_CACHE_PREFIX = "jlm-hw-mistakes-v1-";
-  const MISTAKES_TTL_MS = 5 * 60_000;
+  const MISTAKES_TTL_MS = 60_000;
 
   let activeCache = [];
   let trashCache = [];
@@ -40,7 +40,7 @@
   function writeMistakesCache(username, active, trash) {
     try {
       sessionStorage.setItem(
-        mistakesCacheKey(username),
+        mistakesCacheKey(String(username || "").trim().toLowerCase()),
         JSON.stringify({ savedAt: Date.now(), active, trash })
       );
     } catch {
@@ -59,8 +59,9 @@
   }
 
   async function fetchAllMistakes(username) {
-    const url = "/api/student-mistakes?username=" + encodeURIComponent(username);
-    const res = await fetch(url, { cache: "default" });
+    const key = String(username || "").trim().toLowerCase();
+    const url = "/api/student-mistakes?username=" + encodeURIComponent(key);
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "Could not load mistakes.");
@@ -430,6 +431,18 @@
     document.getElementById("hw-student-mistakes-delete")?.addEventListener("click", () => {
       if (sessionRef) void deleteSelected(sessionRef);
     });
+
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted && sessionRef) {
+        void reload(sessionRef, { bypassCache: true });
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && sessionRef) {
+        void reload(sessionRef, { bypassCache: true });
+      }
+    });
   }
 
   async function load(session, options) {
@@ -450,10 +463,6 @@
     } else if (!options.background) {
       loading = true;
       render(session);
-    }
-
-    if (cached?.fresh && !options.bypassCache) {
-      return;
     }
 
     if (fetchInFlight && !options.bypassCache) {

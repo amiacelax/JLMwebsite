@@ -1371,6 +1371,16 @@ export interface HomeworkAnswerRow {
   expected?: string;
   correct?: boolean;
   completed?: string;
+  progress?: string;
+  blockType?: string;
+  question?: string;
+  piecesDisplay?: string;
+  reference?: string;
+  staticDisplay?: string;
+  prefix?: string;
+  suffix?: string;
+  mediaId?: string;
+  mediaKind?: "video" | "audio";
 }
 
 export interface HomeworkSubmissionPhoto {
@@ -1399,6 +1409,8 @@ export interface HomeworkSubmission {
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
   listening?: HomeworkAnswerRow[];
+  /** Worksheet-order answers (matches Discord checker layout). */
+  answers?: HomeworkAnswerRow[];
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
@@ -1416,6 +1428,7 @@ export interface HomeworkOnlineSubmitInput {
   section1?: HomeworkAnswerRow[];
   section2?: HomeworkAnswerRow[];
   listening?: HomeworkAnswerRow[];
+  answers?: HomeworkAnswerRow[];
 }
 
 export interface HomeworkPhotoSubmitInput {
@@ -1587,7 +1600,8 @@ export async function saveHomeworkOnlineSubmission(
   const section1 = Array.isArray(data.section1) ? data.section1 : [];
   const section2 = Array.isArray(data.section2) ? data.section2 : [];
   const listening = Array.isArray(data.listening) ? data.listening : [];
-  if (!section1.length && !section2.length && !listening.length) {
+  const answers = Array.isArray(data.answers) ? data.answers : [];
+  if (!section1.length && !section2.length && !listening.length && !answers.length) {
     throw new Error("ANSWERS_REQUIRED");
   }
 
@@ -1605,6 +1619,7 @@ export async function saveHomeworkOnlineSubmission(
     section1,
     section2,
     listening,
+    answers: answers.length ? answers : undefined,
     submittedAt: new Date().toISOString(),
   };
 
@@ -1745,7 +1760,7 @@ export async function loadHomeworkSubmissionVideo(
   teacherUsername: string | undefined,
   videoId: string,
   env: KvEnv
-): Promise<{ body: ArrayBuffer; mimeType: string } | null> {
+): Promise<{ body: ArrayBuffer; mimeType: string; name?: string } | null> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
   if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
@@ -1758,8 +1773,12 @@ export async function loadHomeworkSubmissionVideo(
   if (!metaRaw || !body) return null;
 
   try {
-    const meta = JSON.parse(metaRaw) as { mimeType?: string };
-    return { body, mimeType: meta.mimeType || "application/octet-stream" };
+    const meta = JSON.parse(metaRaw) as { mimeType?: string; name?: string };
+    return {
+      body,
+      mimeType: meta.mimeType || "application/octet-stream",
+      name: meta.name,
+    };
   } catch {
     return null;
   }

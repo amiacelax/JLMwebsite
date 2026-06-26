@@ -261,6 +261,10 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Upload failed.");
+        if (data.mediaId) {
+          mount.dataset.mediaId = data.mediaId;
+          mount.dataset.mediaKind = "audio";
+        }
         mount.dataset.hwAnswerSaved = "true";
         setStatus(data.message || "Audio sent — JD will review it.");
         resetUi();

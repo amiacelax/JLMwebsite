@@ -115,6 +115,18 @@ interface HomeworkAnswerRow {
   correct?: boolean;
   /** Full sentence with the student's blank filled in */
   completed?: string;
+  /** Prompt line shown to the student (e.g. Japanese for translation). */
+  question?: string;
+  /** Teacher reference for listening clips. */
+  reference?: string;
+  /** Star-order fixed prefix/suffix display (e.g. 子ども · 悲しい). */
+  staticDisplay?: string;
+  prefix?: string;
+  suffix?: string;
+  /** Star-order pieces joined for reference. */
+  piecesDisplay?: string;
+  mediaId?: string;
+  mediaKind?: "video" | "audio";
 }
 
 interface HomeworkOrderedAnswerRow extends HomeworkAnswerRow {
@@ -717,25 +729,298 @@ async function handlePromoSignupDelete(request: Request, env: Env): Promise<Resp
   }
 }
 
-function formatHomeworkAnswerDiscord(row: HomeworkOrderedAnswerRow): string {
-  const progress = row.progress?.trim();
-  const blockType = row.blockType?.trim();
-  const prefix = [progress, blockType].filter(Boolean).join(" · ");
-  const header = prefix ? `${prefix}` : row.label?.trim() || "—";
-  const yours = row.student?.trim() || "(blank)";
-  const sentence = row.completed?.trim() || "";
-  if (sentence && sentence !== yours) {
-    return `${header}\n   ${yours}${sentence ? `\n   → ${sentence}` : ""}`;
+const LISTEN_INSTRUCTION_RE =
+  /Listen to the clip and write down what you think it's saying(\s+in Japanese)?\.?/gi;
+const TRANSLATE_INSTRUCTION_RE = /Translate into English\.?/gi;
+
+function stripSubmissionInstructions(text: string): string {
+  return String(text || "")
+    .replace(LISTEN_INSTRUCTION_RE, "")
+    .replace(TRANSLATE_INSTRUCTION_RE, "")
+    .replace(/___+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Remove inline furigana markers like 使[つか] → 使 */
+function stripFurigana(text: string): string {
+  return String(text || "")
+    .replace(/[\u200e\u200f\u202a-\u202e\ufeff]/g, "")
+    .replace(/\[[^\]\s]{1,16}\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseStarPieces(raw: string): string[] | null {
+  const s = String(raw || "").trim();
+  if (!s.startsWith("[")) return null;
+  try {
+    const arr = JSON.parse(s) as unknown;
+    if (!Array.isArray(arr)) return null;
+    return arr.map((part) => String(part || "").trim()).filter(Boolean);
+  } catch {
+    return null;
   }
-  return `${header}\n   ${yours}`;
 }
 
-function formatOrderedAnswersDiscord(rows: HomeworkOrderedAnswerRow[] | undefined): string {
+function submissionItemNumber(row: HomeworkOrderedAnswerRow, index: number): string {
+  const progress = row.progress?.trim();
+  if (progress) {
+    const match = progress.match(/^(\d+)/);
+    if (match) return match[1];
+  }
+  if (index >= 0) return String(index + 1);
+  return row.label?.trim() || "—";
+}
+
+function starStaticDisplay(prefix?: string, suffix?: string): string {
+  const p = String(prefix || "").trim();
+  const s = String(suffix || "").trim();
+  if (p && s && s !== "。") return `${p} · ${s}`;
+  return p || (s !== "。" ? s : "") || "";
+}
+
+interface AssignmentItemShape {
+  id?: string;
+  parts?: Array<{ type?: string; answer?: string; name?: string }>;
+  prefix?: string;
+  suffix?: string;
+  japanese?: string;
+}
+
+interface AssignmentSectionShape {
+  mode?: string;
+  items?: AssignmentItemShape[];
+}
+
+function assignmentLinesInOrder(sections: AssignmentSectionShape[]): Array<{
+  mode: string;
+  item: AssignmentItemShape;
+}> {
+  const lines: Array<{ mode: string; item: AssignmentItemShape }> = [];
+  for (const section of sections) {
+    const mode = section.mode || "";
+    for (const item of section.items || []) {
+      lines.push({ mode, item });
+    }
+  }
+  return lines;
+}
+
+async function loadAssignmentSections(
+  env: Env,
+  assignmentId: string
+): Promise<AssignmentSectionShape[] | null> {
+  const id = assignmentId.trim();
+  if (!id) return null;
+  try {
+    if (env.HOMEWORK_KV) {
+      const published = await loadPublishedAssignment(env.HOMEWORK_KV, id);
+      if (published?.sections) return published.sections as AssignmentSectionShape[];
+    }
+    const assetRes = await env.ASSETS.fetch(
+      new Request(new URL(`/homework/assignments/${id}.json`, "https://internal.local"))
+    );
+    if (assetRes.ok) {
+      const data = (await assetRes.json()) as { sections?: AssignmentSectionShape[] };
+      return data.sections || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function enrichOrderedRowsFromAssignment(
+  rows: HomeworkOrderedAnswerRow[],
+  sections: AssignmentSectionShape[]
+): HomeworkOrderedAnswerRow[] {
+  const assignmentLines = assignmentLinesInOrder(sections);
+  return rows.map((row, index) => {
+    const line = assignmentLines[index];
+    if (!line) return row;
+    const { mode, item } = line;
+    const enriched: HomeworkOrderedAnswerRow = { ...row };
+
+    if (mode === "audio-listening") {
+      const reference = item.parts?.find((part) => part.type === "blank")?.answer?.trim();
+      if (reference) {
+        enriched.reference = stripFurigana(reference);
+        enriched.question = enriched.reference;
+      }
+    }
+
+    if (mode === "star-order") {
+      const prefix = String(item.prefix || "").trim();
+      const suffix = String(item.suffix ?? "。").trim();
+      const staticDisplay = starStaticDisplay(prefix, suffix);
+      enriched.prefix = prefix;
+      enriched.suffix = suffix;
+      enriched.staticDisplay = staticDisplay;
+      const pieces = parseStarPieces(enriched.student?.trim() || "");
+      if (pieces?.length) {
+        enriched.student = prefix + pieces.join("") + suffix;
+        enriched.piecesDisplay = pieces.join(" · ");
+      }
+    }
+
+    if (mode === "translation" && item.japanese?.trim()) {
+      enriched.question = item.japanese.trim();
+    }
+
+    return enriched;
+  });
+}
+
+function normalizeSubmissionRow(
+  row: HomeworkOrderedAnswerRow,
+  index: number
+): {
+  num: string;
+  question: string;
+  answer: string;
+  piecesLine: string;
+  mediaLabel: string;
+  mediaId: string;
+  mediaKind: string;
+} {
+  const blockType = (row.blockType || "").toLowerCase();
+  const num = submissionItemNumber(row, index);
+  let question = stripSubmissionInstructions(
+    row.question?.trim() || row.reference?.trim() || row.staticDisplay?.trim() || ""
+  );
+  let answer = stripSubmissionInstructions(row.student?.trim() || "");
+  let piecesLine = row.piecesDisplay?.trim() || "";
+
+  if (blockType === "order") {
+    if (!question) {
+      question = starStaticDisplay(row.prefix, row.suffix);
+    }
+    const pieces = parseStarPieces(answer);
+    if (pieces?.length && (row.prefix !== undefined || row.suffix !== undefined)) {
+      answer = String(row.prefix || "") + pieces.join("") + String(row.suffix ?? "");
+      piecesLine = pieces.join(" · ");
+    } else if (pieces?.length) {
+      answer = pieces.join("");
+      piecesLine = pieces.join(" · ");
+    }
+    question = "";
+  } else if (!piecesLine) {
+    const pieces = parseStarPieces(answer);
+    if (pieces) {
+      answer = pieces.join("");
+      piecesLine = pieces.join(" · ");
+    }
+  }
+
+  if (blockType === "translation") {
+    if (!question && row.prompt) question = stripSubmissionInstructions(row.prompt);
+    if (!question && row.completed) {
+      const completed = stripSubmissionInstructions(row.completed);
+      if (completed && answer && completed.endsWith(answer)) {
+        question = completed.slice(0, completed.length - answer.length).trim();
+      }
+    }
+  }
+
+  if (blockType === "listening") {
+    if (!question && row.reference?.trim()) {
+      question = stripSubmissionInstructions(row.reference);
+    }
+    if (!answer && row.completed) answer = stripSubmissionInstructions(row.completed);
+  }
+
+  if (row.completed && blockType !== "translation") {
+    const completed = stripSubmissionInstructions(row.completed);
+    if (completed && answer && completed !== answer && completed.includes(answer)) {
+      const maybeQuestion = completed.replace(answer, "").trim();
+      if (maybeQuestion && blockType !== "listening") {
+        question = stripSubmissionInstructions(maybeQuestion);
+      }
+    }
+  }
+
+  let mediaLabel = "";
+  const mediaId = row.mediaId?.trim() || "";
+  let mediaKind = row.mediaKind || "";
+  const studentLower = answer.toLowerCase();
+  const isMedia =
+    mediaKind === "video" ||
+    mediaKind === "audio" ||
+    blockType === "video" ||
+    blockType === "audio" ||
+    studentLower.includes("video submitted") ||
+    studentLower.includes("video upload") ||
+    studentLower.includes("audio submitted") ||
+    studentLower.includes("audio upload") ||
+    studentLower.includes("(submitted via video") ||
+    studentLower.includes("(submitted via audio");
+
+  if (isMedia) {
+    if (studentLower.includes("not saved")) {
+      mediaLabel = row.student?.trim() || "";
+    } else {
+      mediaLabel =
+        mediaKind === "audio" || blockType === "audio" ? "Audio submitted" : "Video submitted";
+    }
+    if (!mediaKind) mediaKind = blockType === "audio" ? "audio" : "video";
+    answer = "";
+  } else if (!answer) {
+    answer = "(blank)";
+  }
+
+  question = stripFurigana(question);
+  if (blockType !== "translation") {
+    answer = stripFurigana(answer);
+  }
+
+  return { num, question, answer, piecesLine, mediaLabel, mediaId, mediaKind };
+}
+
+function formatHomeworkAnswerDiscord(
+  row: HomeworkOrderedAnswerRow,
+  index: number,
+  request?: Request,
+  env?: Env
+): string {
+  const fmt = normalizeSubmissionRow(row, index);
+  const lines = [`${fmt.num}`];
+  if (fmt.question) lines.push(`   ${fmt.question}`);
+  if (fmt.mediaLabel) {
+    lines.push(`   ${fmt.mediaLabel}`);
+    if (fmt.mediaId && request) {
+      const listen = homeworkShortMediaUrl(request, fmt.mediaId, false);
+      const download = homeworkShortMediaUrl(request, fmt.mediaId, true);
+      lines.push(`   [Listen](${listen}) · [Download](${download})`);
+    }
+  } else {
+    if (fmt.answer) lines.push(`   ${fmt.answer}`);
+  }
+  if (fmt.piecesLine) lines.push(`   ${fmt.piecesLine}`);
+  return lines.join("\n");
+}
+
+function formatOrderedAnswersDiscord(
+  rows: HomeworkOrderedAnswerRow[] | undefined,
+  request?: Request,
+  env?: Env
+): string {
   if (!rows?.length) return "(none)";
-  return rows.map((row) => formatHomeworkAnswerDiscord(row)).join("\n\n");
+  return rows.map((row, index) => formatHomeworkAnswerDiscord(row, index, request, env)).join("\n\n");
 }
 
-function legacyAnswersInWorksheetOrder(data: HomeworkSubmitPayload): HomeworkOrderedAnswerRow[] {
+function section2BlockType(row: HomeworkAnswerRow): string {
+  const student = row.student?.trim() || "";
+  if (student.startsWith("[")) return "Order";
+  const blob = `${row.prompt || ""} ${row.completed || ""}`;
+  if (/translate into english/i.test(blob)) return "Translation";
+  return "Open response";
+}
+
+function legacyAnswersInWorksheetOrder(
+  data: HomeworkSubmitPayload,
+  videoRow?: HomeworkOrderedAnswerRow
+): HomeworkOrderedAnswerRow[] {
   const listening = (data.listening || []).map((row) => ({
     ...row,
     blockType: "Listening",
@@ -746,31 +1031,71 @@ function legacyAnswersInWorksheetOrder(data: HomeworkSubmitPayload): HomeworkOrd
   }));
   const open = (data.section2 || []).map((row) => ({
     ...row,
-    blockType: "Open response",
+    blockType: section2BlockType(row),
   }));
-  const combined = [...grammar, ...open, ...listening];
-  const total = combined.length;
-  return combined.map((row, index) => ({
+  const combined = [...listening, ...grammar, ...open];
+  const rows = combined.map((row, index) => ({
     ...row,
-    progress: total ? `${index + 1} of ${total}` : undefined,
+    progress: String(index + 1),
   }));
+  if (videoRow) {
+    rows.push({
+      ...videoRow,
+      progress: String(rows.length + 1),
+    });
+  }
+  return rows;
 }
 
 function buildHomeworkDiscordDescription(
-  data: HomeworkSubmitPayload,
+  ordered: HomeworkOrderedAnswerRow[],
   student: string,
-  lesson: string
+  lesson: string,
+  request?: Request,
+  env?: Env
 ): string {
-  const ordered =
-    data.answers?.length ? data.answers : legacyAnswersInWorksheetOrder(data);
   const lines = [
     `Student: ${student}`,
     `Lesson: ${lesson}`,
-    data.title?.trim() ? `Worksheet: ${data.title.trim()}` : null,
     "",
-    formatOrderedAnswersDiscord(ordered),
+    formatOrderedAnswersDiscord(ordered, request, env),
   ];
   return lines.filter((line) => line != null).join("\n");
+}
+
+async function buildHomeworkDiscordDescriptionForSubmit(
+  data: HomeworkSubmitPayload,
+  student: string,
+  lesson: string,
+  request: Request,
+  env: Env,
+  videoRow?: HomeworkOrderedAnswerRow
+): Promise<{ body: string; title: string }> {
+  let ordered: HomeworkOrderedAnswerRow[] = data.answers?.length
+    ? videoRow
+      ? [...data.answers, { ...videoRow, progress: String(data.answers.length + 1) }]
+      : data.answers
+    : legacyAnswersInWorksheetOrder(data, videoRow);
+
+  if (data.assignmentId?.trim()) {
+    const sections = await loadAssignmentSections(env, data.assignmentId);
+    if (sections?.length) {
+      ordered = enrichOrderedRowsFromAssignment(ordered, sections);
+    }
+  }
+
+  const titleLine = data.title?.trim() ? `Worksheet: ${data.title.trim()}` : null;
+  const body = [
+    `Student: ${student}`,
+    `Lesson: ${lesson}`,
+    titleLine,
+    "",
+    formatOrderedAnswersDiscord(ordered, request, env),
+  ]
+    .filter((line) => line != null)
+    .join("\n");
+
+  return { body, title: titleLine || "" };
 }
 
 function safeKeyPart(value: string | undefined, fallback: string): string {
@@ -781,6 +1106,57 @@ function safeKeyPart(value: string | undefined, fallback: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 72);
   return cleaned || fallback;
+}
+
+function extensionForSubmissionMime(mimeType: string): string {
+  const base = mimeType.split(";")[0].trim().toLowerCase();
+  if (base === "video/mp4" || base === "video/quicktime") return "mp4";
+  if (base === "video/webm") return "webm";
+  if (base === "audio/mp4") return "m4a";
+  if (base === "audio/webm") return "webm";
+  if (base === "audio/mpeg") return "mp3";
+  if (base === "audio/ogg") return "ogg";
+  if (base.startsWith("audio/")) return "audio";
+  if (base.startsWith("video/")) return "video";
+  return "bin";
+}
+
+function submissionMediaFilename(
+  mimeType: string,
+  storedName: string | undefined,
+  mediaId: string
+): string {
+  const trimmed = String(storedName || "").trim();
+  const fallback = `homework-${mediaId}.${extensionForSubmissionMime(mimeType)}`;
+  if (trimmed && /\.[a-z0-9]{2,5}$/i.test(trimmed)) {
+    return safeKeyPart(trimmed, fallback);
+  }
+  return fallback;
+}
+
+function contentDispositionAttachment(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]+/g, "_").replace(/["\\]/g, "_") || "download";
+  return `attachment; filename="${ascii}"`;
+}
+
+function homeworkShortMediaUrl(request: Request, mediaId: string, download: boolean): string {
+  const url = new URL(`/api/hw-m/${encodeURIComponent(mediaId)}`, request.url);
+  if (download) url.searchParams.set("d", "1");
+  return url.toString();
+}
+
+function homeworkSubmissionMediaUrl(
+  request: Request,
+  env: Env,
+  mediaId: string,
+  download: boolean
+): string {
+  const teacher = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const url = new URL("/api/homework-submissions/video", request.url);
+  url.searchParams.set("id", mediaId);
+  url.searchParams.set("teacherUsername", teacher);
+  if (download) url.searchParams.set("download", "1");
+  return url.toString();
 }
 
 function isUploadedFile(value: unknown): value is File {
@@ -910,11 +1286,18 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
     const student = data.displayName?.trim() || data.username!.trim();
     const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
+    const { body: descriptionBody } = await buildHomeworkDiscordDescriptionForSubmit(
+      data,
+      student,
+      lesson,
+      request,
+      env
+    );
     const bodyText = [
       webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
       `Homework submitted — ${student} (${data.username!.trim()})`,
       "",
-      buildHomeworkDiscordDescription(data, student, lesson),
+      descriptionBody,
     ]
       .filter((line) => line != null)
       .join("\n");
@@ -1120,8 +1503,9 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     };
 
     let stored = false;
+    let saveResult: { id: string; videoId: string } | null = null;
     try {
-      await saveHomeworkVideoSubmission(videoMeta, file, env);
+      saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
       stored = true;
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -1162,6 +1546,9 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
         `Assignment: ${lessonName}`,
         promptLabel ? `Prompt: ${promptLabel}` : null,
         `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+        saveResult
+          ? `Phone download (open in VLC if needed): ${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)}`
+          : null,
       ]
         .filter((line) => line != null)
         .join("\n");
@@ -1177,6 +1564,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     if (stored) {
       return jsonResponse({
         success: true,
+        mediaId: saveResult?.videoId,
         message: discordOk
           ? "Homework sent! JD can see it in Discord now."
           : "Homework sent! JD can see it on the teacher hub.",
@@ -1202,6 +1590,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
 
     return jsonResponse({
       success: true,
+      mediaId: saveResult?.videoId,
       message: "Homework sent! JD can see it in Discord now.",
     });
   } catch (err) {
@@ -1246,8 +1635,9 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     };
 
     let stored = false;
+    let saveResult: { id: string; videoId: string } | null = null;
     try {
-      await saveHomeworkVideoSubmission(videoMeta, file, env);
+      saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
       stored = true;
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -1288,6 +1678,9 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
         `Assignment: ${lessonName}`,
         promptLabel ? `Prompt: ${promptLabel}` : null,
         `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+        saveResult
+          ? `Phone download (open in VLC if needed): ${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)}`
+          : null,
       ]
         .filter((line) => line != null)
         .join("\n");
@@ -1303,6 +1696,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     if (stored) {
       return jsonResponse({
         success: true,
+        mediaId: saveResult?.videoId,
         message: discordOk
           ? "Homework sent! JD can see it in Discord now."
           : "Homework sent! JD can see it on the teacher hub.",
@@ -1328,6 +1722,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
 
     return jsonResponse({
       success: true,
+      mediaId: saveResult?.videoId,
       message: "Homework sent! JD can see it in Discord now.",
     });
   } catch (err) {
@@ -1926,7 +2321,7 @@ async function handleStudentMistakes(request: Request, env: Env): Promise<Respon
           student: student || undefined,
           status: status || undefined,
         });
-        return jsonResponse({ mistakes });
+        return jsonResponse({ mistakes }, 200, { "Cache-Control": "private, no-store" });
       }
 
       const studentUser = username.trim().toLowerCase();
@@ -1941,7 +2336,7 @@ async function handleStudentMistakes(request: Request, env: Env): Promise<Respon
         student: studentUser,
         status: status || undefined,
       });
-      return jsonResponse({ mistakes });
+      return jsonResponse({ mistakes }, 200, { "Cache-Control": "private, no-store" });
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       if (code === "KV_NOT_CONFIGURED") {
@@ -2080,6 +2475,103 @@ async function handleStudentMistakeRestore(request: Request, env: Env): Promise<
   }
 }
 
+async function handleHomeworkSubmissionDiscordPreview(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST" && request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  const onlineId = url.searchParams.get("onlineId") || url.searchParams.get("id") || "";
+  const videoSubmissionId = url.searchParams.get("videoSubmissionId") || "";
+  if (!onlineId) return jsonResponse({ error: "onlineId is required." }, 400);
+
+  try {
+    const submission = await getHomeworkSubmission(env, onlineId);
+    if (!submission || submission.type !== "online") {
+      return jsonResponse({ error: "Online submission not found." }, 404);
+    }
+
+    let videoRow: HomeworkOrderedAnswerRow | undefined;
+    if (videoSubmissionId) {
+      const videoSub = await getHomeworkSubmission(env, videoSubmissionId);
+      if (videoSub?.video?.id) {
+        const isAudio = videoSub.video.mimeType?.startsWith("audio/");
+        videoRow = {
+          blockType: isAudio ? "Audio" : "Video",
+          student: isAudio ? "Audio submitted" : "Video submitted",
+          mediaId: videoSub.video.id,
+          mediaKind: isAudio ? "audio" : "video",
+        };
+      }
+    }
+
+    const student = submission.displayName?.trim() || submission.username;
+    const lesson = submission.lessonName?.trim() || submission.assignmentId || "Homework";
+    const payload: HomeworkSubmitPayload = {
+      username: submission.username,
+      displayName: submission.displayName,
+      assignmentId: submission.assignmentId,
+      lessonName: submission.lessonName,
+      title: submission.title,
+      section1: submission.section1,
+      section2: submission.section2,
+      listening: submission.listening,
+      answers: submission.answers,
+    };
+
+    const { body: descriptionBody } = await buildHomeworkDiscordDescriptionForSubmit(
+      payload,
+      student,
+      lesson,
+      request,
+      env,
+      videoRow
+    );
+
+    const bodyText = [
+      "[TEST — new submission format preview]",
+      `Homework submitted — ${student} (${submission.username})`,
+      "",
+      descriptionBody,
+    ].join("\n");
+
+    const webhook = resolveHomeworkWebhook(env);
+    if (!webhook) {
+      return jsonResponse({ error: "Homework Discord webhook is not configured." }, 503);
+    }
+
+    const result = await notifyHomeworkDiscord(webhook.url, bodyText.slice(0, 2000));
+    if (!result.ok) {
+      return jsonResponse({ error: "Could not post to Discord.", detail: result.detail }, 502);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: "Test preview posted to Discord.",
+      preview: bodyText,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured." }, 503);
+    }
+    console.error("homework discord preview failed:", err);
+    return jsonResponse({ error: "Could not send preview." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -2160,13 +2652,21 @@ async function handleHomeworkSubmissionVideo(request: Request, env: Env): Promis
     const loaded = await loadHomeworkSubmissionVideo(teacherUsername, id, env);
     if (!loaded) return jsonResponse({ error: "Video not found." }, 404);
 
+    const download = url.searchParams.get("download") === "1";
+    const filename = submissionMediaFilename(loaded.mimeType, loaded.name, id);
+    const headers: Record<string, string> = {
+      "Content-Type": loaded.mimeType,
+      "Cache-Control": "private, max-age=3600",
+      "Content-Length": String(loaded.body.byteLength),
+      ...CORS_HEADERS,
+    };
+    if (download) {
+      headers["Content-Disposition"] = contentDispositionAttachment(filename);
+    }
+
     return new Response(loaded.body, {
       status: 200,
-      headers: {
-        "Content-Type": loaded.mimeType,
-        "Cache-Control": "private, max-age=3600",
-        ...CORS_HEADERS,
-      },
+      headers,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -2326,6 +2826,16 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    const hwMediaMatch = url.pathname.match(/^\/api\/hw-m\/([^/]+)$/);
+    if (hwMediaMatch) {
+      const teacher = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+      const target = new URL("/api/homework-submissions/video", request.url);
+      target.searchParams.set("id", decodeURIComponent(hwMediaMatch[1]));
+      target.searchParams.set("teacherUsername", teacher);
+      if (url.searchParams.has("d")) target.searchParams.set("download", "1");
+      return handleHomeworkSubmissionVideo(new Request(target.toString(), request), env);
+    }
+
     if (url.pathname === "/api/contact") {
       return handleContact(request, env);
     }
@@ -2380,6 +2890,10 @@ export default {
 
     if (url.pathname === "/api/student-mistakes/restore") {
       return handleStudentMistakeRestore(request, env);
+    }
+
+    if (url.pathname === "/api/homework-submissions/discord-preview") {
+      return handleHomeworkSubmissionDiscordPreview(request, env);
     }
 
     if (url.pathname === "/api/homework-submissions") {

@@ -424,8 +424,8 @@
       field.className = "hw-blank hw-blank--wide hw-blank--listen";
       field.setAttribute("aria-label", "What you heard");
     } else if (options.translationStyle) {
-      field = document.createElement("input");
-      field.type = "text";
+      field = document.createElement("textarea");
+      field.rows = 4;
       field.className = "hw-blank hw-blank--wide hw-blank--translation";
       field.setAttribute("aria-label", "Your translation");
     } else if (part.multiline) {
@@ -500,6 +500,56 @@
     badge.textContent = "QUESTION";
     badge.setAttribute("aria-label", "Open-ended question");
     return badge;
+  }
+
+  const RECORDING_TIP_TEXT =
+    "Don\u2019t get distracted by words or grammar you don\u2019t know. Just guess!";
+
+  function renderRecordingTip(itemId) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-recording-tip";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hw-recording-tip__trigger";
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-label", "Show recording tip");
+
+    const icon = document.createElement("span");
+    icon.className = "hw-recording-tip__icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M9 18h6"/><path d="M10 22h4"/>' +
+      '<path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>' +
+      "</svg>";
+
+    const label = document.createElement("span");
+    label.className = "hw-recording-tip__label";
+    label.textContent = "Tip";
+
+    btn.appendChild(icon);
+    btn.appendChild(label);
+
+    const message = document.createElement("p");
+    const tipId =
+      "hw-recording-tip-" + String(itemId || "x").replace(/[^\w-]/g, "") + "-" + Math.random().toString(36).slice(2, 7);
+    message.id = tipId;
+    message.className = "hw-recording-tip__message";
+    message.hidden = true;
+    message.textContent = RECORDING_TIP_TEXT;
+    btn.setAttribute("aria-controls", tipId);
+
+    btn.addEventListener("click", () => {
+      const open = message.hidden;
+      message.hidden = !open;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.classList.toggle("is-open", open);
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(message);
+    return wrap;
   }
 
   function renderTenseBubbles(form, section, activeTense, interactive) {
@@ -921,10 +971,18 @@
     const wrap = document.createElement("div");
     wrap.className = "hw-audio-prompt";
 
+    const head = document.createElement("div");
+    head.className = "hw-audio-prompt__head";
+
     const prompt = document.createElement("p");
     prompt.className = "hw-audio-prompt__text";
     prompt.textContent = item.prompt || "Answer this question on audio.";
-    wrap.appendChild(prompt);
+    head.appendChild(prompt);
+
+    if (!renderOptions.preview) {
+      head.appendChild(renderRecordingTip(item.id));
+    }
+    wrap.appendChild(head);
 
     const recorderMount = document.createElement("div");
     recorderMount.className = "hw-audio-prompt__recorder";
@@ -1131,10 +1189,18 @@
       listenCard.appendChild(renderAudioPlayer(audioUrl, { inline: true }));
       const listenInstruction = String(lineOptions.listenInstruction || "").trim();
       if (listenInstruction) {
+        const head = document.createElement("div");
+        head.className = "hw-listen-card__head";
         const hint = document.createElement("p");
         hint.className = "hw-listen-instruction";
         hint.textContent = listenInstruction;
-        listenCard.appendChild(hint);
+        head.appendChild(hint);
+        if (!lineOptions.authoring && !lineOptions.preview) {
+          head.appendChild(
+            renderRecordingTip(item.id || "listen-" + (lineOptions.itemNum || index + 1))
+          );
+        }
+        listenCard.appendChild(head);
       }
       content.appendChild(listenCard);
     }
@@ -1200,7 +1266,7 @@
         ? "Drag/drop the words to form the best answer!"
         : String(section.instructions || "").trim() ||
           (section.mode === "audio-listening"
-            ? "Listen to the clip and write down what you think it's saying."
+            ? "Listen to the clip and write down what you think it's saying in Japanese."
             : "");
     if (sectionIntro && (authoring || section.mode !== "audio-listening")) {
       const intro = document.createElement("p");
@@ -1218,7 +1284,13 @@
       const itemCounter = renderOptions.itemCounter;
       if (itemCounter) itemCounter.value += 1;
       const itemNum = itemCounter ? itemCounter.value : i + 1;
-      const lineOpts = { sectionAudioUrl, itemNum, listenInstruction };
+      const lineOpts = {
+        sectionAudioUrl,
+        itemNum,
+        listenInstruction,
+        authoring,
+        preview: renderOptions.preview,
+      };
 
       if (section.mode === "video-response") {
         if (authoring) wrap.appendChild(renderAuthorVideoItem(item, i, lineOpts));
@@ -2002,7 +2074,7 @@
     const clone = content.cloneNode(true);
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
     clone.querySelectorAll(
-      ".hw-negative-badge, .hw-question-badge, .hw-register-badge, .hw-tense-badge, .hw-line-pills"
+      ".hw-negative-badge, .hw-question-badge, .hw-register-badge, .hw-tense-badge, .hw-line-pills, .hw-listen-instruction, .hw-translation-block__instruction, .hw-recording-tip"
     ).forEach((el) => el.remove());
     clone.querySelectorAll(".ja-reading").forEach((el) => {
       el.replaceWith(document.createTextNode(el.textContent || ""));
@@ -2113,11 +2185,51 @@
       el.replaceWith(document.createTextNode("___"));
     });
     clone.querySelectorAll(".hw-conj-hint").forEach((el) => el.remove());
+    clone.querySelectorAll(
+      ".hw-listen-instruction, .hw-translation-block__instruction, .hw-recording-tip"
+    ).forEach((el) => el.remove());
     clone.querySelectorAll(".ja-reading").forEach((el) => {
       el.replaceWith(document.createTextNode(el.textContent || ""));
     });
     return clone.textContent.replace(/\s+/g, " ").trim();
   }
+
+  function starStaticDisplay(prefix, suffix) {
+    const p = String(prefix || "").trim();
+    const s = String(suffix ?? "").trim();
+    if (p && s && s !== "。") return p + " · " + s;
+    return p || (s !== "。" ? s : "") || "";
+  }
+
+  function starOrderFromLine(lineEl) {
+    const hidden = lineEl.querySelector(".hw-star-block__answer");
+    const prefix = lineEl.querySelector(".hw-star-block__prefix")?.textContent?.trim() || "";
+    const suffix = lineEl.querySelector(".hw-star-block__suffix")?.textContent?.trim() || "";
+    let pieces = [];
+    try {
+      pieces = JSON.parse(hidden?.value || "[]");
+      if (!Array.isArray(pieces)) pieces = [];
+    } catch {
+      pieces = [];
+    }
+    pieces = pieces.map((part) => String(part || "").trim()).filter(Boolean);
+    const assembled = (prefix + pieces.join("") + suffix).replace(/\s+/g, " ").trim();
+    const piecesDisplay = pieces.join(" · ");
+    const staticDisplay = starStaticDisplay(prefix, suffix);
+    return { assembled, piecesDisplay, staticDisplay, prefix, suffix };
+  }
+
+  function mediaFromLine(lineEl, defaultKind) {
+    const inline =
+      lineEl.querySelector(".hw-video-inline") || lineEl.querySelector(".hw-audio-inline");
+    return {
+      mediaId: inline?.dataset?.mediaId?.trim() || "",
+      mediaKind: inline?.dataset?.mediaKind?.trim() || defaultKind,
+    };
+  }
+
+  const STUDENT_BLANK_SELECTOR =
+    "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])";
 
   function collectOrderedAnswers(form, report) {
     const byName = new Map();
@@ -2147,61 +2259,111 @@
       });
     });
 
-    const total = lines.length;
     return lines
       .map(({ mode, lineEl }, index) => {
+        const num =
+          lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
+        const progress = String(index + 1);
+
         if (mode === "video-response") {
-          const num =
-            lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
           const prompt =
             lineEl.querySelector(".hw-video-prompt__question")?.textContent?.trim() ||
             lineEl.querySelector(".hw-video-prompt__text")?.textContent?.trim() ||
             "";
           const saved = lineEl.querySelector('.hw-video-inline__card[data-state="saved"]');
+          const media = mediaFromLine(lineEl, "video");
           return {
-            progress: index + 1 + " of " + total,
+            progress,
             blockType: blockTypeLabel(mode),
             label: num,
-            prompt,
-            student: saved ? "(video submitted)" : "(video not saved)",
+            question: prompt || undefined,
+            student: saved ? "Video submitted" : "(video not saved)",
+            mediaId: saved && media.mediaId ? media.mediaId : undefined,
+            mediaKind: saved ? media.mediaKind || "video" : undefined,
           };
         }
         if (mode === "audio-prompt") {
-          const num =
-            lineEl.querySelector(".hw-item-num")?.textContent?.trim() || String(index + 1);
           const prompt =
             lineEl.querySelector(".hw-audio-prompt__text")?.textContent?.trim() || "";
           const saved =
             lineEl.querySelector('[data-hw-answer-saved="true"]') ||
-            lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]');
+            lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]') ||
+            lineEl.querySelector('.hw-video-inline__card[data-state="saved"]');
+          const media = mediaFromLine(lineEl, "audio");
           return {
-            progress: index + 1 + " of " + total,
+            progress,
             blockType: blockTypeLabel(mode),
             label: "Audio " + num,
-            prompt,
-            student: saved ? "(audio submitted)" : "(audio not saved)",
+            question: prompt || undefined,
+            student: saved ? "Audio submitted" : "(audio not saved)",
+            mediaId: saved && media.mediaId ? media.mediaId : undefined,
+            mediaKind: saved ? media.mediaKind || "audio" : undefined,
           };
         }
-
-        const input = lineEl.querySelector(
-          "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])"
-        );
+        if (mode === "star-order") {
+          const { assembled, piecesDisplay, staticDisplay, prefix, suffix } = starOrderFromLine(lineEl);
+          return {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            staticDisplay: staticDisplay || undefined,
+            prefix,
+            suffix,
+            student: assembled || "(blank)",
+            piecesDisplay: piecesDisplay || undefined,
+          };
+        }
+        if (mode === "translation") {
+          const input = lineEl.querySelector("textarea.hw-blank, .hw-blank");
+          const jp =
+            lineEl.querySelector(".hw-translation-block__japanese")?.textContent?.trim() || "";
+          const student = input?.value?.trim() || "";
+          return {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            question: jp || undefined,
+            student: student || "(blank)",
+          };
+        }
+        if (mode === "audio-listening") {
+          const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
+          const student = input?.value?.trim() || "";
+          const reference =
+            input?.closest(".hw-blank-wrap")?.dataset?.teacherAnswer?.trim() || "";
+          return {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            question: reference || undefined,
+            reference: reference || undefined,
+            student: student || "(blank)",
+          };
+        }
+        const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
         const row = input?.name ? byName.get(input.name) : null;
         if (!row) return null;
         return {
-          progress: index + 1 + " of " + total,
+          progress,
           blockType: blockTypeLabel(mode),
           label: row.label,
-          prompt: row.prompt,
+          question: row.prompt ? stripWorksheetInstructions(row.prompt) : undefined,
           student: row.student,
-          completed: row.completed,
         };
       })
       .filter(Boolean);
   }
 
-  const STUDENT_BLANK_SELECTOR =
-    "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])";
+  function stripWorksheetInstructions(text) {
+    return String(text || "")
+      .replace(
+        /Listen to the clip and write down what you think it's saying(\s+in Japanese)?\.?/gi,
+        ""
+      )
+      .replace(/Translate into English\.?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
   function getStudentQuestionLines(form) {
     if (!form) return [];

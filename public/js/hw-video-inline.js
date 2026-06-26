@@ -534,6 +534,10 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Save failed.");
+        if (data.mediaId) {
+          mount.dataset.mediaId = data.mediaId;
+          mount.dataset.mediaKind = isAudioMode() ? "audio" : "video";
+        }
         clearRecording();
         showSaved();
         setStatus(data.message || (isAudioMode() ? "Audio saved." : "Video saved."), "success");

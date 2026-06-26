@@ -51,7 +51,7 @@
         {
           mode: "audio-listening",
           title: "Listening practice",
-          instructions: "Listen to the clip and write down what you think it's saying.",
+          instructions: "Listen to the clip and write down what you think it's saying in Japanese.",
           audioUrl: "",
           items: [1, 2, 3].map((n) => listenItem(n)),
         },
@@ -481,7 +481,7 @@
           id: uid("sec"),
           mode: "audio-listening",
           title: "",
-          instructions: "Listen to the clip and write down what you think it's saying.",
+          instructions: "Listen to the clip and write down what you think it's saying in Japanese.",
           audioUrl: "",
           items: [],
         };

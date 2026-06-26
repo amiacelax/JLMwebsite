@@ -5583,8 +5583,18 @@ button.course-card__status:disabled {
   background: var(--color-surface);
 }
 
+.hw-audio-prompt__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.45rem 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
 .hw-audio-prompt__text {
-  margin: 0 0 0.65rem;
+  margin: 0;
+  flex: 1 1 12rem;
+  min-width: 0;
   font-family: "Noto Sans JP", Inter, sans-serif;
   font-size: 1rem;
   line-height: 1.5;
@@ -7736,6 +7746,168 @@ body.hw-role-teacher #hw-teacher-hub {
   align-items: flex-start;
 }
 
+.hw-submissions-item--checker {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 1rem 1.1rem;
+}
+
+.hw-submission-checker__close {
+  align-self: flex-end;
+  margin-bottom: 0.35rem;
+}
+
+.hw-submission-checker {
+  width: 100%;
+}
+
+.hw-submission-checker__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hw-submission-checker__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hw-submission-checker__counter {
+  margin: 0;
+  flex: 1 1 auto;
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-submission-checker__title {
+  margin: 0 0 0.35rem;
+  font-family: Inter, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hw-submission-checker__sub {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.hw-submission-checker__answers {
+  margin-top: 0.25rem;
+}
+
+.hw-submission-answer-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.hw-submission-answer-card {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.hw-submission-answer-card__num {
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-green);
+}
+
+.hw-submission-answer-card__pieces {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-submission-answer-card__media {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.hw-submission-answer-card__media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.hw-submission-answer-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.hw-submission-answer-card__progress {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-green);
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+  border-radius: 999px;
+}
+
+.hw-submission-answer-card__type {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+  border-radius: 999px;
+}
+
+.hw-submission-answer-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-submission-answer-card__prompt {
+  margin: 0 0 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-submission-answer-card__student {
+  margin: 0;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.hw-submission-answer-card__sentence {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .hw-submission-detail {
   flex: 1 1 100%;
   margin-top: 0.75rem;
@@ -7815,6 +7987,22 @@ body.hw-role-teacher #hw-teacher-hub {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: #000;
+}
+
+.hw-submission-detail__media-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.hw-submission-detail__media-hint {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
 }
 
 .hw-teacher-step {
@@ -8181,6 +8369,112 @@ body.hw-role-teacher #hw-teacher-hub {
   color: var(--color-text-muted);
 }
 
+.hw-recording-tip {
+  display: contents;
+}
+
+.hw-recording-tip__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.58rem 0.22rem 0.42rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: #4a3200;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, #ffe9a8 92%, #fff),
+    color-mix(in srgb, #ffc857 88%, #ffb020)
+  );
+  border: 1px solid color-mix(in srgb, #d4920a 38%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #000 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+  flex-shrink: 0;
+}
+
+.hw-recording-tip__trigger:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 5px color-mix(in srgb, #000 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 60%, transparent);
+}
+
+.hw-recording-tip__trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, #e6a800 70%, var(--color-green));
+  outline-offset: 2px;
+}
+
+.hw-recording-tip__trigger.is-open {
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, #ffd978 90%, #ffb830),
+    color-mix(in srgb, #f5a623 85%, #e8920a)
+  );
+}
+
+.hw-recording-tip__icon {
+  display: inline-flex;
+  line-height: 0;
+  color: color-mix(in srgb, #b37400 88%, #4a3200);
+}
+
+.hw-recording-tip__icon svg {
+  display: block;
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.hw-recording-tip__message {
+  flex-basis: 100%;
+  width: 100%;
+  margin: 0 0 0.15rem;
+  padding: 0.55rem 0.72rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--color-text);
+  background: color-mix(in srgb, #ffc857 14%, var(--color-bg-elevated));
+  border: 1px solid color-mix(in srgb, #e6a800 28%, var(--color-border));
+  border-left: 3px solid color-mix(in srgb, #e6a800 75%, #ffb020);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.hw-recording-tip__message[hidden] {
+  display: none;
+}
+
+[data-theme="dark"] .hw-recording-tip__trigger {
+  color: #fff8e8;
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, #c98912 55%, #5c3d00),
+    color-mix(in srgb, #a86f08 70%, #3d2800)
+  );
+  border-color: color-mix(in srgb, #ffc857 35%, transparent);
+}
+
+[data-theme="dark"] .hw-recording-tip__icon {
+  color: color-mix(in srgb, #ffe9a8 90%, #fff);
+}
+
+[data-theme="dark"] .hw-recording-tip__message {
+  background: color-mix(in srgb, #ffc857 10%, var(--color-bg-elevated));
+  border-color: color-mix(in srgb, #e6a800 22%, var(--color-border));
+}
+
 .hw-worksheet__line--translation .hw-worksheet__content {
   display: block;
   width: 100%;
@@ -8190,19 +8484,21 @@ body.hw-role-teacher #hw-teacher-hub {
 .hw-blank-wrap--translation {
   display: block;
   width: 100%;
-  max-width: 20rem;
-  margin-top: 0.15rem;
+  max-width: 100%;
+  margin-top: 0.35rem;
 }
 
-input.hw-blank.hw-blank--translation {
+textarea.hw-blank.hw-blank--translation {
   display: block;
   width: 100%;
   min-width: 0;
+  min-height: 5.5rem;
+  resize: vertical;
   box-sizing: border-box;
-  padding: 0.45rem 0.6rem;
+  padding: 0.55rem 0.7rem;
   font-family: Inter, sans-serif;
   font-size: 0.9375rem;
-  line-height: 1.45;
+  line-height: 1.5;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -8429,6 +8725,25 @@ input.hw-blank.hw-blank--translation {
   line-height: 1.45;
   color: var(--color-text-muted);
   text-align: center;
+}
+
+.hw-listen-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+.hw-listen-card__head .hw-listen-instruction {
+  margin: 0;
+  flex: 1 1 100%;
+}
+
+.hw-listen-card__head .hw-recording-tip__message {
+  text-align: left;
 }
 
 body.hw-hw-focus-mode .hw-listen-instruction {
@@ -9566,6 +9881,12 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
     padding: 0.45rem 0.55rem;
   }
 
+  textarea.hw-blank.hw-blank--translation {
+    min-height: 5rem;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.875rem;
+  }
+
   .hw-blank-wrap {
     max-width: 100%;
   }
@@ -9894,6 +10215,14 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
     color: #fff !important;
     background: #0d47a1 !important;
     border: 1px solid #0a3d91 !important;
+  }
+
+  body.hw-print-active .hw-recording-tip__trigger {
+    display: none !important;
+  }
+
+  body.hw-print-active .hw-recording-tip__message {
+    display: none !important;
   }
 
   body.hw-print-active .hw-worksheet__line[hidden],
