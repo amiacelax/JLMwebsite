@@ -3,11 +3,12 @@
  */
 (function (global) {
   const STORAGE_KEY = "hw-mg-position-v2";
+  const ONBOARD_KEY = "hw-mg-onboarding-v1";
   const DEFAULT_LENS = { x: 114, y: 40 };
   const SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
   const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-mg-lens, .hw-mg-popup, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
+    "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
 
   const LENS_ICON =
     '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
@@ -17,10 +18,12 @@
 
   let hostEl = null;
   let shellEl = null;
+  let widgetEl = null;
   let lensEl = null;
   let popupEl = null;
   let toastEl = null;
   let snapHintEl = null;
+  let onboardEl = null;
   let resizeObserver = null;
   let armed = false;
   let lensSnapId = null;
@@ -102,9 +105,9 @@
   }
 
   function setLensPosition(localX, localY) {
-    if (!lensEl) return;
-    lensEl.style.left = localX + "px";
-    lensEl.style.top = localY + "px";
+    if (!widgetEl) return;
+    widgetEl.style.left = localX + "px";
+    widgetEl.style.top = localY + "px";
   }
 
   function saveLensPosition() {
@@ -141,7 +144,7 @@
   }
 
   function applyLensPosition() {
-    if (!lensEl || !hostEl) return;
+    if (!widgetEl || !hostEl) return;
     if (lensSnapId) {
       const p = snapPoints()[lensSnapId] || snapPoints().tr;
       lensPosition = { x: p.x, y: p.y };
@@ -152,7 +155,7 @@
   }
 
   function placeLens(id) {
-    if (!lensEl || !hostEl) return;
+    if (!widgetEl || !hostEl) return;
     lensSnapId = id || lensSnapId;
     applyLensPosition();
     saveLensPosition();
@@ -176,6 +179,7 @@
   function setArmed(next) {
     armed = !!next;
     hostEl?.classList.toggle("hw-mg-armed", armed);
+    widgetEl?.classList.toggle("is-armed", armed);
     lensEl?.classList.toggle("is-armed", armed);
     if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
@@ -194,7 +198,7 @@
 
   function isLookupTarget(el) {
     if (!el || !(el instanceof Element) || !hostEl?.contains(el)) return false;
-    if (el.closest(".hw-mg-popup") || el.closest(".hw-mg-lens")) return false;
+    if (el.closest(".hw-mg-popup") || el.closest(".hw-mg-widget") || el.closest(".hw-mg-onboard")) return false;
     if (el.closest(SKIP_SELECTOR)) return false;
     return Boolean(
       el.closest(
@@ -395,7 +399,7 @@
 
   async function handleLookupClick(e) {
     if (!armed || !hostEl?.contains(e.target)) return;
-    if (e.target.closest(".hw-mg-popup") || e.target.closest(".hw-mg-lens")) return;
+    if (e.target.closest(".hw-mg-popup") || e.target.closest(".hw-mg-widget") || e.target.closest(".hw-mg-onboard")) return;
     if (!isLookupTarget(e.target)) return;
 
     e.preventDefault();
@@ -450,6 +454,7 @@
       moved: false,
     };
     lensEl.classList.add("is-dragging");
+    widgetEl?.classList.add("is-dragging");
     lensEl.setPointerCapture(e.pointerId);
   }
 
@@ -478,6 +483,7 @@
   function onPointerUp(e) {
     if (!dragState || dragState.pointerId !== e.pointerId) return;
     lensEl.classList.remove("is-dragging");
+    widgetEl?.classList.remove("is-dragging");
     snapHintEl?.classList.remove("is-visible", "is-target");
 
     if (dragState.moved) {
@@ -499,6 +505,11 @@
 
   function onKeyDown(e) {
     if (e.key === "Escape") {
+      if (onboardEl) {
+        dismissOnboarding();
+        e.preventDefault();
+        return;
+      }
       if (popupEl) {
         closePopup();
         e.preventDefault();
@@ -524,6 +535,74 @@
   function onDocumentClick(e) {
     if (!popupEl || armed) return;
     if (!e.target.closest(".hw-mg-popup")) closePopup();
+  }
+
+  function dismissOnboarding() {
+    if (!onboardEl) return;
+    onboardEl.remove();
+    onboardEl = null;
+    try {
+      localStorage.setItem(ONBOARD_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function placeOnboard() {
+    if (!onboardEl || !widgetEl || !hostEl) return;
+    const cardW = Math.min(256, hostEl.clientWidth - 16);
+    onboardEl.style.width = cardW + "px";
+
+    const x = parseFloat(widgetEl.style.left) || DEFAULT_LENS.x;
+    const y = parseFloat(widgetEl.style.top) || DEFAULT_LENS.y;
+    let left = x + 40;
+    let top = y + 52;
+
+    const cardH = onboardEl.offsetHeight || 150;
+    const maxLeft = hostEl.clientWidth - cardW - 8;
+    const maxTop = hostEl.clientHeight - cardH - 8;
+    if (left + cardW > hostEl.clientWidth - 8) left = x - cardW - 16;
+    left = Math.max(8, Math.min(left, maxLeft));
+    top = Math.max(8, Math.min(top, maxTop));
+
+    onboardEl.style.left = left + "px";
+    onboardEl.style.top = top + "px";
+  }
+
+  function initOnboarding() {
+    if (!shellEl || !widgetEl) return;
+    try {
+      if (localStorage.getItem(ONBOARD_KEY) === "1") return;
+    } catch {
+      return;
+    }
+    if (onboardEl) return;
+
+    onboardEl = document.createElement("div");
+    onboardEl.className = "hw-mg-onboard";
+    onboardEl.setAttribute("role", "dialog");
+    onboardEl.setAttribute("aria-labelledby", "hw-mg-onboard-title");
+    onboardEl.innerHTML =
+      '<div class="hw-mg-onboard__card">' +
+      '<p class="hw-mg-onboard__eyebrow">New · 虫眼鏡</p>' +
+      '<h2 class="hw-mg-onboard__title" id="hw-mg-onboard-title">Look up any word</h2>' +
+      '<p class="hw-mg-onboard__text">Drag the magnifying glass anywhere on your assignment. Tap it, then click a Japanese word to see the reading and meaning.</p>' +
+      '<button type="button" class="btn btn--primary btn--sm hw-mg-onboard__btn">Got it</button>' +
+      "</div>";
+
+    onboardEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    onboardEl.addEventListener("click", (ev) => ev.stopPropagation());
+    onboardEl.querySelector(".hw-mg-onboard__btn")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dismissOnboarding();
+    });
+
+    shellEl.appendChild(onboardEl);
+    requestAnimationFrame(() => {
+      placeOnboard();
+      onboardEl?.classList.add("is-visible");
+    });
   }
 
   function buildUi() {
@@ -552,6 +631,10 @@
       ev.stopPropagation();
     });
 
+    widgetEl = document.createElement("div");
+    widgetEl.className = "hw-mg-widget";
+    widgetEl.append(lensEl);
+
     document.addEventListener("click", handleLookupClick, true);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContextMenu);
@@ -571,6 +654,7 @@
 
     if (hostEl === nextHost && shellEl?.parentElement === nextHost) {
       applyLensPosition();
+      placeOnboard();
       return true;
     }
 
@@ -589,13 +673,17 @@
       hostEl.appendChild(shellEl);
     }
 
-    shellEl.append(snapHintEl, toastEl, lensEl);
+    shellEl.append(snapHintEl, toastEl, widgetEl);
 
     loadLensPosition();
     applyLensPosition();
+    initOnboarding();
 
     if (resizeObserver) resizeObserver.disconnect();
-    resizeObserver = new ResizeObserver(() => applyLensPosition());
+    resizeObserver = new ResizeObserver(() => {
+      applyLensPosition();
+      placeOnboard();
+    });
     resizeObserver.observe(hostEl);
 
     return true;
@@ -623,12 +711,15 @@
 
   function destroy() {
     closePopup();
+    dismissOnboarding();
     setArmed(false);
     hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
     resizeObserver?.disconnect();
     shellEl?.remove();
     hostEl = null;
     shellEl = null;
+    widgetEl = null;
+    lensEl = null;
   }
 
   global.HwMagnifyingGlass = { init, refresh, destroy, setArmed };
