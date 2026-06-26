@@ -1,0 +1,219 @@
+{
+  "id": "daiki-english-2026-06-26",
+  "title": "When — time clauses (English)",
+  "date": "2026-06-26",
+  "register": "casual",
+  "studentLabel": "Daiki",
+  "lessonName": "2026-06-26 — English: when",
+  "status": "published",
+  "forSale": false,
+  "salePrice": 0.99,
+  "topicExplanation": "Use **when** for time — something happens at the same time as something else (Japanese **～とき**).\n\n• **when + clause**: *Robin looks cute **when** he's sleeping.*\n• **When** at the start of a question: ***When** did he say he would come?*\n• **when** inside a sentence: *I wonder **when** the Civil War started.*",
+  "sections": [
+    {
+      "id": "listening",
+      "title": "Section 1 — Listening",
+      "instructions": "Listen to each English clip from Tatoeba. Write the Japanese meaning in the box.",
+      "mode": "audio-listening",
+      "items": [
+        {
+          "id": "listen-1",
+          "audioUrl": "https://tatoeba.org/en/audio/download/48139",
+          "englishAnswer": "Which air conditioner do you think is the most efficient?",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "listen-1",
+              "wide": true,
+              "answer": "どのクーラー一番効率がよいと思いますか。"
+            }
+          ]
+        },
+        {
+          "id": "listen-2",
+          "audioUrl": "https://tatoeba.org/en/audio/download/715648",
+          "englishAnswer": "I wonder when the Civil War started.",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "listen-2",
+              "wide": true,
+              "answer": "南北戦争はいつ始まったのかしら。"
+            }
+          ]
+        },
+        {
+          "id": "listen-3",
+          "audioUrl": "https://tatoeba.org/en/audio/download/21041",
+          "englishAnswer": "When did he say he would come?",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "listen-3",
+              "wide": true,
+              "answer": "彼は何時に来ると言いましたか。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "grammar",
+      "title": "Section 2 — Fill in “when”",
+      "instructions": "Fill in the blank with **when** (or **When** at the start of a question).",
+      "mode": "grammar-blank",
+      "items": [
+        {
+          "id": "s1-1",
+          "parts": [
+            {
+              "type": "text",
+              "value": "Robin looks very cute "
+            },
+            {
+              "type": "blank",
+              "name": "s1-1",
+              "wide": true,
+              "answer": "when",
+              "hint": {
+                "dictionary": "when",
+                "conjugation": "time clause"
+              }
+            },
+            {
+              "type": "text",
+              "value": " he's sleeping."
+            }
+          ]
+        },
+        {
+          "id": "s1-2",
+          "parts": [
+            {
+              "type": "text",
+              "value": "Tom is happy "
+            },
+            {
+              "type": "blank",
+              "name": "s1-2",
+              "wide": true,
+              "answer": "when",
+              "hint": {
+                "dictionary": "when",
+                "conjugation": "time clause"
+              }
+            },
+            {
+              "type": "text",
+              "value": " he is with Mary."
+            }
+          ]
+        },
+        {
+          "id": "s1-3",
+          "parts": [
+            {
+              "type": "text",
+              "value": "I can't relax for a second "
+            },
+            {
+              "type": "blank",
+              "name": "s1-3",
+              "wide": true,
+              "answer": "when",
+              "hint": {
+                "dictionary": "when",
+                "conjugation": "time clause"
+              }
+            },
+            {
+              "type": "text",
+              "value": " the kids are home."
+            }
+          ]
+        },
+        {
+          "id": "s1-4",
+          "question": true,
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s1-4",
+              "wide": true,
+              "answer": "When",
+              "hint": {
+                "dictionary": "when",
+                "conjugation": "question"
+              }
+            },
+            {
+              "type": "text",
+              "value": " did he say he would come?"
+            }
+          ]
+        },
+        {
+          "id": "s1-5",
+          "parts": [
+            {
+              "type": "text",
+              "value": "I wonder "
+            },
+            {
+              "type": "blank",
+              "name": "s1-5",
+              "wide": true,
+              "answer": "when",
+              "hint": {
+                "dictionary": "when",
+                "conjugation": "embedded question"
+              }
+            },
+            {
+              "type": "text",
+              "value": " the Civil War started."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "context",
+      "title": "Section 3 — Your sentences",
+      "instructions": "Write three of your own English sentences that use **when**.",
+      "mode": "context-blank",
+      "items": [
+        {
+          "id": "s2-1",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-1",
+              "wide": true
+            }
+          ]
+        },
+        {
+          "id": "s2-2",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-2",
+              "wide": true
+            }
+          ]
+        },
+        {
+          "id": "s2-3",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-3",
+              "wide": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
