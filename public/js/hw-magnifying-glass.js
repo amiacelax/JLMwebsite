@@ -31,6 +31,15 @@
   let dragState = null;
   let lookupBusy = false;
   let built = false;
+  let hoverHighlightEl = null;
+  let hoverHighlightTimer = null;
+  let hoverHighlightRaf = null;
+  let hostMouseMoveBound = null;
+  let pendingHoverPoint = null;
+
+  function supportsHoverHighlight() {
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  }
 
   function enabled() {
     return global.HwFeatureFlags?.magnifyingGlass?.() === true;
@@ -185,6 +194,8 @@
     if (armed) {
       closePopup();
       showToast("Tap a word to look it up · Esc to cancel");
+    } else {
+      clearHoverHighlight();
     }
   }
 
@@ -207,18 +218,24 @@
     );
   }
 
-  function caretOffsetIn(container, clientX, clientY) {
-    let range = null;
+  function caretRangeAtPoint(clientX, clientY) {
     if (document.caretRangeFromPoint) {
-      range = document.caretRangeFromPoint(clientX, clientY);
-    } else if (document.caretPositionFromPoint) {
+      return document.caretRangeFromPoint(clientX, clientY);
+    }
+    if (document.caretPositionFromPoint) {
       const pos = document.caretPositionFromPoint(clientX, clientY);
       if (pos) {
-        range = document.createRange();
+        const range = document.createRange();
         range.setStart(pos.offsetNode, pos.offset);
         range.setEnd(pos.offsetNode, pos.offset);
+        return range;
       }
     }
+    return null;
+  }
+
+  function caretOffsetIn(container, clientX, clientY) {
+    const range = caretRangeAtPoint(clientX, clientY);
     if (!range || !container.contains(range.startContainer)) return -1;
     const pre = document.createRange();
     pre.selectNodeContents(container);
@@ -226,32 +243,184 @@
     return pre.toString().length;
   }
 
-  function expandRangeToJapaneseWord(range) {
-    if (!range || !range.startContainer) return "";
+  function expandRangeToJapaneseWordRange(range) {
+    if (!range || !range.startContainer) return null;
     const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) return range.toString().trim();
+    if (node.nodeType !== Node.TEXT_NODE) return null;
     const text = node.textContent || "";
     let start = range.startOffset;
     let end = range.endOffset;
     while (start > 0 && JA_CHAR.test(text[start - 1])) start -= 1;
     while (end < text.length && JA_CHAR.test(text[end])) end += 1;
-    return text.slice(start, end).trim();
+    if (start >= end || !JA_CHAR.test(text.slice(start, end))) return null;
+    const next = range.cloneRange();
+    next.setStart(node, start);
+    next.setEnd(node, end);
+    return next;
   }
 
-  function wordAtPoint(x, y) {
-    let range = null;
-    if (document.caretRangeFromPoint) {
-      range = document.caretRangeFromPoint(x, y);
-    } else if (document.caretPositionFromPoint) {
-      const pos = document.caretPositionFromPoint(x, y);
-      if (pos) {
-        range = document.createRange();
-        range.setStart(pos.offsetNode, pos.offset);
-        range.setEnd(pos.offsetNode, pos.offset);
+  function expandRangeToJapaneseWord(range) {
+    return expandRangeToJapaneseWordRange(range)?.toString().trim() || "";
+  }
+
+  function lookupContainerFor(el) {
+    return (
+      el?.closest(
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']"
+      ) || el
+    );
+  }
+
+  function rangeForWordInContainer(container, clientX, clientY, word) {
+    const targetWord = String(word || "").trim();
+    if (!container || !targetWord) return null;
+
+    const offset = caretOffsetIn(container, clientX, clientY);
+    if (offset < 0) return null;
+
+    let pos = 0;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      const text = node.textContent || "";
+      const len = text.length;
+      if (pos + len <= offset) {
+        pos += len;
+        continue;
       }
+
+      let best = -1;
+      let bestDist = Infinity;
+      for (let search = 0; search <= text.length - targetWord.length; search += 1) {
+        if (text.slice(search, search + targetWord.length) !== targetWord) continue;
+        const center = search + targetWord.length * 0.5;
+        const dist = Math.abs(center - (offset - pos));
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = search;
+        }
+      }
+      if (best >= 0) {
+        const range = document.createRange();
+        range.setStart(node, best);
+        range.setEnd(node, best + targetWord.length);
+        return range;
+      }
+      break;
     }
-    if (!range) return "";
-    return expandRangeToJapaneseWord(range);
+
+    return expandRangeToJapaneseWordRange(caretRangeAtPoint(clientX, clientY));
+  }
+
+  function clearHoverHighlight() {
+    pendingHoverPoint = null;
+    clearTimeout(hoverHighlightTimer);
+    hoverHighlightTimer = null;
+    if (hoverHighlightRaf) {
+      cancelAnimationFrame(hoverHighlightRaf);
+      hoverHighlightRaf = null;
+    }
+    hoverHighlightEl?.remove();
+    hoverHighlightEl = null;
+  }
+
+  function renderHoverHighlight(range) {
+    if (!shellEl || !hostEl || !range) {
+      clearHoverHighlight();
+      return;
+    }
+
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hoverHighlightEl) {
+      hoverHighlightEl = document.createElement("div");
+      hoverHighlightEl.className = "hw-mg-hover-highlight";
+      hoverHighlightEl.setAttribute("aria-hidden", "true");
+      shellEl.appendChild(hoverHighlightEl);
+    }
+
+    hoverHighlightEl.replaceChildren();
+    const rects = range.getClientRects();
+    for (const rect of rects) {
+      if (!rect.width || !rect.height) continue;
+      const box = document.createElement("span");
+      box.className = "hw-mg-hover-highlight__rect";
+      box.style.left = rect.left - hostRect.left + "px";
+      box.style.top = rect.top - hostRect.top + "px";
+      box.style.width = rect.width + "px";
+      box.style.height = rect.height + "px";
+      hoverHighlightEl.appendChild(box);
+    }
+
+    if (!hoverHighlightEl.childElementCount) {
+      clearHoverHighlight();
+    }
+  }
+
+  async function refreshHoverHighlight(clientX, clientY) {
+    if (!armed || !supportsHoverHighlight() || lookupBusy || !hostEl) {
+      clearHoverHighlight();
+      return;
+    }
+
+    const target = document.elementFromPoint(clientX, clientY);
+    if (!target || !isLookupTarget(target)) {
+      clearHoverHighlight();
+      return;
+    }
+
+    const data = await resolveLookup(target, clientX, clientY);
+    if (!armed || lookupBusy || pendingHoverPoint?.x !== clientX || pendingHoverPoint?.y !== clientY) {
+      return;
+    }
+    if (!data?.word) {
+      clearHoverHighlight();
+      return;
+    }
+
+    const container = lookupContainerFor(target);
+    const range = rangeForWordInContainer(container, clientX, clientY, data.word);
+    if (range) renderHoverHighlight(range);
+    else clearHoverHighlight();
+  }
+
+  function scheduleHoverHighlight(clientX, clientY) {
+    if (!armed || !supportsHoverHighlight()) {
+      clearHoverHighlight();
+      return;
+    }
+    pendingHoverPoint = { x: clientX, y: clientY };
+    clearTimeout(hoverHighlightTimer);
+    hoverHighlightTimer = setTimeout(() => {
+      const point = pendingHoverPoint;
+      if (!point) return;
+      void refreshHoverHighlight(point.x, point.y);
+    }, 40);
+  }
+
+  function onHostMouseMove(e) {
+    if (!armed || !supportsHoverHighlight()) return;
+    scheduleHoverHighlight(e.clientX, e.clientY);
+  }
+
+  function onHostMouseLeave() {
+    clearHoverHighlight();
+  }
+
+  function bindHostHover() {
+    if (!hostEl) return;
+    unbindHostHover();
+    hostMouseMoveBound = onHostMouseMove;
+    hostEl.addEventListener("mousemove", hostMouseMoveBound);
+    hostEl.addEventListener("mouseleave", onHostMouseLeave);
+  }
+
+  function unbindHostHover() {
+    if (hostEl && hostMouseMoveBound) {
+      hostEl.removeEventListener("mousemove", hostMouseMoveBound);
+      hostEl.removeEventListener("mouseleave", onHostMouseLeave);
+    }
+    hostMouseMoveBound = null;
+    clearHoverHighlight();
   }
 
   async function tokenizeText(text) {
@@ -284,6 +453,10 @@
       tokens.find((t) => t.surface_form.includes(target)) ||
       tokens[0]
     );
+  }
+
+  function wordAtPoint(x, y) {
+    return expandRangeToJapaneseWord(caretRangeAtPoint(x, y));
   }
 
   async function resolveLookup(target, clientX, clientY) {
@@ -405,6 +578,7 @@
     e.preventDefault();
     e.stopPropagation();
 
+    clearHoverHighlight();
     closePopup();
 
     const local = clientToLocal(e.clientX, e.clientY);
@@ -586,7 +760,7 @@
       '<div class="hw-mg-onboard__card">' +
       '<p class="hw-mg-onboard__eyebrow">New · 虫眼鏡</p>' +
       '<h2 class="hw-mg-onboard__title" id="hw-mg-onboard-title">Look up any word</h2>' +
-      '<p class="hw-mg-onboard__text">Drag the magnifying glass anywhere on your assignment. Tap it, then click a Japanese word to see the reading and meaning.</p>' +
+      '<p class="hw-mg-onboard__text">Tap the magnifying glass, then click a Japanese word to see the reading and meaning.</p>' +
       '<button type="button" class="btn btn--primary btn--sm hw-mg-onboard__btn">Got it</button>' +
       "</div>";
 
@@ -660,6 +834,7 @@
 
     closePopup();
     setArmed(false);
+    unbindHostHover();
     hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
 
     hostEl = nextHost;
@@ -685,6 +860,7 @@
       placeOnboard();
     });
     resizeObserver.observe(hostEl);
+    bindHostHover();
 
     return true;
   }
@@ -712,6 +888,7 @@
   function destroy() {
     closePopup();
     dismissOnboarding();
+    unbindHostHover();
     setArmed(false);
     hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
     resizeObserver?.disconnect();

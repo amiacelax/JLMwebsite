@@ -216,14 +216,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hw-mg-widget,
-  .hw-mg-lens,
-  .hw-mg-lens::before {
-    animation: none !important;
-  }
-}
-
 .hw-mg-snap-hint {
   position: absolute;
   z-index: 41;
@@ -246,6 +238,33 @@
 .hw-mg-snap-hint.is-target {
   background: color-mix(in srgb, var(--color-green, #2d6a4f) 55%, transparent);
   transform: translate(-50%, -50%) scale(1.35);
+}
+
+.hw-mg-hover-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 41;
+  pointer-events: none;
+}
+
+.hw-mg-hover-highlight__rect {
+  position: absolute;
+  border-radius: 0.18rem;
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  transition: opacity 0.08s ease;
+}
+
+.hw-mg-host.hw-mg-armed .hw-mg-hover-highlight__rect {
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 38%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-mg-widget,
+  .hw-mg-lens,
+  .hw-mg-lens::before {
+    animation: none !important;
+  }
 }
 
 .hw-mg-popup {
