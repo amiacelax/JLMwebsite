@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="588" viewBox="-18 -28 148 170" fill="none" aria-hidden="true">
+  <g transform="rotate(-40 50 55)" stroke="#2d6a4f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 1 tick — small bump on arc peak -->
+    <path d="M50 -11.5V-13.5"/>
+    <!-- 2 hat arc — top + right leg parallel to 3 -->
+    <path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>
+    <!-- 3 open circle — gap 32–43分 SW; ends at 30分 into top of 4 (?) -->
+    <path d="M11.85 60.11A39 39 0 1 1 50 91"/>
+    <!-- 4 stem — top merges with 3 at 30分 -->
+    <path d="M50 91V125"/>
+    <!-- 6 crossbar — below circle, no overlap -->
+    <path d="M36 103H64"/>
+    <!-- 5 hook -->
+    <path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>
+  </g>
+</svg>

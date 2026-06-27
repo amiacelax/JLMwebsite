@@ -10,22 +10,23 @@
   const SKIP_SELECTOR =
     "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
 
-  const LENS_ICON =
+  /** Classic circle + handle (kept for rollback). */
+  const LENS_ICON_CLASSIC =
     '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
     '<circle cx="10" cy="10" r="6.5"/>' +
     '<path d="M15 15l6 6"/>' +
     "</svg>";
 
-  /** WIP preview — 字 as magnifying glass (sketch: 宀 + round 子 lens + ー + hook); angled like LENS_ICON. */
-  const LENS_ICON_JI_PREVIEW =
-    '<svg class="hw-mg-ji-preview__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-    '<g transform="rotate(-40 12 12)" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M12 2.1v1.5" stroke-width="1.7"/>' +
-    '<path d="M4.1 9.4V7.1c0-0.6 3.5-2.8 7.9-2.8s7.9 2.2 7.9 2.8v2.3" stroke-width="2.1"/>' +
-    '<circle cx="12" cy="11.4" r="4.4" stroke-width="2" fill="currentColor" fill-opacity="0.1"/>' +
-    '<path d="M5.8 15.6h12.4" stroke-width="2.15"/>' +
-    '<path d="M12 15.6v5.1" stroke-width="2.25"/>' +
-    '<path d="M12 20.7H8.1" stroke-width="2.15"/>' +
+  /** 字-as-lens icon (production). */
+  const LENS_ICON =
+    '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none" aria-hidden="true">' +
+    '<g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M50 -11.5V-13.5"/>' +
+    '<path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>' +
+    '<path d="M11.85 60.11A39 39 0 1 1 50 91"/>' +
+    '<path d="M50 91V125"/>' +
+    '<path d="M36 103H64"/>' +
+    '<path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>' +
     "</g></svg>";
 
   let hostEl = null;
@@ -945,14 +946,9 @@
       ev.stopPropagation();
     });
 
-    const jiPreviewEl = document.createElement("div");
-    jiPreviewEl.className = "hw-mg-ji-preview";
-    jiPreviewEl.setAttribute("aria-hidden", "true");
-    jiPreviewEl.innerHTML = '<span class="hw-mg-ji-preview__label">Test</span>' + LENS_ICON_JI_PREVIEW;
-
     widgetEl = document.createElement("div");
     widgetEl.className = "hw-mg-widget";
-    widgetEl.append(lensEl, jiPreviewEl);
+    widgetEl.append(lensEl);
 
     document.addEventListener("click", handleLookupClick, true);
     document.addEventListener("keydown", onKeyDown);
