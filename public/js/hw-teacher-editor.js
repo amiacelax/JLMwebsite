@@ -1303,6 +1303,21 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Publish failed.");
 
+        if (global.HwMgLexiconSuggest?.queueFromPublish) {
+          global.HwMgLexiconSuggest.queueFromPublish({
+            assignment,
+            worksheetId,
+            worksheetTitle: assignment.title || worksheetId,
+            teacherUsername: session.username,
+          })
+            .then((result) => {
+              if (result?.added > 0) {
+                showToast(result.added + " lookup lexicon card(s) queued for review");
+              }
+            })
+            .catch(() => {});
+        }
+
         touchWorksheetMru(worksheetId);
         setStatus(
           (data.message || "Sent to " + student + "!") +

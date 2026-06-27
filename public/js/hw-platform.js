@@ -1842,9 +1842,12 @@
     });
   }
 
+  let teacherTabApi = null;
+
   function initTeacherTabs() {
     const tablist = document.querySelector(".hw-teacher-tabs");
-    if (!tablist || tablist.dataset.bound === "true") return;
+    if (!tablist) return teacherTabApi;
+    if (tablist.dataset.bound === "true") return teacherTabApi;
     tablist.dataset.bound = "true";
 
     const tabs = tablist.querySelectorAll("[data-teacher-tab]");
@@ -1860,6 +1863,7 @@
       harris: document.getElementById("hw-teacher-harris"),
       jem: document.getElementById("hw-teacher-jem"),
       gamelab: document.getElementById("hw-teacher-gamelab"),
+      "lookup-lexicon": document.getElementById("hw-teacher-lookup-lexicon"),
       hubv2: document.getElementById("hw-teacher-hubv2"),
     };
 
@@ -1887,6 +1891,9 @@
       if (name === "gamelab" && global.HwTeacherLanternWords?.reloadIfNeeded) {
         HwTeacherLanternWords.reloadIfNeeded();
       }
+      if (name === "lookup-lexicon" && global.HwTeacherLookupLexicon?.reloadIfNeeded) {
+        HwTeacherLookupLexicon.reloadIfNeeded();
+      }
       if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
         global.HwTeacherEditor.syncPublishPicker();
       }
@@ -1902,7 +1909,7 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "hubv2") {
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2") {
         initial = tabParam;
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
@@ -1920,6 +1927,7 @@
         saved === "harris" ||
         saved === "jem" ||
         saved === "gamelab" ||
+        saved === "lookup-lexicon" ||
         saved === "hubv2"
       ) {
         initial = saved;
@@ -1972,8 +1980,8 @@
 
     initHubVersionPicker();
 
-    activate(initial);
-    return activate;
+    teacherTabApi = { activate, initial };
+    return teacherTabApi;
   }
 
   async function loadTeacherHub() {
@@ -1997,7 +2005,14 @@
       await global.HwStudentList.fetchStudents();
     }
 
-    const activateTeacherTab = initTeacherTabs();
+    if (global.HwTeacherLookupLexicon?.init) {
+      HwTeacherLookupLexicon.init({
+        getTeacherSession: () => session,
+        showToast,
+      });
+    }
+
+    const teacherTabs = initTeacherTabs();
     initTeacherEditor();
     if (global.HwTeacherIdeas?.init) {
       HwTeacherIdeas.init({
@@ -2034,6 +2049,10 @@
         getTeacherSession: () => session,
         showToast,
       });
+    }
+
+    if (teacherTabs?.activate && teacherTabs.initial) {
+      teacherTabs.activate(teacherTabs.initial);
     }
 
     const searchInput = document.getElementById("hw-library-search");
@@ -2077,7 +2096,7 @@
     renderLibraryList(entries, searchInput ? searchInput.value : "", hashId);
 
     if (hashId) {
-      if (activateTeacherTab) activateTeacherTab("maker");
+      if (teacherTabs?.activate) teacherTabs.activate("maker");
       await openInTeacherEditor(hashId);
     }
   }

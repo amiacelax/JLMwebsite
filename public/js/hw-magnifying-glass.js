@@ -10,6 +10,39 @@
   const SKIP_SELECTOR =
     "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
 
+  /** Shared 字 lens strokes (button + cursor). */
+  const LENS_JI_PATHS =
+    '<path d="M50 -11.5V-13.5"/>' +
+    '<path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>' +
+    '<path d="M11.85 60.11A39 39 0 1 1 50 91"/>' +
+    '<path d="M50 91V125"/>' +
+    '<path d="M36 103H64"/>' +
+    '<path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>';
+
+  function lensCursorDataUrl(stroke, innerSvg, width, height, viewBox, hotspotX, hotspotY) {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+      width +
+      '" height="' +
+      height +
+      '" viewBox="' +
+      viewBox +
+      '" fill="none" stroke="' +
+      stroke +
+      '" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">' +
+      innerSvg +
+      "</svg>";
+    return (
+      'url("data:image/svg+xml,' +
+      encodeURIComponent(svg) +
+      '") ' +
+      hotspotX +
+      " " +
+      hotspotY +
+      ", crosshair"
+    );
+  }
+
   /** Classic circle + handle (kept for rollback). */
   const LENS_ICON_CLASSIC =
     '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
@@ -17,17 +50,36 @@
     '<path d="M15 15l6 6"/>' +
     "</svg>";
 
+  const LENS_ARMED_CURSOR_CLASSIC = lensCursorDataUrl(
+    "#2d6a4f",
+    '<circle cx="10" cy="10" r="6.5" stroke-width="2.2"/><path d="M15 15l6 6" stroke-width="2.2"/>',
+    24,
+    24,
+    "0 0 24 24",
+    10,
+    10
+  );
+
   /** 字-as-lens icon (production). */
   const LENS_ICON =
     '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none" aria-hidden="true">' +
     '<g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M50 -11.5V-13.5"/>' +
-    '<path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>' +
-    '<path d="M11.85 60.11A39 39 0 1 1 50 91"/>' +
-    '<path d="M50 91V125"/>' +
-    '<path d="M36 103H64"/>' +
-    '<path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>' +
+    LENS_JI_PATHS +
     "</g></svg>";
+
+  const LENS_ARMED_CURSOR = lensCursorDataUrl(
+    "#2d6a4f",
+    '<g transform="rotate(-40 50 55)">' + LENS_JI_PATHS + "</g>",
+    24,
+    28,
+    "-18 -28 148 170",
+    11,
+    12
+  );
+
+  if (typeof document !== "undefined") {
+    document.documentElement.style.setProperty("--hw-mg-armed-cursor", LENS_ARMED_CURSOR);
+  }
 
   let hostEl = null;
   let shellEl = null;
@@ -38,6 +90,8 @@
   let snapHintEl = null;
   let onboardEl = null;
   let resizeObserver = null;
+  let overrideHostEl = null;
+  let overrideOptions = null;
   let armed = false;
   let lensSnapId = null;
   let lensPosition = { ...DEFAULT_LENS };
@@ -58,6 +112,7 @@
   }
 
   function findHost() {
+    if (overrideHostEl && hostIsVisible(overrideHostEl)) return overrideHostEl;
     const v4 = document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet");
     if (v4 && !v4.hidden && !v4.closest("[hidden]")) return v4;
     const legacy = document.getElementById("hw-worksheet-section");
@@ -131,12 +186,16 @@
     widgetEl.style.top = localY + "px";
   }
 
+  function lensStorageKey() {
+    return overrideOptions?.storageKey || STORAGE_KEY;
+  }
+
   function saveLensPosition() {
     try {
       if (lensSnapId) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ snap: lensSnapId }));
+        localStorage.setItem(lensStorageKey(), JSON.stringify({ snap: lensSnapId }));
       } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ x: lensPosition.x, y: lensPosition.y }));
+        localStorage.setItem(lensStorageKey(), JSON.stringify({ x: lensPosition.x, y: lensPosition.y }));
       }
     } catch {
       /* ignore */
@@ -145,10 +204,15 @@
 
   function loadLensPosition() {
     lensSnapId = null;
-    lensPosition = { ...DEFAULT_LENS };
+    lensPosition = { ...(overrideOptions?.defaultLens || DEFAULT_LENS) };
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+      const raw = localStorage.getItem(lensStorageKey());
+      if (!raw) {
+        if (overrideOptions?.defaultSnap && SNAP_IDS.includes(overrideOptions.defaultSnap)) {
+          lensSnapId = overrideOptions.defaultSnap;
+        }
+        return;
+      }
       if (SNAP_IDS.includes(raw)) {
         lensSnapId = raw;
         return;
@@ -197,7 +261,7 @@
     showToast._t = setTimeout(() => toastEl.classList.remove("is-visible"), 2200);
   }
 
-  function setArmed(next) {
+  function setArmed(next, opts) {
     armed = !!next;
     hostEl?.classList.toggle("hw-mg-armed", armed);
     widgetEl?.classList.toggle("is-armed", armed);
@@ -205,7 +269,12 @@
     if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
       closePopup();
-      showToast("Tap a word to look it up · Esc to cancel");
+      if (!opts?.silent) {
+        const msg =
+          overrideOptions?.armHint ||
+          "Tap a word to look it up · Esc to cancel";
+        showToast(msg);
+      }
     } else {
       clearHoverHighlight();
     }
@@ -225,7 +294,7 @@
     if (el.closest(SKIP_SELECTOR)) return false;
     return Boolean(
       el.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, [lang='ja']"
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
       )
     );
   }
@@ -299,7 +368,7 @@
   function lookupContainerFor(el) {
     return (
       el?.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']"
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
       ) || el
     );
   }
@@ -503,31 +572,62 @@
     }
   }
 
+  function lookupTargetFromPoint(clientX, clientY) {
+    const stack =
+      typeof document.elementsFromPoint === "function"
+        ? document.elementsFromPoint(clientX, clientY)
+        : [document.elementFromPoint(clientX, clientY)];
+    for (const el of stack) {
+      if (el instanceof Element && isLookupTarget(el)) return el;
+    }
+    return null;
+  }
+
+  function hoverRangeQuick(target, clientX, clientY) {
+    const container = lookupContainerFor(target);
+    if (!container) return null;
+    const offset = caretOffsetNearPointer(container, clientX, clientY, 24);
+    if (offset < 0) return null;
+    const text = normalizeContainerText(container);
+    const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
+    if (unit) return rangeFromOffsets(container, unit.start, unit.end);
+    const range = caretRangeAtPoint(clientX, clientY);
+    if (!range || !container.contains(range.startContainer)) return null;
+    if (!pointerNearRange(clientX, clientY, range, 24)) return null;
+    return expandRangeToJapaneseWordRange(range);
+  }
+
   async function refreshHoverHighlight(clientX, clientY) {
     if (!armed || !supportsHoverHighlight() || lookupBusy || !hostEl) {
       clearHoverHighlight();
       return;
     }
 
-    const target = document.elementFromPoint(clientX, clientY);
-    if (!target || !isLookupTarget(target)) {
+    const target = lookupTargetFromPoint(clientX, clientY);
+    if (!target) {
       clearHoverHighlight();
       return;
     }
 
-    const data = await resolveLookup(target, clientX, clientY);
-    if (!armed || lookupBusy || pendingHoverPoint?.x !== clientX || pendingHoverPoint?.y !== clientY) {
-      return;
-    }
-    if (!data?.surface) {
-      clearHoverHighlight();
-      return;
-    }
+    const quickRange = hoverRangeQuick(target, clientX, clientY);
+    if (quickRange) renderHoverHighlight(quickRange);
 
-    const container = lookupContainerFor(target);
-    const range = rangeFromOffsets(container, data.start, data.end);
-    if (range) renderHoverHighlight(range);
-    else clearHoverHighlight();
+    try {
+      const data = await resolveLookup(target, clientX, clientY);
+      if (!armed || lookupBusy || pendingHoverPoint?.x !== clientX || pendingHoverPoint?.y !== clientY) {
+        return;
+      }
+      if (data?.surface) {
+        const container = lookupContainerFor(target);
+        const range = rangeFromOffsets(container, data.start, data.end);
+        if (range) renderHoverHighlight(range);
+        else if (!quickRange) clearHoverHighlight();
+      } else if (!quickRange) {
+        clearHoverHighlight();
+      }
+    } catch {
+      if (!quickRange) clearHoverHighlight();
+    }
   }
 
   function scheduleHoverHighlight(clientX, clientY) {
@@ -545,9 +645,13 @@
     });
   }
 
-  function onHostMouseMove(e) {
+  function onHostPointerMove(e) {
     if (!armed || !supportsHoverHighlight()) return;
     scheduleHoverHighlight(e.clientX, e.clientY);
+  }
+
+  function onHostMouseMove(e) {
+    onHostPointerMove(e);
   }
 
   function onHostMouseLeave() {
@@ -557,15 +661,19 @@
   function bindHostHover() {
     if (!hostEl) return;
     unbindHostHover();
-    hostMouseMoveBound = onHostMouseMove;
+    hostMouseMoveBound = onHostPointerMove;
     hostEl.addEventListener("mousemove", hostMouseMoveBound);
+    hostEl.addEventListener("pointermove", hostMouseMoveBound);
     hostEl.addEventListener("mouseleave", onHostMouseLeave);
+    hostEl.addEventListener("pointerleave", onHostMouseLeave);
   }
 
   function unbindHostHover() {
     if (hostEl && hostMouseMoveBound) {
       hostEl.removeEventListener("mousemove", hostMouseMoveBound);
+      hostEl.removeEventListener("pointermove", hostMouseMoveBound);
       hostEl.removeEventListener("mouseleave", onHostMouseLeave);
+      hostEl.removeEventListener("pointerleave", onHostMouseLeave);
     }
     hostMouseMoveBound = null;
     clearHoverHighlight();
@@ -575,14 +683,27 @@
     const auto = global.HwFuriganaAuto;
     if (!auto?.ensureTokenizer) return [];
     try {
-      const tokenizer = await auto.ensureTokenizer();
+      const tokenizerPromise = auto.ensureTokenizer();
+      const tokenizer = auto.withTimeout
+        ? await auto.withTimeout(tokenizerPromise, 4500, "tokenizer timeout")
+        : await tokenizerPromise;
       return tokenizer.tokenize(String(text || ""));
     } catch {
       return [];
     }
   }
 
+  function pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx) {
+    const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
+    if (!unit?.surface) return null;
+    const range = rangeFromOffsets(container, unit.start, unit.end);
+    if (!range || !pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) return null;
+    return unit;
+  }
+
   async function resolveLookup(target, clientX, clientY, options) {
+    const lexReady = global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+
     const maxPointerPx = options?.maxPointerPx ?? 22;
     const container = lookupContainerFor(target);
     const text = normalizeContainerText(container);
@@ -591,11 +712,27 @@
     const offset = caretOffsetNearPointer(container, clientX, clientY, maxPointerPx);
     if (offset < 0) return null;
 
+    await lexReady;
+
+    const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
+    if (forced) {
+      const range = rangeFromOffsets(container, forced.start, forced.end);
+      if (range && pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) {
+        return global.HwMgLexicon?.enrich?.(forced) || forced;
+      }
+    }
+
     const tokens = await tokenizeText(text);
+    if (!tokens.length) {
+      return pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    }
+
     const rawSpans = buildTokenSpans(tokens, text);
     const spans = global.HwMgLexicon?.mergeTokenSpans?.(rawSpans) || rawSpans;
     const unit = pickLookupUnit(spans, offset);
-    if (!unit?.surface) return null;
+    if (!unit?.surface) {
+      return pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    }
 
     const range = rangeFromOffsets(container, unit.start, unit.end);
     if (!range || !pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) return null;
@@ -608,29 +745,58 @@
     if (!surface) return null;
 
     const lex = global.HwMgLexicon?.resolve?.(surface, unit?.lemma) || {};
-    if (lex.definition) {
-      return {
-        query: surface,
-        reading: lex.reading || unit?.reading || "",
-        definition: lex.definition,
-        jishoUrl: lex.jishoUrl,
-      };
+    const q = lex.query || unit?.query || unit?.lemma || surface;
+    const jishoUrl =
+      lex.jishoUrl || "https://jisho.org/search/" + encodeURIComponent(q || surface);
+    const fallback = {
+      query: surface,
+      reading: lex.reading || unit?.reading || "",
+      definition: lex.definition || unit?.definition || "",
+      jishoUrl,
+    };
+
+    if (fallback.definition) return fallback;
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch("/api/ja-lookup?q=" + encodeURIComponent(q), {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+            continue;
+          }
+          break;
+        }
+        const data = await res.json();
+        if (data?.error) {
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+            continue;
+          }
+          break;
+        }
+        return {
+          ...data,
+          query: surface,
+          reading: data.reading || unit?.reading || lex.reading || "",
+          definition: data.definition || unit?.definition || lex.definition || "",
+          jishoUrl: data.jishoUrl || jishoUrl,
+        };
+      } catch {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+          continue;
+        }
+      }
     }
 
-    const q = lex.query || unit?.query || unit?.lemma || surface;
-    try {
-      const res = await fetch("/api/ja-lookup?q=" + encodeURIComponent(q));
-      if (!res.ok) return null;
-      const data = await res.json();
-      return {
-        ...data,
-        query: surface,
-        reading: data.reading || unit?.reading || "",
-        jishoUrl: data.jishoUrl || lex.jishoUrl,
-      };
-    } catch {
-      return null;
-    }
+    return fallback;
   }
 
   function positionPopup(localX, localY) {
@@ -668,6 +834,13 @@
     popupEl.setAttribute("role", "dialog");
     popupEl.setAttribute("aria-label", "Word lookup");
 
+    if (result.surface) {
+      const wordEl = document.createElement("p");
+      wordEl.className = "hw-mg-popup__word";
+      wordEl.textContent = result.surface;
+      popupEl.appendChild(wordEl);
+    }
+
     const head = document.createElement("div");
     head.className = "hw-mg-popup__head";
 
@@ -692,7 +865,13 @@
     } else {
       const empty = document.createElement("p");
       empty.className = "hw-mg-popup__empty";
-      empty.textContent = result.reading ? "No short definition found." : "Could not read this word.";
+      if (result.reading) {
+        empty.textContent = "No short definition found.";
+      } else if (result.jishoUrl) {
+        empty.textContent = "Dictionary busy — try again or use Jisho below.";
+      } else {
+        empty.textContent = "Could not read this word.";
+      }
       popupEl.appendChild(empty);
     }
 
@@ -729,10 +908,18 @@
     loading.className = "hw-mg-popup hw-mg-popup--loading";
     loading.style.left = local.x + 10 + "px";
     loading.style.top = local.y + 10 + "px";
-    loading.textContent = "…";
+    loading.textContent = "Looking up…";
     shellEl.appendChild(loading);
     popupEl = loading;
     bindPopupClose(loading);
+
+    const lookupTimeout = setTimeout(() => {
+      if (lookupBusy && popupEl === loading) {
+        closePopup();
+        showToast("Lookup timed out — try again in a moment");
+        lookupBusy = false;
+      }
+    }, 15000);
 
     try {
       const data = await resolveLookup(e.target, e.clientX, e.clientY, { maxPointerPx: 36 });
@@ -746,7 +933,11 @@
         {
           reading: lookup.reading || data.reading || "",
           definition: lookup.definition || data.definition || "",
-          jishoUrl: lookup.jishoUrl || data.jishoUrl || "https://jisho.org/search/" + encodeURIComponent(data.query || data.surface),
+          jishoUrl:
+            lookup.jishoUrl ||
+            data.jishoUrl ||
+            "https://jisho.org/search/" + encodeURIComponent(data.query || data.surface),
+          surface: data.surface,
         },
         local.x,
         local.y
@@ -755,6 +946,7 @@
       closePopup();
       showToast("Lookup failed — try again");
     } finally {
+      clearTimeout(lookupTimeout);
       lookupBusy = false;
     }
   }
@@ -885,6 +1077,7 @@
   }
 
   function initOnboarding() {
+    if (overrideOptions?.skipOnboarding) return;
     if (!shellEl || !widgetEl) return;
     try {
       if (localStorage.getItem(ONBOARD_KEY) === "1") return;
@@ -958,8 +1151,9 @@
     built = true;
   }
 
-  function attachHost() {
-    if (!enabled()) {
+  function attachHost(opts) {
+    const force = Boolean(opts?.force || overrideHostEl);
+    if (!force && !enabled()) {
       destroy();
       return false;
     }
@@ -969,19 +1163,22 @@
 
     if (hostEl === nextHost && shellEl?.parentElement === nextHost) {
       applyLensPosition();
-      placeOnboard();
+      if (!overrideOptions?.skipOnboarding) placeOnboard();
       return true;
     }
 
     closePopup();
     setArmed(false);
     unbindHostHover();
-    hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
+    if (hostEl && hostEl !== nextHost) {
+      hostEl.classList.remove("hw-mg-host", "hw-mg-armed");
+      if (shellEl?.parentElement === hostEl) shellEl.remove();
+    }
 
     hostEl = nextHost;
     hostEl.classList.add("hw-mg-host");
 
-    shellEl = hostEl.querySelector(".hw-mg-shell");
+    shellEl = hostEl.querySelector(":scope > .hw-mg-shell");
     if (!shellEl) {
       shellEl = document.createElement("div");
       shellEl.className = "hw-mg-shell";
@@ -998,11 +1195,43 @@
     if (resizeObserver) resizeObserver.disconnect();
     resizeObserver = new ResizeObserver(() => {
       applyLensPosition();
-      placeOnboard();
+      if (!overrideOptions?.skipOnboarding) placeOnboard();
     });
     resizeObserver.observe(hostEl);
     bindHostHover();
 
+    if (overrideOptions?.autoArm) {
+      requestAnimationFrame(() => setArmed(true, { silent: !!overrideOptions.silentArm }));
+    }
+
+    return true;
+  }
+
+  function attachTo(el, opts) {
+    if (!el) return false;
+    overrideHostEl = el;
+    overrideOptions = opts || {};
+    return attachHost({ force: true });
+  }
+
+  function releaseOverride(skipReattach) {
+    const prevHost = overrideHostEl;
+    overrideHostEl = null;
+    overrideOptions = null;
+    closePopup();
+    dismissOnboarding();
+    setArmed(false);
+    unbindHostHover();
+    if (prevHost) {
+      prevHost.classList.remove("hw-mg-host", "hw-mg-armed");
+      prevHost.querySelector(":scope > .hw-mg-shell")?.remove();
+    }
+    if (hostEl === prevHost) {
+      resizeObserver?.disconnect();
+      hostEl = null;
+      shellEl = null;
+    }
+    if (!skipReattach && enabled()) attachHost();
     return true;
   }
 
@@ -1019,26 +1248,29 @@
   }
 
   function refresh() {
-    if (!enabled()) {
-      destroy();
-      return;
+    if (overrideHostEl && hostIsVisible(overrideHostEl)) {
+      return attachHost({ force: true });
     }
-    attachHost();
+    if (!enabled()) {
+      return false;
+    }
+    return attachHost();
   }
 
   function destroy() {
+    releaseOverride(true);
     closePopup();
     dismissOnboarding();
     unbindHostHover();
     setArmed(false);
-    hostEl?.classList.remove("hw-mg-host", "hw-mg-armed");
+    if (hostEl) {
+      hostEl.classList.remove("hw-mg-host", "hw-mg-armed");
+      hostEl.querySelector(":scope > .hw-mg-shell")?.remove();
+    }
     resizeObserver?.disconnect();
-    shellEl?.remove();
     hostEl = null;
     shellEl = null;
-    widgetEl = null;
-    lensEl = null;
   }
 
-  global.HwMagnifyingGlass = { init, refresh, destroy, setArmed };
+  global.HwMagnifyingGlass = { init, refresh, destroy, setArmed, attachTo, releaseOverride };
 })(window);

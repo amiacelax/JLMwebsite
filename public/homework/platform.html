@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/styles.css?v=20260694">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=10">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=4">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=17">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=21">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -150,6 +150,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-harris" aria-selected="false" aria-controls="hw-teacher-harris" data-teacher-tab="harris">Harris Firm</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-lookup-lexicon" aria-selected="false" aria-controls="hw-teacher-lookup-lexicon" data-teacher-tab="lookup-lexicon">Lookup Lexicon</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2">Hub v2 preview</button>
           </div>
@@ -387,6 +388,72 @@
                 <button type="button" class="btn btn--ghost" id="hw-jem-copy-link">Copy link</button>
               </div>
             </div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-lookup-lexicon" id="hw-teacher-lookup-lexicon" role="tabpanel" aria-labelledby="hw-teacher-tab-lookup-lexicon" hidden>
+            <h2 class="hw-platform-card__title">Lookup Lexicon</h2>
+            <p class="hw-platform-card__desc">Test each word with the magnifying glass on the left. When lookup behaves correctly, tap <strong>Save rule</strong> — updates every student.</p>
+            <p class="hw-lookup-lexicon-progress" id="hw-lookup-lexicon-progress" aria-live="polite"></p>
+
+            <div class="hw-lookup-lexicon-empty" id="hw-lookup-lexicon-empty" hidden>
+              <p><strong>Deck clear.</strong> New cards appear when you publish homework to a student, or add one below.</p>
+            </div>
+
+            <div class="hw-lookup-lexicon-loading" id="hw-lookup-lexicon-loading" hidden>
+              <p>Loading deck…</p>
+            </div>
+
+            <div class="hw-lookup-lexicon-stage" id="hw-lookup-lexicon-stage" hidden>
+              <div class="hw-lookup-lexicon-card">
+                <div class="hw-lookup-lexicon-card__head">
+                  <p class="hw-lookup-lexicon-card__eyebrow" id="hw-lookup-lexicon-kind"></p>
+                </div>
+
+                <div class="hw-lookup-lexicon-layout">
+                  <section class="hw-lookup-lexicon-test">
+                    <label class="hw-lookup-lexicon-field">
+                      Word in question
+                      <input type="text" class="hw-lookup-lexicon-field__input" id="hw-lookup-lexicon-word-input" autocomplete="off" lang="ja">
+                    </label>
+                    <label class="hw-lookup-lexicon-field">
+                      Example sentence
+                      <textarea class="hw-lookup-lexicon-field__textarea" id="hw-lookup-lexicon-example-input" rows="2" autocomplete="off" lang="ja"></textarea>
+                    </label>
+                    <div class="hw-lookup-lexicon-playground-wrap">
+                      <p class="hw-lookup-lexicon-playground-wrap__label">Test with magnifying glass</p>
+                      <p class="hw-lookup-lexicon-playground-wrap__hint">Click words in the sentence below — 字 is armed automatically.</p>
+                      <div class="hw-lookup-lexicon-playground" id="hw-lookup-lexicon-playground-host">
+                        <div class="hw-worksheet__content hw-lookup-lexicon-playground__content">
+                          <p class="hw-translation-block__japanese hw-lookup-lexicon-playground__text" lang="ja" id="hw-lookup-lexicon-playground-text"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="hw-lookup-lexicon-decide">
+                    <h3 class="hw-lookup-lexicon-decide__title">Rule to save</h3>
+                    <p class="hw-lookup-lexicon-card__note" id="hw-lookup-lexicon-note" hidden></p>
+                    <div class="hw-lookup-lexicon-proposed-panel" id="hw-lookup-lexicon-proposed"></div>
+                    <div class="hw-lookup-lexicon-tweak-wrap" id="hw-lookup-lexicon-tweak-wrap" hidden></div>
+                    <div class="hw-teacher-meta__actions hw-lookup-lexicon-card__actions">
+                      <button type="button" class="btn btn--primary" id="hw-lookup-lexicon-submit-btn">Save rule</button>
+                      <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-next-btn">Skip for now</button>
+                      <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-tweak-btn" hidden>Edit</button>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+            <div class="hw-lookup-lexicon-add">
+              <h3 class="hw-teacher-panel-subtitle">Add to deck</h3>
+              <div class="hw-teacher-meta__actions hw-lookup-lexicon-add__row">
+                <input type="text" class="hw-lookup-lexicon-add__input" id="hw-lookup-lexicon-add-surface" autocomplete="off" placeholder="Word or phrase, e.g. 中々">
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-add-btn">Add card</button>
+              </div>
+            </div>
+
+            <p class="hw-maker-status" id="hw-lookup-lexicon-status" role="status" aria-live="polite"></p>
           </section>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-gamelab" id="hw-teacher-gamelab" role="tabpanel" aria-labelledby="hw-teacher-tab-gamelab" hidden>
@@ -754,10 +821,11 @@
   <script src="/js/hw-submit-format.js?v=20260619" defer></script>
   <script src="/js/hw-worksheet.js?v=20260620" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
-  <script src="/js/hw-furigana-auto.js?v=20260683" defer></script>
+  <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-feature-flags.js?v=1" defer></script>
-  <script src="/js/hw-mg-lexicon.js?v=6" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=24" defer></script>
+  <script src="/js/hw-mg-lexicon.js?v=11" defer></script>
+  <script src="/js/hw-mg-lexicon-suggest.js?v=1" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=33" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260727" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260713" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>
@@ -773,8 +841,9 @@
   <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
   <script src="/js/lantern-word-format.js?v=20260650" defer></script>
   <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
+  <script src="/js/hw-teacher-lookup-lexicon.js?v=11" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260722" defer></script>
+  <script src="/js/hw-platform.js?v=20260725" defer></script>
 </body>
 </html>

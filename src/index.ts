@@ -87,6 +87,16 @@ import {
   type SignupInput,
   type LoginInput,
 } from "./user-accounts";
+import {
+  getMgLexiconPublic,
+  getMgLexiconQueue,
+  submitMgLexiconCard,
+  addMgLexiconCard,
+  suggestMgLexiconBatch,
+  type MgLexiconSubmitPayload,
+  type MgLexiconAddCardPayload,
+  type MgLexiconSuggestBatchPayload,
+} from "./mg-lexicon-kv";
 
 interface Env {
   ASSETS: Fetcher;
@@ -2717,6 +2727,124 @@ async function handleHomeworkSubmissionPhoto(request: Request, env: Env): Promis
   }
 }
 
+async function handleMgLexicon(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const result = await getMgLexiconPublic(env);
+    return jsonResponse(result);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Lexicon storage is not configured." }, 503);
+    }
+    console.error("mg-lexicon load failed:", err);
+    return jsonResponse({ error: "Could not load lookup lexicon." }, 500);
+  }
+}
+
+async function handleMgLexiconQueue(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  const url = new URL(request.url);
+  try {
+    const result = await getMgLexiconQueue(
+      { teacherUsername: url.searchParams.get("teacherUsername") || undefined },
+      env
+    );
+    return jsonResponse(result);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    console.error("mg-lexicon queue failed:", err);
+    return jsonResponse({ error: "Could not load lexicon queue." }, 500);
+  }
+}
+
+async function handleMgLexiconSubmit(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as MgLexiconSubmitPayload;
+    const result = await submitMgLexiconCard(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Rule saved — magnifying glass updated for everyone.",
+      remaining: result.remaining,
+      version: result.overlay.updatedAt,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    if (code === "CARD_NOT_FOUND") return jsonResponse({ error: "Card not found or already done." }, 404);
+    if (code === "CUSTOM_REQUIRED" || code === "MERGE_REQUIRED" || code === "SKIP_REQUIRED") {
+      return jsonResponse({ error: "Fill in the required fields before submitting." }, 400);
+    }
+    console.error("mg-lexicon submit failed:", err);
+    return jsonResponse({ error: "Could not save lexicon rule." }, 500);
+  }
+}
+
+async function handleMgLexiconAddCard(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as MgLexiconAddCardPayload;
+    const result = await addMgLexiconCard(data, env);
+    return jsonResponse({
+      success: true,
+      card: result.card,
+      pending: result.pending,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    if (code === "SURFACE_REQUIRED") return jsonResponse({ error: "Enter a word or phrase." }, 400);
+    console.error("mg-lexicon add-card failed:", err);
+    return jsonResponse({ error: "Could not add card." }, 500);
+  }
+}
+
+async function handleMgLexiconSuggestBatch(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as MgLexiconSuggestBatchPayload;
+    const result = await suggestMgLexiconBatch(data, env);
+    return jsonResponse({
+      success: true,
+      added: result.added,
+      skipped: result.skipped,
+      pending: result.pending,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    console.error("mg-lexicon suggest-batch failed:", err);
+    return jsonResponse({ error: "Could not queue lexicon suggestions." }, 500);
+  }
+}
+
 async function handleLanternWords(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -2854,7 +2982,7 @@ function pickBestJishoEntry(items: JishoApiEntry[], query: string): JishoApiEntr
   return [...items].sort((a, b) => score(b) - score(a))[0] || null;
 }
 
-async function handleJaLookup(request: Request): Promise<Response> {
+async function handleJaLookup(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -2866,31 +2994,75 @@ async function handleJaLookup(request: Request): Promise<Response> {
   const q = url.searchParams.get("q")?.trim().slice(0, 48);
   if (!q) return jsonResponse({ error: "Missing q parameter." }, 400);
 
+  const cacheKey = "site:ja-lookup:" + q;
   try {
-    const res = await fetch(
-      "https://jisho.org/api/v1/search/words?keyword=" + encodeURIComponent(q)
-    );
-    if (!res.ok) return jsonResponse({ error: "Dictionary lookup failed." }, 502);
-    const data = (await res.json()) as { data?: JishoApiEntry[] };
-    const best = pickBestJishoEntry(data.data || [], q);
-    const reading = katakanaToHiragana(best?.japanese?.[0]?.reading || "");
-    const definition = (best?.senses?.[0]?.english_definitions || [])
-      .slice(0, 3)
-      .join(", ");
-    return jsonResponse(
-      {
+    const cached = await env.HOMEWORK_KV?.get(cacheKey);
+    if (cached) {
+      return jsonResponse(JSON.parse(cached), 200, { "Cache-Control": "public, max-age=86400" });
+    }
+  } catch {
+    /* ignore cache read errors */
+  }
+
+  const jishoApiUrl =
+    "https://jisho.org/api/v1/search/words?keyword=" + encodeURIComponent(q);
+  const fetchHeaders = {
+    Accept: "application/json",
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  };
+
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(jishoApiUrl, {
+        headers:
+          attempt > 0
+            ? { ...fetchHeaders, Referer: "https://jisho.org/" }
+            : fetchHeaders,
+      });
+      lastStatus = res.status;
+      if (!res.ok) {
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+          continue;
+        }
+        break;
+      }
+
+      const data = (await res.json()) as { data?: JishoApiEntry[] };
+      const best = pickBestJishoEntry(data.data || [], q);
+      const reading = katakanaToHiragana(best?.japanese?.[0]?.reading || "");
+      const definition = (best?.senses?.[0]?.english_definitions || [])
+        .slice(0, 3)
+        .join(", ");
+      const payload = {
         query: q,
         reading,
         definition,
         jishoUrl: "https://jisho.org/search/" + encodeURIComponent(q),
-      },
-      200,
-      { "Cache-Control": "public, max-age=86400" }
-    );
-  } catch (err) {
-    console.error("ja-lookup failed:", err);
-    return jsonResponse({ error: "Dictionary lookup failed." }, 502);
+      };
+
+      try {
+        await env.HOMEWORK_KV?.put(cacheKey, JSON.stringify(payload), {
+          expirationTtl: 60 * 60 * 24 * 30,
+        });
+      } catch {
+        /* ignore cache write errors */
+      }
+
+      return jsonResponse(payload, 200, { "Cache-Control": "public, max-age=86400" });
+    } catch (err) {
+      console.error("ja-lookup attempt failed:", attempt + 1, q, err);
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+        continue;
+      }
+    }
   }
+
+  console.error("ja-lookup upstream status:", lastStatus, q);
+  return jsonResponse({ error: "Dictionary lookup failed." }, 502);
 }
 
 export default {
@@ -2908,7 +3080,7 @@ export default {
     }
 
     if (url.pathname === "/api/ja-lookup") {
-      return handleJaLookup(request);
+      return handleJaLookup(request, env);
     }
 
     if (url.pathname === "/api/contact") {
@@ -3049,6 +3221,26 @@ export default {
 
     if (url.pathname === "/api/teacher-ideas/delete") {
       return handleTeacherIdeaDelete(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon") {
+      return handleMgLexicon(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon/queue") {
+      return handleMgLexiconQueue(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon/submit") {
+      return handleMgLexiconSubmit(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon/add-card") {
+      return handleMgLexiconAddCard(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon/suggest-batch") {
+      return handleMgLexiconSuggestBatch(request, env);
     }
 
     if (url.pathname === "/api/lantern-words") {

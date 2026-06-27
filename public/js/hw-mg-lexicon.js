@@ -31,6 +31,8 @@
 
   /** Custom reading + gloss — wins over Jisho; also makes these highlightable/clickable. */
   const CUSTOM = {
+    仕事: { reading: "しごと", definition: "work; job" },
+    やめたい: { reading: "やめたい", definition: "want to quit (～たい)" },
     たい: { reading: "たい", definition: "want (～たい)" },
     けど: { reading: "けど", definition: "but" },
     中々: { reading: "なかなか", definition: "quite; considerably; not easily" },
@@ -44,6 +46,7 @@
   /** Clicked surface → dictionary headword for Jisho. */
   const LEMMA_QUERY = {
     やめ: "やめる",
+    やめたい: "やめる",
   };
 
   /**
@@ -141,6 +144,114 @@
 
   const COMPOUND_SUFFIX_SET = new Set(MERGE_RULES.compoundSuffixSurfaces);
 
+  const BASELINE_SKIP = new Set(SKIP_SURFACE);
+  const BASELINE_CUSTOM = { ...CUSTOM };
+  const BASELINE_LEMMA = { ...LEMMA_QUERY };
+  const BASELINE_SEQUENCES = MERGE_RULES.surfaceSequences.map((s) => ({
+    surfaces: [...s.surfaces],
+  }));
+
+  /** Whole surfaces always kept together (code defaults + KV overlay). */
+  let FORCE_UNITS = [];
+  let overlayVersion = null;
+  let loadPromise = null;
+
+  function applyGlobalOverlay(overlay) {
+    if (!overlay || typeof overlay !== "object") return;
+
+    SKIP_SURFACE.clear();
+    BASELINE_SKIP.forEach((s) => SKIP_SURFACE.add(s));
+    Object.keys(CUSTOM).forEach((k) => delete CUSTOM[k]);
+    Object.assign(CUSTOM, BASELINE_CUSTOM);
+    Object.keys(LEMMA_QUERY).forEach((k) => delete LEMMA_QUERY[k]);
+    Object.assign(LEMMA_QUERY, BASELINE_LEMMA);
+    MERGE_RULES.surfaceSequences = BASELINE_SEQUENCES.map((s) => ({
+      surfaces: [...s.surfaces],
+    }));
+    FORCE_UNITS = [];
+
+    (overlay.skipSurface || []).forEach((surface) => {
+      if (surface) SKIP_SURFACE.add(surface);
+    });
+
+    Object.assign(CUSTOM, overlay.custom || {});
+    Object.assign(LEMMA_QUERY, overlay.lemmaQuery || {});
+
+    (overlay.mergeSurfaceSequences || []).forEach((seq) => {
+      if (!seq?.surfaces?.length || seq.surfaces.length < 2) return;
+      const key = seq.surfaces.join("|");
+      const exists = MERGE_RULES.surfaceSequences.some((item) => item.surfaces.join("|") === key);
+      if (!exists) MERGE_RULES.surfaceSequences.push({ surfaces: [...seq.surfaces] });
+    });
+
+    FORCE_UNITS = [...new Set((overlay.forceUnits || []).map((s) => String(s || "").trim()).filter(Boolean))];
+    overlayVersion = overlay.updatedAt || overlayVersion;
+  }
+
+  function ensureLoaded() {
+    if (!loadPromise) {
+      loadPromise = fetch("/api/mg-lexicon")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.overlay) applyGlobalOverlay(data.overlay);
+          if (data?.version) overlayVersion = data.version;
+        })
+        .catch(() => {});
+    }
+    return loadPromise;
+  }
+
+  function buildTokenSpans(tokens, text) {
+    let pos = 0;
+    return tokens.map((token) => {
+      const sf = token.surface_form || "";
+      let start = text.indexOf(sf, pos);
+      if (start < 0) start = pos;
+      const end = start + sf.length;
+      pos = Math.max(pos, end);
+      return { token, surface: sf, start, end };
+    });
+  }
+
+  function pickForceUnit(text, offset) {
+    if (!FORCE_UNITS.length || !text || offset < 0) return null;
+    const ordered = [...FORCE_UNITS].sort((a, b) => b.length - a.length);
+    for (const unit of ordered) {
+      let from = 0;
+      while (from <= text.length) {
+        const start = text.indexOf(unit, from);
+        if (start < 0) break;
+        const end = start + unit.length;
+        if (offset >= start && offset < end) {
+          return { surface: unit, start, end, lemma: null, reading: null };
+        }
+        from = start + 1;
+      }
+    }
+    return null;
+  }
+
+  async function simulateSplit(text) {
+    await ensureLoaded();
+    const sample = String(text || "").trim();
+    if (!sample) return [];
+
+    const auto = global.HwFuriganaAuto;
+    if (!auto?.ensureTokenizer) return [];
+    try {
+      const tokenizer = await auto.ensureTokenizer();
+      const tokens = tokenizer.tokenize(sample);
+      const rawSpans = buildTokenSpans(tokens, sample);
+      const merged = mergeTokenSpans(rawSpans);
+      return merged.map((span) => ({
+        surface: span.surface,
+        skipped: isSkipped(span.surface, span.token),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   function katakanaToHiragana(str) {
     return String(str || "").replace(/[\u30a1-\u30f6]/g, (ch) =>
       String.fromCharCode(ch.charCodeAt(0) - 0x60)
@@ -229,7 +340,7 @@
     return combineSpans(spans, index, 2, { joinReading: true });
   }
 
-  function mergeTokenSpans(spans) {
+  function mergeTokenSpansWithMeta(spans) {
     if (!Array.isArray(spans) || !spans.length) return spans || [];
 
     const merged = [];
@@ -237,29 +348,221 @@
     while (index < spans.length) {
       const sequence = trySequenceMerge(spans, index);
       if (sequence) {
-        merged.push(sequence.span);
+        const slice = spans.slice(index, index + sequence.count);
+        merged.push({
+          ...sequence.span,
+          rawSurfaces: slice.map((span) => span.surface),
+          ruleKind: "sequence",
+        });
         index += sequence.count;
         continue;
       }
 
       const pattern = tryPatternMerge(spans, index);
       if (pattern) {
-        merged.push(pattern);
+        merged.push({
+          ...pattern,
+          rawSurfaces: [spans[index].surface, spans[index + 1].surface],
+          ruleKind: "pattern",
+        });
         index += 2;
         continue;
       }
 
       const compound = tryCompoundSuffixMerge(spans, index);
       if (compound) {
-        merged.push(compound);
+        merged.push({
+          ...compound,
+          rawSurfaces: [spans[index].surface, spans[index + 1].surface],
+          ruleKind: "compound",
+        });
         index += 2;
         continue;
       }
 
-      merged.push(spans[index]);
+      const span = spans[index];
+      merged.push({
+        ...span,
+        rawSurfaces: [span.surface],
+        ruleKind: "single",
+      });
       index += 1;
     }
     return merged;
+  }
+
+  function mergeTokenSpans(spans) {
+    return mergeTokenSpansWithMeta(spans).map(({ token, surface, start, end }) => ({
+      token,
+      surface,
+      start,
+      end,
+    }));
+  }
+
+  /** Longest-first particles / glue for quick hover without kuromoji. */
+  const QUICK_BOUNDARY_SURFACES = [
+    "では",
+    "じゃ",
+    "から",
+    "まで",
+    "より",
+    "など",
+    "けど",
+    "ので",
+    "のに",
+    "って",
+    "なが",
+    "なか",
+    "を",
+    "は",
+    "が",
+    "に",
+    "で",
+    "と",
+    "て",
+    "も",
+    "か",
+    "よ",
+    "ね",
+    "の",
+    "へ",
+    "ん",
+    "だ",
+    "な",
+  ].sort((a, b) => b.length - a.length);
+
+  function quickBoundaryLength(text, index) {
+    const ch = text[index];
+    if (!ch) return 0;
+    if (PUNCT_RE.test(ch) || !JA_CHAR.test(ch)) return 1;
+    for (const surface of QUICK_BOUNDARY_SURFACES) {
+      if (text.startsWith(surface, index)) return surface.length;
+    }
+    return 0;
+  }
+
+  function quickUnits(text) {
+    const sample = String(text || "");
+    const units = [];
+    let i = 0;
+    while (i < sample.length) {
+      const boundary = quickBoundaryLength(sample, i);
+      if (boundary) {
+        const surface = sample.slice(i, i + boundary);
+        if (JA_CHAR.test(surface[0]) && !PUNCT_RE.test(surface)) {
+          units.push({
+            surface,
+            start: i,
+            end: i + boundary,
+            skip: isSkipped(surface, null),
+          });
+        }
+        i += boundary;
+        continue;
+      }
+
+      const start = i;
+      i += 1;
+      while (i < sample.length && !quickBoundaryLength(sample, i)) i += 1;
+      const surface = sample.slice(start, i);
+      units.push({
+        surface,
+        start,
+        end: i,
+        skip: isSkipped(surface, null),
+      });
+    }
+
+    const merged = [];
+    for (const unit of units) {
+      if (
+        unit.surface === "たい" &&
+        CUSTOM["たい"] &&
+        merged.length &&
+        !merged[merged.length - 1].skip
+      ) {
+        const prev = merged.pop();
+        merged.push({
+          surface: prev.surface + "たい",
+          start: prev.start,
+          end: unit.end,
+          skip: false,
+        });
+        continue;
+      }
+      merged.push(unit);
+    }
+    return merged;
+  }
+
+  function pickQuickUnit(text, offset) {
+    const sample = String(text || "");
+    if (!sample || offset < 0 || offset >= sample.length) return null;
+
+    const units = quickUnits(sample);
+    const index = units.findIndex((unit) => offset >= unit.start && offset < unit.end);
+    if (index < 0) return null;
+
+    const pickFromIndex = (i) => {
+      const unit = units[i];
+      if (!unit || unit.skip) return null;
+      return enrich({
+        surface: unit.surface,
+        start: unit.start,
+        end: unit.end,
+        lemma: null,
+        reading: null,
+      });
+    };
+
+    const direct = pickFromIndex(index);
+    if (direct) return direct;
+
+    let left = null;
+    for (let i = index - 1; i >= 0; i -= 1) {
+      left = pickFromIndex(i);
+      if (left) break;
+    }
+    let right = null;
+    for (let i = index + 1; i < units.length; i += 1) {
+      right = pickFromIndex(i);
+      if (right) break;
+    }
+    if (!left && !right) return null;
+    if (!left) return right;
+    if (!right) return left;
+
+    const distLeft = Math.min(Math.abs(offset - left.start), Math.abs(offset - left.end));
+    const distRight = Math.min(Math.abs(offset - right.start), Math.abs(offset - right.end));
+    if (Math.min(distLeft, distRight) > 2) return null;
+    return distLeft <= distRight ? left : right;
+  }
+
+  async function analyzeText(text) {
+    await ensureLoaded();
+    const sample = String(text || "").trim();
+    if (!sample) return { text: sample, units: [] };
+
+    const auto = global.HwFuriganaAuto;
+    if (!auto?.ensureTokenizer) return { text: sample, units: [] };
+    try {
+      const tokenizer = await auto.ensureTokenizer();
+      const tokens = tokenizer.tokenize(sample);
+      const rawSpans = buildTokenSpans(tokens, sample);
+      const units = mergeTokenSpansWithMeta(rawSpans).map((span) => ({
+        surface: span.surface,
+        start: span.start,
+        end: span.end,
+        rawSurfaces: span.rawSurfaces,
+        ruleKind: span.ruleKind,
+        token: span.token,
+        skipped: isSkipped(span.surface, span.token),
+      }));
+      return { text: sample, units };
+    } catch {
+      return { text: sample, units: [] };
+    }
   }
 
   function isLatinOrDigits(surface, token) {
@@ -334,6 +637,75 @@
     return unit;
   }
 
+  async function inspectWordInText(text, target) {
+    const analysis = await analyzeText(text);
+    const sample = analysis.text || String(text || "").trim();
+    const word = String(target || "").trim();
+    const units = analysis.units || [];
+    if (!sample || !word) {
+      return { text: sample, word, units, relevantUnits: [], splitsNow: "—", highlighted: false };
+    }
+
+    let targetStart = sample.indexOf(word);
+    const targetEnd = targetStart >= 0 ? targetStart + word.length : -1;
+
+    let relevantUnits = [];
+    if (targetStart >= 0) {
+      relevantUnits = units.filter((u) => u.start < targetEnd && u.end > targetStart);
+    }
+    const exactUnit = units.find((u) => u.surface === word);
+    if (exactUnit) {
+      relevantUnits = [exactUnit];
+    } else if (!relevantUnits.length) {
+      relevantUnits = units.filter(
+        (u) => word.includes(u.surface) || u.surface.includes(word)
+      );
+    }
+
+    function unitPreview(unit) {
+      const highlighted = !unit.skipped;
+      const resolved = resolve(unit.surface, unit.token?.basic_form);
+      let reading = resolved.reading;
+      if (!reading && unit.token) reading = readingFromToken(unit.token);
+      return {
+        surface: unit.surface,
+        highlighted,
+        reading: reading || null,
+        definition: resolved.definition || null,
+        jishoQuery: resolved.query,
+        rawSurfaces: unit.rawSurfaces || [unit.surface],
+        ruleKind: unit.ruleKind,
+        start: unit.start,
+        end: unit.end,
+      };
+    }
+
+    const pieces = relevantUnits.map(unitPreview);
+    const highlighted = pieces.some((p) => p.highlighted);
+    const primary = pieces.find((p) => p.surface === word) || pieces.find((p) => p.highlighted) || pieces[0];
+    const isSplit =
+      relevantUnits.length > 1 ||
+      (exactUnit?.rawSurfaces?.length > 1 && exactUnit.ruleKind === "single");
+
+    return {
+      text: sample,
+      word,
+      targetStart,
+      targetEnd,
+      units,
+      relevantUnits,
+      exactUnit,
+      pieces,
+      splitsNow: pieces.length ? pieces.map((p) => p.surface).join(" · ") : "—",
+      rawSplit: pieces.flatMap((p) => p.rawSurfaces),
+      isSplit,
+      highlighted,
+      reading: primary?.reading || null,
+      definition: primary?.definition || null,
+      jishoQuery: primary?.jishoQuery || null,
+    };
+  }
+
   global.HwMgLexicon = {
     CUSTOM,
     LEMMA_QUERY,
@@ -346,5 +718,18 @@
     resolve,
     enrich,
     mergeTokenSpans,
+    mergeTokenSpansWithMeta,
+    analyzeText,
+    inspectWordInText,
+    getForceUnits: () => FORCE_UNITS,
+    ensureLoaded,
+    applyGlobalOverlay,
+    pickForceUnit,
+    pickQuickUnit,
+    quickUnits,
+    simulateSplit,
+    getOverlayVersion: () => overlayVersion,
   };
+
+  ensureLoaded();
 })(window);

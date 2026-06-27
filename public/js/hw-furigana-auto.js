@@ -40,7 +40,19 @@
     const existing = document.querySelector('script[data-hw-kuromoji="1"]');
     if (existing) {
       return new Promise((resolve, reject) => {
-        existing.addEventListener("load", () => resolve(), { once: true });
+        if (global.kuromoji) {
+          resolve();
+          return;
+        }
+        const finish = () => {
+          if (global.kuromoji) resolve();
+          else reject(new Error("kuromoji load failed"));
+        };
+        if (existing.readyState === "complete" || existing.readyState === "loaded") {
+          finish();
+          return;
+        }
+        existing.addEventListener("load", finish, { once: true });
         existing.addEventListener("error", () => reject(new Error("kuromoji load failed")), {
           once: true,
         });
@@ -59,19 +71,26 @@
 
   function ensureTokenizer() {
     if (tokenizerPromise) return tokenizerPromise;
-    tokenizerPromise = loadKuromojiScript().then(
-      () =>
-        new Promise((resolve, reject) => {
-          if (!global.kuromoji?.builder) {
-            reject(new Error("kuromoji unavailable"));
-            return;
-          }
-          global.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((err, tokenizer) => {
-            if (err) reject(err);
-            else resolve(tokenizer);
-          });
-        })
-    );
+    tokenizerPromise = loadKuromojiScript()
+      .then(
+        () =>
+          new Promise((resolve, reject) => {
+            if (!global.kuromoji?.builder) {
+              reject(new Error("kuromoji unavailable"));
+              return;
+            }
+            const timer = setTimeout(() => reject(new Error("tokenizer timeout")), 45000);
+            global.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((err, tokenizer) => {
+              clearTimeout(timer);
+              if (err) reject(err);
+              else resolve(tokenizer);
+            });
+          })
+      )
+      .catch((err) => {
+        tokenizerPromise = null;
+        throw err;
+      });
     return tokenizerPromise;
   }
 
