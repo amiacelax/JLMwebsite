@@ -16,6 +16,18 @@
     '<path d="M15 15l6 6"/>' +
     "</svg>";
 
+  /** WIP preview — 字 as magnifying glass (sketch: 宀 + round 子 lens + ー + hook); angled like LENS_ICON. */
+  const LENS_ICON_JI_PREVIEW =
+    '<svg class="hw-mg-ji-preview__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+    '<g transform="rotate(-40 12 12)" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M12 2.1v1.5" stroke-width="1.7"/>' +
+    '<path d="M4.1 9.4V7.1c0-0.6 3.5-2.8 7.9-2.8s7.9 2.2 7.9 2.8v2.3" stroke-width="2.1"/>' +
+    '<circle cx="12" cy="11.4" r="4.4" stroke-width="2" fill="currentColor" fill-opacity="0.1"/>' +
+    '<path d="M5.8 15.6h12.4" stroke-width="2.15"/>' +
+    '<path d="M12 15.6v5.1" stroke-width="2.25"/>' +
+    '<path d="M12 20.7H8.1" stroke-width="2.15"/>' +
+    "</g></svg>";
+
   let hostEl = null;
   let shellEl = null;
   let widgetEl = null;
@@ -32,7 +44,6 @@
   let lookupBusy = false;
   let built = false;
   let hoverHighlightEl = null;
-  let hoverHighlightTimer = null;
   let hoverHighlightRaf = null;
   let hostMouseMoveBound = null;
   let pendingHoverPoint = null;
@@ -243,6 +254,27 @@
     return pre.toString().length;
   }
 
+  function pointerNearRange(clientX, clientY, range, maxPx) {
+    if (!range) return false;
+    const rects = range.getClientRects();
+    for (const rect of rects) {
+      const dx = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
+      const dy = clientY < rect.top ? rect.top - clientY : clientY > rect.bottom ? clientY - rect.bottom : 0;
+      if (Math.hypot(dx, dy) <= maxPx) return true;
+    }
+    return false;
+  }
+
+  function caretOffsetNearPointer(container, clientX, clientY, maxPx) {
+    const range = caretRangeAtPoint(clientX, clientY);
+    if (!range || !container.contains(range.startContainer)) return -1;
+    if (!pointerNearRange(clientX, clientY, range, maxPx)) return -1;
+    const pre = document.createRange();
+    pre.selectNodeContents(container);
+    pre.setEnd(range.startContainer, range.startOffset);
+    return pre.toString().length;
+  }
+
   function expandRangeToJapaneseWordRange(range) {
     if (!range || !range.startContainer) return null;
     const node = range.startContainer;
@@ -271,51 +303,163 @@
     );
   }
 
-  function rangeForWordInContainer(container, clientX, clientY, word) {
-    const targetWord = String(word || "").trim();
-    if (!container || !targetWord) return null;
+  function normalizeContainerText(container) {
+    return (container?.textContent || "").replace(/\s+/g, " ").trim();
+  }
 
-    const offset = caretOffsetIn(container, clientX, clientY);
-    if (offset < 0) return null;
+  function readingFromToken(token) {
+    return katakanaToHiragana(token?.reading || token?.pronunciation || "");
+  }
 
+  function lemmaFromToken(token, surface) {
+    const basic = token?.basic_form;
+    if (basic && basic !== "*" && basic !== surface) return basic;
+    return null;
+  }
+
+  function buildTokenSpans(tokens, text) {
     let pos = 0;
+    return tokens.map((token) => {
+      const sf = token.surface_form || "";
+      let start = text.indexOf(sf, pos);
+      if (start < 0) start = pos;
+      const end = start + sf.length;
+      pos = Math.max(pos, end);
+      return { token, surface: sf, start, end };
+    });
+  }
+
+  function isPrefixO(span) {
+    return (
+      span.surface === "お" &&
+      (span.token.pos === "接頭詞" || span.token.pos_detail_1 === "接頭詞")
+    );
+  }
+
+  function isIterationMark(span) {
+    return span.surface === "々";
+  }
+
+  function isSkippableSpan(span) {
+    if (global.HwMgLexicon?.isSkipped?.(span.surface, span.token)) return true;
+    if (isPrefixO(span) || isIterationMark(span)) return true;
+    return false;
+  }
+
+  function buildLookupUnit(spans, index) {
+    const span = spans[index];
+    if (!span) return null;
+
+    if (isIterationMark(span) && index > 0) {
+      return buildLookupUnit(spans, index - 1);
+    }
+
+    if (spans[index + 1] && isIterationMark(spans[index + 1])) {
+      const next = spans[index + 1];
+      return {
+        surface: span.surface + next.surface,
+        start: span.start,
+        end: next.end,
+        lemma: null,
+        reading: null,
+      };
+    }
+
+    if (isPrefixO(span) && spans[index + 1]?.token.pos === "名詞") {
+      const next = spans[index + 1];
+      return {
+        surface: span.surface + next.surface,
+        start: span.start,
+        end: next.end,
+        lemma: lemmaFromToken(next.token, next.surface),
+        reading: readingFromToken(next.token),
+      };
+    }
+
+    if (span.token.pos === "名詞" && index > 0 && isPrefixO(spans[index - 1])) {
+      return buildLookupUnit(spans, index - 1);
+    }
+
+    return {
+      surface: span.surface,
+      start: span.start,
+      end: span.end,
+      lemma: lemmaFromToken(span.token, span.surface),
+      reading: readingFromToken(span.token),
+    };
+  }
+
+  function pickLookupUnit(spans, offset) {
+    if (!spans.length) return null;
+
+    const index = spans.findIndex((s) => offset >= s.start && offset < s.end);
+    if (index < 0) return null;
+
+    const unitFromIndex = (i) => {
+      if (i < 0 || i >= spans.length) return null;
+      const span = spans[i];
+      if (isSkippableSpan(span)) {
+        if (isPrefixO(span) && spans[i + 1]) {
+          return global.HwMgLexicon?.enrich?.(buildLookupUnit(spans, i)) || buildLookupUnit(spans, i);
+        }
+        if (isIterationMark(span) && i > 0) {
+          return unitFromIndex(i - 1);
+        }
+        return null;
+      }
+      const unit = buildLookupUnit(spans, i);
+      return global.HwMgLexicon?.enrich?.(unit) || unit;
+    };
+
+    const direct = unitFromIndex(index);
+    if (direct) return direct;
+
+    if (!isSkippableSpan(spans[index])) return null;
+
+    let left = null;
+    for (let i = index - 1; i >= 0; i -= 1) {
+      left = unitFromIndex(i);
+      if (left) break;
+    }
+    let right = null;
+    for (let i = index + 1; i < spans.length; i += 1) {
+      right = unitFromIndex(i);
+      if (right) break;
+    }
+    if (!left && !right) return null;
+    if (!left) return right;
+    if (!right) return left;
+
+    const distLeft = Math.min(Math.abs(offset - left.start), Math.abs(offset - left.end));
+    const distRight = Math.min(Math.abs(offset - right.start), Math.abs(offset - right.end));
+    if (Math.min(distLeft, distRight) > 2) return null;
+    return distLeft <= distRight ? left : right;
+  }
+
+  function rangeFromOffsets(container, start, end) {
+    if (!container || start < 0 || end <= start) return null;
+    const range = document.createRange();
+    let pos = 0;
+    let started = false;
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let node = null;
     while ((node = walker.nextNode())) {
-      const text = node.textContent || "";
-      const len = text.length;
-      if (pos + len <= offset) {
-        pos += len;
-        continue;
+      const len = (node.textContent || "").length;
+      if (!started && pos + len > start) {
+        range.setStart(node, Math.max(0, start - pos));
+        started = true;
       }
-
-      let best = -1;
-      let bestDist = Infinity;
-      for (let search = 0; search <= text.length - targetWord.length; search += 1) {
-        if (text.slice(search, search + targetWord.length) !== targetWord) continue;
-        const center = search + targetWord.length * 0.5;
-        const dist = Math.abs(center - (offset - pos));
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = search;
-        }
-      }
-      if (best >= 0) {
-        const range = document.createRange();
-        range.setStart(node, best);
-        range.setEnd(node, best + targetWord.length);
+      if (started && pos + len >= end) {
+        range.setEnd(node, Math.max(0, end - pos));
         return range;
       }
-      break;
+      pos += len;
     }
-
-    return expandRangeToJapaneseWordRange(caretRangeAtPoint(clientX, clientY));
+    return started ? range : null;
   }
 
   function clearHoverHighlight() {
     pendingHoverPoint = null;
-    clearTimeout(hoverHighlightTimer);
-    hoverHighlightTimer = null;
     if (hoverHighlightRaf) {
       cancelAnimationFrame(hoverHighlightRaf);
       hoverHighlightRaf = null;
@@ -339,15 +483,17 @@
     }
 
     hoverHighlightEl.replaceChildren();
+    const padX = 4;
+    const padY = 3;
     const rects = range.getClientRects();
     for (const rect of rects) {
       if (!rect.width || !rect.height) continue;
       const box = document.createElement("span");
       box.className = "hw-mg-hover-highlight__rect";
-      box.style.left = rect.left - hostRect.left + "px";
-      box.style.top = rect.top - hostRect.top + "px";
-      box.style.width = rect.width + "px";
-      box.style.height = rect.height + "px";
+      box.style.left = rect.left - hostRect.left - padX + "px";
+      box.style.top = rect.top - hostRect.top - padY + "px";
+      box.style.width = rect.width + padX * 2 + "px";
+      box.style.height = rect.height + padY * 2 + "px";
       hoverHighlightEl.appendChild(box);
     }
 
@@ -372,13 +518,13 @@
     if (!armed || lookupBusy || pendingHoverPoint?.x !== clientX || pendingHoverPoint?.y !== clientY) {
       return;
     }
-    if (!data?.word) {
+    if (!data?.surface) {
       clearHoverHighlight();
       return;
     }
 
     const container = lookupContainerFor(target);
-    const range = rangeForWordInContainer(container, clientX, clientY, data.word);
+    const range = rangeFromOffsets(container, data.start, data.end);
     if (range) renderHoverHighlight(range);
     else clearHoverHighlight();
   }
@@ -389,12 +535,13 @@
       return;
     }
     pendingHoverPoint = { x: clientX, y: clientY };
-    clearTimeout(hoverHighlightTimer);
-    hoverHighlightTimer = setTimeout(() => {
+    if (hoverHighlightRaf) return;
+    hoverHighlightRaf = requestAnimationFrame(() => {
+      hoverHighlightRaf = null;
       const point = pendingHoverPoint;
       if (!point) return;
       void refreshHoverHighlight(point.x, point.y);
-    }, 40);
+    });
   }
 
   function onHostMouseMove(e) {
@@ -434,59 +581,52 @@
     }
   }
 
-  function tokenAtOffset(tokens, text, offset, fallback) {
-    if (!tokens.length) return null;
-    let pos = 0;
-    for (const token of tokens) {
-      const sf = token.surface_form || "";
-      const idx = text.indexOf(sf, pos);
-      const start = idx >= 0 ? idx : pos;
-      const end = start + sf.length;
-      if (offset >= start && offset < end) return token;
-      pos = Math.max(pos, end);
-    }
-    const target = String(fallback || "").trim();
-    if (!target) return tokens[0] || null;
-    return (
-      tokens.find((t) => t.surface_form === target) ||
-      tokens.find((t) => target.includes(t.surface_form) && t.surface_form.length > 1) ||
-      tokens.find((t) => t.surface_form.includes(target)) ||
-      tokens[0]
-    );
-  }
+  async function resolveLookup(target, clientX, clientY, options) {
+    const maxPointerPx = options?.maxPointerPx ?? 22;
+    const container = lookupContainerFor(target);
+    const text = normalizeContainerText(container);
+    if (!text) return null;
 
-  function wordAtPoint(x, y) {
-    return expandRangeToJapaneseWord(caretRangeAtPoint(x, y));
-  }
+    const offset = caretOffsetNearPointer(container, clientX, clientY, maxPointerPx);
+    if (offset < 0) return null;
 
-  async function resolveLookup(target, clientX, clientY) {
-    const container =
-      target.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']"
-      ) || target;
-    const text = (container.textContent || "").replace(/\s+/g, " ").trim();
-    const fallback = wordAtPoint(clientX, clientY);
-    if (!fallback && !text) return null;
-
-    const offset = caretOffsetIn(container, clientX, clientY);
     const tokens = await tokenizeText(text);
-    const token = tokenAtOffset(tokens, text, offset, fallback);
-    const word = token?.surface_form || fallback;
-    if (!word) return null;
+    const rawSpans = buildTokenSpans(tokens, text);
+    const spans = global.HwMgLexicon?.mergeTokenSpans?.(rawSpans) || rawSpans;
+    const unit = pickLookupUnit(spans, offset);
+    if (!unit?.surface) return null;
 
-    return {
-      word,
-      reading: katakanaToHiragana(token?.reading || token?.pronunciation || ""),
-    };
+    const range = rangeFromOffsets(container, unit.start, unit.end);
+    if (!range || !pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) return null;
+
+    return unit;
   }
 
-  async function fetchLookup(word) {
-    const q = String(word || "").trim();
-    if (!q) return null;
+  async function fetchLookup(unit) {
+    const surface = unit?.surface || String(unit || "").trim();
+    if (!surface) return null;
+
+    const lex = global.HwMgLexicon?.resolve?.(surface, unit?.lemma) || {};
+    if (lex.definition) {
+      return {
+        query: surface,
+        reading: lex.reading || unit?.reading || "",
+        definition: lex.definition,
+        jishoUrl: lex.jishoUrl,
+      };
+    }
+
+    const q = lex.query || unit?.query || unit?.lemma || surface;
     try {
       const res = await fetch("/api/ja-lookup?q=" + encodeURIComponent(q));
       if (!res.ok) return null;
-      return await res.json();
+      const data = await res.json();
+      return {
+        ...data,
+        query: surface,
+        reading: data.reading || unit?.reading || "",
+        jishoUrl: data.jishoUrl || lex.jishoUrl,
+      };
     } catch {
       return null;
     }
@@ -594,18 +734,18 @@
     bindPopupClose(loading);
 
     try {
-      const data = await resolveLookup(e.target, e.clientX, e.clientY);
-      if (!data?.word) {
+      const data = await resolveLookup(e.target, e.clientX, e.clientY, { maxPointerPx: 36 });
+      if (!data?.surface) {
         closePopup();
         showToast("No Japanese word here — try again");
         return;
       }
-      const lookup = (await fetchLookup(data.word)) || {};
+      const lookup = (await fetchLookup(data)) || {};
       renderPopup(
         {
           reading: lookup.reading || data.reading || "",
-          definition: lookup.definition || "",
-          jishoUrl: lookup.jishoUrl || "https://jisho.org/search/" + encodeURIComponent(data.word),
+          definition: lookup.definition || data.definition || "",
+          jishoUrl: lookup.jishoUrl || data.jishoUrl || "https://jisho.org/search/" + encodeURIComponent(data.query || data.surface),
         },
         local.x,
         local.y
@@ -805,9 +945,14 @@
       ev.stopPropagation();
     });
 
+    const jiPreviewEl = document.createElement("div");
+    jiPreviewEl.className = "hw-mg-ji-preview";
+    jiPreviewEl.setAttribute("aria-hidden", "true");
+    jiPreviewEl.innerHTML = '<span class="hw-mg-ji-preview__label">Test</span>' + LENS_ICON_JI_PREVIEW;
+
     widgetEl = document.createElement("div");
     widgetEl.className = "hw-mg-widget";
-    widgetEl.append(lensEl);
+    widgetEl.append(lensEl, jiPreviewEl);
 
     document.addEventListener("click", handleLookupClick, true);
     document.addEventListener("keydown", onKeyDown);
