@@ -6717,12 +6717,20 @@ body.hw-role-teacher #hw-teacher-hub {
 
 .hw-lookup-lexicon-playground {
   position: relative;
-  min-height: 4.25rem;
-  padding: 0.65rem 0.85rem 2.5rem;
+  min-height: 5.5rem;
+  padding: 0.75rem 0.85rem 2.75rem;
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--color-green) 28%, var(--color-border));
   background: var(--color-bg-elevated);
-  overflow: hidden;
+  overflow: visible;
+}
+
+.hw-lookup-lexicon-playground.hw-mg-host > .hw-mg-shell {
+  overflow: visible;
+}
+
+.hw-lookup-lexicon-playground .hw-mg-popup {
+  z-index: 55;
 }
 
 .hw-lookup-lexicon-playground .hw-mg-widget {

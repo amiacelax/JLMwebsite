@@ -96,6 +96,7 @@
   let lensSnapId = null;
   let lensPosition = { ...DEFAULT_LENS };
   let dragState = null;
+  let popupDragState = null;
   let lookupBusy = false;
   let built = false;
   let hoverHighlightEl = null;
@@ -282,6 +283,7 @@
 
   function closePopup() {
     lookupBusy = false;
+    popupDragState = null;
     if (popupEl) {
       popupEl.remove();
       popupEl = null;
@@ -807,6 +809,30 @@
     return fallback;
   }
 
+  function isLexiconPlaygroundHost() {
+    return Boolean(hostEl?.classList?.contains("hw-lookup-lexicon-playground"));
+  }
+
+  function setPopupPosition(left, top, popup) {
+    const el = popup || popupEl;
+    if (!el || !hostEl) return;
+    const pad = 8;
+    const boxW = hostEl.clientWidth;
+    const boxH = hostEl.clientHeight;
+    const rect = el.getBoundingClientRect();
+    let x = left;
+    let y = top;
+    x = Math.max(pad, Math.min(x, boxW - rect.width - pad));
+    if (isLexiconPlaygroundHost()) {
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      return;
+    }
+    y = Math.max(pad, Math.min(y, boxH - rect.height - pad));
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+  }
+
   function positionPopup(localX, localY) {
     if (!popupEl || !hostEl) return;
     const pad = 8;
@@ -816,11 +842,60 @@
     let left = localX + 10;
     let top = localY + 10;
     if (left + rect.width > boxW - pad) left = localX - rect.width - 10;
+    if (isLexiconPlaygroundHost()) {
+      if (top + rect.height > boxH - pad) top = localY - rect.height - 12;
+      setPopupPosition(left, top);
+      return;
+    }
     if (top + rect.height > boxH - pad) top = localY - rect.height - 10;
-    left = Math.max(pad, Math.min(left, boxW - rect.width - pad));
-    top = Math.max(pad, Math.min(top, boxH - rect.height - pad));
-    popupEl.style.left = left + "px";
-    popupEl.style.top = top + "px";
+    setPopupPosition(left, top);
+  }
+
+  function onPopupDragStart(e) {
+    if (e.button !== 0 || !popupEl || e.target !== popupEl && !popupEl.contains(e.target)) return;
+    if (e.target.closest(".hw-mg-popup__close") || e.target.closest(".hw-mg-popup__more")) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const left = parseFloat(popupEl.style.left) || 0;
+    const top = parseFloat(popupEl.style.top) || 0;
+    popupDragState = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originLeft: left,
+      originTop: top,
+    };
+    popupEl.classList.add("is-dragging");
+    popupEl.setPointerCapture(e.pointerId);
+  }
+
+  function onPopupDragMove(e) {
+    if (!popupDragState || popupDragState.pointerId !== e.pointerId || !popupEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const dx = e.clientX - popupDragState.startX;
+    const dy = e.clientY - popupDragState.startY;
+    setPopupPosition(popupDragState.originLeft + dx, popupDragState.originTop + dy);
+  }
+
+  function onPopupDragEnd(e) {
+    if (!popupDragState || popupDragState.pointerId !== e.pointerId) return;
+    popupEl?.classList.remove("is-dragging");
+    popupDragState = null;
+    try {
+      popupEl?.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function bindPopupDrag(popup) {
+    popup.addEventListener("pointerdown", onPopupDragStart);
+    popup.addEventListener("pointermove", onPopupDragMove);
+    popup.addEventListener("pointerup", onPopupDragEnd);
+    popup.addEventListener("pointercancel", onPopupDragEnd);
   }
 
   function bindPopupClose(popup) {
@@ -895,6 +970,7 @@
 
     shellEl.appendChild(popupEl);
     bindPopupClose(popupEl);
+    bindPopupDrag(popupEl);
     positionPopup(localX, localY);
   }
 
@@ -920,6 +996,7 @@
     shellEl.appendChild(loading);
     popupEl = loading;
     bindPopupClose(loading);
+    bindPopupDrag(loading);
 
     const lookupTimeout = setTimeout(() => {
       if (lookupBusy && popupEl === loading) {

@@ -287,6 +287,22 @@
   font-family: "Noto Sans JP", Inter, sans-serif;
   pointer-events: auto;
   animation: hw-mg-pop 0.16s ease;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.hw-mg-popup.is-dragging {
+  animation: none;
+  box-shadow: var(--shadow-lg, 0 12px 36px rgba(0, 0, 0, 0.2));
+  cursor: grabbing;
+}
+
+.hw-mg-popup__close,
+.hw-mg-popup__more {
+  cursor: pointer;
+  user-select: none;
+  touch-action: auto;
 }
 
 @keyframes hw-mg-pop {
