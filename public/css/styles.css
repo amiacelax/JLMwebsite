@@ -6583,72 +6583,238 @@ body.hw-role-teacher #hw-teacher-hub {
 }
 
 .hw-lookup-lexicon-progress {
-  margin: 0 0 1rem;
-  font-size: 0.8125rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-green);
 }
 
 .hw-lookup-lexicon-stage {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .hw-lookup-lexicon-card {
-  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
   border-radius: var(--radius-lg, 0.85rem);
   border: 1px solid color-mix(in srgb, var(--color-green) 28%, var(--color-border));
   background: color-mix(in srgb, var(--color-green) 6%, var(--color-bg-elevated));
-  box-shadow: var(--shadow-sm, 0 2px 12px rgba(0, 0, 0, 0.06));
 }
 
-.hw-lookup-lexicon-card__eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
+.hw-lookup-lexicon-word-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.55rem;
+}
+
+.hw-lookup-lexicon-word {
+  margin: 0;
+  font-size: 1.65rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-green);
+  line-height: 1.15;
 }
 
-.hw-lookup-lexicon-card__title {
-  margin: 0 0 0.75rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.hw-lookup-lexicon-card__label {
+.hw-lookup-lexicon-kind-pill {
   display: inline-block;
-  min-width: 4.5rem;
-  font-size: 0.6875rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--color-green);
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-green) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-green) 10%, transparent);
+}
+
+.hw-lookup-lexicon-card__note {
+  margin: -0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   color: var(--color-text-muted);
 }
 
-.hw-lookup-lexicon-card__surface,
-.hw-lookup-lexicon-card__example,
-.hw-lookup-lexicon-card__note {
-  margin: 0 0 0.5rem;
+.hw-lookup-lexicon-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.hw-lookup-lexicon-section__label,
+.hw-lookup-lexicon-review-block__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-lookup-lexicon-split-fix {
+  margin: -0.25rem 0 0;
+}
+
+.hw-lookup-lexicon-piece-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+.hw-lookup-lexicon-piece-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.hw-lookup-lexicon-piece-row__word {
+  margin: 0;
+  font-weight: 700;
   font-size: 0.9375rem;
-  line-height: 1.45;
+  line-height: 1.2;
 }
 
-.hw-lookup-lexicon-card__note {
+.hw-lookup-lexicon-piece-row__jisho,
+.hw-lookup-lexicon-piece-row__eq {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--color-text-muted);
-  font-size: 0.875rem;
 }
 
-.hw-lookup-lexicon-card__preview-wrap {
-  margin: 1rem 0 1.1rem;
+.hw-lookup-lexicon-jisho-val.is-loading {
+  opacity: 0.5;
 }
 
-.hw-lookup-lexicon-preview {
+.hw-lookup-lexicon-piece-row .hw-lookup-lexicon-gloss-fix {
+  width: 100%;
+  margin-top: 0.1rem;
+}
+
+.hw-lookup-lexicon-goodbad {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.hw-lookup-lexicon-goodbad__opt {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hw-lookup-lexicon-goodbad__opt input {
+  accent-color: var(--color-green);
+}
+
+.hw-lookup-lexicon-playground {
+  position: relative;
+  min-height: 4.25rem;
+  padding: 0.65rem 0.85rem 2.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--color-green) 28%, var(--color-border));
+  background: var(--color-bg-elevated);
+  overflow: hidden;
+}
+
+.hw-lookup-lexicon-playground .hw-mg-widget {
+  z-index: 50;
+}
+
+.hw-lookup-lexicon-playground .hw-mg-lens {
+  z-index: 51;
+}
+
+.hw-lookup-lexicon-playground__content {
+  position: relative;
+  z-index: 1;
+}
+
+.hw-lookup-lexicon-playground__text {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.45;
+  font-weight: 600;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.hw-lookup-lexicon-review-block {
+  margin: 0;
+  padding: 0;
+}
+
+.hw-lookup-lexicon-review-block__label {
+  margin: 0 0 0.35rem;
+}
+
+.hw-lookup-lexicon-fix {
+  margin-top: 0.35rem;
+}
+
+.hw-lookup-lexicon-fix__input {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-lookup-lexicon-fix__input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-green) 45%, var(--color-border));
+}
+
+.hw-lookup-lexicon-card__actions {
+  margin-top: 0.5rem;
+  gap: 0.45rem;
+}
+
+.hw-lookup-lexicon-add {
+  margin-top: 0.5rem;
+}
+
+.hw-lookup-lexicon-add__row {
+  gap: 0.45rem;
+}
+
+.hw-lookup-lexicon-add__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.hw-lookup-lexicon-loading,
+.hw-lookup-lexicon-empty {
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.hw-lookup-lexicon-empty[hidden],
+.hw-lookup-lexicon-loading[hidden],
+.hw-lookup-lexicon-stage[hidden] {
+  display: none !important;
+}
+
+.hw-lookup-lexicon-gloss-fix {
+  margin-top: 0.15rem;
 }
 
 .hw-lookup-lexicon-chip {
@@ -6672,156 +6838,10 @@ body.hw-role-teacher #hw-teacher-hub {
   font-size: 0.75rem;
 }
 
-.hw-lookup-lexicon-card__actions {
-  margin-top: 0.25rem;
-}
-
-.hw-lookup-lexicon-card__head {
-  margin-bottom: 0.85rem;
-}
-
-.hw-lookup-lexicon-layout {
-  display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 820px) {
-  .hw-lookup-lexicon-layout {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-    align-items: start;
-  }
-}
-
-.hw-lookup-lexicon-test,
-.hw-lookup-lexicon-decide {
-  min-width: 0;
-}
-
-.hw-lookup-lexicon-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.hw-lookup-lexicon-field__input,
-.hw-lookup-lexicon-field__textarea {
-  width: 100%;
-  padding: 0.55rem 0.65rem;
-  font-family: "Noto Sans JP", Inter, sans-serif;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--color-text);
-  text-transform: none;
-  letter-spacing: normal;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-}
-
-.hw-lookup-lexicon-field__input {
-  font-size: 1.35rem;
-}
-
-.hw-lookup-lexicon-field__textarea {
-  min-height: 4.5rem;
-  resize: vertical;
-}
-
-.hw-lookup-lexicon-field__input:focus,
-.hw-lookup-lexicon-field__textarea:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--color-green) 45%, var(--color-border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-green) 18%, transparent);
-}
-
-.hw-lookup-lexicon-playground-wrap {
-  margin-top: 0.35rem;
-}
-
-.hw-lookup-lexicon-playground-wrap__label {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-green);
-}
-
-.hw-lookup-lexicon-playground-wrap__hint {
-  margin: 0 0 0.55rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.hw-lookup-lexicon-playground {
-  position: relative;
-  min-height: 11rem;
-  padding: 1rem 1.1rem 3.5rem;
-  border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--color-green) 28%, var(--color-border));
-  background: var(--color-bg-elevated);
-  overflow: hidden;
-}
-
-.hw-lookup-lexicon-playground .hw-mg-widget {
-  z-index: 50;
-}
-
-.hw-lookup-lexicon-playground .hw-mg-lens {
-  z-index: 51;
-}
-
-.hw-lookup-lexicon-playground__content {
-  position: relative;
-  z-index: 1;
-}
-
-.hw-lookup-lexicon-playground__text {
-  margin: 0;
-  font-size: 1.35rem;
-  line-height: 1.65;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  user-select: text;
-  -webkit-user-select: text;
-}
-
-.hw-lookup-lexicon-decide {
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.hw-lookup-lexicon-decide__title {
-  margin: 0 0 0.65rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
 .hw-lookup-lexicon-proposed-panel {
   margin-bottom: 0.85rem;
 }
 
-.hw-lookup-lexicon-loading {
-  margin-bottom: 1.25rem;
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border);
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 0.9375rem;
-}
 
 .hw-lookup-lexicon-card__word {
   margin: 0 0 0.85rem;
@@ -7035,64 +7055,6 @@ body.hw-role-teacher #hw-teacher-hub {
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-}
-
-.hw-lookup-lexicon-add__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.hw-lookup-lexicon-add__input {
-  flex: 1 1 12rem;
-  min-width: 10rem;
-  padding: 0.5rem 0.65rem;
-  font-family: "Noto Sans JP", Inter, sans-serif;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 0.9375rem;
-}
-
-.hw-lookup-lexicon-form {
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.1rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.hw-lookup-lexicon-form__grid {
-  display: grid;
-  gap: 0.75rem 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-}
-
-.hw-lookup-lexicon-form [hidden],
-.hw-lookup-lexicon-form .hw-maker-field[hidden] {
-  display: none !important;
-}
-
-.hw-lookup-lexicon-add {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.hw-lookup-lexicon-empty[hidden],
-.hw-lookup-lexicon-loading[hidden],
-.hw-lookup-lexicon-stage[hidden] {
-  display: none !important;
-}
-
-.hw-lookup-lexicon-empty {
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border);
-  text-align: center;
-  color: var(--color-text-muted);
 }
 
 .hw-teacher-ideas {

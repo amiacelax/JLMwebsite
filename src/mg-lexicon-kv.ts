@@ -6,7 +6,7 @@ const OVERLAY_KEY = "site:mg-lexicon-overlay";
 const QUEUE_KEY = "site:mg-lexicon-queue";
 const TEACHER_DEFAULT = "jlm";
 
-export type MgLexiconCardKind = "custom" | "merge" | "skip" | "force_unit" | "lemma";
+export type MgLexiconCardKind = "custom" | "merge" | "split" | "skip" | "force_unit" | "lemma";
 
 export interface MgLexiconCustomEntry {
   reading: string;
@@ -20,6 +20,7 @@ export interface MgLexiconMergeSequence {
 export interface MgLexiconGlobalOverlay {
   custom: Record<string, MgLexiconCustomEntry>;
   mergeSurfaceSequences: MgLexiconMergeSequence[];
+  segmentSurfaceSequences: MgLexiconMergeSequence[];
   skipSurface: string[];
   forceUnits: string[];
   lemmaQuery: Record<string, string>;
@@ -40,6 +41,7 @@ export interface MgLexiconQueueCard {
     reading?: string;
     definition?: string;
     mergeSurfaces?: string[];
+    splitSurfaces?: string[];
     skipSurface?: string;
     forceUnit?: string;
     lemmaSurface?: string;
@@ -58,10 +60,13 @@ export interface MgLexiconSubmitPayload {
   reading?: string;
   definition?: string;
   mergeSurfaces?: string[];
+  splitSurfaces?: string[];
   skipSurface?: string;
   forceUnit?: string;
   lemmaSurface?: string;
   lemmaQuery?: string;
+  extraLemmaQuery?: Record<string, string>;
+  extraCustom?: Record<string, MgLexiconCustomEntry>;
 }
 
 export interface MgLexiconAddCardPayload {
@@ -103,6 +108,7 @@ function emptyOverlay(): MgLexiconGlobalOverlay {
   return {
     custom: {},
     mergeSurfaceSequences: [],
+    segmentSurfaceSequences: [],
     skipSurface: [],
     forceUnits: [],
     lemmaQuery: {},
@@ -131,6 +137,14 @@ function sanitizeOverlay(raw: unknown): MgLexiconGlobalOverlay {
       if (!item || !Array.isArray(item.surfaces)) continue;
       const surfaces = item.surfaces.map((s) => String(s || "").trim()).filter(Boolean);
       if (surfaces.length >= 2) base.mergeSurfaceSequences.push({ surfaces });
+    }
+  }
+
+  if (Array.isArray(data.segmentSurfaceSequences)) {
+    for (const item of data.segmentSurfaceSequences) {
+      if (!item || !Array.isArray(item.surfaces)) continue;
+      const surfaces = item.surfaces.map((s) => String(s || "").trim()).filter(Boolean);
+      if (surfaces.length >= 2) base.segmentSurfaceSequences.push({ surfaces });
     }
   }
 
@@ -175,11 +189,11 @@ function seedQueue(): MgLexiconQueueCard[] {
     {
       id: "seed-yametai",
       surface: "やめたい",
-      kind: "merge",
+      kind: "split",
       title: "やめたい — stem + たい",
-      note: "Want-to quit pattern: lookup meaningful chunk, not random kanji split.",
+      note: "Click やめ and たい separately — each gets its own lookup.",
       example: "仕事をやめたい。",
-      draft: { mergeSurfaces: ["やめ", "たい"] },
+      draft: { splitSurfaces: ["やめ", "たい"] },
       status: "pending",
       createdAt: now,
     },
@@ -243,13 +257,26 @@ async function writeOverlay(kv: KVNamespace, overlay: MgLexiconGlobalOverlay): P
   await kv.put(OVERLAY_KEY, JSON.stringify(overlay));
 }
 
+function normalizeQueueCard(card: MgLexiconQueueCard): MgLexiconQueueCard {
+  if (card.id === "seed-yametai" && card.kind === "merge") {
+    const mergePieces = card.draft?.mergeSurfaces || ["やめ", "たい"];
+    return {
+      ...card,
+      kind: "split",
+      note: "Click やめ and たい separately — each gets its own lookup.",
+      draft: { ...card.draft, splitSurfaces: mergePieces },
+    };
+  }
+  return card;
+}
+
 async function readQueue(kv: KVNamespace): Promise<MgLexiconQueueCard[]> {
   const raw = await kv.get(QUEUE_KEY);
   if (!raw) return seedQueue();
   try {
     const parsed = JSON.parse(raw) as MgLexiconQueueCard[];
     if (!Array.isArray(parsed) || !parsed.length) return seedQueue();
-    return parsed;
+    return parsed.map(normalizeQueueCard);
   } catch {
     return seedQueue();
   }
@@ -262,6 +289,18 @@ async function writeQueue(kv: KVNamespace, cards: MgLexiconQueueCard[]): Promise
 function mergeSequenceExists(overlay: MgLexiconGlobalOverlay, surfaces: string[]): boolean {
   const key = surfaces.join("|");
   return overlay.mergeSurfaceSequences.some((seq) => seq.surfaces.join("|") === key);
+}
+
+function segmentSequenceExists(overlay: MgLexiconGlobalOverlay, surfaces: string[]): boolean {
+  const key = surfaces.join("|");
+  return overlay.segmentSurfaceSequences.some((seq) => seq.surfaces.join("|") === key);
+}
+
+function removeMergeSequence(overlay: MgLexiconGlobalOverlay, surfaces: string[]): void {
+  const key = surfaces.join("|");
+  overlay.mergeSurfaceSequences = overlay.mergeSurfaceSequences.filter(
+    (seq) => seq.surfaces.join("|") !== key
+  );
 }
 
 function applySubmitToOverlay(
@@ -291,6 +330,17 @@ function applySubmitToOverlay(
       }
       break;
     }
+    case "split": {
+      const surfaces = (payload.splitSurfaces || [])
+        .map((s) => String(s || "").trim())
+        .filter(Boolean);
+      if (surfaces.length < 2) throw new Error("SPLIT_REQUIRED");
+      removeMergeSequence(overlay, surfaces);
+      if (!segmentSequenceExists(overlay, surfaces)) {
+        overlay.segmentSurfaceSequences.push({ surfaces });
+      }
+      break;
+    }
     case "skip": {
       const skip = String(payload.skipSurface || payload.surface || "").trim();
       if (!skip) throw new Error("SKIP_REQUIRED");
@@ -312,6 +362,25 @@ function applySubmitToOverlay(
     }
     default:
       throw new Error("INVALID_KIND");
+  }
+
+  if (payload.extraLemmaQuery && typeof payload.extraLemmaQuery === "object") {
+    for (const [key, val] of Object.entries(payload.extraLemmaQuery)) {
+      const lemmaSurface = String(key || "").trim();
+      const lemmaQuery = String(val || "").trim();
+      if (lemmaSurface && lemmaQuery) overlay.lemmaQuery[lemmaSurface] = lemmaQuery;
+    }
+  }
+
+  if (payload.extraCustom && typeof payload.extraCustom === "object") {
+    for (const [key, val] of Object.entries(payload.extraCustom)) {
+      const word = String(key || "").trim();
+      if (!word || !val || typeof val !== "object") continue;
+      const reading = String(val.reading || "").trim();
+      const definition = String(val.definition || "").trim();
+      if (!reading && !definition) continue;
+      overlay.custom[word] = { reading, definition };
+    }
   }
 }
 
@@ -428,6 +497,18 @@ function overlayCoversItem(
     }
   }
 
+  if (item.kind === "split") {
+    const surfaces = (item.draft?.splitSurfaces || [])
+      .map((s) => String(s || "").trim())
+      .filter(Boolean);
+    if (surfaces.length >= 2) {
+      const key = surfaces.join("|");
+      if (overlay.segmentSurfaceSequences.some((seq) => seq.surfaces.join("|") === key)) {
+        return true;
+      }
+    }
+  }
+
   if (overlay.forceUnits.includes(surface)) return true;
   if (overlay.custom[surface]) return true;
 
@@ -474,7 +555,7 @@ export async function suggestMgLexiconBatch(
       skipped += 1;
       continue;
     }
-    if (pendingSurfaces.has(surface) && rawItem.kind !== "merge") {
+    if (pendingSurfaces.has(surface) && rawItem.kind !== "merge" && rawItem.kind !== "split") {
       skipped += 1;
       continue;
     }

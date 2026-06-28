@@ -701,6 +701,10 @@
     return unit;
   }
 
+  function lexiconPreviewActive() {
+    return global.HwMgLexicon?.hasActivePreview?.() === true;
+  }
+
   async function resolveLookup(target, clientX, clientY, options) {
     const lexReady = global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
 
@@ -715,11 +719,15 @@
     await lexReady;
 
     const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
-    if (forced) {
+    if (forced && !lexiconPreviewActive()) {
       const range = rangeFromOffsets(container, forced.start, forced.end);
       if (range && pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) {
         return global.HwMgLexicon?.enrich?.(forced) || forced;
       }
+    }
+
+    if (lexiconPreviewActive()) {
+      return pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
     }
 
     const tokens = await tokenizeText(text);
@@ -1201,7 +1209,9 @@
     bindHostHover();
 
     if (overrideOptions?.autoArm) {
-      requestAnimationFrame(() => setArmed(true, { silent: !!overrideOptions.silentArm }));
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setArmed(true, { silent: !!overrideOptions.silentArm }));
+      });
     }
 
     return true;
@@ -1272,5 +1282,13 @@
     shellEl = null;
   }
 
-  global.HwMagnifyingGlass = { init, refresh, destroy, setArmed, attachTo, releaseOverride };
+  global.HwMagnifyingGlass = {
+    init,
+    refresh,
+    destroy,
+    setArmed,
+    attachTo,
+    releaseOverride,
+    fetchLookup,
+  };
 })(window);

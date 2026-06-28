@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260694">
+  <link rel="stylesheet" href="/css/styles.css?v=20260700">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=10">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=4">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=21">
@@ -392,64 +392,75 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-lookup-lexicon" id="hw-teacher-lookup-lexicon" role="tabpanel" aria-labelledby="hw-teacher-tab-lookup-lexicon" hidden>
             <h2 class="hw-platform-card__title">Lookup Lexicon</h2>
-            <p class="hw-platform-card__desc">Test each word with the magnifying glass on the left. When lookup behaves correctly, tap <strong>Save rule</strong> — updates every student.</p>
             <p class="hw-lookup-lexicon-progress" id="hw-lookup-lexicon-progress" aria-live="polite"></p>
 
             <div class="hw-lookup-lexicon-empty" id="hw-lookup-lexicon-empty" hidden>
-              <p><strong>Deck clear.</strong> New cards appear when you publish homework to a student, or add one below.</p>
+              <p>Deck clear.</p>
             </div>
 
             <div class="hw-lookup-lexicon-loading" id="hw-lookup-lexicon-loading" hidden>
-              <p>Loading deck…</p>
+              <p>Loading…</p>
             </div>
 
             <div class="hw-lookup-lexicon-stage" id="hw-lookup-lexicon-stage" hidden>
               <div class="hw-lookup-lexicon-card">
-                <div class="hw-lookup-lexicon-card__head">
-                  <p class="hw-lookup-lexicon-card__eyebrow" id="hw-lookup-lexicon-kind"></p>
+                <div class="hw-lookup-lexicon-word-head">
+                  <p class="hw-lookup-lexicon-word" id="hw-lookup-lexicon-word" lang="ja"></p>
+                  <span class="hw-lookup-lexicon-kind-pill" id="hw-lookup-lexicon-kind"></span>
+                </div>
+                <p class="hw-lookup-lexicon-card__note" id="hw-lookup-lexicon-note" hidden></p>
+
+                <div class="hw-lookup-lexicon-playground" id="hw-lookup-lexicon-playground-host">
+                  <div class="hw-worksheet__content hw-lookup-lexicon-playground__content">
+                    <p class="hw-translation-block__japanese hw-lookup-lexicon-playground__text" lang="ja" id="hw-lookup-lexicon-playground-text"></p>
+                  </div>
                 </div>
 
-                <div class="hw-lookup-lexicon-layout">
-                  <section class="hw-lookup-lexicon-test">
-                    <label class="hw-lookup-lexicon-field">
-                      Word in question
-                      <input type="text" class="hw-lookup-lexicon-field__input" id="hw-lookup-lexicon-word-input" autocomplete="off" lang="ja">
-                    </label>
-                    <label class="hw-lookup-lexicon-field">
-                      Example sentence
-                      <textarea class="hw-lookup-lexicon-field__textarea" id="hw-lookup-lexicon-example-input" rows="2" autocomplete="off" lang="ja"></textarea>
-                    </label>
-                    <div class="hw-lookup-lexicon-playground-wrap">
-                      <p class="hw-lookup-lexicon-playground-wrap__label">Test with magnifying glass</p>
-                      <p class="hw-lookup-lexicon-playground-wrap__hint">Click words in the sentence below — 字 is armed automatically.</p>
-                      <div class="hw-lookup-lexicon-playground" id="hw-lookup-lexicon-playground-host">
-                        <div class="hw-worksheet__content hw-lookup-lexicon-playground__content">
-                          <p class="hw-translation-block__japanese hw-lookup-lexicon-playground__text" lang="ja" id="hw-lookup-lexicon-playground-text"></p>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
+                <div class="hw-lookup-lexicon-section">
+                  <p class="hw-lookup-lexicon-section__label">Highlight</p>
+                  <div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Highlight">
+                    <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-highlight" id="hw-lookup-lexicon-highlight-good" value="good" checked> Good</label>
+                    <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-highlight" id="hw-lookup-lexicon-highlight-bad" value="bad"> Bad</label>
+                  </div>
+                </div>
+                <div class="hw-lookup-lexicon-fix hw-lookup-lexicon-split-fix" id="hw-lookup-lexicon-split-wrap" hidden>
+                  <input type="text" class="hw-lookup-lexicon-fix__input" id="hw-lookup-lexicon-split" autocomplete="off" lang="ja" placeholder="やめ＋たい" aria-label="Split">
+                </div>
 
-                  <section class="hw-lookup-lexicon-decide">
-                    <h3 class="hw-lookup-lexicon-decide__title">Rule to save</h3>
-                    <p class="hw-lookup-lexicon-card__note" id="hw-lookup-lexicon-note" hidden></p>
-                    <div class="hw-lookup-lexicon-proposed-panel" id="hw-lookup-lexicon-proposed"></div>
-                    <div class="hw-lookup-lexicon-tweak-wrap" id="hw-lookup-lexicon-tweak-wrap" hidden></div>
-                    <div class="hw-teacher-meta__actions hw-lookup-lexicon-card__actions">
-                      <button type="button" class="btn btn--primary" id="hw-lookup-lexicon-submit-btn">Save rule</button>
-                      <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-next-btn">Skip for now</button>
-                      <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-tweak-btn" hidden>Edit</button>
+                <div class="hw-lookup-lexicon-review-block" id="hw-lookup-lexicon-definitions-section">
+                  <p class="hw-lookup-lexicon-review-block__label">Definitions</p>
+                  <div id="hw-lookup-lexicon-definitions-host"></div>
+                </div>
+
+                <div class="hw-lookup-lexicon-review-block" id="hw-lookup-lexicon-readings-section">
+                  <p class="hw-lookup-lexicon-review-block__label">Readings</p>
+                  <div id="hw-lookup-lexicon-readings-host"></div>
+                </div>
+
+                <div class="hw-lookup-lexicon-review-block hw-lookup-lexicon-lemma-block" id="hw-lookup-lexicon-lemma-block" hidden>
+                  <div class="hw-lookup-lexicon-section">
+                    <p class="hw-lookup-lexicon-section__label">Jisho query</p>
+                    <div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Jisho query">
+                      <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-lemma" id="hw-lookup-lexicon-lemma-good" value="good" checked> Good</label>
+                      <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-lemma" id="hw-lookup-lexicon-lemma-bad" value="bad"> Bad</label>
                     </div>
-                  </section>
+                  </div>
+                  <div class="hw-lookup-lexicon-fix" id="hw-lookup-lexicon-lemma-wrap" hidden>
+                    <input type="text" class="hw-lookup-lexicon-fix__input" id="hw-lookup-lexicon-lemma-query" autocomplete="off" lang="ja" placeholder="やめる" aria-label="Jisho search term">
+                  </div>
+                </div>
+
+                <div class="hw-teacher-meta__actions hw-lookup-lexicon-card__actions">
+                  <button type="button" class="btn btn--primary" id="hw-lookup-lexicon-submit-btn">Save</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-next-btn">Skip</button>
                 </div>
               </div>
             </div>
 
             <div class="hw-lookup-lexicon-add">
-              <h3 class="hw-teacher-panel-subtitle">Add to deck</h3>
               <div class="hw-teacher-meta__actions hw-lookup-lexicon-add__row">
-                <input type="text" class="hw-lookup-lexicon-add__input" id="hw-lookup-lexicon-add-surface" autocomplete="off" placeholder="Word or phrase, e.g. 中々">
-                <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-add-btn">Add card</button>
+                <input type="text" class="hw-lookup-lexicon-add__input" id="hw-lookup-lexicon-add-surface" autocomplete="off" placeholder="Add word…" aria-label="Add word to deck">
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-add-btn">Add</button>
               </div>
             </div>
 
@@ -823,9 +834,9 @@
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-feature-flags.js?v=1" defer></script>
-  <script src="/js/hw-mg-lexicon.js?v=11" defer></script>
+  <script src="/js/hw-mg-lexicon.js?v=15" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=1" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=33" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=36" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260727" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260713" defer></script>
   <script src="/js/hw-loading.js?v=20260609" defer></script>
@@ -841,9 +852,9 @@
   <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
   <script src="/js/lantern-word-format.js?v=20260650" defer></script>
   <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
-  <script src="/js/hw-teacher-lookup-lexicon.js?v=11" defer></script>
+  <script src="/js/hw-teacher-lookup-lexicon.js?v=22" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260725" defer></script>
+  <script src="/js/hw-platform.js?v=20260726" defer></script>
 </body>
 </html>

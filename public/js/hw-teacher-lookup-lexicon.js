@@ -4,7 +4,6 @@
 (function (global) {
   let pending = [];
   let currentIndex = 0;
-  let tweaking = false;
   let loading = false;
   let bound = false;
   let options = null;
@@ -12,13 +11,16 @@
   let pendingLoad = false;
   let loadPromise = null;
   let retryTimer = null;
+  let lookupPreviewGen = 0;
+  const jishoCache = {};
 
   const KIND_META = {
-    merge: { label: "Combine split pieces" },
-    custom: { label: "Custom reading & meaning" },
-    skip: { label: "Never highlight" },
-    force_unit: { label: "Keep whole" },
-    lemma: { label: "Dictionary redirect" },
+    merge: { label: "Merge" },
+    split: { label: "Split" },
+    custom: { label: "Custom" },
+    skip: { label: "Skip" },
+    force_unit: { label: "Whole" },
+    lemma: { label: "Lemma" },
   };
 
   function setStatus(message) {
@@ -45,7 +47,7 @@
     if (loadingEl) loadingEl.hidden = which !== "loading";
     if (empty) empty.hidden = which !== "empty";
     if (stage) stage.hidden = which !== "card";
-    if (which !== "card") unmountMagnifier();
+    if (which === "empty") unmountMagnifier();
   }
 
   function scheduleLoad() {
@@ -56,7 +58,7 @@
       return;
     }
     setPanelVisible("loading");
-    setStatus("Loading deck…");
+    setStatus("Loading…");
     clearLoadRetry();
     let attempts = 0;
     retryTimer = setInterval(() => {
@@ -93,233 +95,471 @@
     const card = currentCard();
     if (!progress) return;
     if (!card) {
-      progress.textContent = doneCount ? doneCount + " decided · deck clear" : "Deck empty";
+      progress.textContent = doneCount ? doneCount + " done" : "Empty";
       return;
     }
     progress.textContent =
-      "Card " +
-      (currentIndex + 1) +
-      " of " +
-      pending.length +
-      (doneCount ? " · " + doneCount + " decided" : "");
+      (currentIndex + 1) + "/" + pending.length + (doneCount ? " · " + doneCount + " done" : "");
   }
 
-  function playgroundSample() {
-    const example = field("hw-lookup-lexicon-example-input")?.value?.trim();
-    const word = field("hw-lookup-lexicon-word-input")?.value?.trim();
-    return example || word || "";
+  function cardExample(card) {
+    return String(card?.example || card?.surface || "").trim();
   }
 
-  function syncPlaygroundText() {
+  function syncPlaygroundText(card) {
     const textEl = field("hw-lookup-lexicon-playground-text");
     if (!textEl) return;
-    textEl.textContent = playgroundSample() || "—";
+    textEl.textContent = cardExample(card) || "—";
   }
 
   function unmountMagnifier() {
-    global.HwMagnifyingGlass?.releaseOverride?.();
+    global.HwMgLexicon?.clearPreview?.();
+    global.HwMagnifyingGlass?.releaseOverride?.(true);
   }
 
-  async function mountMagnifier() {
+  function splitPartsForCard(card) {
+    if (!card) return [];
+    if (isBad("highlight")) {
+      return parseSplit(field("hw-lookup-lexicon-split")?.value || defaultSplitText(card));
+    }
+    const primary = String(card.surface || "").trim();
+    return primary ? [primary] : [];
+  }
+
+  async function fetchJishoForSurface(surface, card) {
+    const word = String(surface || "").trim();
+    if (!word) return { reading: "", definition: "" };
+
+    const custom = global.HwMgLexicon?.CUSTOM?.[word];
+    if (custom?.reading || custom?.definition) {
+      return { reading: custom.reading || "", definition: custom.definition || "" };
+    }
+
+    await global.HwMgLexicon?.ensureLoaded?.().catch(() => {});
+    const sentence = cardExample(card);
+    let lemma =
+      global.HwMgLexicon?.LEMMA_QUERY?.[word] ||
+      global.HwMgLexicon?.getPreview?.()?.lemmaQuery?.[word] ||
+      null;
+
+    if (!lemma && hasKanji(word) && sentence) {
+      try {
+        const info = await global.HwMgLexicon?.inspectWordInText?.(sentence, word);
+        lemma = info?.jishoQuery || info?.pieces?.[0]?.jishoQuery || null;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const resolved = global.HwMgLexicon?.resolve?.(word, lemma) || {};
+    const unit = {
+      surface: word,
+      lemma,
+      reading: resolved.reading || "",
+      definition: resolved.definition || "",
+      query: resolved.query || word,
+    };
+
+    if (unit.definition) return { reading: unit.reading, definition: unit.definition };
+
+    try {
+      const fetched = await global.HwMagnifyingGlass?.fetchLookup?.(unit);
+      return {
+        reading: fetched?.reading || unit.reading || "",
+        definition: fetched?.definition || unit.definition || "",
+      };
+    } catch {
+      return { reading: unit.reading || "", definition: unit.definition || "" };
+    }
+  }
+
+  async function fillJishoValues(card, words) {
+    const gen = ++lookupPreviewGen;
+    Object.keys(jishoCache).forEach((key) => delete jishoCache[key]);
+
+    for (const word of words) {
+      if (gen !== lookupPreviewGen || currentCard() !== card) return;
+
+      document
+        .querySelectorAll('.hw-lookup-lexicon-jisho-val[data-surface="' + CSS.escape(word.surface) + '"]')
+        .forEach((el) => {
+          el.classList.add("is-loading");
+          el.textContent = "…";
+        });
+
+      const fetched = await fetchJishoForSurface(word.surface, card);
+      if (gen !== lookupPreviewGen || currentCard() !== card) return;
+
+      jishoCache[word.surface] = fetched;
+
+      document
+        .querySelectorAll('.hw-lookup-lexicon-jisho-val[data-surface="' + CSS.escape(word.surface) + '"]')
+        .forEach((el) => {
+          el.classList.remove("is-loading");
+          el.textContent =
+            el.dataset.field === "reading"
+              ? fetched.reading || "—"
+              : fetched.definition || "—";
+        });
+    }
+  }
+
+  function refreshDraftPreviews(card) {
+    const words = glossWordsForCard(card);
+    if (words.length) void fillJishoValues(card, words);
+  }
+
+  function applyLexiconPreview(card) {
+    if (!card || !isPanelActive()) {
+      global.HwMgLexicon?.clearPreview?.();
+      refreshDraftPreviews(card);
+      return;
+    }
+
+    if (!isBad("highlight")) {
+      global.HwMgLexicon?.clearPreview?.();
+      refreshDraftPreviews(card);
+      global.HwMagnifyingGlass?.refresh?.();
+      return;
+    }
+
+    const parts = parseSplit(field("hw-lookup-lexicon-split")?.value || defaultSplitText(card));
+    if (!parts.length) {
+      global.HwMgLexicon?.clearPreview?.();
+      refreshDraftPreviews(card);
+      return;
+    }
+
+    const { entries } = collectGlossEntries(card);
+    const preview = {
+      custom: { ...entries },
+    };
+
+    if (card.kind === "merge") {
+      preview.mergeSurfaces = parts;
+    } else if (card.kind === "split" || (card.kind !== "skip" && card.kind !== "force_unit")) {
+      preview.segmentSurfaces = parts;
+    }
+
+    global.HwMgLexicon?.setPreview?.(preview);
+    refreshDraftPreviews(card);
+    global.HwMagnifyingGlass?.refresh?.();
+
+    void buildExtraLemma(parts, card, cardExample(card)).then((lemmaQuery) => {
+      if (currentCard() !== card || !isBad("highlight")) return;
+      if (Object.keys(lemmaQuery).length) {
+        preview.lemmaQuery = lemmaQuery;
+        global.HwMgLexicon?.setPreview?.({ ...preview, lemmaQuery });
+        global.HwMagnifyingGlass?.refresh?.();
+        refreshDraftPreviews(card);
+      }
+    });
+  }
+
+  function mountMagnifier(card) {
     const host = field("hw-lookup-lexicon-playground-host");
-    const hintEl = document.querySelector(".hw-lookup-lexicon-playground-wrap__hint");
-    if (!host || !isPanelActive() || !playgroundSample()) {
+    const sample = cardExample(card);
+    if (!host || !isPanelActive() || !sample) {
       unmountMagnifier();
       return;
     }
-    syncPlaygroundText();
+    syncPlaygroundText(card);
 
     const mgOpts = {
       force: true,
       skipOnboarding: true,
       autoArm: true,
       silentArm: true,
-      armHint: "Click a word in the sentence to test lookup",
+      armHint: "",
       storageKey: "hw-mg-lexicon-lens-v1",
       defaultSnap: "br",
     };
 
-    let attached = global.HwMagnifyingGlass?.attachTo?.(host, mgOpts);
-    if (!attached) {
-      requestAnimationFrame(() => {
-        global.HwMagnifyingGlass?.attachTo?.(host, mgOpts);
-      });
+    let attachAttempts = 0;
+    const maxAttempts = 16;
+
+    function tryAttach() {
+      if (!isPanelActive() || currentCard() !== card) return;
+      attachAttempts += 1;
+      syncPlaygroundText(card);
+      const attached = global.HwMagnifyingGlass?.attachTo?.(host, mgOpts);
+      if (attached) {
+        global.HwMagnifyingGlass?.refresh?.();
+        applyLexiconPreview(card);
+        return;
+      }
+      if (attachAttempts < maxAttempts) {
+        requestAnimationFrame(tryAttach);
+      }
     }
 
-    if (hintEl) hintEl.textContent = "Loading dictionary for first lookup…";
+    tryAttach();
+
     void global.HwMgLexicon?.ensureLoaded?.().catch(() => {});
-    void global.HwFuriganaAuto?.ensureTokenizer?.()
-      .then(() => {
-        if (hintEl && isPanelActive()) {
-          hintEl.textContent = "Click words in the sentence below — 字 is armed automatically.";
-        }
-      })
-      .catch(() => {
-        if (hintEl && isPanelActive()) {
-          hintEl.textContent = "Dictionary still loading — 字 works; first click may take a moment.";
-        }
+    void global.HwFuriganaAuto?.ensureTokenizer?.().catch(() => {});
+  }
+
+  function defaultSplitText(card) {
+    const draft = card?.draft || {};
+    if (card?.kind === "merge" && draft.mergeSurfaces?.length >= 2) {
+      return draft.mergeSurfaces.join("＋");
+    }
+    if (card?.kind === "split" && draft.splitSurfaces?.length >= 2) {
+      return draft.splitSurfaces.join("＋");
+    }
+    if (card?.kind === "custom" && card.surface === "たい") {
+      return "行き＋たい";
+    }
+    if (card?.kind === "lemma" && draft.lemmaSurface) {
+      return draft.lemmaSurface;
+    }
+    if (card?.kind === "force_unit") {
+      return draft.forceUnit || card.surface || "";
+    }
+    return card?.surface || "";
+  }
+
+  function parseSplit(raw) {
+    return String(raw || "")
+      .split(/[+＋/／]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function hasKanji(str) {
+    return /[\u4e00-\u9fff]/.test(String(str || ""));
+  }
+
+  function isBad(name) {
+    const el = field("hw-lookup-lexicon-" + name + "-bad");
+    return Boolean(el?.checked);
+  }
+
+  function setGood(name) {
+    const good = field("hw-lookup-lexicon-" + name + "-good");
+    if (good) good.checked = true;
+    syncFixVisibility();
+  }
+
+  function syncFixVisibility() {
+    const splitWrap = field("hw-lookup-lexicon-split-wrap");
+    const lemmaWrap = field("hw-lookup-lexicon-lemma-wrap");
+    if (splitWrap) splitWrap.hidden = !isBad("highlight");
+    if (lemmaWrap) lemmaWrap.hidden = !isBad("lemma");
+    renderPieceSections(currentCard());
+    applyLexiconPreview(currentCard());
+  }
+
+  function glossDraftForSurface(surface, cardDraft) {
+    const word = String(surface || "").trim();
+    if (!word) return { reading: "", definition: "" };
+    if (cardDraft?.reading || cardDraft?.definition) {
+      if (word === (currentCard()?.surface || "")) {
+        return {
+          reading: cardDraft.reading || "",
+          definition: cardDraft.definition || "",
+        };
+      }
+    }
+    const custom = global.HwMgLexicon?.CUSTOM?.[word];
+    return {
+      reading: custom?.reading || "",
+      definition: custom?.definition || "",
+    };
+  }
+
+  function glossWordsForCard(card) {
+    if (!card) return [];
+    const draft = card.draft || {};
+    const primary = String(card.surface || "").trim();
+    if (!primary) return [];
+
+    if (isBad("highlight")) {
+      const parts = parseSplit(field("hw-lookup-lexicon-split")?.value || defaultSplitText(card));
+      if (parts.length) {
+        return parts.map((part) => ({
+          surface: part,
+          primary: part === primary,
+          usesJisho: hasKanji(part) && !global.HwMgLexicon?.CUSTOM?.[part],
+          ...glossDraftForSurface(part, part === primary ? draft : null),
+        }));
+      }
+    }
+
+    return [
+      {
+        surface: primary,
+        primary: true,
+        usesJisho: false,
+        ...glossDraftForSurface(primary, draft),
+      },
+    ];
+  }
+
+  function glossFieldId(index, fieldName) {
+    return "hw-lookup-lexicon-gloss-" + index + "-" + fieldName;
+  }
+
+  function isGlossBad(index, fieldName) {
+    const el = field(glossFieldId(index, fieldName + "-bad"));
+    return Boolean(el?.checked);
+  }
+
+  function definitionRowHtml(word, index) {
+    return (
+      '<div class="hw-lookup-lexicon-piece-row" data-gloss-index="' +
+      index +
+      '" data-surface="' +
+      escapeHtml(word.surface) +
+      '">' +
+      '<p class="hw-lookup-lexicon-piece-row__word" lang="ja">' +
+      escapeHtml(word.surface) +
+      '</p><p class="hw-lookup-lexicon-piece-row__jisho">jisho = <span class="hw-lookup-lexicon-jisho-val is-loading" data-field="definition" data-surface="' +
+      escapeHtml(word.surface) +
+      '">…</span></p>' +
+      '<div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Definition for ' +
+      escapeHtml(word.surface) +
+      '">' +
+      '<label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="' +
+      glossFieldId(index, "meaning") +
+      '" id="' +
+      glossFieldId(index, "meaning-good") +
+      '" value="good" checked> Good</label>' +
+      '<label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="' +
+      glossFieldId(index, "meaning") +
+      '" id="' +
+      glossFieldId(index, "meaning-bad") +
+      '" value="bad"> Bad</label>' +
+      "</div>" +
+      '<div class="hw-lookup-lexicon-fix hw-lookup-lexicon-gloss-fix" id="' +
+      glossFieldId(index, "meaning-wrap") +
+      '" hidden>' +
+      '<input type="text" class="hw-lookup-lexicon-fix__input" id="' +
+      glossFieldId(index, "meaning-input") +
+      '" autocomplete="off" placeholder="short English gloss" value="' +
+      escapeHtml(word.definition || "") +
+      '">' +
+      "</div></div>"
+    );
+  }
+
+  function readingRowHtml(word, index) {
+    return (
+      '<div class="hw-lookup-lexicon-piece-row" data-gloss-index="' +
+      index +
+      '" data-surface="' +
+      escapeHtml(word.surface) +
+      '">' +
+      '<p class="hw-lookup-lexicon-piece-row__word" lang="ja">' +
+      escapeHtml(word.surface) +
+      '</p><p class="hw-lookup-lexicon-piece-row__eq">= <span class="hw-lookup-lexicon-jisho-val is-loading" data-field="reading" data-surface="' +
+      escapeHtml(word.surface) +
+      '">…</span></p>' +
+      '<div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Reading for ' +
+      escapeHtml(word.surface) +
+      '">' +
+      '<label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="' +
+      glossFieldId(index, "reading") +
+      '" id="' +
+      glossFieldId(index, "reading-good") +
+      '" value="good" checked> Good</label>' +
+      '<label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="' +
+      glossFieldId(index, "reading") +
+      '" id="' +
+      glossFieldId(index, "reading-bad") +
+      '" value="bad"> Bad</label>' +
+      "</div>" +
+      '<div class="hw-lookup-lexicon-fix hw-lookup-lexicon-gloss-fix" id="' +
+      glossFieldId(index, "reading-wrap") +
+      '" hidden>' +
+      '<input type="text" class="hw-lookup-lexicon-fix__input" id="' +
+      glossFieldId(index, "reading-input") +
+      '" autocomplete="off" lang="ja" placeholder="ひらがな" value="' +
+      escapeHtml(word.reading || "") +
+      '">' +
+      "</div></div>"
+    );
+  }
+
+  function bindGlossWord(index) {
+    ["reading", "meaning"].forEach((fieldName) => {
+      field(glossFieldId(index, fieldName + "-good"))?.addEventListener("change", () => {
+        syncGlossFixVisibility(index);
       });
+      field(glossFieldId(index, fieldName + "-bad"))?.addEventListener("change", () => {
+        syncGlossFixVisibility(index);
+      });
+    });
+    syncGlossFixVisibility(index);
   }
 
-  function fillPlaygroundInputs(card) {
-    const wordInput = field("hw-lookup-lexicon-word-input");
-    const exampleInput = field("hw-lookup-lexicon-example-input");
-    if (wordInput) wordInput.value = card.surface || "";
-    if (exampleInput) exampleInput.value = card.example || card.surface || "";
-    syncPlaygroundText();
+  function syncGlossFixVisibility(index) {
+    ["reading", "meaning"].forEach((fieldName) => {
+      const wrap = field(glossFieldId(index, fieldName + "-wrap"));
+      if (wrap) wrap.hidden = !isGlossBad(index, fieldName);
+    });
+    applyLexiconPreview(currentCard());
   }
 
-  function mergePiecesText(card) {
-    return (card.draft?.mergeSurfaces || []).join(" + ") || card.surface || "";
-  }
+  function renderPieceSections(card) {
+    const defSection = field("hw-lookup-lexicon-definitions-section");
+    const defHost = field("hw-lookup-lexicon-definitions-host");
+    const readSection = field("hw-lookup-lexicon-readings-section");
+    const readHost = field("hw-lookup-lexicon-readings-host");
+    if (!defSection || !defHost || !readSection || !readHost || !card) return;
 
-  function proposedMergeHtml(card) {
-    const pieces = (card.draft?.mergeSurfaces || []).filter(Boolean);
-    if (pieces.length < 2) {
-      return (
-        '<p class="hw-lookup-lexicon-proposed-line">' +
-        "<strong>Don't split</strong> — keep as one word: " +
-        escapeHtml(card.surface || "") +
-        "</p>"
-      );
-    }
-    const chips = pieces
-      .map((p) => '<span class="hw-lookup-lexicon-chip">' + escapeHtml(p) + "</span>")
-      .join('<span class="hw-lookup-lexicon-chip-sep">+</span>');
-    return (
-      '<p class="hw-lookup-lexicon-proposed-line"><strong>Don\'t split</strong> — combine:</p>' +
-      '<div class="hw-lookup-lexicon-merge-visual">' +
-      chips +
-      '<span class="hw-lookup-lexicon-chip-sep">→</span>' +
-      '<span class="hw-lookup-lexicon-chip is-result">' +
-      escapeHtml(card.surface || pieces.join("")) +
-      "</span></div>"
-    );
-  }
-
-  function proposedCustomHtml(card) {
-    const draft = card.draft || {};
-    return (
-      '<dl class="hw-lookup-lexicon-facts">' +
-      "<div><dt>Reading</dt><dd>" +
-      escapeHtml(draft.reading || "—") +
-      "</dd></div>" +
-      "<div><dt>Meaning</dt><dd>" +
-      escapeHtml(draft.definition || "—") +
-      "</dd></div></dl>" +
-      (draft.forceUnit
-        ? '<p class="hw-lookup-lexicon-proposed-line">Also keep whole: <strong>' +
-          escapeHtml(draft.forceUnit) +
-          "</strong></p>"
-        : "")
-    );
-  }
-
-  function proposedSkipHtml(card) {
-    const surface = card.draft?.skipSurface || card.surface || "";
-    return (
-      '<p class="hw-lookup-lexicon-proposed-line">' +
-      "<strong>Never highlight</strong> — " +
-      escapeHtml(surface) +
-      "</p>"
-    );
-  }
-
-  function proposedForceHtml(card) {
-    const surface = card.draft?.forceUnit || card.surface || "";
-    return (
-      '<p class="hw-lookup-lexicon-proposed-line">' +
-      "<strong>Keep whole</strong> — " +
-      escapeHtml(surface) +
-      "</p>"
-    );
-  }
-
-  function proposedLemmaHtml(card) {
-    const draft = card.draft || {};
-    const surface = draft.lemmaSurface || card.surface || "";
-    const query = draft.lemmaQuery || "";
-    return (
-      '<div class="hw-lookup-lexicon-lemma-visual">' +
-      '<span class="hw-lookup-lexicon-chip is-target">' +
-      escapeHtml(surface) +
-      "</span>" +
-      '<span class="hw-lookup-lexicon-chip-sep">→ Jisho:</span>' +
-      '<span class="hw-lookup-lexicon-chip is-result">' +
-      escapeHtml(query) +
-      "</span></div>"
-    );
-  }
-
-  function renderProposedPanel(card) {
-    const el = field("hw-lookup-lexicon-proposed");
-    if (!el) return;
-    if (card.kind === "merge") el.innerHTML = proposedMergeHtml(card);
-    else if (card.kind === "custom") el.innerHTML = proposedCustomHtml(card);
-    else if (card.kind === "skip") el.innerHTML = proposedSkipHtml(card);
-    else if (card.kind === "force_unit") el.innerHTML = proposedForceHtml(card);
-    else if (card.kind === "lemma") el.innerHTML = proposedLemmaHtml(card);
-    else el.innerHTML = '<p class="hw-lookup-lexicon-proposed-line">Review this card.</p>';
-  }
-
-  function renderTweakPanel(card) {
-    const wrap = field("hw-lookup-lexicon-tweak-wrap");
-    const tweakBtn = field("hw-lookup-lexicon-tweak-btn");
-    if (!wrap || !card) return;
-
-    const draft = card.draft || {};
-    const surface = card.surface || "";
-    let tweakHtml = "";
-    const needsTweak =
-      card.kind === "merge" ||
-      card.kind === "custom" ||
-      card.kind === "lemma" ||
-      card.kind === "force_unit";
-
-    if (card.kind === "merge") {
-      tweakHtml =
-        '<label class="hw-lookup-lexicon-tweak-field">Pieces (only if wrong)' +
-        '<input type="text" id="hw-lookup-lexicon-merge" autocomplete="off" value="' +
-        escapeHtml(mergePiecesText(card)) +
-        '"></label>';
-    } else if (card.kind === "custom") {
-      tweakHtml =
-        '<label class="hw-lookup-lexicon-tweak-field">Reading' +
-        '<input type="text" id="hw-lookup-lexicon-reading" autocomplete="off" value="' +
-        escapeHtml(draft.reading || "") +
-        '"></label>' +
-        '<label class="hw-lookup-lexicon-tweak-field">Meaning' +
-        '<input type="text" id="hw-lookup-lexicon-definition" autocomplete="off" value="' +
-        escapeHtml(draft.definition || "") +
-        '"></label>' +
-        '<label class="hw-lookup-lexicon-tweak-check">' +
-        '<input type="checkbox" id="hw-lookup-lexicon-keep-whole"' +
-        (draft.forceUnit ? " checked" : "") +
-        "> Also keep whole (don't split)</label>";
-    } else if (card.kind === "force_unit") {
-      tweakHtml =
-        '<label class="hw-lookup-lexicon-tweak-field">Word' +
-        '<input type="text" id="hw-lookup-lexicon-force" autocomplete="off" value="' +
-        escapeHtml(draft.forceUnit || surface) +
-        '"></label>';
-    } else if (card.kind === "lemma") {
-      tweakHtml =
-        '<label class="hw-lookup-lexicon-tweak-field">Student clicks' +
-        '<input type="text" id="hw-lookup-lexicon-lemma-surface" autocomplete="off" value="' +
-        escapeHtml(draft.lemmaSurface || surface) +
-        '"></label>' +
-        '<label class="hw-lookup-lexicon-tweak-field">Jisho searches' +
-        '<input type="text" id="hw-lookup-lexicon-lemma-query" autocomplete="off" value="' +
-        escapeHtml(draft.lemmaQuery || "") +
-        '"></label>';
+    if (card.kind === "skip" || card.kind === "lemma") {
+      defSection.hidden = true;
+      readSection.hidden = true;
+      defHost.innerHTML = "";
+      readHost.innerHTML = "";
+      return;
     }
 
-    wrap.innerHTML = tweakHtml ? '<div class="hw-lookup-lexicon-tweak">' + tweakHtml + "</div>" : "";
-    wrap.hidden = !needsTweak || !tweaking;
-    if (tweakBtn) {
-      tweakBtn.hidden = !needsTweak;
-      tweakBtn.textContent = tweaking ? "Hide edit" : "Edit";
-    }
+    defSection.hidden = false;
+    readSection.hidden = false;
+    const words = glossWordsForCard(card);
+    defHost.innerHTML = words.map((word, index) => definitionRowHtml(word, index)).join("");
+    readHost.innerHTML = words.map((word, index) => readingRowHtml(word, index)).join("");
+    words.forEach((_, index) => bindGlossWord(index));
+    void fillJishoValues(card, words);
+  }
+
+  function collectGlossEntries(card) {
+    const words = glossWordsForCard(card);
+    const entries = {};
+    words.forEach((word, index) => {
+      const readingBad = isGlossBad(index, "reading");
+      const meaningBad = isGlossBad(index, "meaning");
+      const jisho = jishoCache[word.surface] || {};
+      const reading = readingBad
+        ? field(glossFieldId(index, "reading-input"))?.value?.trim() || ""
+        : word.reading || jisho.reading || "";
+      const definition = meaningBad
+        ? field(glossFieldId(index, "meaning-input"))?.value?.trim() || ""
+        : word.definition || jisho.definition || "";
+      if (!word.primary && word.usesJisho && !readingBad && !meaningBad) return;
+      if (!word.primary && !readingBad && !meaningBad && !reading && !definition) return;
+      entries[word.surface] = { reading, definition };
+    });
+    return { words, entries };
+  }
+
+  function configureReviewBlocks(card) {
+    const kind = card?.kind || "custom";
+    const draft = card?.draft || {};
+    const lemmaBlock = field("hw-lookup-lexicon-lemma-block");
+    const splitInput = field("hw-lookup-lexicon-split");
+
+    if (lemmaBlock) lemmaBlock.hidden = kind !== "lemma";
+    if (splitInput) splitInput.value = defaultSplitText(card);
+
+    const lemmaQueryInput = field("hw-lookup-lexicon-lemma-query");
+    if (lemmaQueryInput) lemmaQueryInput.value = draft.lemmaQuery || "";
+
+    setGood("highlight");
+    setGood("lemma");
+    syncFixVisibility();
   }
 
   function renderCard() {
@@ -335,8 +575,11 @@
 
     const meta = KIND_META[card.kind] || { label: card.kind || "Review" };
     const kindEl = field("hw-lookup-lexicon-kind");
+    const wordEl = field("hw-lookup-lexicon-word");
     const noteEl = field("hw-lookup-lexicon-note");
+
     if (kindEl) kindEl.textContent = meta.label;
+    if (wordEl) wordEl.textContent = card.surface || "—";
 
     if (noteEl) {
       const note = String(card.note || "").trim();
@@ -344,10 +587,10 @@
       noteEl.hidden = !note;
     }
 
-    fillPlaygroundInputs(card);
-    renderProposedPanel(card);
-    renderTweakPanel(card);
-    void mountMagnifier();
+    configureReviewBlocks(card);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => mountMagnifier(card));
+    });
   }
 
   async function loadQueueInner() {
@@ -361,8 +604,11 @@
     }
 
     loading = true;
-    setPanelVisible("loading");
-    setStatus("Loading deck…");
+    const hadCards = pending.length > 0;
+    if (!hadCards) {
+      setPanelVisible("loading");
+      setStatus("Loading…");
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
@@ -375,13 +621,8 @@
       pending = data.pending || [];
       doneCount = data.doneCount || 0;
       if (currentIndex >= pending.length) currentIndex = 0;
-      tweaking = false;
       renderCard();
-      setStatus(
-        pending.length
-          ? "Test with 字 on the left — Save rule when lookup looks right."
-          : "All caught up."
-      );
+      setStatus(pending.length ? "" : "Done.");
     } catch (err) {
       setPanelVisible("empty");
       setStatus(
@@ -403,7 +644,23 @@
     return loadPromise;
   }
 
-  function collectSubmitPayload(card) {
+  async function buildExtraLemma(parts, card, sentence) {
+    const extra = {};
+    for (const part of parts) {
+      if (part === card.surface) continue;
+      if (!hasKanji(part)) continue;
+      try {
+        const info = await global.HwMgLexicon?.inspectWordInText?.(sentence, part);
+        const query = info?.jishoQuery || info?.pieces?.[0]?.jishoQuery;
+        if (query) extra[part] = query;
+      } catch {
+        /* ignore */
+      }
+    }
+    return extra;
+  }
+
+  async function collectSubmitPayload(card) {
     const payload = {
       teacherUsername: options.getTeacherSession().username,
       cardId: card.id,
@@ -411,35 +668,60 @@
       surface: card.surface,
     };
     const draft = card.draft || {};
+    const sentence = cardExample(card);
+    const highlightBad = isBad("highlight");
+    const splitParts = parseSplit(field("hw-lookup-lexicon-split")?.value || defaultSplitText(card));
+    const { words, entries } = collectGlossEntries(card);
+    const primaryWord = words.find((w) => w.primary) || words[0];
+    const primaryEntry = primaryWord ? entries[primaryWord.surface] : null;
+
+    if (highlightBad && splitParts.length) {
+      if (card.kind === "merge") {
+        payload.mergeSurfaces = splitParts;
+      } else if (card.kind === "split") {
+        payload.splitSurfaces = splitParts;
+        payload.extraLemmaQuery = await buildExtraLemma(splitParts, card, sentence);
+      } else if (card.kind === "force_unit") {
+        payload.forceUnit = splitParts.join("") || card.surface;
+      } else if (card.kind !== "skip") {
+        payload.extraLemmaQuery = await buildExtraLemma(splitParts, card, sentence);
+      }
+    } else if (!highlightBad) {
+      if (card.kind === "merge" && draft.mergeSurfaces?.length >= 2) {
+        payload.mergeSurfaces = draft.mergeSurfaces.slice();
+      } else if (card.kind === "split" && draft.splitSurfaces?.length >= 2) {
+        payload.splitSurfaces = draft.splitSurfaces.slice();
+      } else if (card.kind === "force_unit") {
+        payload.forceUnit = draft.forceUnit || card.surface;
+      } else if (card.kind === "skip") {
+        payload.skipSurface = draft.skipSurface || card.surface;
+      } else if (card.kind === "lemma") {
+        payload.lemmaSurface = draft.lemmaSurface || card.surface;
+        payload.lemmaQuery = draft.lemmaQuery || "";
+      }
+    }
+
+    const extraCustom = {};
+    for (const [surface, entry] of Object.entries(entries)) {
+      if (card.kind === "custom" && surface === card.surface) continue;
+      if (entry?.reading || entry?.definition) extraCustom[surface] = entry;
+    }
+    if (Object.keys(extraCustom).length) payload.extraCustom = extraCustom;
 
     if (card.kind === "custom") {
-      payload.reading =
-        field("hw-lookup-lexicon-reading")?.value?.trim() || draft.reading || "";
-      payload.definition =
-        field("hw-lookup-lexicon-definition")?.value?.trim() || draft.definition || "";
-      const keepWhole = field("hw-lookup-lexicon-keep-whole")?.checked;
-      payload.forceUnit = draft.forceUnit || (keepWhole ? card.surface : "");
-    } else if (card.kind === "merge") {
-      const raw = field("hw-lookup-lexicon-merge")?.value || mergePiecesText(card) || "";
-      payload.mergeSurfaces = raw
-        .split(/[+＋/／]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (payload.mergeSurfaces.length < 2 && draft.mergeSurfaces?.length >= 2) {
-        payload.mergeSurfaces = draft.mergeSurfaces.slice();
-      }
+      const cardEntry = entries[card.surface] || primaryEntry;
+      payload.reading = cardEntry?.reading || draft.reading || "";
+      payload.definition = cardEntry?.definition || draft.definition || "";
+      if (!highlightBad && draft.forceUnit) payload.forceUnit = draft.forceUnit;
     } else if (card.kind === "skip") {
       payload.skipSurface = draft.skipSurface || card.surface;
-    } else if (card.kind === "force_unit") {
-      payload.forceUnit =
-        field("hw-lookup-lexicon-force")?.value?.trim() || draft.forceUnit || card.surface;
     } else if (card.kind === "lemma") {
-      payload.lemmaSurface =
-        field("hw-lookup-lexicon-lemma-surface")?.value?.trim() ||
-        draft.lemmaSurface ||
-        card.surface;
-      payload.lemmaQuery =
-        field("hw-lookup-lexicon-lemma-query")?.value?.trim() || draft.lemmaQuery || "";
+      payload.lemmaSurface = draft.lemmaSurface || card.surface;
+      payload.lemmaQuery = isBad("lemma")
+        ? field("hw-lookup-lexicon-lemma-query")?.value?.trim() || ""
+        : draft.lemmaQuery || "";
+    } else if (card.kind === "force_unit") {
+      if (!payload.forceUnit) payload.forceUnit = draft.forceUnit || card.surface;
     }
 
     return payload;
@@ -455,23 +737,23 @@
       const res = await fetch("/api/mg-lexicon/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(collectSubmitPayload(card)),
+        body: JSON.stringify(await collectSubmitPayload(card)),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submit failed.");
 
       await global.HwMgLexicon?.ensureLoaded?.();
+      global.HwMgLexicon?.clearPreview?.();
       const lexRes = await fetch("/api/mg-lexicon");
       const lexData = lexRes.ok ? await lexRes.json() : null;
       if (lexData?.overlay) global.HwMgLexicon.applyGlobalOverlay(lexData.overlay);
 
-      options?.showToast?.("Saved — magnifying glass updated.");
+      options?.showToast?.("Saved.");
       pending.splice(currentIndex, 1);
       if (currentIndex >= pending.length) currentIndex = 0;
       doneCount += 1;
-      tweaking = false;
       renderCard();
-      setStatus(data.remaining ? data.remaining + " cards left." : "Deck clear!");
+      setStatus(data.remaining ? data.remaining + " left" : "Done.");
     } catch (err) {
       setStatus(err.message || "Could not save.");
     } finally {
@@ -510,21 +792,33 @@
     }
   }
 
-  function onPlaygroundInput() {
-    syncPlaygroundText();
-    void mountMagnifier();
+  function bindGoodBad(name) {
+    field("hw-lookup-lexicon-" + name + "-good")?.addEventListener("change", syncFixVisibility);
+    field("hw-lookup-lexicon-" + name + "-bad")?.addEventListener("change", syncFixVisibility);
   }
 
   function bindControls() {
     if (bound) return;
     bound = true;
 
-    field("hw-lookup-lexicon-word-input")?.addEventListener("input", onPlaygroundInput);
-    field("hw-lookup-lexicon-example-input")?.addEventListener("input", onPlaygroundInput);
+    bindGoodBad("highlight");
+    bindGoodBad("lemma");
 
-    field("hw-lookup-lexicon-tweak-btn")?.addEventListener("click", () => {
-      tweaking = !tweaking;
-      renderTweakPanel(currentCard());
+    field("hw-lookup-lexicon-split")?.addEventListener("input", () => {
+      renderPieceSections(currentCard());
+      applyLexiconPreview(currentCard());
+    });
+
+    field("hw-lookup-lexicon-lemma-query")?.addEventListener("input", () => {
+      refreshDraftPreviews(currentCard());
+    });
+
+    field("hw-lookup-lexicon-definitions-host")?.addEventListener("input", () => {
+      applyLexiconPreview(currentCard());
+    });
+
+    field("hw-lookup-lexicon-readings-host")?.addEventListener("input", () => {
+      applyLexiconPreview(currentCard());
     });
 
     field("hw-lookup-lexicon-submit-btn")?.addEventListener("click", () => {
@@ -534,7 +828,6 @@
     field("hw-lookup-lexicon-next-btn")?.addEventListener("click", () => {
       if (!pending.length) return;
       currentIndex = (currentIndex + 1) % pending.length;
-      tweaking = false;
       renderCard();
     });
 
@@ -561,8 +854,12 @@
       unmountMagnifier();
       return;
     }
+    if (pending.length && currentCard()) {
+      renderCard();
+      return;
+    }
     scheduleLoad();
   }
 
-  global.HwTeacherLookupLexicon = { init, reloadIfNeeded };
+  global.HwTeacherLookupLexicon = { init, reloadIfNeeded, unmountMagnifier };
 })(window);

@@ -45,6 +45,7 @@
 
   /** Clicked surface → dictionary headword for Jisho. */
   const LEMMA_QUERY = {
+    行き: "行く",
     やめ: "やめる",
     やめたい: "やめる",
   };
@@ -150,11 +151,40 @@
   const BASELINE_SEQUENCES = MERGE_RULES.surfaceSequences.map((s) => ({
     surfaces: [...s.surfaces],
   }));
+  const SEGMENT_RULES = {
+    surfaceSequences: [],
+  };
 
   /** Whole surfaces always kept together (code defaults + KV overlay). */
   let FORCE_UNITS = [];
   let overlayVersion = null;
   let loadPromise = null;
+  /** Temporary draft rules while teacher tests unsaved card edits in Lookup Lexicon. */
+  let previewLayer = null;
+
+  function setPreview(layer) {
+    previewLayer = layer && typeof layer === "object" ? layer : null;
+  }
+
+  function clearPreview() {
+    previewLayer = null;
+  }
+
+  function hasPreviewCustom(surface) {
+    const entry = previewLayer?.custom?.[surface];
+    return Boolean(entry?.reading || entry?.definition);
+  }
+
+  function getPreview() {
+    return previewLayer;
+  }
+
+  function hasActivePreview() {
+    return Boolean(
+      previewLayer?.segmentSurfaces?.length ||
+        (previewLayer?.mergeSurfaces?.length && previewLayer.mergeSurfaces.length >= 2)
+    );
+  }
 
   function applyGlobalOverlay(overlay) {
     if (!overlay || typeof overlay !== "object") return;
@@ -182,6 +212,15 @@
       const key = seq.surfaces.join("|");
       const exists = MERGE_RULES.surfaceSequences.some((item) => item.surfaces.join("|") === key);
       if (!exists) MERGE_RULES.surfaceSequences.push({ surfaces: [...seq.surfaces] });
+    });
+
+    SEGMENT_RULES.surfaceSequences = [];
+    (overlay.segmentSurfaceSequences || []).forEach((seq) => {
+      if (!seq?.surfaces?.length || seq.surfaces.length < 2) return;
+      const key = seq.surfaces.join("|");
+      const exists = SEGMENT_RULES.surfaceSequences.some((item) => item.surfaces.join("|") === key);
+      if (!exists) SEGMENT_RULES.surfaceSequences.push({ surfaces: [...seq.surfaces] });
+      removeMergeSequenceFromRules(seq.surfaces);
     });
 
     FORCE_UNITS = [...new Set((overlay.forceUnits || []).map((s) => String(s || "").trim()).filter(Boolean))];
@@ -306,12 +345,25 @@
     };
   }
 
+  function removeMergeSequenceFromRules(surfaces) {
+    const key = surfaces.join("|");
+    MERGE_RULES.surfaceSequences = MERGE_RULES.surfaceSequences.filter(
+      (item) => item.surfaces.join("|") !== key
+    );
+  }
+
+  function isSegmentSequence(surfaces) {
+    const key = surfaces.join("|");
+    return SEGMENT_RULES.surfaceSequences.some((item) => item.surfaces.join("|") === key);
+  }
+
   function trySequenceMerge(spans, index) {
     const ordered = [...MERGE_RULES.surfaceSequences].sort(
       (a, b) => b.surfaces.length - a.surfaces.length
     );
     for (const rule of ordered) {
       if (!surfacesMatch(spans, index, rule.surfaces)) continue;
+      if (isSegmentSequence(rule.surfaces)) continue;
       return {
         span: combineSpans(spans, index, rule.surfaces.length),
         count: rule.surfaces.length,
@@ -340,12 +392,34 @@
     return combineSpans(spans, index, 2, { joinReading: true });
   }
 
+  function tryPreviewSequenceMerge(spans, index) {
+    const surfaces = previewLayer?.mergeSurfaces;
+    if (!Array.isArray(surfaces) || surfaces.length < 2) return null;
+    if (!surfacesMatch(spans, index, surfaces)) return null;
+    return {
+      span: combineSpans(spans, index, surfaces.length),
+      count: surfaces.length,
+    };
+  }
+
   function mergeTokenSpansWithMeta(spans) {
     if (!Array.isArray(spans) || !spans.length) return spans || [];
 
     const merged = [];
     let index = 0;
     while (index < spans.length) {
+      const previewSequence = tryPreviewSequenceMerge(spans, index);
+      if (previewSequence) {
+        const slice = spans.slice(index, index + previewSequence.count);
+        merged.push({
+          ...previewSequence.span,
+          rawSurfaces: slice.map((span) => span.surface),
+          ruleKind: "preview-sequence",
+        });
+        index += previewSequence.count;
+        continue;
+      }
+
       const sequence = trySequenceMerge(spans, index);
       if (sequence) {
         const slice = spans.slice(index, index + sequence.count);
@@ -442,8 +516,11 @@
     return 0;
   }
 
-  function quickUnits(text) {
-    const sample = String(text || "");
+  function offsetQuickUnit(unit, delta) {
+    return { ...unit, start: unit.start + delta, end: unit.end + delta };
+  }
+
+  function quickUnitsBase(sample) {
     const units = [];
     let i = 0;
     while (i < sample.length) {
@@ -473,27 +550,72 @@
         skip: isSkipped(surface, null),
       });
     }
+    return units;
+  }
 
-    const merged = [];
-    for (const unit of units) {
-      if (
-        unit.surface === "たい" &&
-        CUSTOM["たい"] &&
-        merged.length &&
-        !merged[merged.length - 1].skip
-      ) {
-        const prev = merged.pop();
-        merged.push({
-          surface: prev.surface + "たい",
-          start: prev.start,
-          end: unit.end,
-          skip: false,
-        });
-        continue;
+  function quickUnitsWithMerge(sample, surfaces) {
+    const combined = surfaces.join("");
+    const start = sample.indexOf(combined);
+    if (start >= 0) {
+      const units = [];
+      if (start > 0) {
+        units.push(...quickUnitsBase(sample.slice(0, start)).map((unit) => offsetQuickUnit(unit, 0)));
       }
-      merged.push(unit);
+      units.push({
+        surface: combined,
+        start,
+        end: start + combined.length,
+        skip: isSkipped(combined, null) && !hasPreviewCustom(combined),
+      });
+      const after = start + combined.length;
+      if (after < sample.length) {
+        units.push(
+          ...quickUnitsBase(sample.slice(after)).map((unit) => offsetQuickUnit(unit, after))
+        );
+      }
+      return units;
     }
-    return merged;
+    return quickUnitsBase(sample);
+  }
+
+  function quickUnitsWithSegments(sample, segments) {
+    const units = [];
+    let cursor = 0;
+    for (const seg of segments) {
+      const surface = String(seg || "").trim();
+      if (!surface) continue;
+      const start = sample.indexOf(surface, cursor);
+      if (start < 0) continue;
+      if (start > cursor) {
+        units.push(
+          ...quickUnitsBase(sample.slice(cursor, start)).map((unit) => offsetQuickUnit(unit, cursor))
+        );
+      }
+      units.push({
+        surface,
+        start,
+        end: start + surface.length,
+        skip: isSkipped(surface, null) && !hasPreviewCustom(surface),
+      });
+      cursor = start + surface.length;
+    }
+    if (cursor < sample.length) {
+      units.push(
+        ...quickUnitsBase(sample.slice(cursor)).map((unit) => offsetQuickUnit(unit, cursor))
+      );
+    }
+    return units.length ? units : quickUnitsBase(sample);
+  }
+
+  function quickUnits(text) {
+    const sample = String(text || "");
+    if (previewLayer?.mergeSurfaces?.length >= 2) {
+      return quickUnitsWithMerge(sample, previewLayer.mergeSurfaces);
+    }
+    if (previewLayer?.segmentSurfaces?.length) {
+      return quickUnitsWithSegments(sample, previewLayer.segmentSurfaces);
+    }
+    return quickUnitsBase(sample);
   }
 
   function pickQuickUnit(text, offset) {
@@ -588,6 +710,7 @@
   }
 
   function isSkipped(surface, token) {
+    if (hasPreviewCustom(surface)) return false;
     if (CUSTOM[surface]) return false;
     if (isLatinOrDigits(surface, token)) return true;
     if (isPunctuation(surface, token)) return true;
@@ -599,13 +722,16 @@
   }
 
   function customEntry(surface, lemma) {
+    if (previewLayer?.custom?.[surface]) return previewLayer.custom[surface];
     return CUSTOM[surface] || (lemma && CUSTOM[lemma]) || null;
   }
 
   function resolve(surface, lemma) {
     const custom = customEntry(surface, lemma);
     const query =
+      previewLayer?.lemmaQuery?.[surface] ||
       LEMMA_QUERY[surface] ||
+      previewLayer?.lemmaQuery?.[lemma] ||
       LEMMA_QUERY[lemma] ||
       (surface.length > 1 ? surface : null) ||
       lemma ||
@@ -728,6 +854,10 @@
     pickQuickUnit,
     quickUnits,
     simulateSplit,
+    setPreview,
+    clearPreview,
+    getPreview,
+    hasActivePreview,
     getOverlayVersion: () => overlayVersion,
   };
 

@@ -1893,6 +1893,8 @@
       }
       if (name === "lookup-lexicon" && global.HwTeacherLookupLexicon?.reloadIfNeeded) {
         HwTeacherLookupLexicon.reloadIfNeeded();
+      } else if (global.HwTeacherLookupLexicon?.unmountMagnifier) {
+        HwTeacherLookupLexicon.unmountMagnifier();
       }
       if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
         global.HwTeacherEditor.syncPublishPicker();
