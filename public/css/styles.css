@@ -9020,8 +9020,13 @@ textarea.hw-blank.hw-blank--translation {
 }
 
 .hw-star-block__prefix,
-.hw-star-block__suffix {
+.hw-star-block__suffix,
+.hw-star-block__fixed {
   color: var(--color-text);
+}
+
+.hw-star-block__fixed {
+  font-weight: 500;
 }
 
 .hw-star-block__slot {
@@ -9199,10 +9204,39 @@ textarea.hw-blank.hw-blank--translation {
   border-color: #c44a6a;
 }
 
-.hw-builder__star-pieces {
+.hw-builder__star-pieces,
+.hw-builder__star-tokens {
   display: grid;
   gap: 0.45rem;
   margin-bottom: 0.5rem;
+}
+
+.hw-builder__star-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-builder__star-token-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.hw-builder__star-fixed-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.hw-builder__star-token-remove {
+  flex-shrink: 0;
 }
 
 .hw-listen-instruction {

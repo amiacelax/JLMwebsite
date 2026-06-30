@@ -322,9 +322,14 @@
         return {
           id,
           type,
-          prefix: "今日",
-          suffix: "。",
-          pieces: ["は", "学校", "に", "行きました"],
+          tokens: [
+            { text: "今日", fixed: true },
+            { text: "は", fixed: false },
+            { text: "学校", fixed: false },
+            { text: "に", fixed: false },
+            { text: "行きました", fixed: false },
+            { text: "。", fixed: true },
+          ],
         };
       default:
         return null;
@@ -454,9 +459,7 @@
           blocks.push({
             id: item.id || uid("blk"),
             type: "star-line",
-            prefix: item.prefix || "",
-            suffix: item.suffix || "。",
-            pieces: (item.pieces || []).slice(),
+            tokens: normalizeStarTokens(item),
           });
         }
       });
@@ -631,10 +634,45 @@
     return out;
   }
 
+  function normalizeStarTokens(source) {
+    if (Array.isArray(source?.tokens) && source.tokens.length) {
+      return source.tokens
+        .map((t) => ({
+          text: String(t.text || "").trim(),
+          fixed: !!t.fixed,
+        }))
+        .filter((t) => t.text);
+    }
+    const tokens = [];
+    const prefix = String(source?.prefix || "").trim();
+    const suffix = String(source?.suffix ?? "。").trim();
+    const pieces = (source?.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    if (prefix) tokens.push({ text: prefix, fixed: true });
+    pieces.forEach((p) => tokens.push({ text: p, fixed: false }));
+    if (suffix) tokens.push({ text: suffix, fixed: true });
+    if (!tokens.length) {
+      return [
+        { text: "今日", fixed: true },
+        { text: "は", fixed: false },
+        { text: "学校", fixed: false },
+        { text: "に", fixed: false },
+        { text: "行きました", fixed: false },
+        { text: "。", fixed: true },
+      ];
+    }
+    return tokens;
+  }
+
+  function draggablePiecesFromTokens(tokens) {
+    return tokens.filter((t) => !t.fixed).map((t) => t.text);
+  }
+
   function blockToStarItem(block, index) {
-    const pieces = (block.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    const tokens = normalizeStarTokens(block);
+    const pieces = draggablePiecesFromTokens(tokens);
     return {
       id: block.id || "star-" + (index + 1),
+      tokens,
       prefix: String(block.prefix || "").trim(),
       suffix: String(block.suffix || "。").trim(),
       pieces,
@@ -1106,10 +1144,10 @@
         return clip(block.japanese) || "Translation";
       }
       if (block.type === "star-line") {
-        const preview =
-          String(block.prefix || "") +
-          " _ … _ " +
-          String(block.suffix || "");
+        const tokens = normalizeStarTokens(block);
+        const preview = tokens
+          .map((t) => (t.fixed ? t.text : "□"))
+          .join("");
         return clip(preview) || "Sentence order";
       }
       return "Block";
@@ -1399,80 +1437,84 @@
       }
 
       if (block.type === "star-line") {
-        if (!Array.isArray(block.pieces) || !block.pieces.length) {
-          block.pieces = ["は", "学校", "に", "行きました"];
-        }
+        block.tokens = normalizeStarTokens(block);
 
-        const prefixLabel = document.createElement("label");
-        prefixLabel.className = "hw-builder__field-label";
-        prefixLabel.textContent = "Fixed start (before slots)";
-        const prefixInput = document.createElement("input");
-        prefixInput.type = "text";
-        prefixInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
-        prefixInput.value = block.prefix || "";
-        prefixInput.addEventListener("input", () => {
-          block.prefix = prefixInput.value;
-          if (block.collapsed) summaryEl.textContent = blockSummary(block);
-          notifyChange();
-        });
-        prefixLabel.appendChild(prefixInput);
-        body.appendChild(prefixLabel);
+        const hint = document.createElement("p");
+        hint.className = "hw-builder__star-hint";
+        hint.textContent =
+          "Words in order — check Fixed to lock a word in place anywhere in the sentence.";
+        body.appendChild(hint);
 
-        const piecesWrap = document.createElement("div");
-        piecesWrap.className = "hw-builder__star-pieces";
-        const pieceInputs = [];
+        const tokensWrap = document.createElement("div");
+        tokensWrap.className = "hw-builder__star-tokens";
+        const tokenInputs = [];
 
-        function syncStarFromPieces() {
-          block.pieces = pieceInputs.map((input) => input.value.trim()).filter(Boolean);
+        function syncStarFromTokens() {
+          block.tokens = tokenInputs
+            .map((row) => ({
+              text: row.input.value.trim(),
+              fixed: row.fixed.checked,
+            }))
+            .filter((t) => t.text);
           if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         }
 
-        function renderPieceInputs() {
-          piecesWrap.replaceChildren();
-          pieceInputs.length = 0;
-          (block.pieces || []).forEach((piece, pi) => {
+        function renderTokenRows() {
+          tokensWrap.replaceChildren();
+          tokenInputs.length = 0;
+          (block.tokens || []).forEach((token, ti) => {
             const row = document.createElement("div");
-            row.className = "hw-builder__star-piece-row";
+            row.className = "hw-builder__star-token-row";
+
+            const fixedLabel = document.createElement("label");
+            fixedLabel.className = "hw-builder__star-fixed-label";
+            const fixedBox = document.createElement("input");
+            fixedBox.type = "checkbox";
+            fixedBox.className = "hw-builder__star-fixed";
+            fixedBox.checked = !!token.fixed;
+            fixedBox.title = "Fixed in sentence";
+            fixedBox.addEventListener("change", syncStarFromTokens);
+            fixedLabel.append(fixedBox, document.createTextNode(" Fixed"));
+
             const input = document.createElement("input");
             input.type = "text";
             input.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
-            input.value = piece;
-            input.placeholder = "Piece " + (pi + 1);
-            input.addEventListener("input", syncStarFromPieces);
-            pieceInputs.push(input);
-            row.appendChild(input);
-            piecesWrap.appendChild(row);
+            input.value = token.text;
+            input.placeholder = "Word " + (ti + 1);
+            input.addEventListener("input", syncStarFromTokens);
+
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "btn btn--ghost btn--sm hw-builder__star-token-remove";
+            removeBtn.textContent = "Remove";
+            removeBtn.addEventListener("click", () => {
+              block.tokens = (block.tokens || []).filter((_, idx) => idx !== ti);
+              renderTokenRows();
+              syncStarFromTokens();
+            });
+
+            row.append(fixedLabel, input, removeBtn);
+            tokensWrap.appendChild(row);
+            tokenInputs.push({ input, fixed: fixedBox });
           });
         }
 
-        renderPieceInputs();
-        body.appendChild(piecesWrap);
+        renderTokenRows();
+        body.appendChild(tokensWrap);
 
-        const addPieceBtn = document.createElement("button");
-        addPieceBtn.type = "button";
-        addPieceBtn.className = "btn btn--ghost btn--sm";
-        addPieceBtn.textContent = "Add piece";
-        addPieceBtn.addEventListener("click", () => {
-          block.pieces = (block.pieces || []).concat([""]);
-          renderPieceInputs();
-          syncStarFromPieces();
+        const addTokenBtn = document.createElement("button");
+        addTokenBtn.type = "button";
+        addTokenBtn.className = "btn btn--ghost btn--sm";
+        addTokenBtn.textContent = "Add word";
+        addTokenBtn.addEventListener("click", () => {
+          block.tokens = (block.tokens || []).concat([{ text: "", fixed: false }]);
+          renderTokenRows();
+          syncStarFromTokens();
+          const last = tokenInputs[tokenInputs.length - 1];
+          last?.input.focus();
         });
-        body.appendChild(addPieceBtn);
-
-        const suffixLabel = document.createElement("label");
-        suffixLabel.className = "hw-builder__field-label";
-        suffixLabel.textContent = "Ending punctuation";
-        const suffixInput = document.createElement("input");
-        suffixInput.type = "text";
-        suffixInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
-        suffixInput.value = block.suffix || "。";
-        suffixInput.addEventListener("input", () => {
-          block.suffix = suffixInput.value;
-          notifyChange();
-        });
-        suffixLabel.appendChild(suffixInput);
-        body.appendChild(suffixLabel);
+        body.appendChild(addTokenBtn);
         return el;
       }
 

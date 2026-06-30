@@ -8,7 +8,7 @@
   const SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
   const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot";
+    "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot, .hw-star-block__fixed";
 
   /** Shared 字 lens strokes (button + cursor). */
   const LENS_JI_PATHS =
@@ -299,7 +299,7 @@
     if (el.closest(SKIP_SELECTOR)) return false;
     return Boolean(
       el.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
       )
     );
   }

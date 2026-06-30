@@ -1074,12 +1074,37 @@
     return line;
   }
 
+  function normalizeStarTokens(source) {
+    if (Array.isArray(source?.tokens) && source.tokens.length) {
+      return source.tokens
+        .map((t) => ({
+          text: String(t.text || "").trim(),
+          fixed: !!t.fixed,
+        }))
+        .filter((t) => t.text);
+    }
+    const tokens = [];
+    const prefix = String(source?.prefix || "").trim();
+    const suffix = String(source?.suffix ?? "。").trim();
+    const pieces = (source?.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    if (prefix) tokens.push({ text: prefix, fixed: true });
+    pieces.forEach((p) => tokens.push({ text: p, fixed: false }));
+    if (suffix) tokens.push({ text: suffix, fixed: true });
+    return tokens;
+  }
+
+  function draggablePiecesFromTokens(tokens) {
+    return tokens.filter((t) => !t.fixed).map((t) => t.text);
+  }
+
   function renderStarLine(item, lineOptions) {
     const line = document.createElement("div");
     line.className = "hw-worksheet__line hw-worksheet__line--star";
     line.dataset.itemId = item.id || "";
 
-    const pieces = (item.pieces || []).map((p) => String(p).trim()).filter(Boolean);
+    const tokens = normalizeStarTokens(item);
+    const pieces = draggablePiecesFromTokens(tokens);
+    line.dataset.tokens = JSON.stringify(tokens);
     line.dataset.pieceCount = String(pieces.length);
     line.dataset.pieces = JSON.stringify(pieces);
 
@@ -1092,23 +1117,23 @@
     sentence.className = "hw-star-block__sentence";
     sentence.setAttribute("lang", "ja");
 
-    const prefix = document.createElement("span");
-    prefix.className = "hw-star-block__prefix";
-    prefix.textContent = String(item.prefix || "");
-    sentence.appendChild(prefix);
-
-    pieces.forEach((piece, pi) => {
+    let slotIndex = 0;
+    tokens.forEach((token) => {
+      if (token.fixed) {
+        const fixed = document.createElement("span");
+        fixed.className = "hw-star-block__fixed";
+        fixed.textContent = token.text;
+        sentence.appendChild(fixed);
+        return;
+      }
       const slot = document.createElement("span");
       slot.className = "hw-star-block__slot";
-      slot.dataset.slotIndex = String(pi);
-      slot.setAttribute("aria-label", "Blank " + (pi + 1));
+      slot.dataset.slotIndex = String(slotIndex);
+      slot.setAttribute("aria-label", "Blank " + (slotIndex + 1));
+      slotIndex += 1;
       sentence.appendChild(slot);
     });
 
-    const suffix = document.createElement("span");
-    suffix.className = "hw-star-block__suffix";
-    suffix.textContent = String(item.suffix || "。");
-    sentence.appendChild(suffix);
     content.appendChild(sentence);
 
     const pool = document.createElement("div");
@@ -2364,7 +2389,11 @@
     return clone.textContent.replace(/\s+/g, " ").trim();
   }
 
-  function starStaticDisplay(prefix, suffix) {
+  function starStaticDisplay(prefix, suffix, tokens) {
+    if (Array.isArray(tokens) && tokens.length) {
+      const fixed = tokens.filter((t) => t.fixed).map((t) => t.text).filter(Boolean);
+      if (fixed.length) return fixed.join(" · ");
+    }
     const p = String(prefix || "").trim();
     const s = String(suffix ?? "").trim();
     if (p && s && s !== "。") return p + " · " + s;
@@ -2373,20 +2402,46 @@
 
   function starOrderFromLine(lineEl) {
     const hidden = lineEl.querySelector(".hw-star-block__answer");
-    const prefix = lineEl.querySelector(".hw-star-block__prefix")?.textContent?.trim() || "";
-    const suffix = lineEl.querySelector(".hw-star-block__suffix")?.textContent?.trim() || "";
-    let pieces = [];
+    let tokens = [];
     try {
-      pieces = JSON.parse(hidden?.value || "[]");
-      if (!Array.isArray(pieces)) pieces = [];
+      tokens = JSON.parse(lineEl.dataset.tokens || "[]");
+      if (!Array.isArray(tokens)) tokens = [];
     } catch {
-      pieces = [];
+      tokens = [];
     }
-    pieces = pieces.map((part) => String(part || "").trim()).filter(Boolean);
-    const assembled = (prefix + pieces.join("") + suffix).replace(/\s+/g, " ").trim();
+    if (!tokens.length) {
+      const prefix = lineEl.querySelector(".hw-star-block__prefix")?.textContent?.trim() || "";
+      const suffix = lineEl.querySelector(".hw-star-block__suffix")?.textContent?.trim() || "";
+      tokens = normalizeStarTokens({ prefix, suffix, pieces: JSON.parse(lineEl.dataset.pieces || "[]") });
+    }
+
+    let draggableAnswers = [];
+    try {
+      draggableAnswers = JSON.parse(hidden?.value || "[]");
+      if (!Array.isArray(draggableAnswers)) draggableAnswers = [];
+    } catch {
+      draggableAnswers = [];
+    }
+    draggableAnswers = draggableAnswers.map((part) => String(part || "").trim());
+
+    let dragIdx = 0;
+    const assembledParts = [];
+    tokens.forEach((token) => {
+      if (token.fixed) {
+        assembledParts.push(token.text);
+      } else {
+        assembledParts.push(draggableAnswers[dragIdx] || "");
+        dragIdx += 1;
+      }
+    });
+
+    const pieces = draggableAnswers.filter(Boolean);
+    const prefix = tokens.filter((t) => t.fixed).map((t) => t.text).join("") || "";
+    const suffix = "";
+    const assembled = assembledParts.join("").replace(/\s+/g, " ").trim();
     const piecesDisplay = pieces.join(" · ");
-    const staticDisplay = starStaticDisplay(prefix, suffix);
-    return { assembled, piecesDisplay, staticDisplay, prefix, suffix };
+    const staticDisplay = starStaticDisplay("", "", tokens);
+    return { assembled, piecesDisplay, staticDisplay, prefix, suffix, tokens };
   }
 
   function mediaFromLine(lineEl, defaultKind) {
