@@ -47,6 +47,7 @@
   }
 
   function submissionSearchText(entry) {
+    const commentText = (entry.comments || []).map((c) => c.text).join(" ");
     return [
       entry.displayName,
       entry.username,
@@ -54,6 +55,7 @@
       entry.lessonName,
       entry.title,
       entry.type,
+      commentText,
     ]
       .filter(Boolean)
       .join(" ")
@@ -238,6 +240,49 @@
     return block;
   }
 
+  function renderStudentComments(entry) {
+    const list = entry.comments;
+    if (!list?.length) return null;
+
+    const block = document.createElement("section");
+    block.className = "hw-submission-comments";
+
+    const heading = document.createElement("h4");
+    heading.className = "hw-submission-comments__heading";
+    heading.textContent =
+      "Student notes (" +
+      (entry.displayName || entry.username || "Student") +
+      " · " +
+      (entry.lessonName || entry.title || entry.assignmentId || "Worksheet") +
+      ")";
+
+    const ul = document.createElement("div");
+    ul.className = "hw-submission-comments__list";
+
+    list.forEach((comment) => {
+      const text = String(comment?.text || "").trim();
+      if (!text) return;
+      const item = document.createElement("div");
+      item.className = "hw-submission-comments__item";
+      const anchor = String(comment?.anchor || "").trim();
+      if (anchor) {
+        const quote = document.createElement("p");
+        quote.className = "hw-submission-comments__anchor";
+        quote.textContent = "“" + anchor + "”";
+        item.appendChild(quote);
+      }
+      const p = document.createElement("p");
+      p.className = "hw-submission-comments__text";
+      p.textContent = text;
+      item.appendChild(p);
+      ul.appendChild(item);
+    });
+
+    if (!ul.childElementCount) return null;
+    block.append(heading, ul);
+    return block;
+  }
+
   function renderCheckerNav(entry, filtered, session) {
     const nav = document.createElement("div");
     nav.className = "hw-submission-checker__nav";
@@ -347,6 +392,9 @@
       wrap.appendChild(renderOrderedAnswers(entry, session));
     }
 
+    const commentsBlock = renderStudentComments(entry);
+    if (commentsBlock) wrap.appendChild(commentsBlock);
+
     return wrap;
   }
 
@@ -442,6 +490,12 @@
       const title = document.createElement("h3");
       title.className = "hw-submissions-item__title";
       title.textContent = entry.displayName + " — " + (entry.lessonName || entry.title || entry.assignmentId);
+      if (entry.comments?.length) {
+        const badge = document.createElement("span");
+        badge.className = "hw-submissions-item__comments-badge";
+        badge.textContent = entry.comments.length + " note" + (entry.comments.length === 1 ? "" : "s");
+        title.appendChild(badge);
+      }
 
       const sub = document.createElement("p");
       sub.className = "hw-submissions-item__sub";

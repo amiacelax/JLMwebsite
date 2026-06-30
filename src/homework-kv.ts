@@ -1395,6 +1395,24 @@ export interface HomeworkSubmissionVideo {
   name?: string;
 }
 
+export interface HomeworkComment {
+  id: string;
+  text: string;
+  anchor?: string;
+  anchorRect?: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    width: number;
+    height: number;
+  };
+  x?: number;
+  y?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface HomeworkSubmission {
   id: string;
   type: "online" | "photo" | "video";
@@ -1411,6 +1429,8 @@ export interface HomeworkSubmission {
   listening?: HomeworkAnswerRow[];
   /** Worksheet-order answers (matches Discord checker layout). */
   answers?: HomeworkAnswerRow[];
+  /** Student notes / questions on the worksheet at submit time. */
+  comments?: HomeworkComment[];
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
@@ -1429,6 +1449,7 @@ export interface HomeworkOnlineSubmitInput {
   section2?: HomeworkAnswerRow[];
   listening?: HomeworkAnswerRow[];
   answers?: HomeworkAnswerRow[];
+  comments?: HomeworkComment[];
 }
 
 export interface HomeworkPhotoSubmitInput {
@@ -1601,6 +1622,7 @@ export async function saveHomeworkOnlineSubmission(
   const section2 = Array.isArray(data.section2) ? data.section2 : [];
   const listening = Array.isArray(data.listening) ? data.listening : [];
   const answers = Array.isArray(data.answers) ? data.answers : [];
+  const comments = Array.isArray(data.comments) ? data.comments : [];
   if (!section1.length && !section2.length && !listening.length && !answers.length) {
     throw new Error("ANSWERS_REQUIRED");
   }
@@ -1620,6 +1642,7 @@ export async function saveHomeworkOnlineSubmission(
     section2,
     listening,
     answers: answers.length ? answers : undefined,
+    comments: comments.length ? comments : undefined,
     submittedAt: new Date().toISOString(),
   };
 
@@ -1754,6 +1777,184 @@ export async function loadHomeworkSubmissionPhoto(
   } catch {
     return null;
   }
+}
+
+/** In-progress worksheet answers (synced per student account). */
+
+const homeworkDraftKey = (username: string, assignmentId: string) =>
+  `hw-draft:${username}:${assignmentId}`;
+
+export interface HomeworkDraft {
+  username: string;
+  assignmentId: string;
+  answers: Record<string, string>;
+  updatedAt: string;
+}
+
+export interface HomeworkDraftSaveInput {
+  username?: string;
+  assignmentId?: string;
+  answers?: Record<string, string>;
+}
+
+export async function loadHomeworkDraft(
+  env: KvEnv,
+  username: string,
+  assignmentId: string
+): Promise<HomeworkDraft | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(assignmentId || "").trim();
+  if (!user || !id) return null;
+
+  const raw = await kv.get(homeworkDraftKey(user, id));
+  if (!raw) return null;
+  try {
+    const draft = JSON.parse(raw) as HomeworkDraft;
+    if (draft.username !== user || draft.assignmentId !== id) return null;
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveHomeworkDraft(
+  data: HomeworkDraftSaveInput,
+  env: KvEnv
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const assignmentId = String(data.assignmentId || "").trim();
+  if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
+
+  const answers =
+    data.answers && typeof data.answers === "object" && !Array.isArray(data.answers)
+      ? data.answers
+      : {};
+
+  const draft: HomeworkDraft = {
+    username,
+    assignmentId,
+    answers,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await kv.put(homeworkDraftKey(username, assignmentId), JSON.stringify(draft));
+}
+
+export async function deleteHomeworkDraft(
+  env: KvEnv,
+  username: string,
+  assignmentId: string
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(assignmentId || "").trim();
+  if (!user || !id) return;
+
+  await kv.delete(homeworkDraftKey(user, id));
+}
+
+/** In-progress worksheet comments (synced per student account). */
+
+const homeworkCommentsDraftKey = (username: string, assignmentId: string) =>
+  `hw-comments-draft:${username}:${assignmentId}`;
+
+export interface HomeworkCommentsDraft {
+  username: string;
+  assignmentId: string;
+  comments: HomeworkComment[];
+  updatedAt: string;
+}
+
+export interface HomeworkCommentsDraftSaveInput {
+  username?: string;
+  assignmentId?: string;
+  comments?: HomeworkComment[];
+}
+
+export async function loadHomeworkCommentsDraft(
+  env: KvEnv,
+  username: string,
+  assignmentId: string
+): Promise<HomeworkCommentsDraft | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(assignmentId || "").trim();
+  if (!user || !id) return null;
+
+  const raw = await kv.get(homeworkCommentsDraftKey(user, id));
+  if (!raw) return null;
+  try {
+    const draft = JSON.parse(raw) as HomeworkCommentsDraft;
+    if (draft.username !== user || draft.assignmentId !== id) return null;
+    if (!Array.isArray(draft.comments)) draft.comments = [];
+    return draft;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveHomeworkCommentsDraft(
+  data: HomeworkCommentsDraftSaveInput,
+  env: KvEnv
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const assignmentId = String(data.assignmentId || "").trim();
+  if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
+
+  const comments = Array.isArray(data.comments) ? data.comments : [];
+
+  const draft: HomeworkCommentsDraft = {
+    username,
+    assignmentId,
+    comments,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await kv.put(homeworkCommentsDraftKey(username, assignmentId), JSON.stringify(draft));
+}
+
+export async function deleteHomeworkCommentsDraft(
+  env: KvEnv,
+  username: string,
+  assignmentId: string
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(assignmentId || "").trim();
+  if (!user || !id) return;
+
+  await kv.delete(homeworkCommentsDraftKey(user, id));
 }
 
 export async function loadHomeworkSubmissionVideo(

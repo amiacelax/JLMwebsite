@@ -130,6 +130,44 @@
     return block;
   }
 
+  function syncListenMediaPreview(previewMount, block) {
+    if (!previewMount) return;
+    previewMount.replaceChildren();
+    if (block.imageUrl) {
+      const thumb = document.createElement("img");
+      thumb.className = "hw-builder__listen-thumb";
+      thumb.src = block.imageUrl;
+      thumb.alt = "Immersion Kit screenshot preview";
+      thumb.loading = "lazy";
+      previewMount.appendChild(thumb);
+    }
+    if (block.audioUrl) {
+      const preview = document.createElement("audio");
+      preview.controls = true;
+      preview.preload = "none";
+      preview.className = "hw-builder__audio-preview";
+      preview.src = global.HwCompat?.normalizeMediaUrl
+        ? global.HwCompat.normalizeMediaUrl(block.audioUrl)
+        : block.audioUrl;
+      preview.setAttribute("aria-label", "Preview audio clip");
+      previewMount.appendChild(preview);
+    }
+  }
+
+  function applyImmersionKitPaste(block, parsed) {
+    if (!parsed) return false;
+    let changed = false;
+    if (parsed.audioUrl) {
+      block.audioUrl = parsed.audioUrl;
+      changed = true;
+    }
+    if (parsed.imageUrl) {
+      block.imageUrl = parsed.imageUrl;
+      changed = true;
+    }
+    return changed;
+  }
+
   /** Merge legacy audio-clip blocks into the following listen-line blocks. */
   function normalizeBlocks(blocks) {
     const out = [];
@@ -1211,27 +1249,31 @@
         const partsWrap = document.createElement("div");
         partsWrap.className = "hw-builder__parts hw-builder__parts--listen";
 
+        const previewMount = document.createElement("div");
+        previewMount.className = "hw-builder__listen-preview";
+
         const audioLabel = document.createElement("label");
         audioLabel.className = "hw-builder__audio-label";
         audioLabel.textContent = "Immersion Kit audio URL";
         const audioInput = document.createElement("input");
-        audioInput.type = "url";
+        audioInput.type = "text";
         audioInput.className = "hw-builder__field hw-builder__field--compact";
+        audioInput.spellcheck = false;
         audioInput.placeholder = "Paste audio URL from immersionkit.com";
         audioInput.value = block.audioUrl || "";
         audioInput.addEventListener("input", () => {
           block.audioUrl = audioInput.value.trim();
-          renderCanvas();
+          syncListenMediaPreview(previewMount, block);
           notifyChange();
         });
         audioInput.addEventListener("paste", (e) => {
           const text = e.clipboardData?.getData("text") || "";
           const parsed = global.HwWorksheet?.parseImmersionKitMediaPaste?.(text);
-          if (!parsed || (!parsed.audioUrl && !parsed.imageUrl)) return;
+          if (!applyImmersionKitPaste(block, parsed)) return;
           e.preventDefault();
-          if (parsed.audioUrl) block.audioUrl = parsed.audioUrl;
-          if (parsed.imageUrl) block.imageUrl = parsed.imageUrl;
-          renderCanvas();
+          audioInput.value = block.audioUrl || "";
+          imageInput.value = block.imageUrl || "";
+          syncListenMediaPreview(previewMount, block);
           notifyChange();
         });
         audioLabel.appendChild(audioInput);
@@ -1241,48 +1283,31 @@
         imageLabel.className = "hw-builder__audio-label";
         imageLabel.textContent = "Screenshot URL (Immersion Kit)";
         const imageInput = document.createElement("input");
-        imageInput.type = "url";
+        imageInput.type = "text";
         imageInput.className = "hw-builder__field hw-builder__field--compact";
+        imageInput.spellcheck = false;
         imageInput.placeholder = "Paste screenshot URL from the same clip";
         imageInput.value = block.imageUrl || "";
         imageInput.addEventListener("input", () => {
           block.imageUrl = imageInput.value.trim();
-          renderCanvas();
+          syncListenMediaPreview(previewMount, block);
           notifyChange();
         });
         imageInput.addEventListener("paste", (e) => {
           const text = e.clipboardData?.getData("text") || "";
           const parsed = global.HwWorksheet?.parseImmersionKitMediaPaste?.(text);
-          if (!parsed || (!parsed.audioUrl && !parsed.imageUrl)) return;
+          if (!applyImmersionKitPaste(block, parsed)) return;
           e.preventDefault();
-          if (parsed.audioUrl) block.audioUrl = parsed.audioUrl;
-          if (parsed.imageUrl) block.imageUrl = parsed.imageUrl;
-          renderCanvas();
+          audioInput.value = block.audioUrl || "";
+          imageInput.value = block.imageUrl || "";
+          syncListenMediaPreview(previewMount, block);
           notifyChange();
         });
         imageLabel.appendChild(imageInput);
         partsWrap.appendChild(imageLabel);
 
-        if (block.imageUrl) {
-          const thumb = document.createElement("img");
-          thumb.className = "hw-builder__listen-thumb";
-          thumb.src = block.imageUrl;
-          thumb.alt = "Immersion Kit screenshot preview";
-          thumb.loading = "lazy";
-          partsWrap.appendChild(thumb);
-        }
-
-        if (block.audioUrl) {
-          const preview = document.createElement("audio");
-          preview.controls = true;
-          preview.preload = "none";
-          preview.className = "hw-builder__audio-preview";
-          preview.src = global.HwCompat?.normalizeMediaUrl
-            ? global.HwCompat.normalizeMediaUrl(block.audioUrl)
-            : block.audioUrl;
-          preview.setAttribute("aria-label", "Preview audio clip");
-          partsWrap.appendChild(preview);
-        }
+        partsWrap.appendChild(previewMount);
+        syncListenMediaPreview(previewMount, block);
 
         const transcriptLabel = document.createElement("label");
         transcriptLabel.className = "hw-builder__field-label";

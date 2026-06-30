@@ -540,7 +540,7 @@
         }
         clearRecording();
         showSaved();
-        setStatus(data.message || (isAudioMode() ? "Audio saved." : "Video saved."), "success");
+        setStatus(data.message || "Audio/video saved.", "success");
         return { ok: true };
       } catch (err) {
         const message = (err && err.message) || "Save failed — try again.";

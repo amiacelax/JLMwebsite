@@ -31,7 +31,9 @@
    */
   function parseImmersionKitMediaPaste(text) {
     const urls = [
-      ...new Set((String(text).match(/https?:\/\/[^\s<>"']+/gi) || []).map((u) => u.replace(/[),.;]+$/, ""))),
+      ...new Set(
+        (String(text).match(/https?:\/\/[^\s<>"\n]+/gi) || []).map((u) => u.replace(/[),.;]+$/, ""))
+      ),
     ];
     let audioUrl = "";
     let imageUrl = "";
@@ -695,8 +697,9 @@
       audioLabel.className = "hw-author-audio-url";
       audioLabel.textContent = "Immersion Kit audio URL";
       const audioInput = document.createElement("input");
-      audioInput.type = "url";
+      audioInput.type = "text";
       audioInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      audioInput.spellcheck = false;
       audioInput.value = item.audioUrl || lineOptions.sectionAudioUrl || "";
       audioInput.setAttribute("data-item-audio-url", "1");
       audioInput.placeholder = "Paste audio URL from immersionkit.com";
@@ -721,8 +724,9 @@
       imageLabel.className = "hw-author-audio-url";
       imageLabel.textContent = "Screenshot URL (Immersion Kit)";
       const imageInput = document.createElement("input");
-      imageInput.type = "url";
+      imageInput.type = "text";
       imageInput.className = "hw-blank hw-blank--wide hw-author-audio";
+      imageInput.spellcheck = false;
       imageInput.value = item.imageUrl || "";
       imageInput.setAttribute("data-item-image-url", "1");
       imageInput.placeholder = "Paste screenshot URL from the same clip";
@@ -1611,7 +1615,7 @@
 
     actions.querySelector?.("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
 
-    if (!authoring && !options.preview) {
+    if (!authoring && !options.preview && !options.readOnly) {
       initSlideMode(form);
       initFocusMode(form);
       initSeeAnswers(form);
@@ -1621,13 +1625,174 @@
       global.HwStarBlock.initForm(form);
     }
 
+    if (options.readOnly) {
+      setFormReadOnly(form);
+    }
+
     return form;
+  }
+
+  function setFormReadOnly(form) {
+    if (!form) return;
+    form.classList.add("hw-worksheet--readonly");
+    form.dataset.hwReadOnly = "true";
+    form.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
+      el.readOnly = true;
+      el.setAttribute("aria-readonly", "true");
+    });
+    form.querySelectorAll(
+      "button:not([data-hw-print]):not(.hw-worksheet__slide-btn):not(.hw-focus-mode__exit)"
+    ).forEach((btn) => {
+      if (btn.closest(".hw-worksheet__actions-tools")) {
+        btn.hidden = true;
+        return;
+      }
+      if (
+        btn.type === "submit" ||
+        btn.hasAttribute("data-hw-photo-take") ||
+        btn.hasAttribute("data-hw-photo-choose") ||
+        btn.closest(".hw-video-inline") ||
+        btn.closest(".hw-audio-inline") ||
+        btn.closest(".hw-star-block")
+      ) {
+        btn.disabled = true;
+        btn.hidden = true;
+      }
+    });
+    form.querySelectorAll(".hw-worksheet__actions-primary").forEach((el) => {
+      el.hidden = true;
+    });
+    form.querySelectorAll(".hw-star-block__pool, .hw-star-block__answer-zone").forEach((el) => {
+      el.setAttribute("aria-hidden", "true");
+      el.style.pointerEvents = "none";
+      el.style.opacity = "0.45";
+    });
+  }
+
+  function applyAnswersMap(form, answersMap) {
+    if (!form || !answersMap) return;
+    form.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((inp) => {
+      if (inp.name && answersMap[inp.name] != null) {
+        inp.value = String(answersMap[inp.name]);
+      }
+    });
+    if (global.HwWorksheet?.updateSubmitButtonState) {
+      global.HwWorksheet.updateSubmitButtonState(form);
+    }
+  }
+
+  /** Replay stored submission rows onto a rendered worksheet (read-only). */
+  function applySubmissionAnswers(form, submission) {
+    if (!form || !submission) return;
+
+    function applyReplayNote(lineEl, row) {
+      if (!row?.student) return;
+      const text = row.student === "(blank)" ? "" : String(row.student);
+      if (!text) return;
+      let note = lineEl.querySelector(".hw-submission-replay-note");
+      if (!note) {
+        note = document.createElement("p");
+        note.className = "hw-submission-replay-note";
+        lineEl.appendChild(note);
+      }
+      note.textContent = text;
+    }
+
+    const ordered =
+      Array.isArray(submission.answers) && submission.answers.length ? submission.answers : null;
+
+    if (ordered) {
+      let rowIdx = 0;
+      form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
+        const mode = secEl.dataset.mode || "";
+
+        if (mode === "video-response") {
+          secEl.querySelectorAll(".hw-worksheet__line--video").forEach((lineEl) => {
+            applyReplayNote(lineEl, ordered[rowIdx++]);
+          });
+          return;
+        }
+
+        if (mode === "audio-prompt") {
+          secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((lineEl) => {
+            applyReplayNote(lineEl, ordered[rowIdx++]);
+          });
+          return;
+        }
+
+        secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl) => {
+          const row = ordered[rowIdx++];
+          if (!row) return;
+          if (mode === "star-order") {
+            applyReplayNote(lineEl, row);
+            return;
+          }
+          const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
+          if (input && row.student != null) {
+            input.value = row.student === "(blank)" ? "" : String(row.student);
+          }
+        });
+      });
+      return;
+    }
+
+    const rows = [
+      ...(submission.section1 || []),
+      ...(submission.section2 || []),
+      ...(submission.listening || []),
+    ];
+    let rowIdx = 0;
+
+    form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
+      const mode = secEl.dataset.mode || "";
+
+      if (mode === "video-response" || mode === "audio-prompt") {
+        const selector =
+          mode === "video-response"
+            ? ".hw-worksheet__line--video"
+            : ".hw-worksheet__line--audio-prompt";
+        secEl.querySelectorAll(selector).forEach((lineEl) => {
+          applyReplayNote(lineEl, rows[rowIdx++]);
+        });
+        return;
+      }
+
+      secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
+        if (
+          !el.name ||
+          el.hasAttribute("data-section-audio-url") ||
+          el.hasAttribute("data-item-audio-url") ||
+          el.hasAttribute("data-item-image-url") ||
+          el.hasAttribute("data-item-english-answer") ||
+          el.hasAttribute("data-video-prompt") ||
+          el.hasAttribute("data-audio-prompt") ||
+          el.classList.contains("hw-star-block__answer")
+        ) {
+          return;
+        }
+        const row = rows[rowIdx++];
+        if (row?.student != null) {
+          el.value = row.student === "(blank)" ? "" : String(row.student);
+        }
+      });
+    });
   }
 
   function hasListenTeacherAnswers(form) {
     return Boolean(
       form?.querySelector(".hw-blank-wrap--listen[data-teacher-answer]")
     );
+  }
+
+  function hideTeacherAnswers(form) {
+    if (!form) return;
+    form.querySelectorAll(".hw-worksheet__teacher-answer").forEach((el) => el.remove());
+    const btn = form.querySelector("[data-hw-see-answers]");
+    if (btn) {
+      btn.textContent = "See Answers";
+      btn.setAttribute("aria-pressed", "false");
+      btn.disabled = false;
+    }
   }
 
   function revealTeacherAnswers(form) {
@@ -1648,15 +1813,32 @@
     });
     const btn = form.querySelector("[data-hw-see-answers]");
     if (btn) {
-      btn.textContent = "Answers shown";
-      btn.disabled = true;
+      btn.textContent = "Hide Answers";
       btn.setAttribute("aria-pressed", "true");
+      btn.disabled = false;
     }
+  }
+
+  function toggleTeacherAnswers(form) {
+    const btn = form?.querySelector("[data-hw-see-answers]");
+    if (!btn || btn.disabled) return;
+    if (btn.getAttribute("aria-pressed") === "true") hideTeacherAnswers(form);
+    else revealTeacherAnswers(form);
   }
 
   function enableSeeAnswers(form) {
     const btn = form?.querySelector("[data-hw-see-answers]");
-    if (btn) btn.hidden = false;
+    if (!btn) return;
+    btn.hidden = false;
+    btn.disabled = false;
+  }
+
+  function disableSeeAnswers(form) {
+    const btn = form?.querySelector("[data-hw-see-answers]");
+    if (!btn) return;
+    hideTeacherAnswers(form);
+    btn.hidden = true;
+    btn.disabled = true;
   }
 
   /**
@@ -1674,7 +1856,7 @@
     btn.setAttribute("aria-pressed", "false");
     btn.textContent = "See Answers";
     btn.hidden = true;
-    btn.addEventListener("click", () => revealTeacherAnswers(form));
+    btn.addEventListener("click", () => toggleTeacherAnswers(form));
 
     const tools = actions.querySelector(".hw-worksheet__actions-tools");
     const submitBtn = actions.querySelector('button[type="submit"]');
@@ -2458,8 +2640,14 @@
     updateSubmitButtonState,
     hasMeaningfulStudentAnswer,
     enableSeeAnswers,
+    disableSeeAnswers,
     revealTeacherAnswers,
+    hideTeacherAnswers,
+    toggleTeacherAnswers,
     hasListenTeacherAnswers,
+    setFormReadOnly,
+    applyAnswersMap,
+    applySubmissionAnswers,
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,

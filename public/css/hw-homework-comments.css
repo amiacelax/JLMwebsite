@@ -1,0 +1,301 @@
+/* Homework comment cloud — highlight + memo bubble on worksheet */
+
+.hw-hub-v4-homework:has(.hw-hc-host),
+.hw-hub-worksheet-card:has(.hw-hc-host),
+.hw-hub-v2-worksheet-wrap:has(.hw-hc-host),
+body.hw-hw-focus-mode #hw-hub-v4-homework:has(.hw-hc-host),
+body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
+  overflow: visible;
+}
+
+.hw-hc-host {
+  position: relative;
+  z-index: 2;
+}
+
+.hw-hc-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.hw-hc-layers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Armed — drag to select text on the worksheet */
+.hw-hc-host.hw-hc-armed .hw-worksheet,
+.hw-hc-host.hw-hc-armed .hw-worksheet * {
+  cursor: text !important;
+  user-select: text !important;
+}
+
+.hw-hc-host.hw-hc-armed .hw-hc-launcher {
+  cursor: grab !important;
+  user-select: none !important;
+}
+
+/* Launcher cloud (top-right of worksheet) */
+.hw-hc-launcher {
+  position: absolute;
+  z-index: 63;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  width: 3rem;
+  height: 3rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-green, #2d6a4f);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 94%, var(--color-green, #2d6a4f));
+  border: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 30%, transparent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  cursor: grab;
+  touch-action: none;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hw-hc-launcher.is-dragging {
+  cursor: grabbing;
+  animation: none;
+}
+
+.hw-hc-launcher:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+}
+
+.hw-hc-launcher.is-armed {
+  color: #fff;
+  background: var(--color-green, #2d6a4f);
+  border-color: var(--color-green, #2d6a4f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green, #2d6a4f) 25%, transparent);
+}
+
+.hw-hc-launcher__icon {
+  width: 1.75rem;
+  height: auto;
+  display: block;
+}
+
+.hw-hc-launcher__badge {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  text-align: center;
+  color: #fff;
+  background: var(--color-green, #2d6a4f);
+}
+
+.hw-hc-launcher.is-armed .hw-hc-launcher__badge {
+  background: #fff;
+  color: var(--color-green, #2d6a4f);
+}
+
+/* Persistent highlight on anchored text */
+.hw-hc-highlight {
+  position: absolute;
+  pointer-events: none;
+  z-index: 39;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, #ffd966 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #e6b800 35%, transparent);
+}
+
+/* Minimized tiny cloud */
+.hw-hc-mini {
+  position: absolute;
+  z-index: 61;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  width: 1.65rem;
+  height: 1.65rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-green, #2d6a4f);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
+  border: 1.5px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  cursor: grab;
+  touch-action: none;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.hw-hc-mini:hover {
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+}
+
+.hw-hc-mini.is-dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+.hw-hc-mini__icon {
+  width: 1rem;
+  height: auto;
+  display: block;
+}
+
+/* Expanded cloud memo bubble */
+.hw-hc-memo {
+  position: absolute;
+  z-index: 62;
+  transform: translate(-50%, calc(-100% - 0.65rem));
+  pointer-events: auto;
+  min-width: 11rem;
+  max-width: min(17rem, calc(100vw - 2rem));
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.14));
+  cursor: grab;
+  touch-action: none;
+}
+
+.hw-hc-memo.is-dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.2));
+}
+
+.hw-hc-memo__quote {
+  margin: 0 0 0.35rem;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--color-text-muted, #666);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  cursor: grab;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 55%, transparent);
+}
+
+.hw-hc-memo.is-dragging .hw-hc-memo__quote {
+  cursor: grabbing;
+}
+
+.hw-hc-memo__body {
+  position: relative;
+  padding: 0.65rem 0.75rem 0.55rem;
+  color: var(--color-text, #1a1a1a);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 96%, var(--color-green, #2d6a4f));
+  border: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
+  border-radius: 1.35rem 1.35rem 1.35rem 0.45rem;
+}
+
+.hw-hc-memo__body::after {
+  content: "";
+  position: absolute;
+  bottom: -0.45rem;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 0.75rem;
+  height: 0.75rem;
+  background: inherit;
+  border-right: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
+}
+
+.hw-hc-memo__input {
+  width: 100%;
+  resize: vertical;
+  min-height: 3.5rem;
+  max-height: 10rem;
+  padding: 0.35rem 0.4rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 70%, transparent);
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  cursor: text;
+}
+
+.hw-hc-memo__input:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.hw-hc-memo__input:read-only {
+  background: transparent;
+  resize: none;
+}
+
+.hw-hc-memo__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+}
+
+/* Teacher submission checker — student notes */
+.hw-submission-comments {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border, #e5e5e5);
+}
+
+.hw-submission-comments__heading {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.hw-submission-comments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hw-submission-comments__item {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 90%, var(--color-green, #2d6a4f));
+}
+
+.hw-submission-comments__anchor {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--color-text-muted, #666);
+}
+
+.hw-submission-comments__text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.hw-submissions-item__comments-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  vertical-align: middle;
+  color: var(--color-green, #2d6a4f);
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 12%, transparent);
+}

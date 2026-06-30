@@ -19,11 +19,9 @@
     }
   }
 
-  /** Magnifying glass (虫眼鏡): on in local dev only. Override: localStorage hw-mg-dev=1 */
+  /** Magnifying glass (虫眼鏡): enabled for all students on homework worksheets. */
   function magnifyingGlass() {
-    if (isLocalDev()) return true;
-    if (PRODUCTION_HOSTS.has(location.hostname)) return devOverride("hw-mg-dev");
-    return devOverride("hw-mg-dev");
+    return true;
   }
 
   global.HwFeatureFlags = {

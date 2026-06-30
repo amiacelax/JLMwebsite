@@ -334,6 +334,51 @@ body.hw-hub-v3-page .hw-worksheet__meta-hint {
   color: var(--color-text-muted);
 }
 
+.hw-student-past-fold {
+  margin-top: 0.75rem;
+}
+
+.hw-hub-v2-past-list__btn {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hw-hub-v2-past-list__btn:hover {
+  color: var(--color-accent);
+}
+
+.hw-hub-v2-past-list__item--active .hw-hub-v2-past-list__btn {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.hw-hub-v2-past-list__item--empty,
+.hw-hub-v2-past-list__item--muted {
+  color: var(--color-text-muted);
+}
+
+.hw-submission-view-banner {
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+  font-size: 0.8125rem;
+  color: var(--color-text);
+}
+
+.hw-submission-view-back {
+  margin: 0.35rem 0 0;
+}
+
 .hw-hub-v2-elsewhere-links {
   display: flex;
   flex-wrap: wrap;

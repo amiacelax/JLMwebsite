@@ -266,7 +266,7 @@
           mount.dataset.mediaKind = "audio";
         }
         mount.dataset.hwAnswerSaved = "true";
-        setStatus(data.message || "Audio sent — JD will review it.");
+        setStatus(data.message || "Audio/video saved.");
         resetUi();
         emitWorksheetAnswerChange(mount);
       } catch (err) {

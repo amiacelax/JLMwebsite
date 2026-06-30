@@ -54,6 +54,15 @@ import {
   getHomeworkSubmission,
   loadHomeworkSubmissionPhoto,
   loadHomeworkSubmissionVideo,
+  loadHomeworkDraft,
+  saveHomeworkDraft,
+  deleteHomeworkDraft,
+  loadHomeworkCommentsDraft,
+  saveHomeworkCommentsDraft,
+  deleteHomeworkCommentsDraft,
+  type HomeworkDraftSaveInput,
+  type HomeworkCommentsDraftSaveInput,
+  type HomeworkComment,
   savePromoSignup,
   listPromoSignups,
   savePromoSignupTeacher,
@@ -158,6 +167,7 @@ interface HomeworkSubmitPayload {
   listening?: HomeworkAnswerRow[];
   /** Worksheet-order answers with block progress (preferred for Discord). */
   answers?: HomeworkOrderedAnswerRow[];
+  comments?: HomeworkComment[];
 }
 
 interface ContactPayload {
@@ -1264,8 +1274,27 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
   let stored = false;
   try {
-    await saveHomeworkOnlineSubmission(data as HomeworkOnlineSubmitInput, env);
+    const submitInput = { ...(data as HomeworkOnlineSubmitInput) };
+    const userKey = data.username!.trim().toLowerCase();
+    const assignmentKey = data.assignmentId!.trim();
+    if (!submitInput.comments?.length) {
+      try {
+        const commentsDraft = await loadHomeworkCommentsDraft(env, userKey, assignmentKey);
+        if (commentsDraft?.comments?.length) {
+          submitInput.comments = commentsDraft.comments;
+        }
+      } catch {
+        /* draft optional */
+      }
+    }
+    await saveHomeworkOnlineSubmission(submitInput, env);
     stored = true;
+    try {
+      await deleteHomeworkDraft(env, userKey, assignmentKey);
+      await deleteHomeworkCommentsDraft(env, userKey, assignmentKey);
+    } catch {
+      /* draft cleanup is best-effort */
+    }
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
     if (code === "UNKNOWN_STUDENT") {
@@ -1324,9 +1353,7 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
   if (stored) {
     return jsonResponse({
       success: true,
-      message: discordOk
-        ? "Submitted! JD can see your answers in Discord and on the teacher hub."
-        : "Submitted! Your answers were saved on the teacher hub.",
+      message: "Homework sent! Please await JD's review.",
     });
   }
 
@@ -1349,7 +1376,7 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
   return jsonResponse({
     success: true,
-    message: "Submitted! JD can see your answers in Discord.",
+    message: "Homework sent! Please await JD's review.",
   });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -1444,9 +1471,7 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
     if (stored) {
       return jsonResponse({
         success: true,
-        message: discordOk
-          ? "Homework sent! JD can see it in Discord now."
-          : "Homework sent! JD can see it on the teacher hub.",
+        message: "Photo uploaded.",
       });
     }
 
@@ -1469,7 +1494,7 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
 
     return jsonResponse({
       success: true,
-      message: "Homework sent! JD can see it in Discord now.",
+      message: "Photo uploaded.",
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -1575,9 +1600,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({
         success: true,
         mediaId: saveResult?.videoId,
-        message: discordOk
-          ? "Homework sent! JD can see it in Discord now."
-          : "Homework sent! JD can see it on the teacher hub.",
+        message: "Audio/video saved.",
       });
     }
 
@@ -1601,7 +1624,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     return jsonResponse({
       success: true,
       mediaId: saveResult?.videoId,
-      message: "Homework sent! JD can see it in Discord now.",
+      message: "Audio/video saved.",
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -1707,9 +1730,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
       return jsonResponse({
         success: true,
         mediaId: saveResult?.videoId,
-        message: discordOk
-          ? "Homework sent! JD can see it in Discord now."
-          : "Homework sent! JD can see it on the teacher hub.",
+        message: "Audio/video saved.",
       });
     }
 
@@ -1733,7 +1754,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     return jsonResponse({
       success: true,
       mediaId: saveResult?.videoId,
-      message: "Homework sent! JD can see it in Discord now.",
+      message: "Audio/video saved.",
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
@@ -2582,6 +2603,194 @@ async function handleHomeworkSubmissionDiscordPreview(
   }
 }
 
+async function handleHomeworkDraft(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+  let username = String(url.searchParams.get("username") || "")
+    .trim()
+    .toLowerCase();
+  let assignmentId = String(url.searchParams.get("assignmentId") || "").trim();
+
+  if (request.method === "PUT") {
+    let body: HomeworkDraftSaveInput;
+    try {
+      body = (await request.json()) as HomeworkDraftSaveInput;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+    const bodyUser = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) username = bodyUser;
+    if (!assignmentId) assignmentId = String(body.assignmentId || "").trim();
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    if (bodyUser && bodyUser !== username) {
+      return jsonResponse({ error: "Account mismatch." }, 403);
+    }
+
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      await saveHomeworkDraft({ ...body, username, assignmentId }, env);
+      return jsonResponse({ success: true });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Draft storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "ASSIGNMENT_REQUIRED") {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      console.error("homework-draft PUT failed:", err);
+      return jsonResponse({ error: "Could not save draft." }, 500);
+    }
+  }
+
+  if (!username) {
+    return jsonResponse({ error: "Student login required." }, 403);
+  }
+
+  try {
+    if (!(await isKnownStudent(username, env))) {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+
+    if (request.method === "GET") {
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      const draft = await loadHomeworkDraft(env, username, assignmentId);
+      return jsonResponse({ draft }, 200, { "Cache-Control": "private, no-store" });
+    }
+
+    if (request.method === "DELETE") {
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      await deleteHomeworkDraft(env, username, assignmentId);
+      return jsonResponse({ success: true });
+    }
+
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Draft storage is not configured on this server." }, 503);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "ASSIGNMENT_REQUIRED") {
+      return jsonResponse({ error: "Assignment id is required." }, 400);
+    }
+    console.error("homework-draft failed:", err);
+    return jsonResponse({ error: "Could not save draft." }, 500);
+  }
+}
+
+async function handleHomeworkCommentsDraft(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+  let username = String(url.searchParams.get("username") || "")
+    .trim()
+    .toLowerCase();
+  let assignmentId = String(url.searchParams.get("assignmentId") || "").trim();
+
+  if (request.method === "PUT") {
+    let body: HomeworkCommentsDraftSaveInput;
+    try {
+      body = (await request.json()) as HomeworkCommentsDraftSaveInput;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+    const bodyUser = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) username = bodyUser;
+    if (!assignmentId) assignmentId = String(body.assignmentId || "").trim();
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    if (bodyUser && bodyUser !== username) {
+      return jsonResponse({ error: "Account mismatch." }, 403);
+    }
+
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      await saveHomeworkCommentsDraft({ ...body, username, assignmentId }, env);
+      return jsonResponse({ success: true });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Comment storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "ASSIGNMENT_REQUIRED") {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      console.error("homework-comments-draft PUT failed:", err);
+      return jsonResponse({ error: "Could not save comments." }, 500);
+    }
+  }
+
+  if (!username) {
+    return jsonResponse({ error: "Student login required." }, 403);
+  }
+
+  try {
+    if (!(await isKnownStudent(username, env))) {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+
+    if (request.method === "GET") {
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      const draft = await loadHomeworkCommentsDraft(env, username, assignmentId);
+      return jsonResponse({ draft }, 200, { "Cache-Control": "private, no-store" });
+    }
+
+    if (request.method === "DELETE") {
+      if (!assignmentId) {
+        return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      await deleteHomeworkCommentsDraft(env, username, assignmentId);
+      return jsonResponse({ success: true });
+    }
+
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Comment storage is not configured on this server." }, 503);
+    }
+    console.error("homework-comments-draft failed:", err);
+    return jsonResponse({ error: "Could not load comments." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -2592,9 +2801,41 @@ async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Re
 
   const url = new URL(request.url);
   const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const studentUsername = String(url.searchParams.get("username") || "")
+    .trim()
+    .toLowerCase();
   const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
-  if (teacherUsername.trim().toLowerCase() !== allowed) {
-    return jsonResponse({ error: "Teacher login required." }, 403);
+  const isTeacher = teacherUsername.trim().toLowerCase() === allowed;
+
+  if (!isTeacher) {
+    if (!studentUsername) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    if (!(await isKnownStudent(studentUsername, env))) {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+
+    try {
+      const id = url.searchParams.get("id") || "";
+      if (id) {
+        const submission = await getHomeworkSubmission(env, id);
+        if (!submission) return jsonResponse({ error: "Submission not found." }, 404);
+        if (submission.username !== studentUsername) {
+          return jsonResponse({ error: "Not allowed." }, 403);
+        }
+        return jsonResponse({ submission }, 200, { "Cache-Control": "private, no-store" });
+      }
+
+      const submissions = await listHomeworkSubmissions(env, { student: studentUsername });
+      return jsonResponse({ submissions }, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+      }
+      console.error("homework-submissions list failed:", err);
+      return jsonResponse({ error: "Could not load submissions." }, 500);
+    }
   }
 
   try {
@@ -3117,6 +3358,14 @@ export default {
 
     if (url.pathname === "/api/homework-submit") {
       return handleHomeworkSubmit(request, env);
+    }
+
+    if (url.pathname === "/api/homework-draft") {
+      return handleHomeworkDraft(request, env);
+    }
+
+    if (url.pathname === "/api/homework-comments-draft") {
+      return handleHomeworkCommentsDraft(request, env);
     }
 
     if (url.pathname === "/api/student-mistakes") {

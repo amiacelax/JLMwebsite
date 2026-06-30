@@ -711,6 +711,297 @@
     return assignment;
   }
 
+  let studentSubmissionsCache = null;
+  let studentSubmissionsFetchInFlight = null;
+
+  function formatSubmissionWhen(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  function submissionListTitle(entry) {
+    return (
+      entry.title?.trim() ||
+      entry.lessonName?.trim() ||
+      entry.assignmentId ||
+      "Homework"
+    );
+  }
+
+  async function fetchStudentSubmissions(options) {
+    options = options || {};
+    if (!options.bypassCache && studentSubmissionsCache) return studentSubmissionsCache;
+    if (!options.bypassCache && studentSubmissionsFetchInFlight) {
+      return studentSubmissionsFetchInFlight;
+    }
+
+    const work = (async () => {
+      const url =
+        "/api/homework-submissions?username=" + encodeURIComponent(session.username);
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load submissions.");
+      const list = Array.isArray(data.submissions) ? data.submissions : [];
+      list.sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+      studentSubmissionsCache = list;
+      return list;
+    })();
+
+    if (!options.bypassCache) studentSubmissionsFetchInFlight = work;
+    try {
+      return await work;
+    } finally {
+      studentSubmissionsFetchInFlight = null;
+    }
+  }
+
+  function invalidateStudentSubmissionsCache() {
+    studentSubmissionsCache = null;
+    studentSubmissionsFetchInFlight = null;
+  }
+
+  function setSubmissionViewChrome(submission, viewing) {
+    const banner = document.getElementById("hw-submission-view-banner");
+    const backBtn = document.getElementById("hw-submission-view-back");
+    const pastFold = document.getElementById("hw-student-past-fold");
+
+    if (banner) {
+      if (viewing && submission) {
+        banner.hidden = false;
+        banner.textContent =
+          "Submitted " +
+          formatSubmissionWhen(submission.submittedAt) +
+          " — view only (answers cannot be edited).";
+      } else {
+        banner.hidden = true;
+        banner.textContent = "";
+      }
+    }
+    if (backBtn) backBtn.hidden = !viewing;
+    if (pastFold && viewing) pastFold.open = true;
+  }
+
+  function bindSubmissionViewBack() {
+    const backBtn = document.getElementById("hw-submission-view-back");
+    if (!backBtn || backBtn.dataset.bound === "true") return;
+    backBtn.dataset.bound = "true";
+    backBtn.addEventListener("click", () => {
+      if (window.location.hash.match(/^#hw-submission-/)) {
+        window.location.hash = "";
+      }
+      void loadStudentHub({ bypassCache: true });
+    });
+  }
+
+  function renderStudentPastList(submissions, activeSubmissionId) {
+    const list = document.getElementById("hw-student-past-list");
+    const meta = document.getElementById("hw-student-past-meta");
+    if (!list) return;
+
+    const online = (submissions || []).filter((entry) => entry.type === "online");
+    list.replaceChildren();
+
+    if (meta) {
+      meta.textContent = online.length
+        ? online.length + " submitted worksheet" + (online.length === 1 ? "" : "s")
+        : "No submitted worksheets yet.";
+    }
+
+    if (!online.length) {
+      const empty = document.createElement("li");
+      empty.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
+      empty.textContent = "When you submit homework online, it will appear here.";
+      list.appendChild(empty);
+      return;
+    }
+
+    online.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "hw-hub-v2-past-list__item";
+      if (entry.id === activeSubmissionId) {
+        li.classList.add("hw-hub-v2-past-list__item--active");
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v2-past-list__btn";
+      btn.innerHTML =
+        "<span>" +
+        escapeHtml(submissionListTitle(entry)) +
+        '</span><time datetime="' +
+        escapeHtml(entry.submittedAt || "") +
+        '">' +
+        escapeHtml(formatSubmissionWhen(entry.submittedAt)) +
+        "</time>";
+      btn.addEventListener("click", () => {
+        window.location.hash = "hw-submission-" + entry.id;
+      });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+
+    const other = (submissions || []).filter((entry) => entry.type !== "online");
+    other.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--muted";
+      const label =
+        entry.type === "photo"
+          ? "Photo upload"
+          : entry.type === "video"
+            ? "Video upload"
+            : "Submission";
+      li.innerHTML =
+        "<span>" +
+        escapeHtml(label + " — " + submissionListTitle(entry)) +
+        '</span><time datetime="' +
+        escapeHtml(entry.submittedAt || "") +
+        '">' +
+        escapeHtml(formatSubmissionWhen(entry.submittedAt)) +
+        "</time>";
+      list.appendChild(li);
+    });
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function scheduleStudentSubmissionsLoad(options) {
+    const run = () => {
+      void loadStudentPastHomework(options || {});
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      setTimeout(run, 200);
+    }
+  }
+
+  async function loadStudentPastHomework(options) {
+    const list = document.getElementById("hw-student-past-list");
+    if (!list) return;
+
+    const hash = window.location.hash.replace(/^#/, "");
+    const activeSubmissionId = hash.match(/^hw-submission-(.+)$/)?.[1] || "";
+
+    try {
+      const submissions = await fetchStudentSubmissions(options);
+      renderStudentPastList(submissions, activeSubmissionId);
+    } catch (err) {
+      const meta = document.getElementById("hw-student-past-meta");
+      if (meta) meta.textContent = (err && err.message) || "Could not load past homework.";
+    }
+  }
+
+  async function loadSubmissionView(submissionId, loadGen, isStale) {
+    const mount = getWorksheetMount();
+    const intro = document.getElementById("hw-worksheet-intro");
+    const v4Intro = document.getElementById("hw-v4-worksheet-intro");
+    const v2Title = document.getElementById("hw-v2-title");
+
+    let submission;
+    try {
+      const res = await fetch(
+        "/api/homework-submissions?id=" +
+          encodeURIComponent(submissionId) +
+          "&username=" +
+          encodeURIComponent(session.username),
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load submission.");
+      submission = data.submission;
+    } catch (err) {
+      if (intro) intro.textContent = (err && err.message) || "Could not load submission.";
+      if (v4Intro) {
+        v4Intro.textContent = (err && err.message) || "Could not load submission.";
+        v4Intro.hidden = false;
+      }
+      setSubmissionViewChrome(null, false);
+      return;
+    }
+    if (isStale()) return;
+
+    if (submission.type !== "online") {
+      if (v4Intro) {
+        v4Intro.textContent = "This submission was a " + submission.type + " upload — no online worksheet to review.";
+        v4Intro.hidden = false;
+      }
+      if (mount) mount.innerHTML = "";
+      setSubmissionViewChrome(submission, true);
+      scheduleStudentSubmissionsLoad({ bypassCache: true });
+      return;
+    }
+
+    let assignment;
+    try {
+      assignment = await fetchAssignmentJson(
+        submission.assignmentId,
+        studentAssignmentFetchOptions({ bypassCache: true })
+      );
+    } catch {
+      if (v4Intro) {
+        v4Intro.textContent = "Could not load the worksheet for this submission.";
+        v4Intro.hidden = false;
+      }
+      return;
+    }
+    if (isStale()) return;
+
+    const view = studentViewMeta(
+      { id: submission.assignmentId, title: submission.title, lessonName: submission.lessonName },
+      assignment
+    );
+
+    if (v2Title) v2Title.textContent = view.listLabel;
+    if (intro) intro.hidden = true;
+    if (v4Intro) v4Intro.hidden = true;
+
+    if (!mount) return;
+
+    const form = HwWorksheet.render(mount, assignment, {
+      omitMetaTitle: usesHubV4Layout(),
+      omitMetaHint: usesHubV4Layout(),
+      readOnly: true,
+    });
+    HwWorksheet.applySubmissionAnswers(form, submission);
+    if (HwWorksheet.hasListenTeacherAnswers?.(form)) {
+      HwWorksheet.revealTeacherAnswers(form);
+    }
+    HwWorksheet.setFormReadOnly(form);
+    bindHubV4WorksheetChrome(form, assignment);
+    studentMountedAssignmentId = submission.assignmentId;
+    setSubmissionViewChrome(submission, true);
+    scheduleStudentSubmissionsLoad({ bypassCache: true });
+
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+      global.HwMagnifyingGlass.refresh();
+    }
+    if (global.HwHomeworkComments?.attachTo) {
+      global.HwHomeworkComments.attachTo(form, {
+        username: session.username,
+        assignmentId: submission.assignmentId,
+        readOnly: true,
+        initialComments: submission.comments,
+      });
+    }
+  }
+
   function bindWorksheetSave(form, assignmentMeta, options) {
     options = options || {};
     if (!form || !session.username || options.preview) return;
@@ -724,11 +1015,15 @@
 
     const assignmentId = assignmentMeta.id || form.getAttribute("data-assignment-id");
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
+    const storageTsKey = storageKey + ":ts";
     const submittedKey = `jlm-hw-submitted-${session.username}-${assignmentId}`;
     const inputs = form.querySelectorAll("input.hw-blank, textarea.hw-blank");
     const saveStatus = form.querySelector("#hw-save-status");
     const SUBMIT_COOLDOWN_MS = 2000;
+    const DRAFT_SAVE_MS = 700;
     let submitCooldownTimer = null;
+    let draftSaveTimer = null;
+    let draftSaveInFlight = null;
 
     function scheduleSubmitCooldown(submitBtn) {
       if (!submitBtn) return;
@@ -743,33 +1038,201 @@
       }, SUBMIT_COOLDOWN_MS);
     }
 
-    function showSavedInBrowser() {
-      if (saveStatus) saveStatus.textContent = "Saved in your browser.";
+    function showSavedStatus(synced) {
+      if (!saveStatus) return;
+      saveStatus.textContent = synced
+        ? "Saved to your account."
+        : "Saved locally — will sync when you're back online.";
     }
 
     function hasStoredAnswers(saved) {
       return Object.keys(saved || {}).some((key) => String(saved[key] ?? "").length > 0);
     }
 
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
-      inputs.forEach((inp) => {
-        if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
-      });
-      if (hasStoredAnswers(saved)) showSavedInBrowser();
-      if (global.HwWorksheet?.updateSubmitButtonState) {
-        global.HwWorksheet.updateSubmitButtonState(form);
-      }
-    } catch (_) {}
-
-    form.addEventListener("input", () => {
+    function collectBlankAnswers() {
       const data = {};
       inputs.forEach((inp) => {
         if (inp.name) data[inp.name] = inp.value;
       });
-      localStorage.setItem(storageKey, JSON.stringify(data));
-      showSavedInBrowser();
+      return data;
+    }
+
+    function applyAnswersToForm(saved) {
+      inputs.forEach((inp) => {
+        if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
+      });
+      if (global.HwWorksheet?.updateSubmitButtonState) {
+        global.HwWorksheet.updateSubmitButtonState(form);
+      }
       if (usesHubV4Layout()) renderHubV4Top(assignmentMeta, form);
+    }
+
+    async function saveDraftToServer(answers) {
+      const payload = {
+        username: session.username,
+        assignmentId,
+        answers,
+      };
+      const res = await fetch(
+        "/api/homework-draft?username=" +
+          encodeURIComponent(session.username) +
+          "&assignmentId=" +
+          encodeURIComponent(assignmentId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Draft save failed.");
+      }
+    }
+
+    function queueDraftSave(answers) {
+      clearTimeout(draftSaveTimer);
+      draftSaveTimer = setTimeout(() => {
+        void flushDraftSave(answers);
+      }, DRAFT_SAVE_MS);
+    }
+
+    async function flushDraftSave(answers) {
+      const data = answers || collectBlankAnswers();
+      if (!hasStoredAnswers(data)) return;
+      const work = saveDraftToServer(data)
+        .then(() => {
+          showSavedStatus(true);
+        })
+        .catch(() => {
+          showSavedStatus(false);
+        })
+        .finally(() => {
+          if (draftSaveInFlight === work) draftSaveInFlight = null;
+        });
+      draftSaveInFlight = work;
+      return work;
+    }
+
+    async function clearDraftEverywhere() {
+      clearTimeout(draftSaveTimer);
+      if (draftSaveInFlight) {
+        try {
+          await draftSaveInFlight;
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem(storageTsKey);
+      } catch (_) {}
+      try {
+        await fetch(
+          "/api/homework-draft?username=" +
+            encodeURIComponent(session.username) +
+            "&assignmentId=" +
+            encodeURIComponent(assignmentId),
+          { method: "DELETE" }
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+
+    async function hydrateDraftFromAccount() {
+      let localSaved = {};
+      let localTs = 0;
+      try {
+        localSaved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        localTs = parseInt(localStorage.getItem(storageTsKey) || "0", 10) || 0;
+      } catch (_) {}
+
+      let serverAnswers = null;
+      let serverTs = 0;
+      try {
+        const res = await fetch(
+          "/api/homework-draft?username=" +
+            encodeURIComponent(session.username) +
+            "&assignmentId=" +
+            encodeURIComponent(assignmentId),
+          { cache: "no-store" }
+        );
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (data.draft?.answers) {
+            serverAnswers = data.draft.answers;
+            serverTs = data.draft.updatedAt ? Date.parse(data.draft.updatedAt) : 0;
+          }
+        }
+      } catch {
+        /* offline */
+      }
+
+      let merged = {};
+      if (serverAnswers && hasStoredAnswers(serverAnswers)) {
+        if (localTs > serverTs && hasStoredAnswers(localSaved)) {
+          merged = localSaved;
+          applyAnswersToForm(merged);
+          queueDraftSave(merged);
+          showSavedStatus(false);
+        } else {
+          merged = serverAnswers;
+          applyAnswersToForm(merged);
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(merged));
+            if (serverTs) localStorage.setItem(storageTsKey, String(serverTs));
+          } catch (_) {}
+          showSavedStatus(true);
+        }
+      } else if (hasStoredAnswers(localSaved)) {
+        merged = localSaved;
+        applyAnswersToForm(merged);
+        queueDraftSave(merged);
+        showSavedStatus(false);
+      }
+    }
+
+    void hydrateDraftFromAccount();
+
+    form.addEventListener("input", () => {
+      const data = collectBlankAnswers();
+      const now = Date.now();
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        localStorage.setItem(storageTsKey, String(now));
+      } catch (_) {}
+      queueDraftSave(data);
+      showSavedStatus(false);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        clearTimeout(draftSaveTimer);
+        void flushDraftSave();
+      }
+    });
+
+    window.addEventListener("pagehide", () => {
+      clearTimeout(draftSaveTimer);
+      const data = collectBlankAnswers();
+      if (!hasStoredAnswers(data)) return;
+      const payload = JSON.stringify({ username: session.username, assignmentId, answers: data });
+      const url =
+        "/api/homework-draft?username=" +
+        encodeURIComponent(session.username) +
+        "&assignmentId=" +
+        encodeURIComponent(assignmentId);
+      try {
+        fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          keepalive: true,
+        });
+      } catch {
+        void flushDraftSave(data);
+      }
     });
 
     form.addEventListener("submit", async (e) => {
@@ -815,6 +1278,11 @@
         report
       );
 
+      if (global.HwHomeworkComments?.getCommentsForSubmit) {
+        const commentRows = global.HwHomeworkComments.getCommentsForSubmit();
+        if (commentRows.length) payload.comments = commentRows;
+      }
+
       if (!payload.assignmentId) {
         if (saveStatus) {
           saveStatus.textContent = "Worksheet id missing — refresh the page and try again.";
@@ -852,12 +1320,21 @@
           throw new Error(data.error || "Submit failed.");
         }
         if (saveStatus) {
-          saveStatus.textContent = data.message || "Submitted! JD received your answers.";
+          saveStatus.textContent = data.message || "Homework sent! Please await JD's review.";
         }
         showToast("Sent to JD");
         try {
           localStorage.setItem(submittedKey, new Date().toISOString());
         } catch (_) {}
+        await clearDraftEverywhere();
+        if (global.HwHomeworkComments?.clearDraftStorage) {
+          await global.HwHomeworkComments.clearDraftStorage();
+        }
+        if (global.HwHomeworkComments?.freezeAfterSubmit) {
+          global.HwHomeworkComments.freezeAfterSubmit();
+        }
+        invalidateStudentSubmissionsCache();
+        scheduleStudentSubmissionsLoad({ bypassCache: true });
         if (global.HwWorksheet?.enableSeeAnswers) {
           HwWorksheet.enableSeeAnswers(form);
         }
@@ -866,7 +1343,7 @@
         if (saveStatus) {
           saveStatus.textContent =
             (err && err.message) ||
-            "Could not submit. Answers are still saved in this browser.";
+            "Could not submit. Answers are still saved to your account.";
         }
         showToast("Submit failed");
         if (global.HwWorksheet?.updateSubmitButtonState) {
@@ -2107,9 +2584,22 @@
     return String(entry?.publishedAt || entry?.date || entry?.id || "");
   }
 
+  function parseStudentHash() {
+    const raw = window.location.hash.replace(/^#/, "");
+    const submissionMatch = raw.match(/^hw-submission-(.+)$/);
+    if (submissionMatch) {
+      return { kind: "submission", id: submissionMatch[1] };
+    }
+    if (raw.startsWith("hw-")) {
+      return { kind: "assignment", id: raw.replace(/^hw-/, "") };
+    }
+    return { kind: "none", id: "" };
+  }
+
   function guessedAssignmentId() {
-    const hashId = window.location.hash.replace(/^#hw-/, "");
-    if (hashId) return hashId;
+    const hashParts = parseStudentHash();
+    if (hashParts.kind === "assignment") return hashParts.id;
+    if (hashParts.kind === "submission") return null;
     const cached = readSessionJson(CATALOG_SESSION_KEY);
     const user = session?.username;
     if (user && cached?.data?.studentProfiles?.[user]?.currentHomeworkId) {
@@ -2148,7 +2638,8 @@
     const intro = document.getElementById("hw-worksheet-intro");
     const v4Intro = document.getElementById("hw-v4-worksheet-intro");
 
-    const hashId = window.location.hash.replace(/^#hw-/, "");
+    const hashParts = parseStudentHash();
+    const hashId = hashParts.kind === "assignment" ? hashParts.id : "";
     const guessId = options.skipWorksheet ? null : guessedAssignmentId();
     const catalogPromise = fetchCatalog(
       options.bypassCache ? { bypassCache: true } : undefined
@@ -2156,7 +2647,7 @@
     const speculativeId = hashId || guessId;
     const assignmentFetchOpts = studentAssignmentFetchOptions(options);
     const speculativeAssignmentPromise =
-      speculativeId && !options.skipWorksheet
+      speculativeId && !options.skipWorksheet && hashParts.kind !== "submission"
         ? fetchAssignmentJson(speculativeId, assignmentFetchOpts).catch(() => null)
         : null;
 
@@ -2175,7 +2666,7 @@
 
     const currentId = catalog.studentProfiles?.[user]?.currentHomeworkId;
     const active =
-      (hashId && mine.find((a) => a.id === hashId)) ||
+      (hashParts.kind === "assignment" && hashId && mine.find((a) => a.id === hashId)) ||
       (currentId && mine.find((a) => a.id === currentId)) ||
       mine[0] ||
       null;
@@ -2183,6 +2674,16 @@
     renderCurrentAssignmentCard(mine, active?.id);
     setLessonLinks(active, catalog);
     renderUltraReviewPlaylist(catalog);
+    scheduleStudentSubmissionsLoad(options);
+
+    if (hashParts.kind === "submission") {
+      bindPhotoUpload(null);
+      bindVideoUpload(null);
+      await loadSubmissionView(hashParts.id, loadGen, isStale);
+      return;
+    }
+
+    setSubmissionViewChrome(null, false);
     bindPhotoUpload(active);
     bindVideoUpload(active);
 
@@ -2271,6 +2772,13 @@
       }
       bindWorksheetSave(form, saveMeta);
       bindHubV4WorksheetChrome(form, saveMeta);
+      if (global.HwHomeworkComments?.attachTo) {
+        global.HwHomeworkComments.attachTo(form, {
+          username: session.username,
+          assignmentId: saveMeta.id || active.id,
+          readOnly: false,
+        });
+      }
       return form;
     }
 
@@ -2318,6 +2826,7 @@
       renderStudentHubHeader();
       renderGamesHubCard();
       bindWeeklyUpgradeCard();
+      bindSubmissionViewBack();
       loadStudentHub();
       window.addEventListener("hashchange", () => {
         loadStudentHub();

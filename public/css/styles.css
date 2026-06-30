@@ -10166,6 +10166,25 @@ textarea.hw-blank.hw-blank--open {
   color: var(--color-text-muted);
 }
 
+.hw-worksheet--readonly input.hw-blank,
+.hw-worksheet--readonly textarea.hw-blank {
+  background: var(--color-bg);
+  cursor: default;
+  opacity: 0.95;
+}
+
+.hw-worksheet--readonly .hw-worksheet__actions-primary {
+  display: none;
+}
+
+.hw-submission-replay-note {
+  margin: 0.35rem 0 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
 .hw-worksheet:has(.hw-worksheet__actions-tools) {
   padding-bottom: 0;
 }

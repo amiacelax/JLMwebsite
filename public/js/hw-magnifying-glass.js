@@ -89,6 +89,8 @@
   let toastEl = null;
   let snapHintEl = null;
   let onboardEl = null;
+  let onboardScrimEl = null;
+  let onboardScrimResizeBound = null;
   let resizeObserver = null;
   let overrideHostEl = null;
   let overrideOptions = null;
@@ -270,6 +272,7 @@
     if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
       closePopup();
+      global.HwHomeworkComments?.disarm?.();
       if (!opts?.silent) {
         const msg =
           overrideOptions?.armHint ||
@@ -976,7 +979,16 @@
 
   async function handleLookupClick(e) {
     if (!armed || !hostEl?.contains(e.target)) return;
-    if (e.target.closest(".hw-mg-popup") || e.target.closest(".hw-mg-widget") || e.target.closest(".hw-mg-onboard")) return;
+    if (
+      e.target.closest(".hw-mg-popup") ||
+      e.target.closest(".hw-mg-widget") ||
+      e.target.closest(".hw-mg-onboard") ||
+      e.target.closest(".hw-hc-launcher") ||
+      e.target.closest(".hw-hc-memo") ||
+      e.target.closest(".hw-hc-mini")
+    ) {
+      return;
+    }
     if (!isLookupTarget(e.target)) return;
 
     e.preventDefault();
@@ -1129,10 +1141,94 @@
     if (!e.target.closest(".hw-mg-popup")) closePopup();
   }
 
+  function spotlightRect(el, pad) {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return null;
+    return {
+      x: r.left - pad,
+      y: r.top - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2,
+    };
+  }
+
+  function mergeSpotlightRects(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const x1 = Math.min(a.x, b.x);
+    const y1 = Math.min(a.y, b.y);
+    const x2 = Math.max(a.x + a.w, b.x + b.w);
+    const y2 = Math.max(a.y + a.h, b.y + b.h);
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
+  function syncOnboardScrimViewport() {
+    if (!onboardScrimEl) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    onboardScrimEl.setAttribute("viewBox", "0 0 " + w + " " + h);
+    onboardScrimEl.setAttribute("preserveAspectRatio", "none");
+    const backdrop = onboardScrimEl.querySelector("mask > rect:first-child");
+    const fill = onboardScrimEl.querySelector(".hw-mg-onboard-scrim__fill");
+    if (backdrop) {
+      backdrop.setAttribute("width", String(w));
+      backdrop.setAttribute("height", String(h));
+    }
+    if (fill) {
+      fill.setAttribute("width", String(w));
+      fill.setAttribute("height", String(h));
+    }
+  }
+
+  function updateOnboardScrimSpotlight() {
+    if (!onboardScrimEl || !widgetEl || !onboardEl) return;
+    syncOnboardScrimViewport();
+    const hole = onboardScrimEl.querySelector(".hw-mg-onboard-scrim__hole");
+    if (!hole) return;
+    const pad = 16;
+    const spot = mergeSpotlightRects(
+      spotlightRect(lensEl || widgetEl, pad),
+      spotlightRect(onboardEl, pad)
+    );
+    if (!spot) return;
+    const x = Math.max(0, spot.x);
+    const y = Math.max(0, spot.y);
+    const w = Math.min(window.innerWidth - x, spot.w);
+    const h = Math.min(window.innerHeight - y, spot.h);
+    hole.setAttribute("x", String(x));
+    hole.setAttribute("y", String(y));
+    hole.setAttribute("width", String(Math.max(0, w)));
+    hole.setAttribute("height", String(Math.max(0, h)));
+  }
+
+  function bindOnboardScrimResize() {
+    unbindOnboardScrimResize();
+    onboardScrimResizeBound = () => {
+      placeOnboard();
+      updateOnboardScrimSpotlight();
+    };
+    window.addEventListener("resize", onboardScrimResizeBound);
+  }
+
+  function unbindOnboardScrimResize() {
+    if (!onboardScrimResizeBound) return;
+    window.removeEventListener("resize", onboardScrimResizeBound);
+    onboardScrimResizeBound = null;
+  }
+
   function dismissOnboarding() {
-    if (!onboardEl) return;
-    onboardEl.remove();
-    onboardEl = null;
+    if (onboardEl) {
+      onboardEl.remove();
+      onboardEl = null;
+    }
+    if (onboardScrimEl) {
+      onboardScrimEl.remove();
+      onboardScrimEl = null;
+    }
+    unbindOnboardScrimResize();
+    document.body.classList.remove("hw-mg-onboarding-active");
+    hostEl?.classList.remove("hw-mg-onboarding");
     try {
       localStorage.setItem(ONBOARD_KEY, "1");
     } catch {
@@ -1145,20 +1241,25 @@
     const cardW = Math.min(256, hostEl.clientWidth - 16);
     onboardEl.style.width = cardW + "px";
 
-    const x = parseFloat(widgetEl.style.left) || DEFAULT_LENS.x;
-    const y = parseFloat(widgetEl.style.top) || DEFAULT_LENS.y;
-    let left = x + 40;
-    let top = y + 52;
-
+    const hostRect = hostEl.getBoundingClientRect();
+    const lensRect = (lensEl || widgetEl).getBoundingClientRect();
+    const gap = 10;
     const cardH = onboardEl.offsetHeight || 150;
     const maxLeft = hostEl.clientWidth - cardW - 8;
     const maxTop = hostEl.clientHeight - cardH - 8;
-    if (left + cardW > hostEl.clientWidth - 8) left = x - cardW - 16;
+
+    let left = lensRect.right - hostRect.left + gap;
+    let top = lensRect.top - hostRect.top + (lensRect.height - cardH) / 2;
+
+    if (left + cardW > hostEl.clientWidth - 8) {
+      left = lensRect.left - hostRect.left - cardW - gap;
+    }
     left = Math.max(8, Math.min(left, maxLeft));
     top = Math.max(8, Math.min(top, maxTop));
 
     onboardEl.style.left = left + "px";
     onboardEl.style.top = top + "px";
+    updateOnboardScrimSpotlight();
   }
 
   function initOnboarding() {
@@ -1170,6 +1271,22 @@
       return;
     }
     if (onboardEl) return;
+
+    onboardScrimEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    onboardScrimEl.classList.add("hw-mg-onboard-scrim");
+    onboardScrimEl.setAttribute("aria-hidden", "true");
+    const maskId = "hw-mg-onboard-spotlight-" + Math.random().toString(36).slice(2, 9);
+    onboardScrimEl.innerHTML =
+      "<defs><mask id=\"" +
+      maskId +
+      "\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"white\"/>" +
+      "<rect class=\"hw-mg-onboard-scrim__hole\" rx=\"14\" ry=\"14\" fill=\"black\"/></mask></defs>" +
+      "<rect class=\"hw-mg-onboard-scrim__fill\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" " +
+      "fill=\"rgba(0,0,0,0.88)\" mask=\"url(#" +
+      maskId +
+      ")\"/>";
+    onboardScrimEl.addEventListener("click", () => dismissOnboarding());
+    document.body.appendChild(onboardScrimEl);
 
     onboardEl = document.createElement("div");
     onboardEl.className = "hw-mg-onboard";
@@ -1192,9 +1309,14 @@
     });
 
     shellEl.appendChild(onboardEl);
+    hostEl?.classList.add("hw-mg-onboarding");
+    document.body.classList.add("hw-mg-onboarding-active");
+    bindOnboardScrimResize();
     requestAnimationFrame(() => {
       placeOnboard();
+      onboardScrimEl?.classList.add("is-visible");
       onboardEl?.classList.add("is-visible");
+      requestAnimationFrame(updateOnboardScrimSpotlight);
     });
   }
 
