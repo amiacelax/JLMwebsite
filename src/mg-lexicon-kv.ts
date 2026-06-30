@@ -469,6 +469,278 @@ export async function addMgLexiconCard(
   return { card, pending: cards.filter((c) => c.status === "pending").length };
 }
 
+/** Mirrors built-in entries in public/js/hw-mg-lexicon.js — skip re-queuing these. */
+const BASELINE_CUSTOM_SURFACES = new Set([
+  "仕事",
+  "やめたい",
+  "たい",
+  "けど",
+  "中々",
+  "だった",
+  "でした",
+  "なかった",
+  "じゃなかった",
+  "ではなかった",
+]);
+
+const BASELINE_LEMMA_SURFACES = new Set(["行き", "やめ", "やめたい"]);
+
+const BASELINE_SKIP_SURFACES = new Set([
+  "を",
+  "ん",
+  "だ",
+  "の",
+  "は",
+  "が",
+  "に",
+  "で",
+  "と",
+  "て",
+  "も",
+  "か",
+  "よ",
+  "ね",
+  "な",
+]);
+
+const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
+const JA_RUN = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]+/g;
+
+function hasJapanese(str: string): boolean {
+  return JA_CHAR.test(str);
+}
+
+/** UTF-8 bytes mis-read as Latin-1 (common in some save paths). */
+function repairMojibakeUtf8(str: string): string {
+  const value = String(str || "");
+  if (!value || hasJapanese(value)) return value;
+  if (!/[\u0080-\u00ff]/.test(value)) return value;
+  try {
+    const bytes = Uint8Array.from([...value].map((ch) => ch.charCodeAt(0) & 0xff));
+    const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    if (hasJapanese(repaired)) return repaired;
+  } catch {
+    /* keep original */
+  }
+  return value;
+}
+
+function normalizeJapaneseInput(str: unknown): string {
+  return repairMojibakeUtf8(String(str || "").trim());
+}
+
+function isBaselineCovered(surface: string): boolean {
+  return (
+    BASELINE_CUSTOM_SURFACES.has(surface) ||
+    BASELINE_LEMMA_SURFACES.has(surface) ||
+    BASELINE_SKIP_SURFACES.has(surface)
+  );
+}
+
+function grammarItemSentence(item: Record<string, unknown>): string {
+  let out = "";
+  const parts = Array.isArray(item.parts) ? item.parts : [];
+  for (const raw of parts) {
+    if (!raw || typeof raw !== "object") continue;
+    const part = raw as Record<string, unknown>;
+    if (part.type === "text") {
+      const ruby = Array.isArray(part.ruby) ? part.ruby : [];
+      if (ruby.length) {
+        out += ruby
+          .map((r) => {
+            if (!r || typeof r !== "object") return "";
+            const seg = r as Record<string, unknown>;
+            return String(seg.text || seg.base || "");
+          })
+          .join("");
+      } else {
+        out += String(part.value || "");
+      }
+    } else if (part.type === "blank") {
+      const hint = part.hint && typeof part.hint === "object" ? (part.hint as Record<string, unknown>) : null;
+      out += String(part.answer || hint?.dictionary || "");
+    }
+  }
+  return out.trim();
+}
+
+function pushJapaneseText(list: string[], str: unknown): void {
+  const value = normalizeJapaneseInput(str);
+  if (!value || !hasJapanese(value)) return;
+  list.push(value);
+}
+
+function starOrderTexts(item: Record<string, unknown>): string[] {
+  const texts: string[] = [];
+  const tokens = Array.isArray(item.tokens) ? item.tokens : [];
+  if (tokens.length) {
+    const joined = tokens
+      .map((t) => {
+        if (!t || typeof t !== "object") return "";
+        return String((t as Record<string, unknown>).text || "");
+      })
+      .join("");
+    pushJapaneseText(texts, joined);
+    for (const raw of tokens) {
+      if (!raw || typeof raw !== "object") continue;
+      pushJapaneseText(texts, String((raw as Record<string, unknown>).text || ""));
+    }
+    return texts;
+  }
+  pushJapaneseText(texts, item.prefix);
+  pushJapaneseText(texts, item.suffix);
+  const pieces = Array.isArray(item.pieces) ? item.pieces : [];
+  for (const piece of pieces) pushJapaneseText(texts, piece);
+  const legacy =
+    String(item.prefix || "") + pieces.map((p) => String(p || "")).join("") + String(item.suffix || "");
+  pushJapaneseText(texts, legacy);
+  return texts;
+}
+
+export function extractJapaneseTextsFromAssignment(assignment: Record<string, unknown>): string[] {
+  const texts: string[] = [];
+  const sections = Array.isArray(assignment.sections) ? assignment.sections : [];
+  for (const rawSection of sections) {
+    if (!rawSection || typeof rawSection !== "object") continue;
+    const section = rawSection as Record<string, unknown>;
+    const mode = String(section.mode || "");
+    pushJapaneseText(texts, section.title);
+    pushJapaneseText(texts, section.instructions);
+
+    const items = Array.isArray(section.items) ? section.items : [];
+    for (const rawItem of items) {
+      if (!rawItem || typeof rawItem !== "object") continue;
+      const item = rawItem as Record<string, unknown>;
+
+      if (mode === "grammar-blank") {
+        pushJapaneseText(texts, grammarItemSentence(item));
+        continue;
+      }
+      if (mode === "translation") {
+        pushJapaneseText(texts, item.japanese);
+        continue;
+      }
+      if (mode === "star-order") {
+        starOrderTexts(item).forEach((t) => texts.push(t));
+        continue;
+      }
+      if (mode === "context-blank") {
+        pushJapaneseText(texts, item.topic);
+        const parts = Array.isArray(item.parts) ? item.parts : [];
+        for (const rawPart of parts) {
+          if (!rawPart || typeof rawPart !== "object") continue;
+          const part = rawPart as Record<string, unknown>;
+          if (part.type === "text") pushJapaneseText(texts, part.value);
+        }
+        continue;
+      }
+      if (mode === "audio-listening") {
+        const parts = Array.isArray(item.parts) ? item.parts : [];
+        for (const rawPart of parts) {
+          if (!rawPart || typeof rawPart !== "object") continue;
+          const part = rawPart as Record<string, unknown>;
+          if (part.type === "blank") pushJapaneseText(texts, part.answer);
+        }
+        pushJapaneseText(texts, item.japanese);
+        continue;
+      }
+      if (mode === "video-response") {
+        pushJapaneseText(texts, item.prompt);
+        continue;
+      }
+      if (mode === "audio-prompt") {
+        pushJapaneseText(texts, item.prompt);
+      }
+    }
+  }
+  return texts;
+}
+
+function isSuggestableSurface(surface: string): boolean {
+  if (!surface || !hasJapanese(surface)) return false;
+  if (BASELINE_SKIP_SURFACES.has(surface)) return false;
+  if (surface.length === 1 && /[\u3040-\u309f\u30a0-\u30ff]/.test(surface)) return false;
+  return true;
+}
+
+function collectSurfacesFromAssignment(assignment: Record<string, unknown>): Map<string, string> {
+  const examples = new Map<string, string>();
+  const sections = Array.isArray(assignment.sections) ? assignment.sections : [];
+
+  for (const rawSection of sections) {
+    if (!rawSection || typeof rawSection !== "object") continue;
+    const section = rawSection as Record<string, unknown>;
+    if (String(section.mode || "") !== "star-order") continue;
+    const items = Array.isArray(section.items) ? section.items : [];
+    for (const rawItem of items) {
+      if (!rawItem || typeof rawItem !== "object") continue;
+      const item = rawItem as Record<string, unknown>;
+      const sentence = starOrderTexts(item)[0] || "";
+      const tokens = Array.isArray(item.tokens) ? item.tokens : [];
+      for (const rawToken of tokens) {
+        if (!rawToken || typeof rawToken !== "object") continue;
+        const surface = String((rawToken as Record<string, unknown>).text || "").trim();
+        if (!isSuggestableSurface(surface)) continue;
+        if (!examples.has(surface)) examples.set(surface, sentence || surface);
+      }
+    }
+  }
+
+  for (const text of extractJapaneseTextsFromAssignment(assignment)) {
+    const runs = text.match(JA_RUN) || [];
+    for (const run of runs) {
+      const surface = run.trim();
+      if (!isSuggestableSurface(surface)) continue;
+      if (!examples.has(surface)) examples.set(surface, text);
+    }
+  }
+
+  return examples;
+}
+
+function buildSuggestItemsFromAssignment(
+  assignment: Record<string, unknown>
+): MgLexiconSuggestItem[] {
+  const examples = collectSurfacesFromAssignment(assignment);
+  const items: MgLexiconSuggestItem[] = [];
+  for (const [surface, example] of examples) {
+    if (isBaselineCovered(surface)) continue;
+    items.push({
+      fingerprint: "custom:" + surface,
+      surface,
+      kind: "custom",
+      title: "Define: " + surface,
+      example,
+    });
+    if (items.length >= 20) break;
+  }
+  return items;
+}
+
+export async function suggestMgLexiconFromAssignment(
+  assignment: Record<string, unknown>,
+  worksheetId: string,
+  worksheetTitle: string,
+  env: KvEnv,
+  teacherUsername?: string
+): Promise<{ added: number; skipped: number; pending: number; texts: number; candidates: number }> {
+  const texts = extractJapaneseTextsFromAssignment(assignment);
+  const items = buildSuggestItemsFromAssignment(assignment);
+  if (!items.length) {
+    return { added: 0, skipped: 0, pending: 0, texts: texts.length, candidates: 0 };
+  }
+  const result = await suggestMgLexiconBatch(
+    {
+      teacherUsername: teacherUsername || TEACHER_DEFAULT,
+      worksheetId,
+      worksheetTitle,
+      items,
+    },
+    env
+  );
+  return { ...result, texts: texts.length, candidates: items.length };
+}
+
 function overlayCoversItem(
   item: MgLexiconSuggestItem,
   overlay: MgLexiconGlobalOverlay
@@ -511,6 +783,7 @@ function overlayCoversItem(
 
   if (overlay.forceUnits.includes(surface)) return true;
   if (overlay.custom[surface]) return true;
+  if (item.kind === "custom" && isBaselineCovered(surface)) return true;
 
   return false;
 }

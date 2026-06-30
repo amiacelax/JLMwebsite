@@ -102,6 +102,7 @@ import {
   submitMgLexiconCard,
   addMgLexiconCard,
   suggestMgLexiconBatch,
+  suggestMgLexiconFromAssignment,
   type MgLexiconSubmitPayload,
   type MgLexiconAddCardPayload,
   type MgLexiconSuggestBatchPayload,
@@ -1843,6 +1844,29 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       .filter(Boolean);
     const result = await publishToStudentHub(data, env, { staticStudents });
     const origin = new URL(request.url).origin;
+
+    let lexiconAdded = 0;
+    let lexiconPending = 0;
+    let lexiconTexts = 0;
+    let lexiconCandidates = 0;
+    if (data.assignment && typeof data.assignment === "object") {
+      try {
+        const lexResult = await suggestMgLexiconFromAssignment(
+          data.assignment as Record<string, unknown>,
+          result.id,
+          String(data.assignment.title || data.catalogEntry?.title || result.id),
+          env,
+          data.teacherUsername
+        );
+        lexiconAdded = lexResult.added;
+        lexiconPending = lexResult.pending;
+        lexiconTexts = lexResult.texts;
+        lexiconCandidates = lexResult.candidates;
+      } catch (err) {
+        console.error("lexicon suggest from publish failed:", err);
+      }
+    }
+
     return jsonResponse({
       success: true,
       message: result.updated
@@ -1851,6 +1875,10 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       id: result.id,
       studentUrl: origin + result.studentUrl,
       updated: result.updated,
+      lexiconAdded,
+      lexiconPending,
+      lexiconTexts,
+      lexiconCandidates,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";

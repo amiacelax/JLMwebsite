@@ -10,10 +10,60 @@
     return JA_CHAR.test(String(str || ""));
   }
 
+  function repairMojibakeUtf8(str) {
+    const value = String(str || "");
+    if (!value || hasJapanese(value)) return value;
+    if (!/[\u0080-\u00ff]/.test(value)) return value;
+    try {
+      const bytes = Uint8Array.from([...value].map((ch) => ch.charCodeAt(0) & 0xff));
+      const repaired = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      if (hasJapanese(repaired)) return repaired;
+    } catch {
+      /* keep original */
+    }
+    return value;
+  }
+
+  function normalizeJapaneseInput(str) {
+    return repairMojibakeUtf8(String(str || "").trim());
+  }
+
   function pushText(list, str) {
-    const value = String(str || "").trim();
+    const value = normalizeJapaneseInput(str);
     if (!value || !hasJapanese(value)) return;
     list.push(value);
+  }
+
+  function grammarItemSentence(item) {
+    let out = "";
+    (item.parts || []).forEach((part) => {
+      if (part.type === "text") {
+        if (part.ruby?.length) {
+          out += part.ruby.map((r) => r.text || r.base || "").join("");
+        } else {
+          out += part.value || "";
+        }
+      } else if (part.type === "blank") {
+        out += part.answer || part.hint?.dictionary || "";
+      }
+    });
+    return out.trim();
+  }
+
+  function starOrderTexts(item) {
+    const texts = [];
+    if (Array.isArray(item.tokens) && item.tokens.length) {
+      pushText(texts, item.tokens.map((t) => t.text).join(""));
+      item.tokens.forEach((t) => pushText(texts, t.text));
+      return texts;
+    }
+    pushText(texts, item.prefix);
+    pushText(texts, item.suffix);
+    (item.pieces || []).forEach((piece) => pushText(texts, piece));
+    const joined =
+      String(item.prefix || "") + (item.pieces || []).join("") + String(item.suffix || "");
+    pushText(texts, joined);
+    return texts;
   }
 
   function extractJapaneseTexts(assignment) {
@@ -24,17 +74,7 @@
 
       (section.items || []).forEach((item) => {
         if (section.mode === "grammar-blank") {
-          (item.parts || []).forEach((part) => {
-            if (part.type !== "text") return;
-            if (part.ruby?.length) {
-              pushText(
-                texts,
-                part.ruby.map((r) => r.text || r.base || "").join("")
-              );
-            } else {
-              pushText(texts, part.value);
-            }
-          });
+          pushText(texts, grammarItemSentence(item));
           return;
         }
 
@@ -44,9 +84,7 @@
         }
 
         if (section.mode === "star-order") {
-          pushText(texts, item.prefix);
-          pushText(texts, item.suffix);
-          (item.pieces || []).forEach((piece) => pushText(texts, piece));
+          starOrderTexts(item).forEach((t) => texts.push(t));
           return;
         }
 
@@ -55,6 +93,24 @@
           (item.parts || []).forEach((part) => {
             if (part.type === "text") pushText(texts, part.value);
           });
+          return;
+        }
+
+        if (section.mode === "audio-listening") {
+          (item.parts || []).forEach((part) => {
+            if (part.type === "blank") pushText(texts, part.answer);
+          });
+          pushText(texts, item.japanese);
+          return;
+        }
+
+        if (section.mode === "video-response") {
+          pushText(texts, item.prompt);
+          return;
+        }
+
+        if (section.mode === "audio-prompt") {
+          pushText(texts, item.prompt);
         }
       });
     });
@@ -115,6 +171,13 @@
     return groups;
   }
 
+  function isSuggestableUnit(unit) {
+    if (!unit || unit.skipped) return false;
+    const surface = String(unit.surface || "").trim();
+    if (!hasJapanese(surface)) return false;
+    return surface.length > 0;
+  }
+
   function tryAddItem(items, seen, item) {
     if (items.length >= MAX_ITEMS) return false;
     const fingerprint = String(item.fingerprint || "").trim();
@@ -137,6 +200,7 @@
       for (const sentence of splitSentences(text)) {
         const analysis = await lex.analyzeText(sentence);
         const units = analysis?.units || [];
+        const mergedSurfaces = new Set();
 
         for (const group of groupUnmergedSingles(units)) {
           const rawSurfaces = group.rawSurfaces || [];
@@ -144,28 +208,54 @@
 
           if (rawSurfaces.length === 2 && rawSurfaces[1] === "々") {
             if (surfaceCovered(lex, surface)) continue;
-            tryAddItem(items, seen, {
-              fingerprint: "force:" + surface,
-              surface,
-              kind: "force_unit",
-              title: "Keep whole: " + surface,
-              example: sentence,
-              draft: { forceUnit: surface },
-            });
+            if (
+              tryAddItem(items, seen, {
+                fingerprint: "force:" + surface,
+                surface,
+                kind: "force_unit",
+                title: "Keep whole: " + surface,
+                example: sentence,
+                draft: { forceUnit: surface },
+              })
+            ) {
+              rawSurfaces.forEach((s) => mergedSurfaces.add(s));
+            }
             continue;
           }
 
           if (rawSurfaces.length < 2 || group.ruleKind !== "single") continue;
           if (surfaceCovered(lex, surface, rawSurfaces)) continue;
 
+          if (
+            tryAddItem(items, seen, {
+              fingerprint: "merge:" + rawSurfaces.join("|"),
+              surface,
+              kind: "merge",
+              title: "Merge: " + rawSurfaces.join(" + "),
+              example: sentence,
+              draft: { mergeSurfaces: rawSurfaces.slice() },
+            })
+          ) {
+            rawSurfaces.forEach((s) => mergedSurfaces.add(s));
+          }
+        }
+
+        for (const unit of units) {
+          if (!isSuggestableUnit(unit)) continue;
+          const surface = unit.surface;
+          const rawSurfaces = unit.rawSurfaces || [surface];
+          if (mergedSurfaces.has(surface)) continue;
+          if (surfaceCovered(lex, surface, rawSurfaces)) continue;
+
           tryAddItem(items, seen, {
-            fingerprint: "merge:" + rawSurfaces.join("|"),
+            fingerprint: "custom:" + surface,
             surface,
-            kind: "merge",
-            title: "Merge: " + rawSurfaces.join(" + "),
+            kind: "custom",
+            title: "Define: " + surface,
             example: sentence,
-            draft: { mergeSurfaces: rawSurfaces.slice() },
+            draft: {},
           });
+          if (items.length >= MAX_ITEMS) return items;
         }
 
         if (items.length >= MAX_ITEMS) return items;
@@ -178,7 +268,9 @@
   async function queueFromPublish({ assignment, worksheetId, worksheetTitle, teacherUsername }) {
     const texts = extractJapaneseTexts(assignment);
     const items = await collectSuggestions(texts);
-    if (!items.length) return { added: 0, skipped: 0, pending: 0 };
+    if (!items.length) {
+      return { added: 0, skipped: 0, pending: 0, texts: texts.length, candidates: 0 };
+    }
 
     const res = await fetch("/api/mg-lexicon/suggest-batch", {
       method: "POST",
@@ -196,6 +288,8 @@
       added: data.added || 0,
       skipped: data.skipped || 0,
       pending: data.pending || 0,
+      texts: texts.length,
+      candidates: items.length,
     };
   }
 

@@ -1303,7 +1303,13 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Publish failed.");
 
-        if (global.HwMgLexiconSuggest?.queueFromPublish) {
+        if (data.lexiconAdded > 0) {
+          showToast(data.lexiconAdded + " lookup lexicon card(s) queued for review");
+        } else if ((data.lexiconCandidates || 0) > 0) {
+          showToast("Lexicon cards already in queue or covered — none added");
+        } else if ((data.lexiconTexts || 0) === 0) {
+          showToast("Lexicon: no Japanese text found on this worksheet");
+        } else if (global.HwMgLexiconSuggest?.queueFromPublish) {
           global.HwMgLexiconSuggest.queueFromPublish({
             assignment,
             worksheetId,
@@ -1315,7 +1321,9 @@
                 showToast(result.added + " lookup lexicon card(s) queued for review");
               }
             })
-            .catch(() => {});
+            .catch((err) => {
+              showToast((err && err.message) || "Lexicon suggest failed");
+            });
         }
 
         touchWorksheetMru(worksheetId);
