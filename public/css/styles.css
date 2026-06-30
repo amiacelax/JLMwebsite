@@ -9235,6 +9235,21 @@ textarea.hw-blank.hw-blank--translation {
   user-select: none;
 }
 
+.hw-builder__block--star-line .hw-builder__star-hint,
+.hw-builder__block--star-line .hw-builder__star-fixed-label {
+  color: #fff;
+}
+
+.hw-builder__block--star-line .btn--ghost {
+  color: color-mix(in srgb, #fff 92%, transparent);
+  border-color: color-mix(in srgb, #fff 35%, transparent);
+}
+
+.hw-builder__block--star-line .btn--ghost:hover {
+  color: #fff;
+  background: color-mix(in srgb, #fff 12%, transparent);
+}
+
 .hw-builder__star-token-remove {
   flex-shrink: 0;
 }
