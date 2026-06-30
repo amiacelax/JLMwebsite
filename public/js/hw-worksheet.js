@@ -1551,6 +1551,7 @@
     const form = document.createElement("form");
     form.id = "hw-worksheet-form";
     form.className = "hw-worksheet" + (authoring ? " hw-worksheet--authoring" : "");
+    if (options.preview) form.classList.add("hw-worksheet--hide-line-nums");
     form.lang = "ja";
     form.setAttribute("data-assignment-id", prepared.id || "");
     form.dataset.title = prepared.title || "";
