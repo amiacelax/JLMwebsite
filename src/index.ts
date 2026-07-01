@@ -3053,6 +3053,7 @@ async function handleMgLexiconSubmit(request: Request, env: Env): Promise<Respon
       message: "Rule saved — magnifying glass updated for everyone.",
       remaining: result.remaining,
       version: result.overlay.updatedAt,
+      overlay: result.overlay,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";

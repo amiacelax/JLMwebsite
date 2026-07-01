@@ -1,6 +1,7 @@
 /** Published homework in KV (teacher → student hub, no git deploy). */
 
 import { extractPlaylistId, fetchLatestVideoFromPlaylist } from "./youtube-playlist";
+import { repairAssignmentRecord } from "./homework-encoding";
 import {
   getUserAccount,
   updateUserAccountSettings,
@@ -638,7 +639,12 @@ export async function loadPublishedAssignment(
   const raw = await kv.get(assignmentKey(id));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const { assignment, repaired } = repairAssignmentRecord(parsed);
+    if (repaired) {
+      await kv.put(assignmentKey(id), JSON.stringify(assignment));
+    }
+    return assignment;
   } catch {
     return null;
   }

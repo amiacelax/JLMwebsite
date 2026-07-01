@@ -656,6 +656,9 @@
   }
 
   function finalizeAssignment(assignment) {
+    if (global.HwEncoding?.repairAssignment) {
+      assignment = global.HwEncoding.repairAssignment(assignment);
+    }
     if (!assignment?.sections?.length) return assignment;
     if (global.HwWorksheet?.enrichAssignmentMedia) {
       global.HwWorksheet.enrichAssignmentMedia(assignment);
@@ -992,7 +995,7 @@
     if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
-    if (global.HwHomeworkComments?.attachTo) {
+    if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
       global.HwHomeworkComments.attachTo(form, {
         username: session.username,
         assignmentId: submission.assignmentId,
@@ -1278,7 +1281,7 @@
         report
       );
 
-      if (global.HwHomeworkComments?.getCommentsForSubmit) {
+      if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.getCommentsForSubmit) {
         const commentRows = global.HwHomeworkComments.getCommentsForSubmit();
         if (commentRows.length) payload.comments = commentRows;
       }
@@ -1327,10 +1330,10 @@
           localStorage.setItem(submittedKey, new Date().toISOString());
         } catch (_) {}
         await clearDraftEverywhere();
-        if (global.HwHomeworkComments?.clearDraftStorage) {
+        if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.clearDraftStorage) {
           await global.HwHomeworkComments.clearDraftStorage();
         }
-        if (global.HwHomeworkComments?.freezeAfterSubmit) {
+        if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.freezeAfterSubmit) {
           global.HwHomeworkComments.freezeAfterSubmit();
         }
         invalidateStudentSubmissionsCache();
@@ -2772,7 +2775,7 @@
       }
       bindWorksheetSave(form, saveMeta);
       bindHubV4WorksheetChrome(form, saveMeta);
-      if (global.HwHomeworkComments?.attachTo) {
+      if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
         global.HwHomeworkComments.attachTo(form, {
           username: session.username,
           assignmentId: saveMeta.id || active.id,

@@ -177,21 +177,26 @@
     const gen = ++lookupPreviewGen;
     Object.keys(jishoCache).forEach((key) => delete jishoCache[key]);
 
-    for (const word of words) {
-      if (gen !== lookupPreviewGen || currentCard() !== card) return;
-
+    words.forEach((word) => {
       document
         .querySelectorAll('.hw-lookup-lexicon-jisho-val[data-surface="' + CSS.escape(word.surface) + '"]')
         .forEach((el) => {
           el.classList.add("is-loading");
           el.textContent = "…";
         });
+    });
 
-      const fetched = await fetchJishoForSurface(word.surface, card);
-      if (gen !== lookupPreviewGen || currentCard() !== card) return;
+    const results = await Promise.all(
+      words.map(async (word) => ({
+        word,
+        fetched: await fetchJishoForSurface(word.surface, card),
+      }))
+    );
 
+    if (gen !== lookupPreviewGen || currentCard() !== card) return;
+
+    for (const { word, fetched } of results) {
       jishoCache[word.surface] = fetched;
-
       document
         .querySelectorAll('.hw-lookup-lexicon-jisho-val[data-surface="' + CSS.escape(word.surface) + '"]')
         .forEach((el) => {
@@ -609,6 +614,8 @@
       setPanelVisible("loading");
       setStatus("Loading…");
     }
+    void global.HwMgLexicon?.ensureLoaded?.();
+    void global.HwFuriganaAuto?.ensureTokenizer?.();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
     try {
@@ -646,16 +653,35 @@
 
   async function buildExtraLemma(parts, card, sentence) {
     const extra = {};
-    for (const part of parts) {
-      if (part === card.surface) continue;
-      if (!hasKanji(part)) continue;
-      try {
-        const info = await global.HwMgLexicon?.inspectWordInText?.(sentence, part);
-        const query = info?.jishoQuery || info?.pieces?.[0]?.jishoQuery;
-        if (query) extra[part] = query;
-      } catch {
-        /* ignore */
-      }
+    const targets = parts.filter((part) => part !== card.surface && hasKanji(part));
+    if (!targets.length) return extra;
+
+    for (const part of targets) {
+      const known =
+        global.HwMgLexicon?.LEMMA_QUERY?.[part] ||
+        global.HwMgLexicon?.getPreview?.()?.lemmaQuery?.[part];
+      if (known) extra[part] = known;
+    }
+
+    const remaining = targets.filter((part) => !extra[part]);
+    if (!remaining.length) return extra;
+
+    let units = [];
+    try {
+      const analysis = await global.HwMgLexicon?.analyzeText?.(sentence);
+      units = analysis?.units || [];
+    } catch {
+      return extra;
+    }
+
+    for (const part of remaining) {
+      const unit =
+        units.find((u) => u.surface === part) ||
+        units.find((u) => part.includes(u.surface) || u.surface.includes(part));
+      if (!unit) continue;
+      const resolved = global.HwMgLexicon?.resolve?.(part, unit.token?.basic_form);
+      const query = resolved?.query;
+      if (query && query !== part) extra[part] = query;
     }
     return extra;
   }
@@ -683,7 +709,8 @@
         payload.extraLemmaQuery = await buildExtraLemma(splitParts, card, sentence);
       } else if (card.kind === "force_unit") {
         payload.forceUnit = splitParts.join("") || card.surface;
-      } else if (card.kind !== "skip") {
+      } else if (card.kind !== "skip" && splitParts.length >= 2) {
+        payload.splitSurfaces = splitParts;
         payload.extraLemmaQuery = await buildExtraLemma(splitParts, card, sentence);
       }
     } else if (!highlightBad) {
@@ -742,11 +769,12 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submit failed.");
 
-      await global.HwMgLexicon?.ensureLoaded?.();
       global.HwMgLexicon?.clearPreview?.();
-      const lexRes = await fetch("/api/mg-lexicon");
-      const lexData = lexRes.ok ? await lexRes.json() : null;
-      if (lexData?.overlay) global.HwMgLexicon.applyGlobalOverlay(lexData.overlay);
+      if (data.overlay && global.HwMgLexicon?.applyGlobalOverlay) {
+        global.HwMgLexicon.applyGlobalOverlay(data.overlay);
+      } else {
+        await global.HwMgLexicon?.ensureLoaded?.();
+      }
 
       options?.showToast?.("Saved.");
       pending.splice(currentIndex, 1);

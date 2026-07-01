@@ -113,7 +113,7 @@
 .hw-mg-lens__icon {
   width: 2.35rem;
   height: 2.7rem;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .hw-mg-lens__label {

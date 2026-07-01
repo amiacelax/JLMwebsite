@@ -1,13 +1,26 @@
 /**
- * Homework comment cloud — highlight text on the worksheet, attach a memo bubble.
+ * Homework comment cloud — highlight text on the worksheet, attach a note bubble.
  */
 (function (global) {
+  if (!global.HwFeatureFlags?.homeworkComments?.()) return;
+
+  (function ensureCommentStyles() {
+    if (document.querySelector("[data-hw-comments-css]")) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/css/hw-homework-comments.css?v=12";
+    link.setAttribute("data-hw-comments-css", "1");
+    document.head.appendChild(link);
+  })();
+
   const DRAFT_SAVE_MS = 700;
   const LAUNCHER_POS = { x: 92, y: 10 };
   const LAUNCHER_POS_KEY = "jlm-hc-launcher-pos";
+  const ONBOARD_KEY = "hw-hc-onboarding-v1";
+  const MG_ONBOARD_KEY = "hw-mg-onboarding-v1";
   const DRAG_THRESHOLD = 5;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-highlight";
+    "input, textarea, select, button, a, label, video, audio, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard";
 
   let hostEl = null;
   let shellEl = null;
@@ -23,6 +36,11 @@
   let docPointerBound = null;
   let keyDownBound = null;
   let dragState = null;
+  let suppressMiniClickUntil = 0;
+  let onboardEl = null;
+  let onboardScrimEl = null;
+  let onboardScrimResizeBound = null;
+  let onboardScheduleTimer = null;
 
   function uid() {
     return "hc-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
@@ -104,7 +122,10 @@
   function defaultMiniPos(comment) {
     const r = comment.anchorRect;
     if (!r) return { x: 50, y: 20 };
-    return { x: r.right, y: r.top };
+    return {
+      x: pctClamp(r.right + 0.4),
+      y: pctClamp(r.top - 0.35),
+    };
   }
 
   function defaultMemoPos(comment) {
@@ -137,13 +158,6 @@
       saveLocal();
       queueDraftSave();
     }
-  }
-
-  function ensureCloudPosOnMinimize(id) {
-    const comment = comments.find((c) => c.id === id);
-    if (!comment || typeof comment.x === "number") return;
-    const pos = defaultMemoPos(comment);
-    updateCloudPos(id, pos.x, pos.y, false);
   }
 
   function dedupeComments(list) {
@@ -319,7 +333,6 @@
     launcherEl?.classList.toggle("is-armed", armed);
     launcherEl?.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
-      activeCommentId = null;
       global.HwMagnifyingGlass?.setArmed?.(false);
     } else {
       window.getSelection()?.removeAllRanges();
@@ -332,36 +345,38 @@
   }
 
   function sanitizeCloudPos(comment) {
-    if (typeof comment.x !== "number" || typeof comment.y !== "number") return comment;
-    const x = comment.x;
-    const y = comment.y;
-    if (x < 8 || x > 92 || y < 4 || y > 96) {
-      const next = { ...comment };
+    const next = { ...comment };
+    if (next.anchorRect) {
       delete next.x;
       delete next.y;
-      return next;
     }
-    return comment;
+    return next;
   }
 
   function minimizeActive() {
     if (activeCommentId) {
-      const comment = comments.find((c) => c.id === activeCommentId);
+      const id = activeCommentId;
+      const comment = comments.find((c) => c.id === id);
       if (comment && !comment.text.trim()) {
-        removeComment(activeCommentId);
+        removeComment(id);
         return;
       }
-      ensureCloudPosOnMinimize(activeCommentId);
+      // Drop shared drag coords so minimized cloud re-anchors top-right above text.
+      comments = comments.map((c) =>
+        c.id === id ? { ...c, x: undefined, y: undefined } : c
+      );
     }
     activeCommentId = null;
     renderAll();
   }
 
   function expandComment(id) {
+    if (armed) setArmed(false);
     activeCommentId = id;
     renderAll();
     requestAnimationFrame(() => {
       fitExpandedMemo(id);
+      if (config?.readOnly) return;
       const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"] textarea');
       memo?.focus();
     });
@@ -387,6 +402,44 @@
     memo.style.left = newX + "%";
     memo.style.top = newY + "%";
     updateCloudPos(id, newX, newY);
+    resolveToolLayout(memo);
+  }
+
+  function resolveToolLayout(pinEl) {
+    if (!hostEl) return;
+    requestAnimationFrame(() => {
+      global.HwWorksheetToolLayout?.resolve?.(hostEl, { pin: pinEl || null });
+    });
+  }
+
+  function offsetLauncherBy(dx, dy) {
+    if (!hostEl || !launcherEl || launcherEl.hidden) return;
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return;
+    const x = (parseFloat(launcherEl.style.left) || LAUNCHER_POS.x) + (dx / hostRect.width) * 100;
+    const y = (parseFloat(launcherEl.style.top) || LAUNCHER_POS.y) + (dy / hostRect.height) * 100;
+    const nx = pctClamp(x);
+    const ny = pctClamp(y);
+    launcherEl.style.left = nx + "%";
+    launcherEl.style.top = ny + "%";
+    saveLauncherPos(nx, ny);
+  }
+
+  function offsetActiveMemoBy(dx, dy) {
+    if (!activeCommentId || !hostEl) return;
+    const comment = comments.find((c) => c.id === activeCommentId);
+    if (!comment) return;
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return;
+    const pos = getCloudPos(comment, "memo");
+    const nx = pctClamp(pos.x + (dx / hostRect.width) * 100);
+    const ny = pctClamp(pos.y + (dy / hostRect.height) * 100);
+    const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + activeCommentId + '"]');
+    if (memo) {
+      memo.style.left = nx + "%";
+      memo.style.top = ny + "%";
+    }
+    updateCloudPos(activeCommentId, nx, ny, false);
   }
 
   function updateCommentText(id, text) {
@@ -394,7 +447,6 @@
     comments = comments.map((c) =>
       c.id === id ? { ...c, text, updatedAt: now } : c
     );
-    updateLauncherBadge();
     queueDraftSave();
   }
 
@@ -456,6 +508,11 @@
 
   function onKeyDown(ev) {
     if (ev.key !== "Escape") return;
+    if (onboardEl) {
+      dismissOnboarding();
+      ev.preventDefault();
+      return;
+    }
     if (armed) {
       setArmed(false);
       ev.preventDefault();
@@ -474,16 +531,16 @@
 
   function onDocPointerDown(ev) {
     if (dragState?.moved) return;
-    if (ev.target.closest(".hw-hc-highlight")) return;
     if (ev.target.closest(".hw-hc-memo")) return;
     if (ev.target.closest(".hw-hc-mini")) return;
+    if (ev.target.closest(".hw-hc-launcher")) return;
     if (!activeCommentId) return;
     minimizeActive();
   }
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
     if (config?.readOnly || ev.button !== 0) return;
-    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest("button")) return;
+    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__actions button")) return;
 
     ev.stopPropagation();
 
@@ -537,7 +594,12 @@
       const x = parseFloat(state.el.style.left) || 0;
       const y = parseFloat(state.el.style.top) || 0;
       updateCloudPos(state.commentId, x, y);
+      if (state.mode === "mini") suppressMiniClickUntil = Date.now() + 300;
       renderAll();
+      if (state.mode === "memo") {
+        const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + state.commentId + '"]');
+        resolveToolLayout(memo);
+      }
     } else if (state.expandOnUp) {
       expandComment(state.commentId);
     }
@@ -554,6 +616,216 @@
     handleEl.addEventListener("pointermove", onCloudDragMove);
     handleEl.addEventListener("pointerup", onCloudDragEnd);
     handleEl.addEventListener("pointercancel", onCloudDragEnd);
+  }
+
+  function spotlightRect(el, pad) {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return null;
+    return {
+      x: r.left - pad,
+      y: r.top - pad,
+      w: r.width + pad * 2,
+      h: r.height + pad * 2,
+    };
+  }
+
+  function mergeSpotlightRects(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const x1 = Math.min(a.x, b.x);
+    const y1 = Math.min(a.y, b.y);
+    const x2 = Math.max(a.x + a.w, b.x + b.w);
+    const y2 = Math.max(a.y + a.h, b.y + b.h);
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
+  function syncOnboardScrimViewport() {
+    if (!onboardScrimEl) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    onboardScrimEl.setAttribute("viewBox", "0 0 " + w + " " + h);
+    onboardScrimEl.setAttribute("preserveAspectRatio", "none");
+    const backdrop = onboardScrimEl.querySelector("mask > rect:first-child");
+    const fill = onboardScrimEl.querySelector(".hw-hc-onboard-scrim__fill");
+    if (backdrop) {
+      backdrop.setAttribute("width", String(w));
+      backdrop.setAttribute("height", String(h));
+    }
+    if (fill) {
+      fill.setAttribute("width", String(w));
+      fill.setAttribute("height", String(h));
+    }
+  }
+
+  function updateOnboardScrimSpotlight() {
+    if (!onboardScrimEl || !launcherEl || !onboardEl) return;
+    syncOnboardScrimViewport();
+    const hole = onboardScrimEl.querySelector(".hw-hc-onboard-scrim__hole");
+    if (!hole) return;
+    const pad = 16;
+    const spot = mergeSpotlightRects(
+      spotlightRect(launcherEl, pad),
+      spotlightRect(onboardEl, pad)
+    );
+    if (!spot) return;
+    const x = Math.max(0, spot.x);
+    const y = Math.max(0, spot.y);
+    const w = Math.min(window.innerWidth - x, spot.w);
+    const h = Math.min(window.innerHeight - y, spot.h);
+    hole.setAttribute("x", String(x));
+    hole.setAttribute("y", String(y));
+    hole.setAttribute("width", String(Math.max(0, w)));
+    hole.setAttribute("height", String(Math.max(0, h)));
+  }
+
+  function bindOnboardScrimResize() {
+    unbindOnboardScrimResize();
+    onboardScrimResizeBound = () => {
+      placeOnboard();
+      updateOnboardScrimSpotlight();
+    };
+    window.addEventListener("resize", onboardScrimResizeBound);
+  }
+
+  function unbindOnboardScrimResize() {
+    if (!onboardScrimResizeBound) return;
+    window.removeEventListener("resize", onboardScrimResizeBound);
+    onboardScrimResizeBound = null;
+  }
+
+  function dismissOnboarding(options) {
+    if (onboardEl) {
+      onboardEl.remove();
+      onboardEl = null;
+    }
+    if (onboardScrimEl) {
+      onboardScrimEl.remove();
+      onboardScrimEl = null;
+    }
+    unbindOnboardScrimResize();
+    document.body.classList.remove("hw-hc-onboarding-active");
+    hostEl?.classList.remove("hw-hc-onboarding");
+    if (options?.persist === false) return;
+    try {
+      localStorage.setItem(ONBOARD_KEY, "1");
+    } catch (_) {}
+  }
+
+  function placeOnboard() {
+    if (!onboardEl || !launcherEl || !hostEl) return;
+    const cardW = Math.min(268, hostEl.clientWidth - 16);
+    onboardEl.style.width = cardW + "px";
+
+    const hostRect = hostEl.getBoundingClientRect();
+    const launcherRect = launcherEl.getBoundingClientRect();
+    const gap = 10;
+    const cardH = onboardEl.offsetHeight || 150;
+    const maxLeft = hostEl.clientWidth - cardW - 8;
+    const maxTop = hostEl.clientHeight - cardH - 8;
+
+    let left = launcherRect.right - hostRect.left + gap;
+    let top = launcherRect.top - hostRect.top + (launcherRect.height - cardH) / 2;
+
+    if (left + cardW > hostEl.clientWidth - 8) {
+      left = launcherRect.left - hostRect.left - cardW - gap;
+    }
+    left = Math.max(8, Math.min(left, maxLeft));
+    top = Math.max(8, Math.min(top, maxTop));
+
+    onboardEl.style.left = left + "px";
+    onboardEl.style.top = top + "px";
+    updateOnboardScrimSpotlight();
+  }
+
+  function mgOnboardingBlocking() {
+    if (document.body.classList.contains("hw-mg-onboarding-active")) return true;
+    if (!global.HwFeatureFlags?.magnifyingGlass?.()) return false;
+    try {
+      return localStorage.getItem(MG_ONBOARD_KEY) !== "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function initOnboarding() {
+    if (config?.readOnly || config?.skipOnboarding) return;
+    if (!shellEl || !launcherEl) return;
+    try {
+      if (localStorage.getItem(ONBOARD_KEY) === "1") return;
+    } catch (_) {
+      return;
+    }
+    if (onboardEl) return;
+
+    onboardScrimEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    onboardScrimEl.classList.add("hw-hc-onboard-scrim");
+    onboardScrimEl.setAttribute("aria-hidden", "true");
+    const maskId = "hw-hc-onboard-spotlight-" + Math.random().toString(36).slice(2, 9);
+    onboardScrimEl.innerHTML =
+      "<defs><mask id=\"" +
+      maskId +
+      "\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"white\"/>" +
+      "<rect class=\"hw-hc-onboard-scrim__hole\" rx=\"14\" ry=\"14\" fill=\"black\"/></mask></defs>" +
+      "<rect class=\"hw-hc-onboard-scrim__fill\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" " +
+      "fill=\"rgba(0,0,0,0.88)\" mask=\"url(#" +
+      maskId +
+      ")\"/>";
+    onboardScrimEl.addEventListener("click", () => dismissOnboarding());
+    document.body.appendChild(onboardScrimEl);
+
+    onboardEl = document.createElement("div");
+    onboardEl.className = "hw-hc-onboard";
+    onboardEl.setAttribute("role", "dialog");
+    onboardEl.setAttribute("aria-labelledby", "hw-hc-onboard-title");
+    onboardEl.innerHTML =
+      '<div class="hw-hc-onboard__card">' +
+      '<p class="hw-hc-onboard__eyebrow">New · Note cloud</p>' +
+      '<h2 class="hw-hc-onboard__title" id="hw-hc-onboard-title">Leave a note for JD</h2>' +
+      '<p class="hw-hc-onboard__text">Tap the cloud, highlight text on the worksheet, then write your note. Tap on the mini cloud to review your note.</p>' +
+      '<button type="button" class="btn btn--primary btn--sm hw-hc-onboard__btn">Got it</button>' +
+      "</div>";
+
+    onboardEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    onboardEl.addEventListener("click", (ev) => ev.stopPropagation());
+    onboardEl.querySelector(".hw-hc-onboard__btn")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dismissOnboarding();
+    });
+
+    shellEl.appendChild(onboardEl);
+    hostEl?.classList.add("hw-hc-onboarding");
+    document.body.classList.add("hw-hc-onboarding-active");
+    bindOnboardScrimResize();
+    requestAnimationFrame(() => {
+      placeOnboard();
+      onboardScrimEl?.classList.add("is-visible");
+      onboardEl?.classList.add("is-visible");
+      requestAnimationFrame(updateOnboardScrimSpotlight);
+    });
+  }
+
+  function scheduleOnboarding() {
+    if (config?.readOnly || config?.skipOnboarding) return;
+    clearTimeout(onboardScheduleTimer);
+    const tryStart = () => {
+      if (!shellEl || !launcherEl || !hostIsVisible(hostEl)) return;
+      if (mgOnboardingBlocking()) {
+        onboardScheduleTimer = setTimeout(tryStart, 400);
+        return;
+      }
+      initOnboarding();
+    };
+    onboardScheduleTimer = setTimeout(tryStart, 500);
+  }
+
+  function resetOnboarding() {
+    dismissOnboarding({ persist: false });
+    try {
+      localStorage.removeItem(ONBOARD_KEY);
+    } catch (_) {}
+    scheduleOnboarding();
   }
 
   let launcherDrag = null;
@@ -594,9 +866,9 @@
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
         saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
+        resolveToolLayout(launcherEl);
       } else {
         setArmed(!armed);
-        if (armed) minimizeActive();
       }
       launcherDrag = null;
       try {
@@ -638,28 +910,14 @@
     return (
       '<svg class="' +
       className +
-      '" viewBox="0 0 64 40" aria-hidden="true">' +
-      '<path d="M18 32h34a14 14 0 0 0 .4-28A18 18 0 0 0 14 8 12 12 0 0 0 18 32z" fill="currentColor"/>' +
-      "</svg>"
+      '" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true">' +
+      '<g fill="currentColor">' +
+      '<circle cx="22" cy="28" r="13"/>' +
+      '<circle cx="40" cy="21" r="16"/>' +
+      '<circle cx="58" cy="28" r="12"/>' +
+      '<rect x="12" y="26" width="56" height="15" rx="7.5"/>' +
+      "</g></svg>"
     );
-  }
-
-  function renderHighlight(comment) {
-    if (!comment.anchorRect) return null;
-    const el = document.createElement("div");
-    el.className = "hw-hc-highlight";
-    el.dataset.id = comment.id;
-    Object.assign(el.style, pctRectToStyle(comment.anchorRect));
-    if (!config?.readOnly) {
-      el.style.pointerEvents = "auto";
-      el.style.cursor = "pointer";
-      el.title = "Open note";
-      el.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        expandComment(comment.id);
-      });
-    }
-    return el;
   }
 
   function renderMini(comment) {
@@ -669,20 +927,18 @@
     btn.className = "hw-hc-mini";
     btn.dataset.id = comment.id;
     applyCloudPos(btn, comment, "mini");
-    btn.setAttribute(
-      "aria-label",
-      comment.text.trim()
-        ? "Edit note on “" + comment.anchor + "”"
-        : "Add note on “" + comment.anchor + "”"
-    );
+    const label = comment.text.trim()
+      ? "View note on “" + comment.anchor + "”"
+      : "Add note on “" + comment.anchor + "”";
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("aria-expanded", "false");
     btn.innerHTML = cloudIconSvg("hw-hc-mini__icon");
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (Date.now() < suppressMiniClickUntil) return;
+      expandComment(comment.id);
+    });
     if (!config?.readOnly) bindCloudDrag(btn, comment.id, "mini");
-    else {
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        expandComment(comment.id);
-      });
-    }
     return btn;
   }
 
@@ -693,6 +949,8 @@
     wrap.className = "hw-hc-memo hw-hc-memo--expanded";
     wrap.dataset.id = comment.id;
     applyCloudPos(wrap, comment, "memo");
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-label", "Note on “" + comment.anchor + "”");
 
     const quote = document.createElement("p");
     quote.className = "hw-hc-memo__quote";
@@ -706,7 +964,7 @@
     input.className = "hw-hc-memo__input";
     input.rows = 3;
     input.maxLength = 500;
-    input.placeholder = "Your note for JD…";
+    input.placeholder = "Write a note...JD will see it later!";
     input.value = comment.text || "";
     input.readOnly = !!config?.readOnly;
     input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
@@ -745,26 +1003,11 @@
     if (!layersEl) return;
     layersEl.replaceChildren();
     comments.forEach((comment) => {
-      const highlight = renderHighlight(comment);
       const mini = renderMini(comment);
       const memo = renderMemo(comment);
-      if (highlight) layersEl.appendChild(highlight);
       if (mini) layersEl.appendChild(mini);
       if (memo) layersEl.appendChild(memo);
     });
-    updateLauncherBadge();
-  }
-
-  function updateLauncherBadge() {
-    const badge = launcherEl?.querySelector(".hw-hc-launcher__badge");
-    if (!badge) return;
-    const n = comments.filter((c) => c.anchor && c.anchorRect).length;
-    if (n > 0) {
-      badge.hidden = false;
-      badge.textContent = String(n);
-    } else {
-      badge.hidden = true;
-    }
   }
 
   function buildShell() {
@@ -786,9 +1029,7 @@
     launcherEl.style.top = launcherPos.y + "%";
     launcherEl.setAttribute("aria-label", "Add a note on highlighted text");
     launcherEl.setAttribute("aria-pressed", "false");
-    launcherEl.innerHTML =
-      cloudIconSvg("hw-hc-launcher__icon") +
-      '<span class="hw-hc-launcher__badge" hidden></span>';
+    launcherEl.innerHTML = cloudIconSvg("hw-hc-launcher__icon");
 
     launcherEl.addEventListener("click", onLauncherClick);
     bindLauncherDrag();
@@ -805,13 +1046,16 @@
 
   function teardown() {
     clearTimeout(draftSaveTimer);
+    clearTimeout(onboardScheduleTimer);
+    onboardScheduleTimer = null;
     dragState = null;
     launcherDrag = null;
+    dismissOnboarding();
     unbindDocPointer();
     unbindKeyDown();
     if (hostEl) {
       hostEl.removeEventListener("mouseup", onHostMouseUp);
-      hostEl.classList.remove("hw-hc-host", "hw-hc-armed");
+      hostEl.classList.remove("hw-hc-host", "hw-hc-armed", "hw-hc-onboarding");
       hostEl.querySelector(":scope > .hw-hc-shell")?.remove();
     }
     hostEl = null;
@@ -831,6 +1075,7 @@
       username: options.username || "",
       assignmentId: options.assignmentId || formEl?.getAttribute("data-assignment-id") || "",
       readOnly: !!options.readOnly,
+      skipOnboarding: !!options.skipOnboarding,
     };
 
     if (options.initialComments?.length) {
@@ -851,6 +1096,7 @@
     }
 
     void hydrateDraftFromAccount();
+    scheduleOnboarding();
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
@@ -956,5 +1202,8 @@
     clearDraft,
     clearDraftStorage,
     freezeAfterSubmit,
+    resetOnboarding,
+    offsetLauncherBy,
+    offsetActiveMemoBy,
   };
 })(window);

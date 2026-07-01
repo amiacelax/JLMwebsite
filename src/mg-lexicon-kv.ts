@@ -364,6 +364,16 @@ function applySubmitToOverlay(
       throw new Error("INVALID_KIND");
   }
 
+  const splitSurfaces = (payload.splitSurfaces || [])
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+  if (splitSurfaces.length >= 2) {
+    removeMergeSequence(overlay, splitSurfaces);
+    if (!segmentSequenceExists(overlay, splitSurfaces)) {
+      overlay.segmentSurfaceSequences.push({ surfaces: splitSurfaces });
+    }
+  }
+
   if (payload.extraLemmaQuery && typeof payload.extraLemmaQuery === "object") {
     for (const [key, val] of Object.entries(payload.extraLemmaQuery)) {
       const lemmaSurface = String(key || "").trim();
@@ -420,20 +430,18 @@ export async function submitMgLexiconCard(
   const cardId = String(data.cardId || "").trim();
   if (!cardId) throw new Error("CARD_REQUIRED");
 
-  const cards = await readQueue(kv);
+  const [cards, overlay] = await Promise.all([readQueue(kv), readOverlay(kv)]);
   const index = cards.findIndex((c) => c.id === cardId && c.status === "pending");
   if (index < 0) throw new Error("CARD_NOT_FOUND");
 
-  const overlay = await readOverlay(kv);
   applySubmitToOverlay(overlay, data);
-  await writeOverlay(kv, overlay);
 
   cards[index] = {
     ...cards[index],
     status: "done",
     resolvedAt: new Date().toISOString(),
   };
-  await writeQueue(kv, cards);
+  await Promise.all([writeOverlay(kv, overlay), writeQueue(kv, cards)]);
 
   const remaining = cards.filter((c) => c.status === "pending").length;
   return { overlay, remaining };
@@ -505,6 +513,8 @@ const BASELINE_SKIP_SURFACES = new Set([
 
 const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
 const JA_RUN = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]+/g;
+/** Auto-queue word-sized chunks only — longer runs are usually whole prompts/sentences. */
+const MAX_AUTO_SURFACE_LEN = 10;
 
 function hasJapanese(str: string): boolean {
   return JA_CHAR.test(str);
@@ -656,10 +666,11 @@ export function extractJapaneseTextsFromAssignment(assignment: Record<string, un
   return texts;
 }
 
-function isSuggestableSurface(surface: string): boolean {
+function isSuggestableSurface(surface: string, fromToken = false): boolean {
   if (!surface || !hasJapanese(surface)) return false;
   if (BASELINE_SKIP_SURFACES.has(surface)) return false;
   if (surface.length === 1 && /[\u3040-\u309f\u30a0-\u30ff]/.test(surface)) return false;
+  if (!fromToken && surface.length > MAX_AUTO_SURFACE_LEN) return false;
   return true;
 }
 
@@ -680,7 +691,7 @@ function collectSurfacesFromAssignment(assignment: Record<string, unknown>): Map
       for (const rawToken of tokens) {
         if (!rawToken || typeof rawToken !== "object") continue;
         const surface = String((rawToken as Record<string, unknown>).text || "").trim();
-        if (!isSuggestableSurface(surface)) continue;
+        if (!isSuggestableSurface(surface, true)) continue;
         if (!examples.has(surface)) examples.set(surface, sentence || surface);
       }
     }

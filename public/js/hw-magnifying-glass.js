@@ -256,6 +256,25 @@
     saveLensPosition();
   }
 
+  function offsetLensBy(dx, dy) {
+    if (!widgetEl || !hostEl) return;
+    setFreeLensPosition(lensPosition.x + dx, lensPosition.y + dy);
+  }
+
+  function offsetPopupBy(dx, dy) {
+    if (!popupEl || !hostEl) return;
+    const left = parseFloat(popupEl.style.left) || 0;
+    const top = parseFloat(popupEl.style.top) || 0;
+    setPopupPosition(left + dx, top + dy);
+  }
+
+  function resolveToolLayout(pinEl) {
+    if (!hostEl) return;
+    requestAnimationFrame(() => {
+      global.HwWorksheetToolLayout?.resolve?.(hostEl, { pin: pinEl || null });
+    });
+  }
+
   function showToast(text) {
     if (!toastEl) return;
     toastEl.textContent = text;
@@ -271,7 +290,6 @@
     lensEl?.classList.toggle("is-armed", armed);
     if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
-      closePopup();
       global.HwHomeworkComments?.disarm?.();
       if (!opts?.silent) {
         const msg =
@@ -848,10 +866,12 @@
     if (isLexiconPlaygroundHost()) {
       if (top + rect.height > boxH - pad) top = localY - rect.height - 12;
       setPopupPosition(left, top);
+      resolveToolLayout(popupEl);
       return;
     }
     if (top + rect.height > boxH - pad) top = localY - rect.height - 10;
     setPopupPosition(left, top);
+    resolveToolLayout(popupEl);
   }
 
   function onPopupDragStart(e) {
@@ -887,6 +907,7 @@
     if (!popupDragState || popupDragState.pointerId !== e.pointerId) return;
     popupEl?.classList.remove("is-dragging");
     popupDragState = null;
+    resolveToolLayout(popupEl);
     try {
       popupEl?.releasePointerCapture(e.pointerId);
     } catch {
@@ -978,10 +999,10 @@
   }
 
   async function handleLookupClick(e) {
-    if (!armed || !hostEl?.contains(e.target)) return;
+    if (!hostEl?.contains(e.target)) return;
+    if (isMgToolInteraction(e)) return;
+    if (!armed) return;
     if (
-      e.target.closest(".hw-mg-popup") ||
-      e.target.closest(".hw-mg-widget") ||
       e.target.closest(".hw-mg-onboard") ||
       e.target.closest(".hw-hc-launcher") ||
       e.target.closest(".hw-hc-memo") ||
@@ -1095,6 +1116,7 @@
       const snapId = nearestSnap(local.x, local.y);
       if (snapId) placeLens(snapId);
       else setFreeLensPosition(local.x, local.y);
+      resolveToolLayout(lensEl || widgetEl);
     } else {
       setArmed(!armed);
     }
@@ -1131,14 +1153,43 @@
     if (armed) {
       setArmed(false);
       e.preventDefault();
-    } else if (popupEl && !e.target.closest(".hw-mg-popup")) {
+    } else if (popupEl && !shouldKeepPopupOpenForTarget(e.target)) {
       closePopup();
     }
   }
 
-  function onDocumentClick(e) {
-    if (!popupEl || armed) return;
-    if (!e.target.closest(".hw-mg-popup")) closePopup();
+  function pointerOnMgLens(clientX, clientY) {
+    if (!lensEl) return false;
+    const r = lensEl.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+    const pad = 8;
+    return (
+      clientX >= r.left - pad &&
+      clientX <= r.right + pad &&
+      clientY >= r.top - pad &&
+      clientY <= r.bottom + pad
+    );
+  }
+
+  function isMgToolInteraction(e) {
+    if (shouldKeepPopupOpenForTarget(e.target)) return true;
+    return pointerOnMgLens(e.clientX, e.clientY);
+  }
+
+  function shouldKeepPopupOpenForTarget(target) {
+    return Boolean(
+      target?.closest?.(".hw-mg-popup") ||
+      target?.closest?.(".hw-mg-widget") ||
+      target?.closest?.(".hw-mg-lens") ||
+      target?.closest?.(".hw-hc-launcher, .hw-hc-memo, .hw-hc-mini")
+    );
+  }
+
+  function onDocumentPointerDown(e) {
+    if (!popupEl) return;
+    if (isMgToolInteraction(e)) return;
+    if (armed) return;
+    closePopup();
   }
 
   function spotlightRect(el, pad) {
@@ -1353,7 +1404,7 @@
     document.addEventListener("click", handleLookupClick, true);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContextMenu);
-    document.addEventListener("click", onDocumentClick);
+    document.addEventListener("pointerdown", onDocumentPointerDown, true);
 
     built = true;
   }
@@ -1489,5 +1540,7 @@
     attachTo,
     releaseOverride,
     fetchLookup,
+    offsetLensBy,
+    offsetPopupBy,
   };
 })(window);

@@ -1,4 +1,4 @@
-/* Homework comment cloud — highlight + memo bubble on worksheet */
+/* Homework comment cloud — highlight + note bubble on worksheet */
 
 .hw-hub-v4-homework:has(.hw-hc-host),
 .hw-hub-worksheet-card:has(.hw-hc-host),
@@ -11,6 +11,11 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 .hw-hc-host {
   position: relative;
   z-index: 2;
+  --hw-hc-blue: var(--color-brand-blue, #67c4eb);
+  --hw-hc-blue-light: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 68%, #fff);
+  --hw-hc-blue-soft: var(--color-brand-blue-soft, rgba(103, 196, 235, 0.16));
+  --hw-hc-blue-glow: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 52%, transparent);
+  --hw-hc-ink: #1a2744;
 }
 
 .hw-hc-shell {
@@ -40,14 +45,14 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   user-select: none !important;
 }
 
-/* Launcher cloud (top-right of worksheet) */
+/* Launcher cloud (top-right of worksheet) — sized to match magnifying glass */
 .hw-hc-launcher {
   position: absolute;
   z-index: 63;
   transform: translate(-50%, -50%);
   pointer-events: auto;
-  width: 3rem;
-  height: 3rem;
+  width: 4.5rem;
+  height: 4.5rem;
   margin: 0;
   padding: 0;
   border: none;
@@ -55,73 +60,76 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-green, #2d6a4f);
-  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 94%, var(--color-green, #2d6a4f));
-  border: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 30%, transparent);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--hw-hc-blue);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue));
+  border: 2px solid color-mix(in srgb, var(--hw-hc-blue) 35%, transparent);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   cursor: grab;
   touch-action: none;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: hw-hc-float 3.6s ease-in-out infinite;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.hw-hc-launcher.is-dragging,
+.hw-hc-launcher.is-armed {
+  animation: none;
+}
+
+.hw-hc-launcher::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--hw-hc-blue) 45%, transparent);
+  opacity: 0;
+  animation: hw-hc-pulse 2.8s ease-out infinite;
+  pointer-events: none;
 }
 
 .hw-hc-launcher.is-dragging {
   cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  transition: none;
+}
+
+.hw-hc-launcher.is-dragging::before {
   animation: none;
+  opacity: 0;
 }
 
 .hw-hc-launcher:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
 }
 
 .hw-hc-launcher.is-armed {
-  color: #fff;
-  background: var(--color-green, #2d6a4f);
-  border-color: var(--color-green, #2d6a4f);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green, #2d6a4f) 25%, transparent);
+  color: var(--hw-hc-ink);
+  background: var(--hw-hc-blue);
+  border-color: var(--hw-hc-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hw-hc-blue) 28%, transparent),
+    0 6px 22px rgba(0, 0, 0, 0.2);
+}
+
+.hw-hc-launcher.is-armed::before {
+  animation: hw-hc-pulse-armed 1.5s ease-out infinite;
 }
 
 .hw-hc-launcher__icon {
-  width: 1.75rem;
-  height: auto;
+  width: 2.5rem;
+  height: 1.5rem;
   display: block;
-}
-
-.hw-hc-launcher__badge {
-  position: absolute;
-  top: -0.15rem;
-  right: -0.15rem;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1.15rem;
-  text-align: center;
-  color: #fff;
-  background: var(--color-green, #2d6a4f);
-}
-
-.hw-hc-launcher.is-armed .hw-hc-launcher__badge {
-  background: #fff;
-  color: var(--color-green, #2d6a4f);
-}
-
-/* Persistent highlight on anchored text */
-.hw-hc-highlight {
-  position: absolute;
+  flex-shrink: 0;
   pointer-events: none;
-  z-index: 39;
-  border-radius: 0.2rem;
-  background: color-mix(in srgb, #ffd966 55%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #e6b800 35%, transparent);
 }
 
-/* Minimized tiny cloud */
+/* Minimized tiny cloud — top-right above anchored text */
 .hw-hc-mini {
   position: absolute;
   z-index: 61;
-  transform: translate(-50%, -50%);
+  transform: translate(-100%, calc(-100% - 0.35rem));
   pointer-events: auto;
   width: 1.65rem;
   height: 1.65rem;
@@ -132,11 +140,11 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-green, #2d6a4f);
-  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
-  border: 1.5px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  cursor: grab;
+  color: var(--hw-hc-blue);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue));
+  border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue) 35%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  cursor: pointer;
   touch-action: none;
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
@@ -147,17 +155,19 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 
 .hw-hc-mini.is-dragging {
   cursor: grabbing;
-  transform: translate(-50%, -50%) scale(1.05);
+  transform: translate(-100%, calc(-100% - 0.35rem)) scale(1.05);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
 }
 
 .hw-hc-mini__icon {
-  width: 1rem;
-  height: auto;
+  width: 1.15rem;
+  height: 0.7rem;
   display: block;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
-/* Expanded cloud memo bubble */
+/* Expanded cloud note bubble */
 .hw-hc-memo {
   position: absolute;
   z-index: 62;
@@ -165,14 +175,14 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   pointer-events: auto;
   min-width: 11rem;
   max-width: min(17rem, calc(100vw - 2rem));
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.14));
+  filter: drop-shadow(0 3px 8px rgba(26, 39, 68, 0.1));
   cursor: grab;
   touch-action: none;
 }
 
 .hw-hc-memo.is-dragging {
   cursor: grabbing;
-  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 4px 10px rgba(26, 39, 68, 0.14));
 }
 
 .hw-hc-memo__quote {
@@ -180,7 +190,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   padding: 0.35rem 0.45rem;
   font-size: 0.72rem;
   line-height: 1.35;
-  color: var(--color-text-muted, #666);
+  color: color-mix(in srgb, var(--hw-hc-ink) 78%, transparent);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -188,7 +198,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   max-width: 100%;
   cursor: grab;
   border-radius: 0.35rem;
-  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 55%, transparent);
+  background: color-mix(in srgb, var(--hw-hc-blue) 28%, #fff);
 }
 
 .hw-hc-memo.is-dragging .hw-hc-memo__quote {
@@ -198,9 +208,9 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 .hw-hc-memo__body {
   position: relative;
   padding: 0.65rem 0.75rem 0.55rem;
-  color: var(--color-text, #1a1a1a);
-  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 96%, var(--color-green, #2d6a4f));
-  border: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
+  color: var(--hw-hc-ink);
+  background: var(--hw-hc-blue);
+  border: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
   border-radius: 1.35rem 1.35rem 1.35rem 0.45rem;
 }
 
@@ -212,9 +222,9 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   transform: translateX(-50%) rotate(45deg);
   width: 0.75rem;
   height: 0.75rem;
-  background: inherit;
-  border-right: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
-  border-bottom: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, transparent);
+  background: var(--hw-hc-blue);
+  border-right: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
+  border-bottom: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
 }
 
 .hw-hc-memo__input {
@@ -225,15 +235,20 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   padding: 0.35rem 0.4rem;
   border: none;
   border-radius: 0.45rem;
-  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 70%, transparent);
+  background: color-mix(in srgb, #fff 72%, transparent);
+  color: var(--hw-hc-ink);
   font: inherit;
   font-size: 0.84rem;
   line-height: 1.45;
   cursor: text;
 }
 
+.hw-hc-memo__input::placeholder {
+  color: color-mix(in srgb, var(--hw-hc-ink) 48%, transparent);
+}
+
 .hw-hc-memo__input:focus {
-  outline: 2px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--hw-hc-ink) 28%, transparent);
   outline-offset: 1px;
 }
 
@@ -246,6 +261,15 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   display: flex;
   justify-content: flex-end;
   margin-top: 0.35rem;
+}
+
+.hw-hc-memo__actions .btn--ghost {
+  color: color-mix(in srgb, var(--hw-hc-ink) 88%, transparent);
+}
+
+.hw-hc-memo__actions .btn--ghost:hover {
+  color: var(--hw-hc-ink);
+  background: color-mix(in srgb, #fff 55%, transparent);
 }
 
 /* Teacher submission checker — student notes */
@@ -270,7 +294,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 .hw-submission-comments__item {
   padding: 0.65rem 0.75rem;
   border-radius: 0.55rem;
-  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 90%, var(--color-green, #2d6a4f));
+  background: color-mix(in srgb, var(--color-bg, #f7f7f7) 82%, var(--hw-hc-blue-light));
 }
 
 .hw-submission-comments__anchor {
@@ -296,6 +320,143 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   font-size: 0.68rem;
   font-weight: 600;
   vertical-align: middle;
-  color: var(--color-green, #2d6a4f);
-  background: color-mix(in srgb, var(--color-green, #2d6a4f) 12%, transparent);
+  color: var(--hw-hc-blue);
+  background: var(--hw-hc-blue-soft);
+}
+
+@keyframes hw-hc-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateY(0);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-4px);
+  }
+}
+
+@keyframes hw-hc-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes hw-hc-pulse-armed {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .hw-hc-launcher {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .hw-hc-launcher__icon {
+    width: 2.75rem;
+    height: 1.65rem;
+  }
+}
+
+/* First-time onboarding — spotlight on cloud launcher */
+.hw-hc-onboard-scrim {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9990;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+
+.hw-hc-onboard-scrim__fill {
+  pointer-events: all;
+}
+
+.hw-hc-onboard-scrim.is-visible {
+  opacity: 1;
+}
+
+body.hw-hc-onboarding-active {
+  overflow: hidden;
+}
+
+body.hw-hc-onboarding-active .hw-hc-shell {
+  z-index: 9991;
+  overflow: visible;
+}
+
+body.hw-hc-onboarding-active .hw-hc-launcher {
+  z-index: 9992;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-bg-elevated, #fff) 55%, transparent),
+    0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+body.hw-hc-onboarding-active .hw-hc-onboard {
+  z-index: 9993;
+}
+
+.hw-hc-onboard {
+  position: absolute;
+  z-index: 64;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.hw-hc-onboard.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hw-hc-onboard__card {
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--radius-md, 0.65rem);
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 40%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    var(--shadow-md, 0 8px 28px rgba(0, 0, 0, 0.16)),
+    0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.hw-hc-onboard__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hw-hc-blue, #67c4eb);
+}
+
+.hw-hc-onboard__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hw-hc-onboard__text {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hc-onboard__btn {
+  width: 100%;
 }
