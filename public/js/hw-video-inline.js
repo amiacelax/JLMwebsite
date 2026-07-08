@@ -108,7 +108,7 @@
     for (const el of mounts) {
       const ctrl = controllers.get(el);
       const label = ctrl?.meta?.promptLabel?.trim() || "Answer";
-      if (getState(el) !== "saved") {
+      if (getState(el) !== "saved" || !el.dataset.mediaId?.trim()) {
         return { ok: false, message: "Record and save: " + label };
       }
     }
@@ -300,11 +300,16 @@
       }
     }
 
+    function clearSavedMedia() {
+      delete mount.dataset.mediaId;
+      delete mount.dataset.mediaKind;
+    }
+
     function hideAllPanels() {
-      idleEl?.setAttribute("hidden", "");
-      liveEl?.setAttribute("hidden", "");
-      previewEl?.setAttribute("hidden", "");
-      savedEl?.setAttribute("hidden", "");
+      if (idleEl) idleEl.hidden = true;
+      if (liveEl) liveEl.hidden = true;
+      if (previewEl) previewEl.hidden = true;
+      if (savedEl) savedEl.hidden = true;
     }
 
     function showIdle() {
@@ -312,7 +317,7 @@
       stopTimer();
       mediaRecorder = null;
       hideAllPanels();
-      idleEl?.removeAttribute("hidden");
+      if (idleEl) idleEl.hidden = false;
       setCardState("idle");
       setModeLocked(false);
       if (timerEl) timerEl.textContent = "0:00";
@@ -322,15 +327,15 @@
 
     function showLive() {
       hideAllPanels();
-      liveEl?.removeAttribute("hidden");
+      if (liveEl) liveEl.hidden = false;
       setCardState("live");
       setModeLocked(true);
       if (isAudioMode()) {
-        liveViewportEl?.setAttribute("hidden", "");
-        audioLiveEl?.removeAttribute("hidden");
+        if (liveViewportEl) liveViewportEl.hidden = true;
+        if (audioLiveEl) audioLiveEl.hidden = false;
       } else {
-        liveViewportEl?.removeAttribute("hidden");
-        audioLiveEl?.setAttribute("hidden", "");
+        if (liveViewportEl) liveViewportEl.hidden = false;
+        if (audioLiveEl) audioLiveEl.hidden = true;
       }
     }
 
@@ -338,21 +343,25 @@
       stopStream();
       stopTimer();
       hideAllPanels();
-      previewEl?.removeAttribute("hidden");
+      if (previewEl) previewEl.hidden = false;
       setCardState("preview");
       if (isAudioMode()) {
-        previewViewportEl?.setAttribute("hidden", "");
-        playbackAudio?.removeAttribute("hidden");
+        if (previewViewportEl) previewViewportEl.hidden = true;
+        if (playbackAudio) playbackAudio.hidden = false;
       } else {
-        previewViewportEl?.removeAttribute("hidden");
-        playbackAudio?.setAttribute("hidden", "");
+        if (previewViewportEl) previewViewportEl.hidden = false;
+        if (playbackAudio) playbackAudio.hidden = true;
       }
       if (saveBtn) saveBtn.textContent = saveButtonLabel();
     }
 
     function showSaved() {
+      if (!mount.dataset.mediaId?.trim()) {
+        resetUi();
+        return;
+      }
       hideAllPanels();
-      savedEl?.removeAttribute("hidden");
+      if (savedEl) savedEl.hidden = false;
       setCardState("saved");
       if (savedTitleEl) {
         savedTitleEl.textContent = isAudioMode() ? "Audio saved" : "Video saved";
@@ -362,6 +371,7 @@
 
     function resetUi() {
       clearRecording();
+      clearSavedMedia();
       showIdle();
     }
 
@@ -451,6 +461,7 @@
       }
 
       clearRecording();
+      clearSavedMedia();
       setStatus("");
 
       try {

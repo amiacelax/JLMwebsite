@@ -492,18 +492,30 @@
     return badge;
   }
 
-  const RECORDING_TIP_TEXT =
-    "Don\u2019t get distracted by words or grammar you don\u2019t know. Just guess!";
+  const LISTENING_TIP_LINES = [
+    "Getting it perfect is not important. Just write down what you hear as best as you can.",
+    "Don\u2019t get distracted by words or grammar you don\u2019t know. Just guess!",
+  ];
 
-  function renderRecordingTip(itemId) {
+  const SUBMISSION_TIP_LINES = [
+    "Don\u2019t plan everything out. Try to speak based on what you currently know. You should feel the pressure of just having to speak on the spot.",
+  ];
+
+  function renderRecordingTip(itemId, options) {
+    options = options || {};
+    const tipLabel = options.label || "Tip";
+    const lines = options.lines || LISTENING_TIP_LINES;
+    const ariaLabel = options.ariaLabel || "Show " + tipLabel.toLowerCase() + " guidance";
+
     const wrap = document.createElement("div");
     wrap.className = "hw-recording-tip";
+    if (options.important) wrap.classList.add("hw-recording-tip--important");
 
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "hw-recording-tip__trigger";
     btn.setAttribute("aria-expanded", "false");
-    btn.setAttribute("aria-label", "Show recording tip");
+    btn.setAttribute("aria-label", ariaLabel);
 
     const icon = document.createElement("span");
     icon.className = "hw-recording-tip__icon";
@@ -516,7 +528,7 @@
 
     const label = document.createElement("span");
     label.className = "hw-recording-tip__label";
-    label.textContent = "Tip";
+    label.textContent = tipLabel;
 
     btn.appendChild(icon);
     btn.appendChild(label);
@@ -527,7 +539,7 @@
     message.id = tipId;
     message.className = "hw-recording-tip__message";
     message.hidden = true;
-    message.textContent = RECORDING_TIP_TEXT;
+    message.textContent = lines.map((line) => "- " + line).join("\n");
     btn.setAttribute("aria-controls", tipId);
 
     btn.addEventListener("click", () => {
@@ -890,6 +902,20 @@
     question.textContent = promptText;
     wrap.appendChild(question);
 
+    if (!renderOptions.preview) {
+      const head = document.createElement("div");
+      head.className = "hw-video-prompt__head";
+      head.appendChild(
+        renderRecordingTip(item.id || "vid-" + (index + 1), {
+          label: "IMPORTANT",
+          important: true,
+          lines: SUBMISSION_TIP_LINES,
+          ariaLabel: "Show important recording guidance",
+        })
+      );
+      wrap.appendChild(head);
+    }
+
     const instruction = document.createElement("p");
     instruction.className = "hw-video-prompt__instruction";
     instruction.textContent =
@@ -972,7 +998,14 @@
     head.appendChild(prompt);
 
     if (!renderOptions.preview) {
-      head.appendChild(renderRecordingTip(item.id));
+      head.appendChild(
+        renderRecordingTip(item.id || "aud-" + (index + 1), {
+          label: "IMPORTANT",
+          important: true,
+          lines: SUBMISSION_TIP_LINES,
+          ariaLabel: "Show important recording guidance",
+        })
+      );
     }
     wrap.appendChild(head);
 
@@ -1214,7 +1247,9 @@
         head.appendChild(hint);
         if (!lineOptions.authoring && !lineOptions.preview) {
           head.appendChild(
-            renderRecordingTip(item.id || "listen-" + (lineOptions.itemNum || index + 1))
+            renderRecordingTip(item.id || "listen-" + (lineOptions.itemNum || index + 1), {
+              lines: LISTENING_TIP_LINES,
+            })
           );
         }
         listenCard.appendChild(head);
@@ -1608,13 +1643,6 @@
     const actions = document.createElement("div");
     actions.className = "hw-worksheet__actions";
     if (!authoring) {
-      let toolsHtml =
-        '<button type="button" class="btn btn--ghost" data-hw-print>Print</button>';
-      if (!options.preview) {
-        toolsHtml +=
-          '<button type="button" class="btn btn--ghost" data-hw-photo-take>Take Picture</button>' +
-          '<button type="button" class="btn btn--ghost" data-hw-photo-choose>Choose file</button>';
-      }
       actions.innerHTML =
         (options.preview
           ? ""
@@ -1625,9 +1653,7 @@
             "</div>" +
             '<p class="hw-worksheet__status hw-worksheet__status--inline" id="hw-save-status" role="status" aria-live="polite"></p>' +
             "</section>") +
-        '<section class="hw-worksheet__actions-tools">' +
-        toolsHtml +
-        "</section>";
+        '<section class="hw-worksheet__actions-tools" aria-label="Worksheet tools"></section>';
       form.appendChild(actions);
     }
 
@@ -1638,8 +1664,6 @@
     form.appendChild(results);
 
     mount.appendChild(form);
-
-    actions.querySelector?.("[data-hw-print]")?.addEventListener("click", () => printBlank(form));
 
     if (!authoring && !options.preview && !options.readOnly) {
       initSlideMode(form);
@@ -1810,6 +1834,10 @@
     );
   }
 
+  function isSeeAnswersUnlocked(form) {
+    return form?.dataset?.hwSeeAnswersUnlocked === "true";
+  }
+
   function hideTeacherAnswers(form) {
     if (!form) return;
     form.querySelectorAll(".hw-worksheet__teacher-answer").forEach((el) => el.remove());
@@ -1817,12 +1845,12 @@
     if (btn) {
       btn.textContent = "See Answers";
       btn.setAttribute("aria-pressed", "false");
-      btn.disabled = false;
+      btn.disabled = !isSeeAnswersUnlocked(form);
     }
   }
 
   function revealTeacherAnswers(form) {
-    if (!form) return;
+    if (!form || !isSeeAnswersUnlocked(form)) return;
     form.querySelectorAll(".hw-blank-wrap--listen[data-teacher-answer]").forEach((wrap) => {
       if (wrap.querySelector(".hw-worksheet__teacher-answer")) return;
       const answer = String(wrap.dataset.teacherAnswer || "").trim();
@@ -1847,12 +1875,14 @@
 
   function toggleTeacherAnswers(form) {
     const btn = form?.querySelector("[data-hw-see-answers]");
-    if (!btn || btn.disabled) return;
+    if (!btn || btn.disabled || !isSeeAnswersUnlocked(form)) return;
     if (btn.getAttribute("aria-pressed") === "true") hideTeacherAnswers(form);
     else revealTeacherAnswers(form);
   }
 
   function enableSeeAnswers(form) {
+    if (!form) return;
+    form.dataset.hwSeeAnswersUnlocked = "true";
     const btn = form?.querySelector("[data-hw-see-answers]");
     if (!btn) return;
     btn.hidden = false;
@@ -1860,6 +1890,8 @@
   }
 
   function disableSeeAnswers(form) {
+    if (!form) return;
+    delete form.dataset.hwSeeAnswersUnlocked;
     const btn = form?.querySelector("[data-hw-see-answers]");
     if (!btn) return;
     hideTeacherAnswers(form);
@@ -1882,6 +1914,7 @@
     btn.setAttribute("aria-pressed", "false");
     btn.textContent = "See Answers";
     btn.hidden = true;
+    btn.disabled = true;
     btn.addEventListener("click", () => toggleTeacherAnswers(form));
 
     const tools = actions.querySelector(".hw-worksheet__actions-tools");
@@ -2033,9 +2066,21 @@
       });
     }
 
+    function notifySlideChange() {
+      form._hwSlideIndex = current;
+      form._hwSlideCount = lines.length;
+      form.dispatchEvent(
+        new CustomEvent("hw-worksheet-slide", {
+          bubbles: true,
+          detail: { index: current, total: lines.length, seeAll },
+        })
+      );
+    }
+
     function goTo(index) {
       current = Math.max(0, Math.min(index, lines.length - 1));
       applySlideView();
+      notifySlideChange();
     }
 
     prevBtn.addEventListener("click", () => goTo(current - 1));
@@ -2053,6 +2098,12 @@
     });
 
     applySlideView();
+    notifySlideChange();
+  }
+
+  function getSlideIndex(form) {
+    if (!form || typeof form._hwSlideIndex !== "number") return 0;
+    return form._hwSlideIndex;
   }
 
   /**
@@ -2598,16 +2649,23 @@
     );
   }
 
+  function inlineMediaSaved(inline) {
+    if (!inline?.dataset?.mediaId?.trim()) return false;
+    const card = inline.querySelector(".hw-video-inline__card");
+    return card?.dataset.state === "saved";
+  }
+
   function isWorksheetLineAnswered(lineEl) {
     if (!lineEl) return false;
     if (lineEl.classList.contains("hw-worksheet__line--video")) {
-      return Boolean(lineEl.querySelector('.hw-video-inline__card[data-state="saved"]'));
+      return inlineMediaSaved(lineEl.querySelector(".hw-video-inline"));
     }
     if (lineEl.classList.contains("hw-worksheet__line--audio-prompt")) {
-      return Boolean(
-        lineEl.querySelector('[data-hw-answer-saved="true"]') ||
-          lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]')
-      );
+      const inline = lineEl.querySelector(".hw-audio-inline");
+      if (inline?.dataset?.hwAnswerSaved === "true" && inline.dataset.mediaId?.trim()) {
+        return true;
+      }
+      return inlineMediaSaved(lineEl.querySelector(".hw-video-inline"));
     }
     if (lineEl.classList.contains("hw-worksheet__line--star")) {
       const hidden = lineEl.querySelector(".hw-star-block__answer");
@@ -2694,6 +2752,7 @@
     isWorksheetLineAnswered,
     isWorksheetComplete,
     updateSubmitButtonState,
+    getSlideIndex,
     hasMeaningfulStudentAnswer,
     enableSeeAnswers,
     disableSeeAnswers,

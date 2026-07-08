@@ -60,9 +60,9 @@ body.hw-hub-v3-page {
   background: color-mix(in srgb, var(--color-brand-blue) 12%, var(--color-bg-card));
 }
 
-/* Proto banner + demo bar sit above the fixed header in DOM — offset once here. */
+/* Hub bar sits below fixed nav — section padding must not repeat that offset. */
 body.hw-hub-v3-page.subpage--platform .hw-platform-bar {
-  margin-top: 0;
+  margin-top: calc(var(--header-height) + env(safe-area-inset-top, 0));
 }
 
 .hw-hub-v2-shell {
@@ -375,8 +375,30 @@ body.hw-hub-v3-page .hw-worksheet__meta-hint {
   color: var(--color-text);
 }
 
-.hw-submission-view-back {
-  margin: 0.35rem 0 0;
+.hw-offline-tools {
+  margin: 0.85rem 1.5rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg-elevated) 88%, transparent);
+}
+
+.hw-offline-tools__label {
+  margin: 0 0 0.55rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.hw-offline-tools__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 0.55rem;
+}
+
+.hw-offline-tools__actions .btn {
+  min-width: 6.5rem;
 }
 
 .hw-hub-v2-elsewhere-links {

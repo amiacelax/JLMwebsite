@@ -4,13 +4,26 @@ body.hw-hub-v4-page {
   --hw-v2-accent: var(--color-green);
 }
 
+body.hw-hub-v4-page.subpage--platform .section__header--platform {
+  margin-bottom: 0.65rem;
+}
+
+body.hw-hub-v4-page.subpage--platform .section__eyebrow {
+  margin-bottom: 0.35rem;
+}
+
+body.hw-hub-v4-page.subpage--platform .hw-hub-tier-pick {
+  margin-top: 0.5rem;
+}
+
 .hw-hub-v4-homework {
   max-width: 52rem;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1rem;
 }
 
 .hw-hub-v4-homework .hw-hub-v2-worksheet {
   margin-bottom: 1rem;
+  overflow: visible;
 }
 
 .hw-hub-v4-below {
@@ -51,6 +64,26 @@ body.hw-hub-v4-page {
   display: none;
 }
 
-.hw-hub-v4-homework .hw-photo-upload--worksheet {
-  margin-top: 0.75rem;
+.hw-grid-offline .hw-offline-tools__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.hw-grid-offline .hw-offline-tools__actions .btn {
+  flex: 1 1 calc(33.333% - 0.35rem);
+  min-width: 5.5rem;
+}
+
+.hw-grid-offline .hw-photo-upload--worksheet {
+  margin-top: 0.65rem;
+}
+
+.hw-grid-offline--legacy {
+  margin: 0.85rem 1.5rem 1rem;
+}
+
+.hw-hub-v4-page .hw-grid-offline .hw-offline-tools__actions .btn {
+  flex: 1 1 auto;
 }

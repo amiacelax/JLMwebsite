@@ -8,21 +8,91 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=12";
+    link.href = "/css/hw-homework-comments.css?v=20";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
 
   const DRAFT_SAVE_MS = 700;
-  const LAUNCHER_POS = { x: 92, y: 10 };
+  /** Fallback cloud launcher — beside title when title anchor is missing. */
+  const LAUNCHER_POS = { x: 18, y: 12 };
   const LAUNCHER_POS_KEY = "jlm-hc-launcher-pos";
   const ONBOARD_KEY = "hw-hc-onboarding-v1";
   const MG_ONBOARD_KEY = "hw-mg-onboarding-v1";
   const DRAG_THRESHOLD = 5;
+  const TOUCH_HOLD_MS = 420;
+  const TOUCH_MOVE_CANCEL = 12;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard";
+    "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard, .hw-hc-sel-menu";
+  const TOUCH_SKIP_EXTRA =
+    ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled)";
+
+  function openDeleteConfirmPopover(anchorBtn, onConfirm) {
+    if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
+
+    const pop = document.createElement("div");
+    pop.className = "hw-delete-confirm-popover";
+    pop.setAttribute("role", "alertdialog");
+    pop.setAttribute("aria-modal", "true");
+    pop.innerHTML =
+      '<p class="hw-delete-confirm-popover__q" id="hw-delete-confirm-q" lang="ja">いいの？</p>' +
+      '<div class="hw-delete-confirm-popover__actions">' +
+      '<button type="button" class="hw-delete-confirm-popover__yes" lang="ja">いいよ</button>' +
+      '<button type="button" class="hw-delete-confirm-popover__no" lang="ja">ダメ</button>' +
+      "</div>";
+
+    document.body.appendChild(pop);
+    const anchorRect = anchorBtn.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    let top = anchorRect.top - popRect.height - 8;
+    let left = anchorRect.left;
+    if (top < 8) top = anchorRect.bottom + 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
+
+    const close = () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      pop.remove();
+      global._hwDeleteConfirmClose = null;
+    };
+    global._hwDeleteConfirmClose = close;
+
+    const onOutside = (ev) => {
+      if (pop.contains(ev.target)) return;
+      close();
+    };
+    setTimeout(() => document.addEventListener("pointerdown", onOutside, true), 0);
+
+    pop.querySelector(".hw-delete-confirm-popover__yes")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+      onConfirm();
+    });
+    pop.querySelector(".hw-delete-confirm-popover__no")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    });
+  }
+
+  function attachDeleteConfirm(deleteBtn, onConfirm) {
+    deleteBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openDeleteConfirmPopover(deleteBtn, onConfirm);
+    });
+    const row = document.createElement("div");
+    row.className = "hw-delete-row";
+    row.appendChild(deleteBtn);
+    return row;
+  }
 
   let hostEl = null;
+  let worksheetFormEl = null;
+  let slideIndex = 0;
+  let slideChangeBound = null;
   let shellEl = null;
   let layersEl = null;
   let launcherEl = null;
@@ -41,6 +111,19 @@
   let onboardScrimEl = null;
   let onboardScrimResizeBound = null;
   let onboardScheduleTimer = null;
+  let layoutScheduleRaf = null;
+  let touchSelect = null;
+  let selMenuEl = null;
+  let selMenuSubOpen = false;
+  let touchSelectBound = false;
+  let selectionChangeBound = null;
+  let contextMenuBound = null;
+  let coarseResizeBound = null;
+  let readAloudUtterance = null;
+
+  function suppressStarInteraction(ms) {
+    global._hwSuppressStarUntil = Date.now() + (ms || 450);
+  }
 
   function uid() {
     return "hc-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
@@ -119,27 +202,21 @@
     };
   }
 
-  function defaultMiniPos(comment) {
+  /** Shared anchor for mini + memo (both use translate(-50%, calc(-100% - 0.35rem))). */
+  function defaultCloudPos(comment) {
     const r = comment.anchorRect;
     if (!r) return { x: 50, y: 20 };
     return {
-      x: pctClamp(r.right + 0.4),
-      y: pctClamp(r.top - 0.35),
+      x: clampBubbleAnchorX(r.left + r.width / 2),
+      y: pctClamp(r.top),
     };
-  }
-
-  function defaultMemoPos(comment) {
-    const r = comment.anchorRect;
-    if (!r) return { x: 50, y: 20 };
-    const centerX = clampBubbleAnchorX(r.left + r.width / 2);
-    return { x: centerX, y: r.top };
   }
 
   function getCloudPos(comment, mode) {
     if (typeof comment.x === "number" && typeof comment.y === "number") {
       return { x: comment.x, y: comment.y };
     }
-    return mode === "memo" ? defaultMemoPos(comment) : defaultMiniPos(comment);
+    return defaultCloudPos(comment);
   }
 
   function applyCloudPos(el, comment, mode) {
@@ -160,6 +237,22 @@
     }
   }
 
+  function getSlideIndex() {
+    if (global.HwWorksheet?.getSlideIndex && worksheetFormEl) {
+      return global.HwWorksheet.getSlideIndex(worksheetFormEl);
+    }
+    return slideIndex;
+  }
+
+  function commentsForCurrentSlide() {
+    const idx = getSlideIndex();
+    return comments.filter((c) => (c.slideIndex ?? 0) === idx);
+  }
+
+  function anchorKey(c) {
+    return (c.slideIndex ?? 0) + ":" + c.anchor;
+  }
+
   function dedupeComments(list) {
     const out = [];
     const byAnchor = new Map();
@@ -168,9 +261,10 @@
         out.push(c);
         return;
       }
-      const existing = byAnchor.get(c.anchor);
+      const key = anchorKey(c);
+      const existing = byAnchor.get(key);
       if (!existing) {
-        byAnchor.set(c.anchor, c);
+        byAnchor.set(key, c);
         return;
       }
       const pickExisting =
@@ -180,7 +274,7 @@
             Date.parse(c.updatedAt || c.createdAt || 0));
       const keep = pickExisting ? existing : c;
       const drop = pickExisting ? c : existing;
-      byAnchor.set(c.anchor, {
+      byAnchor.set(key, {
         ...keep,
         text: keep.text.trim() ? keep.text : drop.text,
         anchorRect: keep.anchorRect || drop.anchorRect,
@@ -212,6 +306,7 @@
             : undefined,
         x: typeof c.x === "number" ? c.x : undefined,
         y: typeof c.y === "number" ? c.y : undefined,
+        slideIndex: typeof c.slideIndex === "number" ? c.slideIndex : 0,
         createdAt: c.createdAt || new Date().toISOString(),
         updatedAt: c.updatedAt,
       }))
@@ -327,6 +422,18 @@
     renderAll();
   }
 
+  function onSlideChange(e) {
+    slideIndex = e.detail?.index ?? 0;
+    if (activeCommentId) {
+      const stillVisible = comments.some(
+        (c) => c.id === activeCommentId && (c.slideIndex ?? 0) === slideIndex
+      );
+      if (!stillVisible) activeCommentId = null;
+    }
+    setArmed(false);
+    renderAll();
+  }
+
   function setArmed(next) {
     armed = !!next;
     hostEl?.classList.toggle("hw-hc-armed", armed);
@@ -335,6 +442,8 @@
     if (armed) {
       global.HwMagnifyingGlass?.setArmed?.(false);
     } else {
+      cancelTouchSelect();
+      hideSelectionMenu();
       window.getSelection()?.removeAllRanges();
     }
   }
@@ -353,6 +462,23 @@
     return next;
   }
 
+  function cloudPosFromVisual(el, mode) {
+    if (!el || !hostEl) return null;
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return null;
+    const r = el.getBoundingClientRect();
+    if (mode === "memo") {
+      return {
+        x: pctClamp(((r.left + r.width / 2 - hostRect.left) / hostRect.width) * 100),
+        y: pctClamp(((r.bottom - hostRect.top) / hostRect.height) * 100),
+      };
+    }
+    return {
+      x: pctClamp(((r.right - hostRect.left) / hostRect.width) * 100),
+      y: pctClamp(((r.top - hostRect.top) / hostRect.height) * 100),
+    };
+  }
+
   function minimizeActive() {
     if (activeCommentId) {
       const id = activeCommentId;
@@ -361,10 +487,6 @@
         removeComment(id);
         return;
       }
-      // Drop shared drag coords so minimized cloud re-anchors top-right above text.
-      comments = comments.map((c) =>
-        c.id === id ? { ...c, x: undefined, y: undefined } : c
-      );
     }
     activeCommentId = null;
     renderAll();
@@ -379,6 +501,8 @@
       if (config?.readOnly) return;
       const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"] textarea');
       memo?.focus();
+      const memoEl = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"]');
+      resolveToolLayout(memoEl);
     });
   }
 
@@ -410,6 +534,53 @@
     requestAnimationFrame(() => {
       global.HwWorksheetToolLayout?.resolve?.(hostEl, { pin: pinEl || null });
     });
+  }
+
+  function offsetCloudById(id, dx, dy) {
+    if (!id || !hostEl) return;
+    const comment = comments.find((c) => c.id === id);
+    if (!comment) return;
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return;
+    const mode = activeCommentId === id ? "memo" : "mini";
+    const pos = getCloudPos(comment, mode);
+    const nx = pctClamp(pos.x + (dx / hostRect.width) * 100);
+    const ny = pctClamp(pos.y + (dy / hostRect.height) * 100);
+    const sel =
+      mode === "memo"
+        ? '.hw-hc-memo[data-id="' + id + '"]'
+        : '.hw-hc-mini[data-id="' + id + '"]';
+    const el = layersEl?.querySelector(sel);
+    if (el) {
+      el.style.left = nx + "%";
+      el.style.top = ny + "%";
+    }
+    updateCloudPos(id, nx, ny, false);
+  }
+
+  function getLauncherPosition() {
+    if (!launcherEl) return { ...LAUNCHER_POS };
+    return {
+      x: parseFloat(launcherEl.style.left) || LAUNCHER_POS.x,
+      y: parseFloat(launcherEl.style.top) || LAUNCHER_POS.y,
+    };
+  }
+
+  function setLauncherPosition(xPct, yPct, persist) {
+    if (!launcherEl) return;
+    const nx = pctClamp(xPct);
+    const ny = pctClamp(yPct);
+    launcherEl.style.left = nx + "%";
+    launcherEl.style.top = ny + "%";
+    if (persist !== false) saveLauncherPos(nx, ny);
+  }
+
+  function resetLauncherPosition(target) {
+    try {
+      localStorage.removeItem(LAUNCHER_POS_KEY);
+    } catch (_) {}
+    const pos = target || LAUNCHER_POS;
+    setLauncherPosition(pos.x, pos.y, false);
   }
 
   function offsetLauncherBy(dx, dy) {
@@ -458,7 +629,8 @@
   }
 
   function findCommentByAnchor(anchor) {
-    return comments.find((c) => c.anchor === anchor);
+    const idx = getSlideIndex();
+    return comments.find((c) => c.anchor === anchor && (c.slideIndex ?? 0) === idx);
   }
 
   function createCommentFromSelection(text, anchorRect) {
@@ -473,37 +645,478 @@
       text: "",
       anchor: text,
       anchorRect,
+      slideIndex: getSlideIndex(),
       createdAt: new Date().toISOString(),
     });
     return id;
   }
 
-  function onHostMouseUp(ev) {
-    if (!armed || config?.readOnly) return;
-    if (ev.target.closest(SKIP_SELECTOR)) return;
+  function isCoarsePointer() {
+    try {
+      return (
+        window.matchMedia("(pointer: coarse)").matches ||
+        window.matchMedia("(max-width: 767px)").matches
+      );
+    } catch (_) {
+      return window.innerWidth < 768;
+    }
+  }
 
+  function syncCoarseClass() {
+    hostEl?.classList.toggle("hw-hc-coarse", isCoarsePointer());
+  }
+
+  function shouldSkipTouchTarget(target) {
+    return Boolean(target?.closest?.(SKIP_SELECTOR + TOUCH_SKIP_EXTRA));
+  }
+
+  function starTextUnitFromTarget(target) {
+    return target?.closest?.(
+      ".hw-star-block__chip:not(.hw-star-block__chip--placed), .hw-star-block__slot-text, .hw-star-block__fixed"
+    );
+  }
+
+  function selectStarTextUnit(el) {
+    if (!el) return false;
+    const range = document.createRange();
+    try {
+      range.selectNodeContents(el);
+    } catch (_) {
+      return false;
+    }
     const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) return;
-    const text = sel.toString().trim();
-    if (!text) return;
-    if (!hostEl?.contains(sel.anchorNode)) return;
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return !sel.isCollapsed && sel.toString().trim().length > 0;
+  }
 
+  function offerStarUnitSelection(target) {
+    const unit = starTextUnitFromTarget(target);
+    if (!unit || !selectStarTextUnit(unit)) return false;
+    const picked = getHostSelection();
+    if (!picked) return false;
+    showSelectionMenu(picked.range.getBoundingClientRect());
+    return true;
+  }
+
+  function caretRangeFromPoint(x, y) {
+    if (document.caretRangeFromPoint) {
+      return document.caretRangeFromPoint(x, y);
+    }
+    const pos = document.caretPositionFromPoint?.(x, y);
+    if (!pos?.offsetNode) return null;
+    const range = document.createRange();
+    try {
+      range.setStart(pos.offsetNode, pos.offset);
+      range.collapse(true);
+      return range;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setSelectionBetweenPoints(x1, y1, x2, y2) {
+    const startRange = caretRangeFromPoint(x1, y1);
+    const endRange = caretRangeFromPoint(x2, y2);
+    if (!startRange || !endRange) return false;
+    const range = document.createRange();
+    const backward = startRange.compareBoundaryPoints(Range.START_TO_START, endRange) > 0;
+    try {
+      range.setStart(
+        backward ? endRange.startContainer : startRange.startContainer,
+        backward ? endRange.startOffset : startRange.startOffset
+      );
+      range.setEnd(
+        backward ? startRange.startContainer : endRange.startContainer,
+        backward ? startRange.startOffset : endRange.startOffset
+      );
+    } catch (_) {
+      return false;
+    }
+    const sel = window.getSelection();
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return !sel.isCollapsed && sel.toString().trim().length > 0;
+  }
+
+  function getHostSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return null;
+    if (!hostEl?.contains(sel.anchorNode)) return null;
     let range;
     try {
       range = sel.getRangeAt(0);
-    } catch {
-      return;
+    } catch (_) {
+      return null;
     }
-    const rect = range.getBoundingClientRect();
-    const anchorRect = hostRectToPct(rect);
-    if (!anchorRect) return;
+    return { sel, text: sel.toString().trim(), range };
+  }
 
-    const id = createCommentFromSelection(text, anchorRect);
+  function commitSelectionToMemo() {
+    const picked = getHostSelection();
+    if (!picked) return false;
+    const rect = picked.range.getBoundingClientRect();
+    const anchorRect = hostRectToPct(rect);
+    if (!anchorRect) return false;
+    const id = createCommentFromSelection(picked.text, anchorRect);
     setArmed(false);
-    sel.removeAllRanges();
+    picked.sel.removeAllRanges();
+    suppressStarInteraction();
     expandComment(id);
     saveLocal();
     queueDraftSave();
+    return true;
+  }
+
+  function copySelectionText() {
+    const picked = getHostSelection();
+    if (!picked) return;
+    const text = picked.text;
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } catch (_) {}
+    ta.remove();
+  }
+
+  function selectAllInContext(anchorNode) {
+    const container =
+      anchorNode?.closest?.(
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']"
+      ) || worksheetFormEl?.querySelector(".hw-worksheet");
+    if (!container) return;
+    const range = document.createRange();
+    try {
+      range.selectNodeContents(container);
+    } catch (_) {
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const rect = range.getBoundingClientRect();
+    if (rect.width || rect.height) showSelectionMenu(rect);
+  }
+
+  function openWebSearchForSelection() {
+    const picked = getHostSelection();
+    if (!picked) return;
+    const q = encodeURIComponent(picked.text);
+    window.open("https://www.google.com/search?q=" + q, "_blank", "noopener,noreferrer");
+  }
+
+  function readSelectionAloud() {
+    const picked = getHostSelection();
+    if (!picked || !global.speechSynthesis) return;
+    global.speechSynthesis.cancel();
+    readAloudUtterance = new SpeechSynthesisUtterance(picked.text);
+    const ja = /[\u3040-\u30ff\u4e00-\u9faf]/.test(picked.text);
+    readAloudUtterance.lang = ja ? "ja-JP" : document.documentElement.lang || "en-US";
+    global.speechSynthesis.speak(readAloudUtterance);
+  }
+
+  function stopReadAloud() {
+    global.speechSynthesis?.cancel();
+    readAloudUtterance = null;
+  }
+
+  function hideSelectionMenu() {
+    stopReadAloud();
+    selMenuSubOpen = false;
+    if (!selMenuEl) return;
+    selMenuEl.hidden = true;
+    selMenuEl.querySelector(".hw-hc-sel-menu__sub")?.setAttribute("hidden", "");
+    selMenuEl.querySelector(".hw-hc-sel-menu__more")?.setAttribute("aria-expanded", "false");
+  }
+
+  function positionSelectionMenu(rect) {
+    if (!selMenuEl) return;
+    selMenuEl.hidden = false;
+    const menuRect = selMenuEl.getBoundingClientRect();
+    let top = rect.top - menuRect.height - 10;
+    let left = rect.left + rect.width / 2 - menuRect.width / 2;
+    if (top < 8) top = rect.bottom + 10;
+    left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+    selMenuEl.style.top = Math.round(top) + "px";
+    selMenuEl.style.left = Math.round(left) + "px";
+  }
+
+  function showSelectionMenu(rect) {
+    if (!selMenuEl) ensureSelectionMenu();
+    if (!selMenuEl) return;
+    selMenuSubOpen = false;
+    selMenuEl.querySelector(".hw-hc-sel-menu__sub")?.setAttribute("hidden", "");
+    selMenuEl.querySelector(".hw-hc-sel-menu__more")?.setAttribute("aria-expanded", "false");
+    positionSelectionMenu(rect);
+  }
+
+  function ensureSelectionMenu() {
+    if (selMenuEl) return;
+    selMenuEl = document.createElement("div");
+    selMenuEl.className = "hw-hc-sel-menu";
+    selMenuEl.hidden = true;
+    selMenuEl.setAttribute("role", "toolbar");
+    selMenuEl.setAttribute("aria-label", "Text selection");
+    selMenuEl.innerHTML =
+      '<div class="hw-hc-sel-menu__row">' +
+      '<button type="button" class="hw-hc-sel-menu__btn" data-action="copy">Copy</button>' +
+      '<button type="button" class="hw-hc-sel-menu__btn hw-hc-sel-menu__btn--accent" data-action="memo">Cloud Memo</button>' +
+      '<button type="button" class="hw-hc-sel-menu__btn" data-action="select-all">Select All</button>' +
+      '<button type="button" class="hw-hc-sel-menu__btn" data-action="search">Web Search</button>' +
+      '<button type="button" class="hw-hc-sel-menu__btn" data-action="read">Read Aloud</button>' +
+      '<button type="button" class="hw-hc-sel-menu__btn hw-hc-sel-menu__more" data-action="more" aria-label="More options" aria-expanded="false" aria-haspopup="true">☰</button>' +
+      "</div>" +
+      '<div class="hw-hc-sel-menu__sub" hidden role="menu" aria-label="App options">' +
+      '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="disarm">Exit note mode</button>' +
+      '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="reset-tools">Reset tool positions</button>' +
+      '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="focus">Focus mode</button>' +
+      '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="print">Print worksheet</button>' +
+      "</div>";
+
+    selMenuEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    selMenuEl.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-action]");
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      onSelectionMenuAction(btn.dataset.action);
+    });
+    document.body.appendChild(selMenuEl);
+  }
+
+  function onSelectionMenuAction(action) {
+    if (action === "more") {
+      selMenuSubOpen = !selMenuSubOpen;
+      const sub = selMenuEl?.querySelector(".hw-hc-sel-menu__sub");
+      const moreBtn = selMenuEl?.querySelector(".hw-hc-sel-menu__more");
+      if (sub) sub.hidden = !selMenuSubOpen;
+      moreBtn?.setAttribute("aria-expanded", selMenuSubOpen ? "true" : "false");
+      const picked = getHostSelection();
+      if (picked) positionSelectionMenu(picked.range.getBoundingClientRect());
+      return;
+    }
+    if (action === "copy") {
+      copySelectionText();
+      hideSelectionMenu();
+      return;
+    }
+    if (action === "memo") {
+      if (commitSelectionToMemo()) hideSelectionMenu();
+      return;
+    }
+    if (action === "select-all") {
+      const picked = getHostSelection();
+      selectAllInContext(picked?.range?.commonAncestorContainer || picked?.range?.startContainer);
+      return;
+    }
+    if (action === "search") {
+      openWebSearchForSelection();
+      hideSelectionMenu();
+      return;
+    }
+    if (action === "read") {
+      readSelectionAloud();
+      return;
+    }
+    if (action === "disarm") {
+      hideSelectionMenu();
+      setArmed(false);
+      return;
+    }
+    if (action === "reset-tools") {
+      hideSelectionMenu();
+      global.HwWorksheetToolLayout?.resetToolPositions?.(hostEl);
+      return;
+    }
+    if (action === "focus") {
+      hideSelectionMenu();
+      worksheetFormEl?.querySelector("[data-hw-focus]")?.click();
+      return;
+    }
+    if (action === "print") {
+      hideSelectionMenu();
+      worksheetFormEl?.querySelector("[data-hw-print]")?.click() ||
+        document.getElementById("hw-offline-print")?.click();
+    }
+  }
+
+  function cancelTouchSelect() {
+    if (touchSelect?.holdTimer) clearTimeout(touchSelect.holdTimer);
+    if (touchSelect?.pointerId != null && hostEl) {
+      try {
+        hostEl.releasePointerCapture(touchSelect.pointerId);
+      } catch (_) {}
+    }
+    touchSelect = null;
+    hostEl?.classList.remove("hw-hc-touch-selecting");
+  }
+
+  function finishTouchSelect(clientX, clientY) {
+    if (!touchSelect?.active) {
+      cancelTouchSelect();
+      return;
+    }
+    setSelectionBetweenPoints(touchSelect.startX, touchSelect.startY, clientX, clientY);
+    const picked = getHostSelection();
+    cancelTouchSelect();
+    if (picked) {
+      showSelectionMenu(picked.range.getBoundingClientRect());
+    }
+  }
+
+  function onTouchSelectPointerDown(ev) {
+    if (!armed || config?.readOnly || !isCoarsePointer()) return;
+    if (ev.pointerType === "mouse") return;
+    if (ev.button !== 0) return;
+    if (shouldSkipTouchTarget(ev.target)) return;
+    if (!hostEl?.contains(ev.target)) return;
+
+    cancelTouchSelect();
+    hideSelectionMenu();
+
+    touchSelect = {
+      pointerId: ev.pointerId,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      active: false,
+      holdTimer: setTimeout(() => {
+        if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
+        touchSelect.active = true;
+        hostEl?.classList.add("hw-hc-touch-selecting");
+        setSelectionBetweenPoints(ev.clientX, ev.clientY, ev.clientX, ev.clientY);
+      }, TOUCH_HOLD_MS),
+    };
+    try {
+      hostEl.setPointerCapture(ev.pointerId);
+    } catch (_) {}
+  }
+
+  function onTouchSelectPointerMove(ev) {
+    if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
+    const dx = ev.clientX - touchSelect.startX;
+    const dy = ev.clientY - touchSelect.startY;
+    if (!touchSelect.active) {
+      if (Math.hypot(dx, dy) > TOUCH_MOVE_CANCEL) cancelTouchSelect();
+      return;
+    }
+    ev.preventDefault();
+    setSelectionBetweenPoints(touchSelect.startX, touchSelect.startY, ev.clientX, ev.clientY);
+  }
+
+  function onTouchSelectPointerUp(ev) {
+    if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
+    if (touchSelect.active) {
+      ev.preventDefault();
+      finishTouchSelect(ev.clientX, ev.clientY);
+    } else if (armed && !config?.readOnly) {
+      offerStarUnitSelection(ev.target);
+      cancelTouchSelect();
+    } else {
+      cancelTouchSelect();
+    }
+    try {
+      hostEl.releasePointerCapture(ev.pointerId);
+    } catch (_) {}
+  }
+
+  function onTouchSelectPointerCancel(ev) {
+    if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
+    cancelTouchSelect();
+  }
+
+  function onSelectionChange() {
+    if (!armed || !isCoarsePointer() || touchSelect?.active) return;
+    const picked = getHostSelection();
+    if (picked) showSelectionMenu(picked.range.getBoundingClientRect());
+  }
+
+  function onHostContextMenu(ev) {
+    if (!armed || !isCoarsePointer()) return;
+    if (!hostEl?.contains(ev.target)) return;
+    ev.preventDefault();
+  }
+
+  function bindTouchSelection() {
+    if (touchSelectBound || !hostEl) return;
+    touchSelectBound = true;
+    hostEl.addEventListener("pointerdown", onTouchSelectPointerDown);
+    hostEl.addEventListener("pointermove", onTouchSelectPointerMove);
+    hostEl.addEventListener("pointerup", onTouchSelectPointerUp);
+    hostEl.addEventListener("pointercancel", onTouchSelectPointerCancel);
+    if (!selectionChangeBound) {
+      selectionChangeBound = onSelectionChange;
+      document.addEventListener("selectionchange", selectionChangeBound);
+    }
+    if (!contextMenuBound) {
+      contextMenuBound = onHostContextMenu;
+      hostEl.addEventListener("contextmenu", contextMenuBound);
+    }
+    if (!coarseResizeBound) {
+      coarseResizeBound = syncCoarseClass;
+      window.addEventListener("resize", coarseResizeBound);
+    }
+    syncCoarseClass();
+    ensureSelectionMenu();
+  }
+
+  function unbindTouchSelection() {
+    cancelTouchSelect();
+    hideSelectionMenu();
+    if (hostEl && touchSelectBound) {
+      hostEl.removeEventListener("pointerdown", onTouchSelectPointerDown);
+      hostEl.removeEventListener("pointermove", onTouchSelectPointerMove);
+      hostEl.removeEventListener("pointerup", onTouchSelectPointerUp);
+      hostEl.removeEventListener("pointercancel", onTouchSelectPointerCancel);
+      hostEl.removeEventListener("contextmenu", contextMenuBound);
+    }
+    touchSelectBound = false;
+    if (selectionChangeBound) {
+      document.removeEventListener("selectionchange", selectionChangeBound);
+      selectionChangeBound = null;
+    }
+    contextMenuBound = null;
+    if (coarseResizeBound) {
+      window.removeEventListener("resize", coarseResizeBound);
+      coarseResizeBound = null;
+    }
+    selMenuEl?.remove();
+    selMenuEl = null;
+  }
+
+  function onHostMouseUp(ev) {
+    if (!armed || config?.readOnly) return;
+    if (isCoarsePointer()) return;
+    if (ev.target.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA)) return;
+
+    let picked = getHostSelection();
+    if (!picked) {
+      if (offerStarUnitSelection(ev.target)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      return;
+    }
+
+    commitSelectionToMemo();
+    ev.preventDefault();
+    ev.stopPropagation();
   }
 
   function onKeyDown(ev) {
@@ -531,16 +1144,22 @@
 
   function onDocPointerDown(ev) {
     if (dragState?.moved) return;
-    if (ev.target.closest(".hw-hc-memo")) return;
-    if (ev.target.closest(".hw-hc-mini")) return;
-    if (ev.target.closest(".hw-hc-launcher")) return;
+    if (ev.target.closest(".hw-hc-sel-menu")) return;
+    if (!ev.target.closest(".hw-hc-sel-menu")) hideSelectionMenu();
     if (!activeCommentId) return;
+    if (
+      ev.target.closest(".hw-hc-memo") ||
+      ev.target.closest(".hw-hc-mini") ||
+      ev.target.closest(".hw-hc-launcher")
+    ) {
+      return;
+    }
     minimizeActive();
   }
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
     if (config?.readOnly || ev.button !== 0) return;
-    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__actions button")) return;
+    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover")) return;
 
     ev.stopPropagation();
 
@@ -599,6 +1218,8 @@
       if (state.mode === "memo") {
         const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + state.commentId + '"]');
         resolveToolLayout(memo);
+      } else if (state.mode === "mini") {
+        resolveToolLayout(state.el);
       }
     } else if (state.expandOnUp) {
       expandComment(state.commentId);
@@ -782,7 +1403,7 @@
       '<div class="hw-hc-onboard__card">' +
       '<p class="hw-hc-onboard__eyebrow">New · Note cloud</p>' +
       '<h2 class="hw-hc-onboard__title" id="hw-hc-onboard-title">Leave a note for JD</h2>' +
-      '<p class="hw-hc-onboard__text">Tap the cloud, highlight text on the worksheet, then write your note. Tap on the mini cloud to review your note.</p>' +
+      '<p class="hw-hc-onboard__text">Tap the cloud, then hold on worksheet text to highlight it. Pick <strong>Cloud Memo</strong> to leave a note, or tap a mini cloud to review notes later.</p>' +
       '<button type="button" class="btn btn--primary btn--sm hw-hc-onboard__btn">Got it</button>' +
       "</div>";
 
@@ -865,8 +1486,8 @@
       if (!launcherDrag || launcherDrag.pointerId !== ev.pointerId) return;
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
-        saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
         resolveToolLayout(launcherEl);
+        saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
       } else {
         setArmed(!armed);
       }
@@ -878,6 +1499,10 @@
     launcherEl.addEventListener("pointercancel", (ev) => {
       if (!launcherDrag || launcherDrag.pointerId !== ev.pointerId) return;
       launcherEl.classList.remove("is-dragging");
+      if (launcherDrag.moved) {
+        resolveToolLayout(launcherEl);
+        saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
+      }
       launcherDrag = null;
     });
   }
@@ -942,6 +1567,16 @@
     return btn;
   }
 
+  function renderAnchorHighlight(comment) {
+    if (activeCommentId !== comment.id || !comment.anchorRect) return null;
+    const el = document.createElement("div");
+    el.className = "hw-hc-anchor-highlight";
+    el.dataset.id = comment.id;
+    el.setAttribute("aria-hidden", "true");
+    Object.assign(el.style, pctRectToStyle(comment.anchorRect));
+    return el;
+  }
+
   function renderMemo(comment) {
     if (activeCommentId !== comment.id || !comment.anchorRect) return null;
 
@@ -952,13 +1587,9 @@
     wrap.setAttribute("role", "dialog");
     wrap.setAttribute("aria-label", "Note on “" + comment.anchor + "”");
 
-    const quote = document.createElement("p");
-    quote.className = "hw-hc-memo__quote";
-    quote.textContent = "“" + comment.anchor + "”";
-    if (!config?.readOnly) quote.title = "Drag to move";
-
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body";
+    if (!config?.readOnly) body.title = "Drag to move";
 
     const input = document.createElement("textarea");
     input.className = "hw-hc-memo__input";
@@ -981,33 +1612,55 @@
 
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
-      removeBtn.className = "btn btn--ghost btn--sm";
-      removeBtn.textContent = "Remove";
-      removeBtn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        removeComment(comment.id);
-      });
-
-      actions.appendChild(removeBtn);
+      removeBtn.className = "hw-hc-memo__remove";
+      removeBtn.setAttribute("aria-label", "Delete note");
+      removeBtn.textContent = "DELETE";
+      actions.appendChild(
+        attachDeleteConfirm(removeBtn, () => {
+          removeComment(comment.id);
+        })
+      );
       body.appendChild(actions);
     }
 
-    wrap.append(quote, body);
+    wrap.append(body);
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
-    if (!config?.readOnly) bindCloudDrag(quote, comment.id, "memo", wrap);
+    if (!config?.readOnly) bindCloudDrag(body, comment.id, "memo", wrap);
     return wrap;
+  }
+
+  function scheduleCloudLayout(pinEl) {
+    if (layoutScheduleRaf) cancelAnimationFrame(layoutScheduleRaf);
+    layoutScheduleRaf = requestAnimationFrame(() => {
+      layoutScheduleRaf = null;
+      resolveToolLayout(pinEl || null);
+    });
   }
 
   function renderAll() {
     if (!layersEl) return;
     layersEl.replaceChildren();
-    comments.forEach((comment) => {
+    commentsForCurrentSlide().forEach((comment) => {
+      const highlight = renderAnchorHighlight(comment);
       const mini = renderMini(comment);
       const memo = renderMemo(comment);
+      if (highlight) layersEl.appendChild(highlight);
       if (mini) layersEl.appendChild(mini);
       if (memo) layersEl.appendChild(memo);
     });
+    const pin =
+      activeCommentId &&
+      layersEl.querySelector('.hw-hc-memo[data-id="' + activeCommentId + '"]');
+    scheduleCloudLayout(pin || null);
+  }
+
+  function initialLauncherPos() {
+    try {
+      if (localStorage.getItem(LAUNCHER_POS_KEY)) return loadLauncherPos();
+    } catch (_) {}
+    const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
+    return neutral?.launcher || loadLauncherPos();
   }
 
   function buildShell() {
@@ -1024,7 +1677,7 @@
     launcherEl = document.createElement("button");
     launcherEl.type = "button";
     launcherEl.className = "hw-hc-launcher";
-    const launcherPos = loadLauncherPos();
+    const launcherPos = initialLauncherPos();
     launcherEl.style.left = launcherPos.x + "%";
     launcherEl.style.top = launcherPos.y + "%";
     launcherEl.setAttribute("aria-label", "Add a note on highlighted text");
@@ -1036,8 +1689,10 @@
 
     shellEl.append(layersEl, launcherEl);
     hostEl.appendChild(shellEl);
+    global.HwWorksheetToolLayout?.ensureCleanupButton?.(hostEl);
 
     hostEl.addEventListener("mouseup", onHostMouseUp);
+    bindTouchSelection();
     bindDocPointer();
     bindKeyDown();
     built = true;
@@ -1051,13 +1706,20 @@
     dragState = null;
     launcherDrag = null;
     dismissOnboarding();
+    unbindTouchSelection();
     unbindDocPointer();
     unbindKeyDown();
     if (hostEl) {
       hostEl.removeEventListener("mouseup", onHostMouseUp);
-      hostEl.classList.remove("hw-hc-host", "hw-hc-armed", "hw-hc-onboarding");
+      hostEl.classList.remove("hw-hc-host", "hw-hc-armed", "hw-hc-onboarding", "hw-hc-coarse", "hw-hc-touch-selecting");
       hostEl.querySelector(":scope > .hw-hc-shell")?.remove();
     }
+    if (worksheetFormEl && slideChangeBound) {
+      worksheetFormEl.removeEventListener("hw-worksheet-slide", slideChangeBound);
+    }
+    worksheetFormEl = null;
+    slideChangeBound = null;
+    slideIndex = 0;
     hostEl = null;
     shellEl = null;
     layersEl = null;
@@ -1086,6 +1748,13 @@
 
     hostEl = formEl?.closest(".hw-hub-v2-worksheet") || formEl?.parentElement || findHost();
     if (!hostEl) return false;
+
+    worksheetFormEl = formEl;
+    slideIndex = global.HwWorksheet?.getSlideIndex?.(formEl) ?? 0;
+    if (worksheetFormEl) {
+      slideChangeBound = onSlideChange;
+      worksheetFormEl.addEventListener("hw-worksheet-slide", slideChangeBound);
+    }
 
     buildShell();
 
@@ -1203,7 +1872,11 @@
     clearDraftStorage,
     freezeAfterSubmit,
     resetOnboarding,
+    getLauncherPosition,
+    setLauncherPosition,
+    resetLauncherPosition,
     offsetLauncherBy,
     offsetActiveMemoBy,
+    offsetCloudById,
   };
 })(window);

@@ -10,6 +10,11 @@
       url: "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY",
       param: "custom_id",
     },
+    "course-pitch-accent": {
+      label: "Easy Pitch Accent course",
+      url: "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=REPLACE_PITCH_ACCENT",
+      param: "custom",
+    },
     "course-kansai": {
       label: "Kansai-ben course",
       url: "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=REPLACE_KANSAI",

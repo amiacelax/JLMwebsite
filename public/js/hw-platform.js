@@ -6,11 +6,24 @@
   const session = HwAuth.getSession();
   if (!session) return;
 
-  const isTeacher = session.role === "teacher";
+  const teacherSession = HwAuth.getTeacherSession();
+  const isViewingAsStudent = HwAuth.isViewingAsStudent();
+  const isTeacher = Boolean(teacherSession) && !isViewingAsStudent;
+
+  function getTeacherSessionForApi() {
+    return teacherSession || HwAuth.getTeacherSession();
+  }
 
   const greet = document.getElementById("hw-platform-greet");
   if (greet) {
-    greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
+    if (isViewingAsStudent) {
+      greet.textContent =
+        (teacherSession?.displayName || "Teacher") +
+        " · viewing as " +
+        (session.displayName || session.username);
+    } else {
+      greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
+    }
   }
 
   if (!isTeacher) {
@@ -46,21 +59,34 @@
     if (assignCard) {
       assignCard.classList.toggle("hw-hub-v4-actions-card", v4);
     }
+    placeOfflineToolsShell();
     placePhotoUploadShell();
     if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
   }
 
-  function placePhotoUploadShell() {
-    const photoForm = document.getElementById("hw-photo-upload-form");
-    if (!photoForm) return;
-    const target = usesHubV4Layout()
-      ? document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet")
-      : document.getElementById("hw-worksheet-section");
-    if (target && photoForm.parentElement !== target) {
-      target.appendChild(photoForm);
+  function placeOfflineToolsShell() {
+    const card = document.getElementById("hw-offline-tools-card");
+    if (!card) return;
+    const v4Target = document.getElementById("hw-grid-stack");
+    const legacyTarget =
+      document.querySelector("#hw-worksheet-section .hw-hub-v2-worksheet") ||
+      document.getElementById("hw-worksheet-section");
+    const target = usesHubV4Layout() ? v4Target : legacyTarget;
+    if (!target) return;
+    if (usesHubV4Layout()) {
+      if (card.parentElement !== target) target.insertBefore(card, target.firstChild);
+      else if (card !== target.firstElementChild) target.insertBefore(card, target.firstChild);
+      card.classList.remove("hw-grid-offline--legacy");
+    } else if (card.parentElement !== target) {
+      target.appendChild(card);
+      card.classList.add("hw-grid-offline--legacy");
     }
+  }
+
+  function placePhotoUploadShell() {
+    placeOfflineToolsShell();
   }
 
   function getWorksheetMount() {
@@ -275,10 +301,7 @@
       global.HwCheckout?.bindCheckoutControls?.(pick);
     }
 
-    if (desc) {
-      desc.textContent =
-        "Assignments and lesson links from your recordings show up here. Upgrade your plan below when you are ready.";
-    }
+    if (desc) desc.hidden = true;
   }
 
   const HUB_GAMES = [
@@ -547,8 +570,16 @@
     }
   }
 
+  function catalogFetchScope() {
+    if (isTeacher) return "teacher:full";
+    const username = session?.username;
+    if (username) return "student:" + username;
+    return "student:";
+  }
+
   function invalidateCatalogCaches() {
     catalogCache = null;
+    catalogCacheScope = null;
     catalogFetchInFlight = null;
     try {
       sessionStorage.removeItem(CATALOG_SESSION_KEY);
@@ -601,7 +632,7 @@
   }
 
   function studentAssignmentFetchOptions(options) {
-    if (isTeacher) {
+    if (isTeacher && !isViewingAsStudent) {
       return options?.bypassCache ? { bypassCache: true } : undefined;
     }
     return { bypassCache: true };
@@ -609,16 +640,19 @@
 
   async function fetchCatalog(options) {
     options = options || {};
-    if (!options.bypassCache && catalogCache) return catalogCache;
+    const scope = catalogFetchScope();
+    if (!options.bypassCache && catalogCache && catalogCacheScope === scope) return catalogCache;
 
     if (!options.bypassCache) {
       const cached = readSessionJson(CATALOG_SESSION_KEY);
       if (
         cached?.savedAt &&
+        cached.scope === scope &&
         Date.now() - cached.savedAt < CATALOG_TTL_MS &&
         cached.data?.assignments
       ) {
         catalogCache = cached.data;
+        catalogCacheScope = scope;
         return cached.data;
       }
     }
@@ -627,7 +661,7 @@
 
     const work = (async () => {
       const studentParam =
-        !isTeacher && session?.username
+        scope.startsWith("student:") && session?.username
           ? "?student=" + encodeURIComponent(session.username)
           : "";
       const res = await fetch("/api/homework-catalog" + studentParam, {
@@ -636,7 +670,8 @@
       if (!res.ok) throw new Error("catalog");
       const data = await res.json();
       catalogCache = data;
-      writeSessionJson(CATALOG_SESSION_KEY, { savedAt: Date.now(), data });
+      catalogCacheScope = scope;
+      writeSessionJson(CATALOG_SESSION_KEY, { scope, savedAt: Date.now(), data });
       return data;
     })();
 
@@ -776,8 +811,8 @@
 
   function setSubmissionViewChrome(submission, viewing) {
     const banner = document.getElementById("hw-submission-view-banner");
-    const backBtn = document.getElementById("hw-submission-view-back");
     const pastFold = document.getElementById("hw-student-past-fold");
+    const offlineCard = document.getElementById("hw-offline-tools-card");
 
     if (banner) {
       if (viewing && submission) {
@@ -791,20 +826,26 @@
         banner.textContent = "";
       }
     }
-    if (backBtn) backBtn.hidden = !viewing;
+    if (offlineCard) offlineCard.hidden = Boolean(viewing);
     if (pastFold && viewing) pastFold.open = true;
   }
 
-  function bindSubmissionViewBack() {
-    const backBtn = document.getElementById("hw-submission-view-back");
-    if (!backBtn || backBtn.dataset.bound === "true") return;
-    backBtn.dataset.bound = "true";
-    backBtn.addEventListener("click", () => {
-      if (window.location.hash.match(/^#hw-submission-/)) {
-        window.location.hash = "";
+  function bindOfflineTools() {
+    const printBtn = document.getElementById("hw-offline-print");
+    if (!printBtn || printBtn.dataset.bound === "true") return;
+    printBtn.dataset.bound = "true";
+    printBtn.addEventListener("click", () => {
+      const form = document.getElementById("hw-worksheet-form");
+      if (form && global.HwWorksheet?.printBlank) {
+        global.HwWorksheet.printBlank(form);
       }
-      void loadStudentHub({ bypassCache: true });
     });
+  }
+
+  function setOfflineToolsVisible(show) {
+    const offlineCard = document.getElementById("hw-offline-tools-card");
+    if (!offlineCard) return;
+    offlineCard.hidden = !show;
   }
 
   function renderStudentPastList(submissions, activeSubmissionId) {
@@ -1360,6 +1401,8 @@
     try {
       if (localStorage.getItem(submittedKey) && global.HwWorksheet?.enableSeeAnswers) {
         HwWorksheet.enableSeeAnswers(form);
+      } else if (global.HwWorksheet?.disableSeeAnswers) {
+        HwWorksheet.disableSeeAnswers(form);
       }
     } catch (_) {}
   }
@@ -1599,6 +1642,7 @@
 
     placePhotoUploadShell();
     form.hidden = !activeAssignment;
+    setOfflineToolsVisible(Boolean(activeAssignment));
     form.dataset.assignmentId = activeAssignment?.id || "printed-homework";
     const photoMeta = activeAssignment
       ? studentViewMeta(null, activeAssignment)
@@ -1613,11 +1657,9 @@
     let uploading = false;
 
     function worksheetPhotoButtons() {
-      const wsForm = document.getElementById("hw-worksheet-form");
-      if (!wsForm) return { take: null, choose: null };
       return {
-        take: wsForm.querySelector("[data-hw-photo-take]"),
-        choose: wsForm.querySelector("[data-hw-photo-choose]"),
+        take: document.querySelector("[data-hw-photo-take]"),
+        choose: document.querySelector("[data-hw-photo-choose]"),
       };
     }
 
@@ -2172,6 +2214,7 @@
   }
 
   let catalogCache = null;
+  let catalogCacheScope = null;
   let librarySearchBound = false;
 
   function getCatalogEntry(id) {
@@ -2188,7 +2231,7 @@
       fetchAssignmentJson: (id) => fetchAssignmentJson(id, { bypassCache: true }),
       fetchCatalog,
       getCatalogEntry,
-      getTeacherSession: () => session,
+      getTeacherSession: () => getTeacherSessionForApi(),
       getStudentAccounts: function () {
         if (global.HwStudentList?.getStudentsSync) {
           return global.HwStudentList.getStudentsSync();
@@ -2476,20 +2519,21 @@
     const studentOnly = document.getElementById("hw-platform-student-only");
 
     if (hubTitle) hubTitle.textContent = "Teacher's hub";
-    if (hubDesc) {
-      hubDesc.textContent =
-        "Worksheet maker → Student info → Library → Ideas → Submissions → Mistakes → Email list → Birthdays.";
-    }
+    if (hubDesc) hubDesc.hidden = true;
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
     if (global.HwStudentList?.fetchStudents) {
-      await global.HwStudentList.fetchStudents();
+      await global.HwStudentList.fetchStudents({
+        force: true,
+        teacherUsername: teacherSession?.username,
+      });
+      await global.HwStudentList.refreshTeacherFilterSelects?.();
     }
 
     if (global.HwTeacherLookupLexicon?.init) {
       HwTeacherLookupLexicon.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => teacherSession || HwAuth.getTeacherSession(),
         showToast,
       });
     }
@@ -2498,37 +2542,37 @@
     initTeacherEditor();
     if (global.HwTeacherIdeas?.init) {
       HwTeacherIdeas.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
     if (global.HwTeacherSubmissions?.init) {
       HwTeacherSubmissions.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
     if (global.HwTeacherMistakes?.init) {
       HwTeacherMistakes.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
     if (global.HwTeacherPromo?.init) {
       HwTeacherPromo.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
     if (global.HwTeacherBirthdays?.init) {
       HwTeacherBirthdays.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
     if (global.HwTeacherLanternWords?.init) {
       HwTeacherLanternWords.init({
-        getTeacherSession: () => session,
+        getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
       });
     }
@@ -2700,6 +2744,7 @@
       mount.innerHTML = "";
       studentMountedAssignmentId = null;
       hubV4WorksheetForm = null;
+      setOfflineToolsVisible(false);
       scheduleStudentMistakesLoad({
         background: Boolean(options.background),
         bypassCache: Boolean(options.bypassCache),
@@ -2802,6 +2847,101 @@
     initTeacherEditor();
   }
 
+  function returnToTeacherHub() {
+    invalidateCatalogCaches();
+    HwAuth.clearViewAsStudent();
+    window.location.reload();
+  }
+
+  function syncTeacherAdminChrome() {
+    const showAdmin = Boolean(teacherSession);
+    const banner = document.getElementById("hw-viewas-banner");
+    const bannerExit = document.getElementById("hw-viewas-banner-exit");
+
+    if (banner) banner.hidden = !showAdmin;
+    if (bannerExit) bannerExit.hidden = !showAdmin || !isViewingAsStudent;
+  }
+
+  syncTeacherAdminChrome();
+
+  function initTeacherViewAsControls() {
+    if (!teacherSession) {
+      syncTeacherAdminChrome();
+      return;
+    }
+
+    const select = document.getElementById("hw-teacher-viewas-select");
+    const bannerExit = document.getElementById("hw-viewas-banner-exit");
+
+    syncTeacherAdminChrome();
+
+    if (bannerExit && !bannerExit.dataset.bound) {
+      bannerExit.dataset.bound = "true";
+      bannerExit.addEventListener("click", returnToTeacherHub);
+    }
+
+    if (!select || select.dataset.bound) return;
+    select.dataset.bound = "true";
+
+    select.addEventListener("change", () => {
+      const next = select.value;
+      if (!next) {
+        if (isViewingAsStudent) returnToTeacherHub();
+        return;
+      }
+      if (next === session.username && isViewingAsStudent) return;
+      void (async () => {
+        const apply = HwAuth.setViewAsStudentAsync || HwAuth.setViewAsStudent;
+        const result = await apply(next);
+        if (!result.ok) {
+          select.value = isViewingAsStudent ? session.username : "";
+          return;
+        }
+        window.location.reload();
+      })();
+    });
+
+    void (async () => {
+      if (global.HwStudentList?.fetchStudents) {
+        await global.HwStudentList.fetchStudents({
+          force: true,
+          teacherUsername: teacherSession.username,
+        });
+        global.HwStudentList.fillStudentSelect(select, {
+          placeholder: "— Teacher hub —",
+          required: false,
+          keepValue: isViewingAsStudent ? session.username : "",
+        });
+      }
+    })();
+  }
+
+  async function enrichViewAsSessionFromProfile() {
+    if (!isViewingAsStudent || !teacherSession?.username || !session?.username) return;
+    try {
+      const url =
+        "/api/homework-student-profile?teacherUsername=" +
+        encodeURIComponent(teacherSession.username) +
+        "&studentUsername=" +
+        encodeURIComponent(session.username);
+      const res = await fetch(url);
+      const data = await res.json();
+      const profile = data?.profile;
+      if (!profile) return;
+      if (profile.accountLabel) {
+        session.accountLabel = profile.accountLabel;
+        session.accountLabelDisplay =
+          HwAuth.ACCOUNT_LABELS[profile.accountLabel] || profile.accountLabel;
+      }
+      if (profile.tier) {
+        session.tier = profile.tier;
+        session.tierDisplay = HwAuth.TIERS[profile.tier]?.name || profile.tier;
+      }
+    } catch {
+      /* profile optional */
+    }
+  }
+
   function init() {
     if (!global.HwWorksheet?.render) {
       const mount = getWorksheetMount() || document.getElementById("hw-worksheet-mount");
@@ -2819,17 +2959,35 @@
     }
 
     if (isTeacher) {
+      initTeacherViewAsControls();
       initTeacherEditor();
       void loadTeacherHub();
       requestAnimationFrame(ensureTeacherEditorMounted);
       setTimeout(ensureTeacherEditorMounted, 0);
+    } else if (isViewingAsStudent) {
+      initTeacherViewAsControls();
+      applyHubLayout();
+      void enrichViewAsSessionFromProfile().then(() => {
+        renderAccountBar();
+        renderStudentHubHeader();
+        renderGamesHubCard();
+        bindWeeklyUpgradeCard();
+        bindOfflineTools();
+        loadStudentHub();
+      });
+      window.addEventListener("hashchange", () => {
+        loadStudentHub();
+      });
+      if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.init) {
+        global.HwMagnifyingGlass.init();
+      }
     } else {
       applyHubLayout();
       renderAccountBar();
       renderStudentHubHeader();
       renderGamesHubCard();
       bindWeeklyUpgradeCard();
-      bindSubmissionViewBack();
+      bindOfflineTools();
       loadStudentHub();
       window.addEventListener("hashchange", () => {
         loadStudentHub();

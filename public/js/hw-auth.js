@@ -4,6 +4,7 @@
  */
 (function (global) {
   const SESSION_KEY = "jlm-hw-session";
+  const VIEW_AS_KEY = "jlm-hw-view-as";
   const VIDEO_UNLOCK_PREFIX = "jlm-hw-video-unlock-";
   const PLATFORM_PATH = "/homework/platform.html";
   const LOGIN_PATH = "/homework.html";
@@ -186,7 +187,124 @@
     };
   }
 
+  function getTeacherSession() {
+    try {
+      const raw = readStoredSession();
+      if (!raw) return null;
+      const data = enrichSession(JSON.parse(raw));
+      if (!data || data.role !== "teacher") return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function getViewAsStudent() {
+    try {
+      const username = sessionStorage.getItem(VIEW_AS_KEY);
+      return username ? normalizeUsername(username) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function isViewingAsStudent() {
+    return Boolean(getTeacherSession() && getViewAsStudent());
+  }
+
+  function buildStudentViewSession(username) {
+    const key = normalizeUsername(username);
+    if (!key || !getTeacherSession()) return null;
+    const account = ACCOUNTS[key];
+    if (account && account.role === "teacher") return null;
+    if (account && account.role === "student") {
+      return enrichSession({
+        username: key,
+        displayName: account.displayName,
+        role: "student",
+        accountLabel: account.accountLabel,
+        tier: account.tier,
+        videoResponseUnlock:
+          account.tier === "tier3" ||
+          account.videoResponseUnlock ||
+          isVideoUnlockStored(key),
+        loggedInAt: Date.now(),
+        viewAs: true,
+      });
+    }
+
+    const fromList = global.HwStudentList?.getStudentsSync?.()?.find((s) => s.username === key);
+    const viewAsActive = getViewAsStudent() === key;
+    if (!fromList && !viewAsActive) return null;
+
+    return enrichSession({
+      username: key,
+      displayName: fromList?.displayName || key,
+      role: "student",
+      accountLabel: "homework_only",
+      tier: "pending",
+      videoResponseUnlock: false,
+      loggedInAt: Date.now(),
+      viewAs: true,
+      source: "server",
+    });
+  }
+
+  function setViewAsStudent(username) {
+    const key = normalizeUsername(username);
+    if (!getTeacherSession()) return { ok: false, error: "Teacher login required." };
+    if (!key) {
+      sessionStorage.removeItem(VIEW_AS_KEY);
+      return { ok: true, session: getTeacherSession() };
+    }
+    if (!isStudentAccount(key)) {
+      return { ok: false, error: "Unknown student account." };
+    }
+    sessionStorage.setItem(VIEW_AS_KEY, key);
+    const student = buildStudentViewSession(key);
+    return student ? { ok: true, session: student } : { ok: false, error: "Unknown student account." };
+  }
+
+  async function setViewAsStudentAsync(username) {
+    const key = normalizeUsername(username);
+    if (!getTeacherSession()) return { ok: false, error: "Teacher login required." };
+    if (!key) {
+      sessionStorage.removeItem(VIEW_AS_KEY);
+      return { ok: true, session: getTeacherSession() };
+    }
+    if (global.HwStudentList?.fetchStudents) {
+      await global.HwStudentList.fetchStudents({
+        force: true,
+        teacherUsername: getTeacherSession()?.username,
+      });
+    }
+    return setViewAsStudent(key);
+  }
+
+  function clearViewAsStudent() {
+    sessionStorage.removeItem(VIEW_AS_KEY);
+  }
+
   function getSession() {
+    try {
+      const teacher = getTeacherSession();
+      if (teacher) {
+        const viewAs = getViewAsStudent();
+        if (viewAs) {
+          const student = buildStudentViewSession(viewAs);
+          if (student) return student;
+        }
+        return teacher;
+      }
+      const raw = readStoredSession();
+      if (!raw) return null;
+      return enrichSession(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
+
+  function readStoredSessionOnly() {
     try {
       const raw = readStoredSession();
       if (!raw) return null;
@@ -413,6 +531,8 @@
   }
 
   function listStudentAccounts() {
+    const live = global.HwStudentList?.getStudentsSync?.();
+    if (live?.length) return live.slice();
     return Object.entries(ACCOUNTS)
       .filter(([, account]) => account.role === "student")
       .map(([username, account]) => ({
@@ -425,7 +545,9 @@
   function isStudentAccount(username) {
     const key = normalizeUsername(username);
     const account = ACCOUNTS[key];
-    return Boolean(account && account.role === "student");
+    if (account?.role === "teacher") return false;
+    if (account?.role === "student") return true;
+    return global.HwStudentList?.isKnownStudent?.(key) || false;
   }
 
   function possessiveHubTitle(name) {
@@ -464,5 +586,12 @@
     listStudentAccounts,
     isStudentAccount,
     possessiveHubTitle,
+    getTeacherSession,
+    getViewAsStudent,
+    isViewingAsStudent,
+    setViewAsStudent,
+    setViewAsStudentAsync,
+    clearViewAsStudent,
+    buildStudentViewSession,
   };
 })(window);

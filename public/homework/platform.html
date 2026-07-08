@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260715">
-  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
-  <link rel="stylesheet" href="/css/hw-hub-v4.css?v=4">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=27">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=12" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/styles.css?v=20260731">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=13">
+  <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=62">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=21" data-hw-comments-css="1">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -83,8 +83,17 @@
       <div class="container container--wide">
         <div class="section__header section__header--platform">
           <p class="section__eyebrow">Homework Hub</p>
+          <div class="hw-viewas-banner" id="hw-viewas-banner" hidden>
+            <label class="hw-viewas-banner__pick" for="hw-teacher-viewas-select">
+              <span class="hw-viewas-banner__label">View as student</span>
+              <select class="hw-viewas-banner__select" id="hw-teacher-viewas-select" aria-label="View student hub as">
+                <option value="">— Teacher hub —</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn--ghost btn--sm" id="hw-viewas-banner-exit" hidden>Back to teacher hub</button>
+          </div>
           <h1 class="section__title" id="hw-hub-title">Your hub</h1>
-          <p class="section__desc" id="hw-hub-desc">Assignments and lesson links from your recordings will show up here as we connect the pipeline.</p>
+          <p class="section__desc" id="hw-hub-desc" hidden></p>
           <div class="hw-hub-tier-pick" id="hw-hub-tier-pick" hidden>
             <div class="hw-hub-tier-grid" role="group" aria-label="Choose a homework plan">
               <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" data-hw-tier-plan="basic" data-hw-tier-detail="basic" tabindex="0">
@@ -569,26 +578,6 @@
               <p class="hw-worksheet-intro hw-hub-v4-intro" id="hw-v4-worksheet-intro" hidden>Loading worksheet…</p>
               <div id="hw-v2-worksheet-mount" lang="ja"></div>
               <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
-              <p class="hw-submission-view-back">
-                <button type="button" class="btn btn--ghost btn--sm" id="hw-submission-view-back" hidden>← Back to current homework</button>
-              </p>
-              <form class="hw-photo-upload hw-photo-upload--worksheet" id="hw-photo-upload-form" hidden>
-                <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
-                <div class="hw-photo-capture" id="hw-photo-capture" hidden>
-                  <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
-                  <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
-                    <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
-                    <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
-                      <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
-                      <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
-                    </div>
-                  </div>
-                  <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
-                    <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
-                  </div>
-                </div>
-                <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
-              </form>
             </section>
 
             <details class="hw-hub-v2-fold hw-student-past-fold" id="hw-student-past-fold">
@@ -610,6 +599,33 @@
             </section>
 
             <div class="hw-grid-stack" id="hw-grid-stack">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-offline" id="hw-offline-tools-card" hidden>
+                <h2 class="hw-platform-card__title">Print or upload</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight">Photo of your written work.</p>
+                <div class="hw-offline-tools__actions">
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-offline-print" data-hw-print>Print</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-hw-photo-take>Take Picture</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-hw-photo-choose>Choose file</button>
+                </div>
+                <form class="hw-photo-upload hw-photo-upload--worksheet" id="hw-photo-upload-form" hidden>
+                  <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
+                  <div class="hw-photo-capture" id="hw-photo-capture" hidden>
+                    <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
+                    <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
+                      <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
+                      <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                        <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
+                      </div>
+                    </div>
+                    <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
+                      <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
+                    </div>
+                  </div>
+                  <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+                </form>
+              </section>
+
               <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
                 <h2 class="hw-platform-card__title">Your most recent lesson</h2>
                 <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
@@ -839,22 +855,22 @@
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-compat.js?v=20260690" defer></script>
-  <script src="/js/hw-video-inline.js?v=20260617" defer></script>
-  <script src="/js/hw-audio-inline.js?v=20260617" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260721" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260721" defer></script>
   <script src="/js/hw-submit-format.js?v=20260619" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260716" defer></script>
-  <script src="/js/hw-star-block.js?v=20260713" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260722" defer></script>
+  <script src="/js/hw-star-block.js?v=20260707" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-feature-flags.js?v=5" defer></script>
-  <script src="/js/hw-mg-lexicon.js?v=15" defer></script>
+  <script src="/js/hw-mg-lexicon.js?v=17" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
-  <script src="/js/hw-worksheet-tools-layout.js?v=1" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=48" defer></script>
-  <script src="/js/hw-homework-comments.js?v=18" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=11" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=68" defer></script>
+  <script src="/js/hw-homework-comments.js?v=33" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260714" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260715" defer></script>
   <script src="/js/hw-encoding.js?v=1" defer></script>
-  <script src="/js/hw-student-list.js?v=20260675" defer></script>
+  <script src="/js/hw-student-list.js?v=20260725" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
   <script src="/js/hw-mistake-feed.js?v=20260674" defer></script>
   <script src="/js/hw-teacher-submissions.js?v=20260705" defer></script>
@@ -869,6 +885,6 @@
   <script src="/js/hw-teacher-lookup-lexicon.js?v=24" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260717" defer></script>
+  <script src="/js/hw-platform.js?v=20260730" defer></script>
 </body>
 </html>

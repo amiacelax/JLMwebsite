@@ -4,11 +4,12 @@
 (function (global) {
   const STORAGE_KEY = "hw-mg-position-v2";
   const ONBOARD_KEY = "hw-mg-onboarding-v1";
-  const DEFAULT_LENS = { x: 114, y: 40 };
+  /** Fallback lens — top-right when title anchor is missing. */
+  const DEFAULT_LENS = { x: 0, y: 12 };
   const SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
   const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__chip, .hw-star-block__slot, .hw-star-block__fixed";
+    "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-mg-widget, .hw-mg-lens, .hw-mg-popup, .hw-mg-onboard, .hw-video-inline, .hw-audio-inline, .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__pool";
 
   /** Shared 字 lens strokes (button + cursor). */
   const LENS_JI_PATHS =
@@ -43,6 +44,12 @@
     );
   }
 
+  /** Compact lens for popup Jisho link (top-right). */
+  const POPUP_JISHO_ICON =
+    '<svg class="hw-mg-popup__jisho-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
+    '<circle cx="10" cy="10" r="6.5"/>' +
+    '<path d="M15 15l6 6"/>' +
+    "</svg>";
   /** Classic circle + handle (kept for rollback). */
   const LENS_ICON_CLASSIC =
     '<svg class="hw-mg-lens__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">' +
@@ -101,10 +108,24 @@
   let popupDragState = null;
   let lookupBusy = false;
   let built = false;
+  let popupEditMode = false;
+  let popupContext = null;
+  let popupOutsideBound = null;
   let hoverHighlightEl = null;
   let hoverHighlightRaf = null;
+  let hoverHighlightSeq = 0;
   let hostMouseMoveBound = null;
   let pendingHoverPoint = null;
+  const tokenizeCache = new Map();
+  const jaLookupCache = new Map();
+  const TOKENIZE_CACHE_MAX = 48;
+  const JA_LOOKUP_CACHE_MAX = 200;
+
+  function preloadLookupAssets() {
+    void global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+    const auto = global.HwFuriganaAuto;
+    if (auto?.ensureTokenizer) void auto.ensureTokenizer().catch(() => {});
+  }
 
   function supportsHoverHighlight() {
     return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -213,6 +234,8 @@
       if (!raw) {
         if (overrideOptions?.defaultSnap && SNAP_IDS.includes(overrideOptions.defaultSnap)) {
           lensSnapId = overrideOptions.defaultSnap;
+        } else if (!overrideOptions?.defaultLens) {
+          lensSnapId = "tr";
         }
         return;
       }
@@ -256,6 +279,34 @@
     saveLensPosition();
   }
 
+  function getLensPosition() {
+    return { ...lensPosition };
+  }
+
+  function setLensPositionLocal(localX, localY, persist) {
+    if (!widgetEl || !hostEl) return;
+    lensSnapId = null;
+    lensPosition = clampLocal(localX, localY);
+    setLensPosition(lensPosition.x, lensPosition.y);
+    if (persist !== false) saveLensPosition();
+  }
+
+  function setLensSnap(id) {
+    if (!id || !SNAP_IDS.includes(id) || !widgetEl || !hostEl) return;
+    lensSnapId = id;
+    applyLensPosition();
+    saveLensPosition();
+  }
+
+  function resetLensPosition(target) {
+    try {
+      localStorage.removeItem(lensStorageKey());
+    } catch (_) {}
+    lensSnapId = null;
+    const pos = target || overrideOptions?.defaultLens || DEFAULT_LENS;
+    setLensPositionLocal(pos.x, pos.y, false);
+  }
+
   function offsetLensBy(dx, dy) {
     if (!widgetEl || !hostEl) return;
     setFreeLensPosition(lensPosition.x + dx, lensPosition.y + dy);
@@ -290,6 +341,7 @@
     lensEl?.classList.toggle("is-armed", armed);
     if (lensEl) lensEl.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
+      preloadLookupAssets();
       global.HwHomeworkComments?.disarm?.();
       if (!opts?.silent) {
         const msg =
@@ -303,17 +355,372 @@
   }
 
   function closePopup() {
+    exitPopupEditMode(false);
     lookupBusy = false;
     popupDragState = null;
+    popupContext = null;
     if (popupEl) {
       popupEl.remove();
       popupEl = null;
     }
   }
 
+  /** True when logged in as teacher (including view-as-student admin mode). */
+  function isTeacherUser() {
+    return Boolean(global.HwAuth?.getTeacherSession?.());
+  }
+
+  function parseHighlightParts(raw) {
+    return String(raw || "")
+      .split(/[+＋/／]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function glossTargetSurface(surface, highlight) {
+    const parts = parseHighlightParts(highlight);
+    if (parts.length === 1 && parts[0] && parts[0] !== surface) return parts[0];
+    if (parts.length >= 2) return parts.join("");
+    return surface;
+  }
+
+  function buildHighlightLexiconPatch(surface, highlight, reading, definition) {
+    const parts = parseHighlightParts(highlight);
+    const patch = {};
+
+    if (parts.length >= 2) {
+      const combined = parts.join("");
+      if (highlight.includes("+") || highlight.includes("＋")) {
+        patch.splitSurfaces = parts;
+      } else if (combined === surface) {
+        patch.mergeSurfaces = parts;
+      } else {
+        patch.splitSurfaces = parts;
+      }
+      if (reading || definition) {
+        patch.reading = reading;
+        patch.definition = definition;
+      }
+      return patch;
+    }
+
+    const desired = String(parts[0] || surface).trim() || surface;
+    if (desired === surface) {
+      if (reading || definition) {
+        patch.reading = reading;
+        patch.definition = definition;
+      }
+      return patch;
+    }
+
+    patch.forceUnit = desired;
+    if (surface.startsWith(desired)) {
+      const rest = surface.slice(desired.length);
+      if (rest) patch.splitSurfaces = [desired, rest];
+    } else if (surface.endsWith(desired)) {
+      const rest = surface.slice(0, surface.length - desired.length);
+      if (rest) patch.splitSurfaces = [rest, desired];
+    }
+
+    if (reading || definition) {
+      patch.extraCustom = { [desired]: { reading, definition } };
+    }
+    return patch;
+  }
+
+  function buildHighlightPreview(surface, highlight, reading, definition) {
+    const parts = parseHighlightParts(highlight);
+    const preview = { custom: {} };
+    const glossSurface = glossTargetSurface(surface, highlight);
+    if (reading || definition) {
+      preview.custom[glossSurface] = { reading, definition };
+    }
+
+    if (parts.length >= 2) {
+      const combined = parts.join("");
+      if (highlight.includes("+") || highlight.includes("＋") || combined !== surface) {
+        preview.segmentSurfaces = parts;
+      } else {
+        preview.mergeSurfaces = parts;
+      }
+      return preview;
+    }
+
+    const desired = String(parts[0] || surface).trim();
+    if (!desired || desired === surface) return preview;
+
+    if (surface.startsWith(desired)) {
+      const rest = surface.slice(desired.length);
+      if (rest) preview.segmentSurfaces = [desired, rest];
+    } else if (surface.endsWith(desired)) {
+      const rest = surface.slice(0, surface.length - desired.length);
+      if (rest) preview.segmentSurfaces = [rest, desired];
+    }
+    return preview;
+  }
+
+  function getAssignmentContext() {
+    const form =
+      hostEl?.closest?.("form") ||
+      document.getElementById("hw-worksheet-form") ||
+      document.querySelector(".hw-worksheet");
+    const id = form?.getAttribute?.("data-assignment-id") || "";
+    const title =
+      hostEl?.querySelector?.(".hw-hub-v2-top__title, #hw-v2-title, .hw-worksheet__meta-title")
+        ?.textContent?.trim() || "";
+    return { assignmentId: id, assignmentTitle: title || id };
+  }
+
+  function lookupSourceKind(unit, lookup) {
+    const surface = unit?.surface || "";
+    const custom = global.HwMgLexicon?.customEntry?.(surface, unit?.lemma);
+    if (custom?.reading || custom?.definition) return "CUSTOM";
+    if (lookup?.definition && global.HwMgLexicon?.CUSTOM?.[surface]) return "CUSTOM";
+    return "Jisho";
+  }
+
+  function buildPopupContext(unit, lookup, container) {
+    const surface = unit?.surface || "";
+    const sentence = normalizeContainerText(container);
+    const assignment = getAssignmentContext();
+    return {
+      unit: { ...unit },
+      lookup: { ...lookup },
+      surface,
+      reading: lookup?.reading || unit?.reading || "",
+      definition: lookup?.definition || unit?.definition || "",
+      jishoUrl:
+        lookup?.jishoUrl ||
+        unit?.jishoUrl ||
+        "https://jisho.org/search/" + encodeURIComponent(unit?.query || surface),
+      sourceKind: lookupSourceKind(unit, lookup),
+      sentence,
+      highlight: surface,
+      assignmentId: assignment.assignmentId,
+      assignmentTitle: assignment.assignmentTitle,
+    };
+  }
+
+  function applyPopupLexiconPreview(ctx) {
+    if (!ctx || !popupEditMode) {
+      global.HwMgLexicon?.clearPreview?.();
+      return;
+    }
+    const highlight = String(ctx.highlight || ctx.surface || "").trim();
+    const preview = buildHighlightPreview(
+      String(ctx.surface || ""),
+      highlight,
+      String(ctx.reading || "").trim(),
+      String(ctx.definition || "").trim()
+    );
+    const hasPreview =
+      Object.keys(preview.custom).length ||
+      preview.segmentSurfaces?.length ||
+      preview.mergeSurfaces?.length;
+    if (hasPreview) global.HwMgLexicon?.setPreview?.(preview);
+    else global.HwMgLexicon?.clearPreview?.();
+  }
+
+  function exitPopupEditMode(revert) {
+    if (!popupEditMode) return;
+    popupEditMode = false;
+    if (popupOutsideBound) {
+      document.removeEventListener("pointerdown", popupOutsideBound, true);
+      popupOutsideBound = null;
+    }
+    global.HwMgLexicon?.clearPreview?.();
+    if (revert && popupContext) {
+      renderPopup(popupContext, null, null, { preservePosition: true });
+    }
+  }
+
+  async function savePopupLexiconEdit(ctx) {
+    const teacher = global.HwAuth?.getTeacherSession?.();
+    if (!teacher?.username) {
+      showToast("Teacher login required");
+      return;
+    }
+
+    const surface = String(ctx.surface || "").trim();
+    const reading = String(ctx.reading || "").trim();
+    const definition = String(ctx.definition || "").trim();
+    const highlight = String(ctx.highlight || surface).trim();
+
+    const payload = {
+      teacherUsername: teacher.username,
+      surface,
+      ...buildHighlightLexiconPatch(surface, highlight, reading, definition),
+    };
+
+    try {
+      const res = await fetch("/api/mg-lexicon/patch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Save failed");
+
+      if (data.overlay && global.HwMgLexicon?.applyGlobalOverlay) {
+        global.HwMgLexicon.applyGlobalOverlay(data.overlay);
+      } else {
+        await global.HwMgLexicon?.ensureLoaded?.();
+      }
+      tokenizeCache.clear();
+
+      popupEditMode = false;
+      if (popupOutsideBound) {
+        document.removeEventListener("pointerdown", popupOutsideBound, true);
+        popupOutsideBound = null;
+      }
+      global.HwMgLexicon?.clearPreview?.();
+
+      const saved = {
+        ...ctx,
+        highlight,
+        reading,
+        definition,
+        surface: glossTargetSurface(surface, highlight),
+        sourceKind: "CUSTOM",
+      };
+      popupContext = saved;
+      renderPopup(saved, null, null, { preservePosition: true });
+      global.HwMagnifyingGlass?.refresh?.();
+      showToast("Saved — look up again to verify");
+    } catch (err) {
+      showToast(err?.message || "Could not save");
+    }
+  }
+
+  async function queuePopupLexicon(ctx) {
+    const teacher = global.HwAuth?.getTeacherSession?.();
+    if (!teacher?.username) {
+      showToast("Teacher login required");
+      return;
+    }
+
+    const surface = String(ctx.surface || "").trim();
+    if (!surface) return;
+
+    const example = String(ctx.sentence || ctx.assignmentTitle || surface).trim();
+    const note = [
+      ctx.sourceKind ? "Source: " + ctx.sourceKind : "",
+      ctx.assignmentTitle ? "Sheet: " + ctx.assignmentTitle : "",
+      ctx.highlight && ctx.highlight !== surface ? "Highlight: " + ctx.highlight : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    try {
+      const res = await fetch("/api/mg-lexicon/add-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: teacher.username,
+          surface,
+          kind: "custom",
+          title: "Popup review: " + surface,
+          note: note || undefined,
+          example,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Queue failed");
+      showToast("Queued for Lookup Lexicon");
+    } catch (err) {
+      showToast(err?.message || "Could not queue");
+    }
+  }
+
+  function lookupSurfaceBlocked(surface, token) {
+    const word = String(surface || "").trim();
+    if (!word) return true;
+    return global.HwMgLexicon?.isSkipped?.(word, token || null) === true;
+  }
+
+  function clearLookupCachesForSurface(surface) {
+    const word = String(surface || "").trim();
+    if (!word) return;
+    tokenizeCache.delete(word);
+    const query = global.HwMgLexicon?.resolve?.(word)?.query || word;
+    jaLookupCache.delete(query);
+    jaLookupCache.delete(word);
+  }
+
+  async function skipPopupHighlight(ctx) {
+    const teacher = global.HwAuth?.getTeacherSession?.();
+    if (!teacher?.username) {
+      showToast("Teacher login required");
+      return;
+    }
+
+    const surface = String(ctx?.surface || "").trim();
+    if (!surface) return;
+
+    try {
+      const res = await fetch("/api/mg-lexicon/patch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: teacher.username,
+          surface,
+          skipSurface: surface,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Skip failed");
+
+      if (data.overlay && global.HwMgLexicon?.applyGlobalOverlay) {
+        global.HwMgLexicon.applyGlobalOverlay(data.overlay);
+      } else {
+        await global.HwMgLexicon?.ensureLoaded?.();
+      }
+
+      clearLookupCachesForSurface(surface);
+      closePopup();
+      clearHoverHighlight();
+      showToast(surface + " will no longer highlight");
+    } catch (err) {
+      showToast(err?.message || "Could not skip highlight");
+    }
+  }
+
+  function enterPopupEditMode() {
+    if (!popupEl || !popupContext || popupEditMode) return;
+    popupEditMode = true;
+    renderPopup(popupContext, null, null, { preservePosition: true, edit: true });
+
+    popupOutsideBound = (ev) => {
+      if (!popupEditMode || !popupEl) return;
+      if (popupEl.contains(ev.target)) return;
+      if (ev.target?.closest?.(".hw-delete-confirm-popover")) return;
+      exitPopupEditMode(true);
+    };
+    setTimeout(() => document.addEventListener("pointerdown", popupOutsideBound, true), 0);
+  }
+
+  function isStarLookupElement(el) {
+    if (!el?.closest) return false;
+    if (el.closest(".hw-star-block__reset, .hw-star-block__slot-clear")) return false;
+    if (el.closest(".hw-star-block__chip:not(.hw-star-block__chip--placed)")) return true;
+    if (el.closest(".hw-star-block__fixed, .hw-star-block__slot-text")) return true;
+    if (el.closest(".hw-star-block__sentence") && !el.closest(".hw-star-block__slot:not(.hw-star-block__slot--filled)")) {
+      return true;
+    }
+    return false;
+  }
+
   function isLookupTarget(el) {
     if (!el || !(el instanceof Element) || !hostEl?.contains(el)) return false;
     if (el.closest(".hw-mg-popup") || el.closest(".hw-mg-widget") || el.closest(".hw-mg-onboard")) return false;
+    if (armed && isStarLookupElement(el)) return true;
+    if (
+      el.closest(
+        ".hw-star-block__chip, .hw-star-block__slot:not(.hw-star-block__slot--filled), .hw-star-block__pool"
+      )
+    ) {
+      return false;
+    }
     if (el.closest(SKIP_SELECTOR)) return false;
     return Boolean(
       el.closest(
@@ -338,9 +745,34 @@
     return null;
   }
 
+  function flatContainerText(container) {
+    if (!container) return "";
+    let out = "";
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      out += node.textContent || "";
+    }
+    return out;
+  }
+
+  function caretOffsetFromTextNodes(container, endNode, endOffset) {
+    let pos = 0;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      if (node === endNode) return pos + endOffset;
+      pos += (node.textContent || "").length;
+    }
+    return pos;
+  }
+
   function caretOffsetIn(container, clientX, clientY) {
     const range = caretRangeAtPoint(clientX, clientY);
     if (!range || !container.contains(range.startContainer)) return -1;
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      return caretOffsetFromTextNodes(container, range.startContainer, range.startOffset);
+    }
     const pre = document.createRange();
     pre.selectNodeContents(container);
     pre.setEnd(range.startContainer, range.startOffset);
@@ -362,13 +794,48 @@
     const range = caretRangeAtPoint(clientX, clientY);
     if (!range || !container.contains(range.startContainer)) return -1;
     if (!pointerNearRange(clientX, clientY, range, maxPx)) return -1;
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      return caretOffsetFromTextNodes(container, range.startContainer, range.startOffset);
+    }
     const pre = document.createRange();
     pre.selectNodeContents(container);
     pre.setEnd(range.startContainer, range.startOffset);
     return pre.toString().length;
   }
 
-  function expandRangeToJapaneseWordRange(range) {
+  function isStarTextContainer(el) {
+    return Boolean(
+      el?.closest?.(".hw-star-block__chip, .hw-star-block__slot-text, .hw-star-block__fixed")
+    );
+  }
+
+  /** Map horizontal click position to a character offset when caret APIs fail on chips. */
+  function caretOffsetFromStarRect(container, clientX, clientY) {
+    const text = flatContainerText(container);
+    if (!text) return -1;
+    const rect = container.getBoundingClientRect();
+    if (!rect.width || !rect.height) return Math.floor(text.length / 2);
+    const pad = 6;
+    if (
+      clientX < rect.left - pad ||
+      clientX > rect.right + pad ||
+      clientY < rect.top - pad ||
+      clientY > rect.bottom + pad
+    ) {
+      return -1;
+    }
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.max(0, Math.min(text.length - 1, Math.round(ratio * Math.max(0, text.length - 1))));
+  }
+
+  function caretOffsetForContainer(container, clientX, clientY, maxPx) {
+    const caret = caretOffsetNearPointer(container, clientX, clientY, maxPx);
+    if (caret >= 0) return caret;
+    if (isStarTextContainer(container)) return caretOffsetFromStarRect(container, clientX, clientY);
+    return -1;
+  }
+
+  function expandRangeToJapaneseWordRange(range, container) {
     if (!range || !range.startContainer) return null;
     const node = range.startContainer;
     if (node.nodeType !== Node.TEXT_NODE) return null;
@@ -378,6 +845,22 @@
     while (start > 0 && JA_CHAR.test(text[start - 1])) start -= 1;
     while (end < text.length && JA_CHAR.test(text[end])) end += 1;
     if (start >= end || !JA_CHAR.test(text.slice(start, end))) return null;
+
+    const root = container || node.parentElement;
+    if (root?.contains?.(node)) {
+      const flat = flatContainerText(root);
+      const flatStart = caretOffsetFromTextNodes(root, node, start);
+      const mid = flatStart + Math.floor((end - start) / 2);
+      const unit = global.HwMgLexicon?.pickQuickUnit?.(flat, mid);
+      if (unit?.surface) {
+        const clipped = rangeFromOffsets(root, unit.start, unit.end);
+        if (clipped) return clipped;
+      }
+    }
+
+    const surface = text.slice(start, end);
+    if (global.HwMgLexicon?.isSkipped?.(surface, null)) return null;
+
     const next = range.cloneRange();
     next.setStart(node, start);
     next.setEnd(node, end);
@@ -388,7 +871,28 @@
     return expandRangeToJapaneseWordRange(range)?.toString().trim() || "";
   }
 
-  function lookupContainerFor(el) {
+  function lookupContainerFor(el, clientX, clientY) {
+    const chip = el?.closest(".hw-star-block__chip");
+    if (chip) return chip;
+    const slotText = el?.closest(".hw-star-block__slot-text");
+    if (slotText) return slotText;
+    const fixed = el?.closest(".hw-star-block__fixed");
+    if (fixed) return fixed;
+    if (clientX != null && clientY != null && el?.closest(".hw-star-block__sentence")) {
+      const stack =
+        typeof document.elementsFromPoint === "function"
+          ? document.elementsFromPoint(clientX, clientY)
+          : [document.elementFromPoint(clientX, clientY)];
+      for (const node of stack) {
+        if (!(node instanceof Element)) continue;
+        const chipHit = node.closest(".hw-star-block__chip:not(.hw-star-block__chip--placed)");
+        if (chipHit) return chipHit;
+        const fixedHit = node.closest(".hw-star-block__fixed");
+        if (fixedHit) return fixedHit;
+        const slotHit = node.closest(".hw-star-block__slot-text");
+        if (slotHit) return slotHit;
+      }
+    }
     return (
       el?.closest(
         ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
@@ -397,7 +901,7 @@
   }
 
   function normalizeContainerText(container) {
-    return (container?.textContent || "").replace(/\s+/g, " ").trim();
+    return flatContainerText(container).replace(/\s+/g, " ").trim();
   }
 
   function readingFromToken(token) {
@@ -567,7 +1071,7 @@
       return;
     }
 
-    const hostRect = hostEl.getBoundingClientRect();
+    const shellRect = shellEl.getBoundingClientRect();
     if (!hoverHighlightEl) {
       hoverHighlightEl = document.createElement("div");
       hoverHighlightEl.className = "hw-mg-hover-highlight";
@@ -576,17 +1080,15 @@
     }
 
     hoverHighlightEl.replaceChildren();
-    const padX = 4;
-    const padY = 3;
     const rects = range.getClientRects();
     for (const rect of rects) {
       if (!rect.width || !rect.height) continue;
       const box = document.createElement("span");
       box.className = "hw-mg-hover-highlight__rect";
-      box.style.left = rect.left - hostRect.left - padX + "px";
-      box.style.top = rect.top - hostRect.top - padY + "px";
-      box.style.width = rect.width + padX * 2 + "px";
-      box.style.height = rect.height + padY * 2 + "px";
+      box.style.left = rect.left - shellRect.left + "px";
+      box.style.top = rect.top - shellRect.top + "px";
+      box.style.width = rect.width + "px";
+      box.style.height = rect.height + "px";
       hoverHighlightEl.appendChild(box);
     }
 
@@ -607,50 +1109,109 @@
   }
 
   function hoverRangeQuick(target, clientX, clientY) {
-    const container = lookupContainerFor(target);
+    const container = lookupContainerFor(target, clientX, clientY);
     if (!container) return null;
-    const offset = caretOffsetNearPointer(container, clientX, clientY, 24);
-    if (offset < 0) return null;
-    const text = normalizeContainerText(container);
-    const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
-    if (unit) return rangeFromOffsets(container, unit.start, unit.end);
+    const offset = caretOffsetForContainer(container, clientX, clientY, 24);
+    if (offset >= 0) {
+      const text = flatContainerText(container);
+      const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
+      if (forced) {
+        const forcedRange = rangeFromOffsets(container, forced.start, forced.end);
+        if (forcedRange) return forcedRange;
+      }
+      const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
+      if (unit) return rangeFromOffsets(container, unit.start, unit.end);
+    }
     const range = caretRangeAtPoint(clientX, clientY);
     if (!range || !container.contains(range.startContainer)) return null;
     if (!pointerNearRange(clientX, clientY, range, 24)) return null;
-    return expandRangeToJapaneseWordRange(range);
+    const expanded = expandRangeToJapaneseWordRange(range, container);
+    if (!expanded) return null;
+    const surface = expanded.toString().trim();
+    if (surface && global.HwMgLexicon?.isSkipped?.(surface, null)) return null;
+    return expanded;
   }
 
-  async function refreshHoverHighlight(clientX, clientY) {
+  async function resolveStarTextLookup(container, clientX, clientY, options) {
+    const maxPointerPx = options?.maxPointerPx ?? 22;
+    const text = flatContainerText(container);
+    if (!text.trim() || !JA_CHAR.test(text)) return null;
+
+    await global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+
+    const trimmed = text.trim();
+    if (isStarTextContainer(container) && trimmed.length <= 24 && lookupSurfaceBlocked(trimmed, null)) {
+      return null;
+    }
+
+    const offset = caretOffsetForContainer(container, clientX, clientY, maxPointerPx);
+    if (offset >= 0) {
+      const quickEarly = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+      if (quickEarly?.surface && !lookupSurfaceBlocked(quickEarly.surface, null)) return quickEarly;
+    }
+
+    const wordRange = caretRangeAtPoint(clientX, clientY);
+    if (wordRange && container.contains(wordRange.startContainer)) {
+      const expanded = expandRangeToJapaneseWordRange(wordRange);
+      if (expanded) {
+        const surface = expanded.toString().trim();
+        if (!lookupSurfaceBlocked(surface, null)) {
+          const start = text.indexOf(surface);
+          if (start >= 0) {
+            return { surface, start, end: start + surface.length };
+          }
+        }
+      }
+    }
+
+    if (offset >= 0) {
+      const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
+      if (forced && !lexiconPreviewActive() && !lookupSurfaceBlocked(forced.surface, null)) {
+        const range = rangeFromOffsets(container, forced.start, forced.end);
+        if (range && pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) {
+          return global.HwMgLexicon?.enrich?.(forced) || forced;
+        }
+      }
+      const quick = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+      if (quick?.surface && !lookupSurfaceBlocked(quick.surface, null)) return quick;
+    }
+
+    if (isStarTextContainer(container) && text.length <= 24) {
+      const tokens = await tokenizeText(text);
+      const pickOffset = offset >= 0 ? offset : caretOffsetFromStarRect(container, clientX, clientY);
+      const safeOffset = pickOffset >= 0 ? pickOffset : Math.floor(text.length / 2);
+      if (tokens.length) {
+        const spans = buildTokenSpans(tokens, text);
+        const unit = pickLookupUnit(spans, safeOffset);
+        if (unit?.surface && !lookupSurfaceBlocked(unit.surface, unit.token || null)) {
+          const range = rangeFromOffsets(container, unit.start, unit.end);
+          if (range) return unit;
+        }
+      }
+      if (lookupSurfaceBlocked(trimmed, null)) return null;
+      return { surface: trimmed, start: 0, end: trimmed.length };
+    }
+
+    return null;
+  }
+
+  function refreshHoverHighlight(clientX, clientY) {
     if (!armed || !supportsHoverHighlight() || lookupBusy || !hostEl) {
       clearHoverHighlight();
       return;
     }
 
+    const seq = ++hoverHighlightSeq;
     const target = lookupTargetFromPoint(clientX, clientY);
     if (!target) {
       clearHoverHighlight();
       return;
     }
 
+    clearHoverHighlight();
+    void global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
     const quickRange = hoverRangeQuick(target, clientX, clientY);
-    if (quickRange) renderHoverHighlight(quickRange);
-
-    try {
-      const data = await resolveLookup(target, clientX, clientY);
-      if (!armed || lookupBusy || pendingHoverPoint?.x !== clientX || pendingHoverPoint?.y !== clientY) {
-        return;
-      }
-      if (data?.surface) {
-        const container = lookupContainerFor(target);
-        const range = rangeFromOffsets(container, data.start, data.end);
-        if (range) renderHoverHighlight(range);
-        else if (!quickRange) clearHoverHighlight();
-      } else if (!quickRange) {
-        clearHoverHighlight();
-      }
-    } catch {
-      if (!quickRange) clearHoverHighlight();
-    }
+    if (quickRange && seq === hoverHighlightSeq) renderHoverHighlight(quickRange);
   }
 
   function scheduleHoverHighlight(clientX, clientY) {
@@ -703,6 +1264,10 @@
   }
 
   async function tokenizeText(text) {
+    const sample = String(text || "");
+    if (!sample) return [];
+    if (tokenizeCache.has(sample)) return tokenizeCache.get(sample);
+
     const auto = global.HwFuriganaAuto;
     if (!auto?.ensureTokenizer) return [];
     try {
@@ -710,13 +1275,26 @@
       const tokenizer = auto.withTimeout
         ? await auto.withTimeout(tokenizerPromise, 4500, "tokenizer timeout")
         : await tokenizerPromise;
-      return tokenizer.tokenize(String(text || ""));
+      const tokens = tokenizer.tokenize(sample);
+      tokenizeCache.set(sample, tokens);
+      if (tokenizeCache.size > TOKENIZE_CACHE_MAX) {
+        const oldest = tokenizeCache.keys().next().value;
+        tokenizeCache.delete(oldest);
+      }
+      return tokens;
     } catch {
       return [];
     }
   }
 
   function pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx) {
+    const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
+    if (forced) {
+      const range = rangeFromOffsets(container, forced.start, forced.end);
+      if (range && pointerNearRange(clientX, clientY, range, maxPointerPx + 6)) {
+        return global.HwMgLexicon?.enrich?.(forced) || forced;
+      }
+    }
     const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
     if (!unit?.surface) return null;
     const range = rangeFromOffsets(container, unit.start, unit.end);
@@ -729,15 +1307,25 @@
   }
 
   async function resolveLookup(target, clientX, clientY, options) {
+    const container = lookupContainerFor(target, clientX, clientY);
+    const starScoped = container?.closest?.(
+      ".hw-star-block__chip, .hw-star-block__slot-text, .hw-star-block__fixed"
+    );
+    if (starScoped) {
+      return resolveStarTextLookup(container, clientX, clientY, options);
+    }
+
     const lexReady = global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
 
     const maxPointerPx = options?.maxPointerPx ?? 22;
-    const container = lookupContainerFor(target);
-    const text = normalizeContainerText(container);
-    if (!text) return null;
+    const text = flatContainerText(container);
+    if (!text.trim()) return null;
 
-    const offset = caretOffsetNearPointer(container, clientX, clientY, maxPointerPx);
+    const offset = caretOffsetForContainer(container, clientX, clientY, maxPointerPx);
     if (offset < 0) return null;
+
+    const quickEarly = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    if (quickEarly?.definition) return quickEarly;
 
     await lexReady;
 
@@ -749,9 +1337,8 @@
       }
     }
 
-    if (lexiconPreviewActive()) {
-      return pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
-    }
+    const quick = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    if (quick) return quick;
 
     const tokens = await tokenizeText(text);
     if (!tokens.length) {
@@ -788,29 +1375,44 @@
 
     if (fallback.definition) return fallback;
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    const cached = jaLookupCache.get(q);
+    if (cached) {
+      return {
+        ...cached,
+        query: surface,
+        reading: cached.reading || unit?.reading || lex.reading || "",
+        definition: cached.definition || unit?.definition || lex.definition || "",
+        jishoUrl: cached.jishoUrl || jishoUrl,
+      };
+    }
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         const res = await fetch("/api/ja-lookup?q=" + encodeURIComponent(q), {
           signal: controller.signal,
-          cache: "no-store",
         });
         clearTimeout(timeoutId);
         if (!res.ok) {
-          if (attempt < 2) {
-            await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+          if (attempt < 1) {
+            await new Promise((r) => setTimeout(r, 150));
             continue;
           }
           break;
         }
         const data = await res.json();
         if (data?.error) {
-          if (attempt < 2) {
-            await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+          if (attempt < 1) {
+            await new Promise((r) => setTimeout(r, 150));
             continue;
           }
           break;
+        }
+        jaLookupCache.set(q, data);
+        if (jaLookupCache.size > JA_LOOKUP_CACHE_MAX) {
+          const oldest = jaLookupCache.keys().next().value;
+          jaLookupCache.delete(oldest);
         }
         return {
           ...data,
@@ -820,8 +1422,8 @@
           jishoUrl: data.jishoUrl || jishoUrl,
         };
       } catch {
-        if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+        if (attempt < 1) {
+          await new Promise((r) => setTimeout(r, 150));
           continue;
         }
       }
@@ -854,8 +1456,36 @@
     el.style.top = y + "px";
   }
 
+  /** Top-right of the worksheet header — right of title, out of the exercise area. */
+  function defaultPopupAnchor() {
+    if (!hostEl) return { rightX: 12, topY: 12 };
+    const hostRect = hostEl.getBoundingClientRect();
+    const pad = 12;
+    const title = hostEl.querySelector(".hw-hub-v2-top__title, #hw-v2-title, .hw-worksheet__meta-title");
+    const header = hostEl.querySelector(".hw-hub-v2-top--in-card, .hw-hub-v2-top");
+    let topY = pad;
+    if (title?.getClientRects().length) {
+      topY = title.getBoundingClientRect().top - hostRect.top;
+    } else if (header?.getClientRects().length) {
+      topY = header.getBoundingClientRect().top - hostRect.top + pad;
+    }
+    return { rightX: hostRect.width - pad, topY };
+  }
+
+  function positionPopupAtDefault() {
+    if (!popupEl || !hostEl) return;
+    const { rightX, topY } = defaultPopupAnchor();
+    const rect = popupEl.getBoundingClientRect();
+    setPopupPosition(rightX - rect.width, topY);
+    resolveToolLayout(popupEl);
+  }
+
   function positionPopup(localX, localY) {
     if (!popupEl || !hostEl) return;
+    if (!isLexiconPlaygroundHost()) {
+      positionPopupAtDefault();
+      return;
+    }
     const pad = 8;
     const boxW = hostEl.clientWidth;
     const boxH = hostEl.clientHeight;
@@ -863,20 +1493,25 @@
     let left = localX + 10;
     let top = localY + 10;
     if (left + rect.width > boxW - pad) left = localX - rect.width - 10;
-    if (isLexiconPlaygroundHost()) {
-      if (top + rect.height > boxH - pad) top = localY - rect.height - 12;
-      setPopupPosition(left, top);
-      resolveToolLayout(popupEl);
-      return;
-    }
-    if (top + rect.height > boxH - pad) top = localY - rect.height - 10;
+    if (top + rect.height > boxH - pad) top = localY - rect.height - 12;
     setPopupPosition(left, top);
     resolveToolLayout(popupEl);
   }
 
   function onPopupDragStart(e) {
     if (e.button !== 0 || !popupEl || e.target !== popupEl && !popupEl.contains(e.target)) return;
-    if (e.target.closest(".hw-mg-popup__close") || e.target.closest(".hw-mg-popup__more")) return;
+    if (
+      e.target.closest(".hw-mg-popup__delete") ||
+      e.target.closest(".hw-mg-popup__edit") ||
+      e.target.closest(".hw-mg-popup__queue") ||
+      e.target.closest(".hw-mg-popup__field") ||
+      e.target.closest(".hw-mg-popup__highlight") ||
+      e.target.closest("input, textarea, select, label") ||
+      e.target.closest(".hw-delete-confirm-popover") ||
+      e.target.closest(".hw-mg-popup__more")
+    ) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -922,49 +1557,181 @@
     popup.addEventListener("pointercancel", onPopupDragEnd);
   }
 
-  function bindPopupClose(popup) {
-    popup.addEventListener("pointerdown", (ev) => ev.stopPropagation());
-    popup.addEventListener("click", (ev) => ev.stopPropagation());
-    popup.querySelector(".hw-mg-popup__close")?.addEventListener("click", (ev) => {
+  function openDeleteConfirmPopover(anchorBtn, onConfirm) {
+    if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
+
+    const pop = document.createElement("div");
+    pop.className = "hw-delete-confirm-popover";
+    pop.setAttribute("role", "alertdialog");
+    pop.setAttribute("aria-modal", "true");
+    pop.innerHTML =
+      '<p class="hw-delete-confirm-popover__q" lang="ja">いいの？</p>' +
+      '<div class="hw-delete-confirm-popover__actions">' +
+      '<button type="button" class="hw-delete-confirm-popover__yes" lang="ja">いいよ</button>' +
+      '<button type="button" class="hw-delete-confirm-popover__no" lang="ja">ダメ</button>' +
+      "</div>";
+
+    document.body.appendChild(pop);
+    const anchorRect = anchorBtn.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    let top = anchorRect.top - popRect.height - 8;
+    let left = anchorRect.left;
+    if (top < 8) top = anchorRect.bottom + 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
+
+    const close = () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      pop.remove();
+      global._hwDeleteConfirmClose = null;
+    };
+    global._hwDeleteConfirmClose = close;
+
+    const onOutside = (ev) => {
+      if (pop.contains(ev.target)) return;
+      close();
+    };
+    setTimeout(() => document.addEventListener("pointerdown", onOutside, true), 0);
+
+    pop.querySelector(".hw-delete-confirm-popover__yes")?.addEventListener("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
-      closePopup();
+      close();
+      onConfirm();
+    });
+    pop.querySelector(".hw-delete-confirm-popover__no")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
     });
   }
 
-  function renderPopup(result, localX, localY) {
-    closePopup();
+  function attachDeleteConfirm(deleteBtn, onConfirm) {
+    deleteBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openDeleteConfirmPopover(deleteBtn, onConfirm);
+    });
+    const row = document.createElement("div");
+    row.className = "hw-delete-row";
+    row.appendChild(deleteBtn);
+    return row;
+  }
+
+  function bindPopupClose(popup) {
+    popup.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    popup.addEventListener("click", (ev) => ev.stopPropagation());
+  }
+
+  function renderPopup(result, localX, localY, opts) {
+    const preservePosition = Boolean(opts?.preservePosition);
+    const savedLeft = preservePosition && popupEl ? parseFloat(popupEl.style.left) || 0 : null;
+    const savedTop = preservePosition && popupEl ? parseFloat(popupEl.style.top) || 0 : null;
+    const edit = Boolean(opts?.edit || popupEditMode);
+
+    if (!preservePosition) {
+      exitPopupEditMode(false);
+      lookupBusy = false;
+      popupDragState = null;
+      if (popupEl) {
+        popupEl.remove();
+        popupEl = null;
+      }
+    } else if (popupEl) {
+      popupDragState = null;
+      popupEl.remove();
+      popupEl = null;
+    }
     if (!shellEl) return;
 
+    popupContext = { ...result };
+    if (!edit) popupEditMode = false;
+
     popupEl = document.createElement("div");
-    popupEl.className = "hw-mg-popup";
+    popupEl.className = "hw-mg-popup" + (edit ? " hw-mg-popup--edit" : "");
     popupEl.setAttribute("role", "dialog");
     popupEl.setAttribute("aria-label", "Word lookup");
 
     if (result.surface) {
+      const titlebar = document.createElement("div");
+      titlebar.className = "hw-mg-popup__titlebar";
+
       const wordEl = document.createElement("p");
       wordEl.className = "hw-mg-popup__word";
       wordEl.textContent = result.surface;
-      popupEl.appendChild(wordEl);
+      titlebar.appendChild(wordEl);
+
+      if (!edit && result.jishoUrl) {
+        const link = document.createElement("a");
+        link.className = "hw-mg-popup__jisho";
+        link.href = result.jishoUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", "See more on Jisho");
+        link.title = "See more on Jisho";
+        link.innerHTML = POPUP_JISHO_ICON;
+        titlebar.appendChild(link);
+      }
+
+      popupEl.appendChild(titlebar);
     }
 
     const head = document.createElement("div");
     head.className = "hw-mg-popup__head";
 
-    const readingEl = document.createElement("p");
-    readingEl.className = "hw-mg-popup__reading";
-    readingEl.textContent = result.reading || "—";
-    head.appendChild(readingEl);
-
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "hw-mg-popup__close";
-    closeBtn.setAttribute("aria-label", "Close");
-    closeBtn.textContent = "×";
-    head.appendChild(closeBtn);
+    if (edit) {
+      const readingLabel = document.createElement("label");
+      readingLabel.className = "hw-mg-popup__field";
+      readingLabel.innerHTML =
+        '<span class="hw-mg-popup__field-label">Reading</span>' +
+        '<input type="text" class="hw-mg-popup__input hw-mg-popup__input--reading" lang="ja" autocomplete="off">';
+      const readingInput = readingLabel.querySelector("input");
+      readingInput.value = result.reading || "";
+      readingInput.addEventListener("input", () => {
+        popupContext.reading = readingInput.value;
+        applyPopupLexiconPreview(popupContext);
+      });
+      readingInput.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      head.appendChild(readingLabel);
+    } else {
+      const readingEl = document.createElement("p");
+      readingEl.className = "hw-mg-popup__reading";
+      readingEl.textContent = result.reading || "—";
+      head.appendChild(readingEl);
+    }
     popupEl.appendChild(head);
 
-    if (result.definition) {
+    if (edit) {
+      const defLabel = document.createElement("label");
+      defLabel.className = "hw-mg-popup__field";
+      defLabel.innerHTML =
+        '<span class="hw-mg-popup__field-label">Definition</span>' +
+        '<input type="text" class="hw-mg-popup__input hw-mg-popup__input--def" autocomplete="off">';
+      const defInput = defLabel.querySelector("input");
+      defInput.value = result.definition || "";
+      defInput.addEventListener("input", () => {
+        popupContext.definition = defInput.value;
+        applyPopupLexiconPreview(popupContext);
+      });
+      defInput.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      popupEl.appendChild(defLabel);
+
+      const highlightLabel = document.createElement("label");
+      highlightLabel.className = "hw-mg-popup__field hw-mg-popup__highlight";
+      highlightLabel.innerHTML =
+        '<span class="hw-mg-popup__field-label">Desired highlight</span>' +
+        '<input type="text" class="hw-mg-popup__input hw-mg-popup__input--highlight" lang="ja" autocomplete="off" placeholder="e.g. 子ども or やめ＋たい">';
+      const highlightInput = highlightLabel.querySelector("input");
+      highlightInput.value = result.highlight || result.surface || "";
+      highlightInput.addEventListener("input", () => {
+        popupContext.highlight = highlightInput.value;
+        applyPopupLexiconPreview(popupContext);
+      });
+      highlightInput.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      popupEl.appendChild(highlightLabel);
+      applyPopupLexiconPreview(popupContext);
+    } else if (result.definition) {
       const defEl = document.createElement("p");
       defEl.className = "hw-mg-popup__def";
       defEl.textContent = result.definition;
@@ -975,27 +1742,75 @@
       if (result.reading) {
         empty.textContent = "No short definition found.";
       } else if (result.jishoUrl) {
-        empty.textContent = "Dictionary busy — try again or use Jisho below.";
+        empty.textContent = "Dictionary busy — try again or tap the lens icon.";
       } else {
         empty.textContent = "Could not read this word.";
       }
       popupEl.appendChild(empty);
     }
 
-    if (result.jishoUrl) {
-      const link = document.createElement("a");
-      link.className = "hw-mg-popup__more";
-      link.href = result.jishoUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "See more on Jisho →";
-      popupEl.appendChild(link);
+    const footer = document.createElement("div");
+    footer.className = "hw-mg-popup__footer";
+
+    if (isTeacherUser()) {
+      const teacherRow = document.createElement("div");
+      teacherRow.className = "hw-mg-popup__teacher-row";
+
+      const actionBtn = document.createElement("button");
+      actionBtn.type = "button";
+      actionBtn.className = "hw-mg-popup__edit";
+      actionBtn.textContent = edit ? "Save" : "Edit";
+      actionBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (edit) {
+          void savePopupLexiconEdit(popupContext);
+        } else {
+          enterPopupEditMode();
+        }
+      });
+      teacherRow.appendChild(actionBtn);
+
+      const queueBtn = document.createElement("button");
+      queueBtn.type = "button";
+      queueBtn.className = "hw-mg-popup__queue";
+      queueBtn.textContent = "Queue";
+      queueBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void queuePopupLexicon(popupContext);
+      });
+      teacherRow.appendChild(queueBtn);
+
+      footer.appendChild(teacherRow);
     }
+
+    if (isTeacherUser()) {
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "hw-mg-popup__delete";
+      deleteBtn.setAttribute("aria-label", "Stop highlighting this word");
+      deleteBtn.title = "Stop highlighting (particles, etc.)";
+      deleteBtn.textContent = "DELETE";
+      deleteBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void skipPopupHighlight(popupContext);
+      });
+      footer.appendChild(deleteBtn);
+    }
+
+    if (footer.childElementCount) popupEl.appendChild(footer);
 
     shellEl.appendChild(popupEl);
     bindPopupClose(popupEl);
     bindPopupDrag(popupEl);
-    positionPopup(localX, localY);
+    if (preservePosition && savedLeft != null && savedTop != null) {
+      setPopupPosition(savedLeft, savedTop);
+      resolveToolLayout(popupEl);
+    } else {
+      positionPopup(localX, localY);
+    }
   }
 
   async function handleLookupClick(e) {
@@ -1014,6 +1829,7 @@
 
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
 
     clearHoverHighlight();
     closePopup();
@@ -1023,13 +1839,12 @@
 
     const loading = document.createElement("div");
     loading.className = "hw-mg-popup hw-mg-popup--loading";
-    loading.style.left = local.x + 10 + "px";
-    loading.style.top = local.y + 10 + "px";
     loading.textContent = "Looking up…";
     shellEl.appendChild(loading);
     popupEl = loading;
     bindPopupClose(loading);
     bindPopupDrag(loading);
+    positionPopupAtDefault();
 
     const lookupTimeout = setTimeout(() => {
       if (lookupBusy && popupEl === loading) {
@@ -1041,25 +1856,15 @@
 
     try {
       const data = await resolveLookup(e.target, e.clientX, e.clientY, { maxPointerPx: 36 });
-      if (!data?.surface) {
+      if (!data?.surface || lookupSurfaceBlocked(data.surface, null)) {
         closePopup();
         showToast("No Japanese word here — try again");
         return;
       }
+      const container = lookupContainerFor(e.target, e.clientX, e.clientY);
       const lookup = (await fetchLookup(data)) || {};
-      renderPopup(
-        {
-          reading: lookup.reading || data.reading || "",
-          definition: lookup.definition || data.definition || "",
-          jishoUrl:
-            lookup.jishoUrl ||
-            data.jishoUrl ||
-            "https://jisho.org/search/" + encodeURIComponent(data.query || data.surface),
-          surface: data.surface,
-        },
-        local.x,
-        local.y
-      );
+      const ctx = buildPopupContext(data, lookup, container);
+      renderPopup(ctx, local.x, local.y);
     } catch {
       closePopup();
       showToast("Lookup failed — try again");
@@ -1187,6 +1992,7 @@
 
   function onDocumentPointerDown(e) {
     if (!popupEl) return;
+    if (popupEditMode) return;
     if (isMgToolInteraction(e)) return;
     if (armed) return;
     closePopup();
@@ -1447,6 +2253,17 @@
     shellEl.append(snapHintEl, toastEl, widgetEl);
 
     loadLensPosition();
+    try {
+      if (!localStorage.getItem(lensStorageKey())) {
+        const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
+        if (neutral?.lensSnap && SNAP_IDS.includes(neutral.lensSnap)) {
+          lensSnapId = neutral.lensSnap;
+        } else if (neutral?.lens) {
+          lensSnapId = null;
+          lensPosition = { ...neutral.lens };
+        }
+      }
+    } catch (_) {}
     applyLensPosition();
     initOnboarding();
 
@@ -1457,6 +2274,8 @@
     });
     resizeObserver.observe(hostEl);
     bindHostHover();
+    preloadLookupAssets();
+    global.HwWorksheetToolLayout?.ensureCleanupButton?.(hostEl);
 
     if (overrideOptions?.autoArm) {
       requestAnimationFrame(() => {
@@ -1540,6 +2359,10 @@
     attachTo,
     releaseOverride,
     fetchLookup,
+    getLensPosition,
+    setLensPositionLocal,
+    setLensSnap,
+    resetLensPosition,
     offsetLensBy,
     offsetPopupBy,
   };

@@ -277,7 +277,7 @@
       silentArm: true,
       armHint: "",
       storageKey: "hw-mg-lexicon-lens-v1",
-      defaultSnap: "br",
+      defaultSnap: "tr",
     };
 
     let attachAttempts = 0;

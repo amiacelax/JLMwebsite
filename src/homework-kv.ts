@@ -151,6 +151,17 @@ export async function listAllStudentAccounts(
       /* skip corrupt */
     }
   }
+  const published = await loadPublishedCatalogEntries(kv);
+  for (const entry of published) {
+    for (const user of (entry.students as string[]) || []) {
+      const key = String(user || "").trim().toLowerCase();
+      if (!key || byUser.has(key)) continue;
+      byUser.set(key, {
+        username: key,
+        displayName: LEGACY_STUDENT_LABELS[key] || key,
+      });
+    }
+  }
   return [...byUser.values()].sort((a, b) =>
     a.username.localeCompare(b.username)
   );
@@ -1413,6 +1424,8 @@ export interface HomeworkComment {
     width: number;
     height: number;
   };
+  /** Which homework question slide (0-based) this note belongs to. */
+  slideIndex?: number;
   x?: number;
   y?: number;
   createdAt: string;

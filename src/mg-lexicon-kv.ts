@@ -78,6 +78,22 @@ export interface MgLexiconAddCardPayload {
   example?: string;
 }
 
+/** Inline teacher edit from magnifying-glass popup — no queue card required. */
+export interface MgLexiconPatchPayload {
+  teacherUsername?: string;
+  surface: string;
+  reading?: string;
+  definition?: string;
+  mergeSurfaces?: string[];
+  splitSurfaces?: string[];
+  skipSurface?: string;
+  forceUnit?: string;
+  lemmaSurface?: string;
+  lemmaQuery?: string;
+  extraLemmaQuery?: Record<string, string>;
+  extraCustom?: Record<string, MgLexiconCustomEntry>;
+}
+
 export interface MgLexiconSuggestItem {
   fingerprint: string;
   surface: string;
@@ -345,6 +361,8 @@ function applySubmitToOverlay(
       const skip = String(payload.skipSurface || payload.surface || "").trim();
       if (!skip) throw new Error("SKIP_REQUIRED");
       if (!overlay.skipSurface.includes(skip)) overlay.skipSurface.push(skip);
+      overlay.forceUnits = overlay.forceUnits.filter((unit) => unit !== skip);
+      delete overlay.custom[skip];
       break;
     }
     case "force_unit": {
@@ -445,6 +463,99 @@ export async function submitMgLexiconCard(
 
   const remaining = cards.filter((c) => c.status === "pending").length;
   return { overlay, remaining };
+}
+
+export async function patchMgLexiconOverlay(
+  data: MgLexiconPatchPayload,
+  env: KvEnv
+): Promise<{ overlay: MgLexiconGlobalOverlay }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const surface = String(data.surface || "").trim();
+  if (!surface) throw new Error("SURFACE_REQUIRED");
+
+  const overlay = await readOverlay(kv);
+  const reading = String(data.reading || "").trim();
+  const definition = String(data.definition || "").trim();
+  const splitSurfaces = (data.splitSurfaces || [])
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+  const mergeSurfaces = (data.mergeSurfaces || [])
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+  const forceUnit = String(data.forceUnit || "").trim();
+  const skipSurface = String(data.skipSurface || "").trim();
+
+  if (reading || definition) {
+    overlay.custom[surface] = { reading, definition };
+  }
+
+  if (mergeSurfaces.length >= 2) {
+    if (!mergeSequenceExists(overlay, mergeSurfaces)) {
+      overlay.mergeSurfaceSequences.push({ surfaces: mergeSurfaces });
+    }
+  }
+
+  if (splitSurfaces.length >= 2) {
+    removeMergeSequence(overlay, splitSurfaces);
+    if (!segmentSequenceExists(overlay, splitSurfaces)) {
+      overlay.segmentSurfaceSequences.push({ surfaces: splitSurfaces });
+    }
+  }
+
+  if (forceUnit && !overlay.forceUnits.includes(forceUnit)) {
+    overlay.forceUnits.push(forceUnit);
+  }
+
+  if (skipSurface) {
+    if (!overlay.skipSurface.includes(skipSurface)) overlay.skipSurface.push(skipSurface);
+    overlay.forceUnits = overlay.forceUnits.filter((unit) => unit !== skipSurface);
+    delete overlay.custom[skipSurface];
+  }
+
+  const lemmaSurface = String(data.lemmaSurface || "").trim();
+  const lemmaQuery = String(data.lemmaQuery || "").trim();
+  if (lemmaSurface && lemmaQuery) {
+    overlay.lemmaQuery[lemmaSurface] = lemmaQuery;
+  }
+
+  if (data.extraLemmaQuery && typeof data.extraLemmaQuery === "object") {
+    for (const [key, val] of Object.entries(data.extraLemmaQuery)) {
+      const stem = String(key || "").trim();
+      const query = String(val || "").trim();
+      if (stem && query) overlay.lemmaQuery[stem] = query;
+    }
+  }
+
+  if (data.extraCustom && typeof data.extraCustom === "object") {
+    for (const [key, val] of Object.entries(data.extraCustom)) {
+      const word = String(key || "").trim();
+      if (!word || !val || typeof val !== "object") continue;
+      const r = String(val.reading || "").trim();
+      const d = String(val.definition || "").trim();
+      if (!r && !d) continue;
+      overlay.custom[word] = { reading: r, definition: d };
+    }
+  }
+
+  if (
+    !reading &&
+    !definition &&
+    mergeSurfaces.length < 2 &&
+    splitSurfaces.length < 2 &&
+    !forceUnit &&
+    !skipSurface &&
+    !(lemmaSurface && lemmaQuery) &&
+    !Object.keys(data.extraCustom || {}).length &&
+    !Object.keys(data.extraLemmaQuery || {}).length
+  ) {
+    throw new Error("PATCH_EMPTY");
+  }
+
+  await writeOverlay(kv, overlay);
+  return { overlay };
 }
 
 export async function addMgLexiconCard(

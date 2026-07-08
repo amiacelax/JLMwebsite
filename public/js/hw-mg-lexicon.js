@@ -201,7 +201,9 @@
     FORCE_UNITS = [];
 
     (overlay.skipSurface || []).forEach((surface) => {
-      if (surface) SKIP_SURFACE.add(surface);
+      if (!surface) return;
+      SKIP_SURFACE.add(surface);
+      delete CUSTOM[surface];
     });
 
     Object.assign(CUSTOM, overlay.custom || {});
@@ -224,6 +226,10 @@
     });
 
     FORCE_UNITS = [...new Set((overlay.forceUnits || []).map((s) => String(s || "").trim()).filter(Boolean))];
+    const skipSet = new Set(overlay.skipSurface || []);
+    if (skipSet.size) {
+      FORCE_UNITS = FORCE_UNITS.filter((unit) => !skipSet.has(unit));
+    }
     overlayVersion = overlay.updatedAt || overlayVersion;
   }
 
@@ -262,6 +268,7 @@
         if (start < 0) break;
         const end = start + unit.length;
         if (offset >= start && offset < end) {
+          if (isSkipped(unit, null)) return null;
           return { surface: unit, start, end, lemma: null, reading: null };
         }
         from = start + 1;
@@ -357,6 +364,34 @@
     return SEGMENT_RULES.surfaceSequences.some((item) => item.surfaces.join("|") === key);
   }
 
+  function storedSegmentRulesLongestFirst() {
+    return [...SEGMENT_RULES.surfaceSequences].sort(
+      (a, b) => b.surfaces.join("").length - a.surfaces.join("").length
+    );
+  }
+
+  function pickStoredSegmentAt(sample, index) {
+    for (const rule of storedSegmentRulesLongestFirst()) {
+      const parts = rule.surfaces || [];
+      const combined = parts.join("");
+      if (!combined || !sample.startsWith(combined, index)) continue;
+      return parts;
+    }
+    return null;
+  }
+
+  function pickForceUnitAt(text, index) {
+    if (!FORCE_UNITS.length || !text || index < 0) return null;
+    const ordered = [...FORCE_UNITS].sort((a, b) => b.length - a.length);
+    for (const unit of ordered) {
+      if (unit && text.startsWith(unit, index)) {
+        if (isSkipped(unit, null)) return null;
+        return { surface: unit, start: index, end: index + unit.length, lemma: null, reading: null };
+      }
+    }
+    return null;
+  }
+
   function trySequenceMerge(spans, index) {
     const ordered = [...MERGE_RULES.surfaceSequences].sort(
       (a, b) => b.surfaces.length - a.surfaces.length
@@ -388,6 +423,7 @@
     if (index + 1 >= spans.length) return null;
     const head = spans[index];
     const tail = spans[index + 1];
+    if (isSegmentSequence([head.surface, tail.surface])) return null;
     if (!isCompoundHeadSpan(head) || !isCompoundSuffixSpan(tail)) return null;
     return combineSpans(spans, index, 2, { joinReading: true });
   }
@@ -607,6 +643,44 @@
     return units.length ? units : quickUnitsBase(sample);
   }
 
+  function quickUnitsWithOverlayRules(sample) {
+    const units = [];
+    let i = 0;
+    while (i < sample.length) {
+      const segmentParts = pickStoredSegmentAt(sample, i);
+      if (segmentParts?.length) {
+        let pos = i;
+        for (const surface of segmentParts) {
+          units.push({
+            surface,
+            start: pos,
+            end: pos + surface.length,
+            skip: isSkipped(surface, null) && !hasPreviewCustom(surface),
+          });
+          pos += surface.length;
+        }
+        i = pos;
+        continue;
+      }
+
+      const forced = pickForceUnitAt(sample, i);
+      if (forced) {
+        units.push({
+          ...forced,
+          skip: isSkipped(forced.surface, null) && !hasPreviewCustom(forced.surface),
+        });
+        i = forced.end;
+        continue;
+      }
+
+      const rest = quickUnitsBase(sample.slice(i));
+      if (!rest.length) break;
+      units.push(offsetQuickUnit(rest[0], i));
+      i = rest[0].end + i;
+    }
+    return units.length ? units : quickUnitsBase(sample);
+  }
+
   function quickUnits(text) {
     const sample = String(text || "");
     if (previewLayer?.mergeSurfaces?.length >= 2) {
@@ -614,6 +688,9 @@
     }
     if (previewLayer?.segmentSurfaces?.length) {
       return quickUnitsWithSegments(sample, previewLayer.segmentSurfaces);
+    }
+    if (SEGMENT_RULES.surfaceSequences.length || FORCE_UNITS.length) {
+      return quickUnitsWithOverlayRules(sample);
     }
     return quickUnitsBase(sample);
   }
@@ -711,10 +788,10 @@
 
   function isSkipped(surface, token) {
     if (hasPreviewCustom(surface)) return false;
+    if (SKIP_SURFACE.has(surface)) return true;
     if (CUSTOM[surface]) return false;
     if (isLatinOrDigits(surface, token)) return true;
     if (isPunctuation(surface, token)) return true;
-    if (SKIP_SURFACE.has(surface)) return true;
     const pos = token?.pos || "";
     if (pos === "助詞") return true;
     if (pos === "助動詞" && /^(だ|である|です|じゃ|では)$/.test(surface)) return true;

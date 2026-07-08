@@ -79,6 +79,7 @@ import {
   restoreStudentMistake,
   isKnownStudent,
   isTeacherMistakesAccess,
+  listAllStudentAccounts,
   type StudentMistakePayload,
   type StudentMistakeDeletePayload,
   type StudentMistakeResolvePayload,
@@ -101,10 +102,12 @@ import {
   getMgLexiconQueue,
   submitMgLexiconCard,
   addMgLexiconCard,
+  patchMgLexiconOverlay,
   suggestMgLexiconBatch,
   suggestMgLexiconFromAssignment,
   type MgLexiconSubmitPayload,
   type MgLexiconAddCardPayload,
+  type MgLexiconPatchPayload,
   type MgLexiconSuggestBatchPayload,
 } from "./mg-lexicon-kv";
 
@@ -1792,6 +1795,35 @@ async function handleHomeworkCatalog(request: Request, env: Env): Promise<Respon
   }
 }
 
+async function handleHomeworkStudents(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername")?.trim() || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher only." }, 403);
+  }
+  if (!env.HOMEWORK_KV) {
+    return jsonResponse({ error: "KV not configured." }, 503);
+  }
+  try {
+    const students = await listAllStudentAccounts(env.HOMEWORK_KV);
+    return jsonResponse(
+      { students },
+      200,
+      { "Cache-Control": "private, no-store" }
+    );
+  } catch (err) {
+    console.error("homework-students failed:", err);
+    return jsonResponse({ error: "Could not load student list." }, 500);
+  }
+}
+
 async function handleHomeworkAssignment(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3091,6 +3123,34 @@ async function handleMgLexiconAddCard(request: Request, env: Env): Promise<Respo
   }
 }
 
+async function handleMgLexiconPatch(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as MgLexiconPatchPayload;
+    const result = await patchMgLexiconOverlay(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Lookup rule saved.",
+      version: result.overlay.updatedAt,
+      overlay: result.overlay,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    if (code === "SURFACE_REQUIRED") return jsonResponse({ error: "Word surface is required." }, 400);
+    if (code === "PATCH_EMPTY") {
+      return jsonResponse({ error: "Enter a reading, definition, or highlight fix." }, 400);
+    }
+    console.error("mg-lexicon patch failed:", err);
+    return jsonResponse({ error: "Could not save lookup rule." }, 500);
+  }
+}
+
 async function handleMgLexiconSuggestBatch(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3453,6 +3513,10 @@ export default {
       return handleHomeworkCatalog(request, env);
     }
 
+    if (url.pathname === "/api/homework-students") {
+      return handleHomeworkStudents(request, env);
+    }
+
     if (url.pathname === "/api/homework-assignment") {
       return handleHomeworkAssignment(request, env);
     }
@@ -3515,6 +3579,10 @@ export default {
 
     if (url.pathname === "/api/mg-lexicon/add-card") {
       return handleMgLexiconAddCard(request, env);
+    }
+
+    if (url.pathname === "/api/mg-lexicon/patch") {
+      return handleMgLexiconPatch(request, env);
     }
 
     if (url.pathname === "/api/mg-lexicon/suggest-batch") {

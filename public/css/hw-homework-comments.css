@@ -38,6 +38,16 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 .hw-hc-host.hw-hc-armed .hw-worksheet * {
   cursor: text !important;
   user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.hw-hc-host.hw-hc-armed.hw-hc-coarse .hw-worksheet,
+.hw-hc-host.hw-hc-armed.hw-hc-coarse .hw-worksheet *:not(input):not(textarea):not(select):not(button):not(a) {
+  -webkit-touch-callout: none;
+}
+
+.hw-hc-host.hw-hc-touch-selecting .hw-worksheet {
+  touch-action: none;
 }
 
 .hw-hc-host.hw-hc-armed .hw-hc-launcher {
@@ -45,7 +55,20 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   user-select: none !important;
 }
 
-/* Launcher cloud (top-right of worksheet) — sized to match magnifying glass */
+/* Star chips — selectable text / whole-chip notes when cloud is armed */
+.hw-hc-host.hw-hc-armed .hw-star-block__chip:not(.hw-star-block__chip--placed),
+.hw-hc-host.hw-hc-armed .hw-star-block__slot--filled,
+.hw-hc-host.hw-hc-armed .hw-star-block__slot-text,
+.hw-hc-host.hw-hc-armed .hw-star-block__fixed,
+.hw-hc-host.hw-hc-armed .hw-star-block__prefix,
+.hw-hc-host.hw-hc-armed .hw-star-block__suffix {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  touch-action: manipulation;
+  cursor: text !important;
+}
+
+/* Launcher cloud — default left gutter beside star chips */
 .hw-hc-launcher {
   position: absolute;
   z-index: 63;
@@ -68,12 +91,20 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  animation: hw-hc-float 3.6s ease-in-out infinite;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.hw-hc-launcher.is-dragging,
-.hw-hc-launcher.is-armed {
+.hw-hc-launcher__icon {
+  width: 2.5rem;
+  height: 1.5rem;
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+  animation: hw-hc-float 3.6s ease-in-out infinite;
+}
+
+.hw-hc-launcher.is-dragging .hw-hc-launcher__icon,
+.hw-hc-launcher.is-armed .hw-hc-launcher__icon {
   animation: none;
 }
 
@@ -117,19 +148,11 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   animation: hw-hc-pulse-armed 1.5s ease-out infinite;
 }
 
-.hw-hc-launcher__icon {
-  width: 2.5rem;
-  height: 1.5rem;
-  display: block;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
-/* Minimized tiny cloud — top-right above anchored text */
+/* Minimized tiny cloud — centered above anchored text */
 .hw-hc-mini {
   position: absolute;
   z-index: 61;
-  transform: translate(-100%, calc(-100% - 0.35rem));
+  transform: translate(-50%, calc(-100% - 0.35rem));
   pointer-events: auto;
   width: 1.65rem;
   height: 1.65rem;
@@ -155,7 +178,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 
 .hw-hc-mini.is-dragging {
   cursor: grabbing;
-  transform: translate(-100%, calc(-100% - 0.35rem)) scale(1.05);
+  transform: translate(-50%, calc(-100% - 0.35rem)) scale(1.05);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
 }
 
@@ -171,7 +194,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 .hw-hc-memo {
   position: absolute;
   z-index: 62;
-  transform: translate(-50%, calc(-100% - 0.65rem));
+  transform: translate(-50%, calc(-100% - 0.35rem));
   pointer-events: auto;
   min-width: 11rem;
   max-width: min(17rem, calc(100vw - 2rem));
@@ -185,24 +208,14 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   filter: drop-shadow(0 4px 10px rgba(26, 39, 68, 0.14));
 }
 
-.hw-hc-memo__quote {
-  margin: 0 0 0.35rem;
-  padding: 0.35rem 0.45rem;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: color-mix(in srgb, var(--hw-hc-ink) 78%, transparent);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  cursor: grab;
-  border-radius: 0.35rem;
-  background: color-mix(in srgb, var(--hw-hc-blue) 28%, #fff);
-}
-
-.hw-hc-memo.is-dragging .hw-hc-memo__quote {
-  cursor: grabbing;
+.hw-hc-anchor-highlight {
+  position: absolute;
+  z-index: 58;
+  box-sizing: border-box;
+  pointer-events: none;
+  border-radius: 0.28rem;
+  background: color-mix(in srgb, var(--hw-hc-blue) 32%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-hc-blue) 48%, transparent);
 }
 
 .hw-hc-memo__body {
@@ -259,17 +272,139 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 
 .hw-hc-memo__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 0.35rem;
 }
 
-.hw-hc-memo__actions .btn--ghost {
-  color: color-mix(in srgb, var(--hw-hc-ink) 88%, transparent);
+.hw-hc-memo__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.15rem 0 0;
+  border: none;
+  background: transparent;
+  font-family: Inter, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  color: #e53935;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
-.hw-hc-memo__actions .btn--ghost:hover {
+.hw-hc-memo__remove:hover,
+.hw-hc-memo__remove:focus-visible {
+  color: #ff6b6b;
+  outline: none;
+}
+
+.hw-delete-confirm-popover {
+  position: fixed;
+  z-index: 10050;
+  min-width: 8.75rem;
+  padding: 0.65rem 0.75rem 0.55rem;
+  border-radius: 0.65rem;
+  background: var(--color-bg-elevated, #1e2a3d);
+  border: 1px solid color-mix(in srgb, var(--color-text-muted, #8b9cb3) 28%, transparent);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.hw-delete-confirm-popover__q {
+  margin: 0 0 0.5rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text, #e8edf4);
+  text-align: center;
+}
+
+.hw-delete-confirm-popover__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.hw-delete-confirm-popover__yes,
+.hw-delete-confirm-popover__no {
+  margin: 0;
+  padding: 0.25rem 0.45rem;
+  border: none;
+  background: transparent;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-delete-confirm-popover__yes {
+  color: #e53935;
+}
+
+.hw-delete-confirm-popover__yes:hover {
+  color: #ff6b6b;
+}
+
+.hw-delete-confirm-popover__no {
+  color: var(--color-text-muted, #8b9cb3);
+}
+
+.hw-delete-confirm-popover__no:hover {
+  color: var(--color-text, #e8edf4);
+}
+
+.hw-delete-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.hw-delete-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.45rem;
+}
+
+.hw-delete-confirm__q {
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--hw-hc-ink);
-  background: color-mix(in srgb, #fff 55%, transparent);
+}
+
+.hw-delete-confirm__yes,
+.hw-delete-confirm__no {
+  margin: 0;
+  padding: 0.15rem 0.25rem;
+  border: none;
+  background: transparent;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-delete-confirm__yes {
+  color: #e53935;
+}
+
+.hw-delete-confirm__yes:hover {
+  color: #ff6b6b;
+}
+
+.hw-delete-confirm__no {
+  color: color-mix(in srgb, var(--hw-hc-ink) 65%, transparent);
+}
+
+.hw-delete-confirm__no:hover {
+  color: var(--hw-hc-ink);
 }
 
 /* Teacher submission checker — student notes */
@@ -327,10 +462,10 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 @keyframes hw-hc-float {
   0%,
   100% {
-    transform: translate(-50%, -50%) translateY(0);
+    transform: translateY(0);
   }
   50% {
-    transform: translate(-50%, -50%) translateY(-4px);
+    transform: translateY(-4px);
   }
 }
 
@@ -359,13 +494,13 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 
 @media (max-width: 767px) {
   .hw-hc-launcher {
-    width: 5rem;
-    height: 5rem;
+    width: 3.6rem;
+    height: 3.6rem;
   }
 
   .hw-hc-launcher__icon {
-    width: 2.75rem;
-    height: 1.65rem;
+    width: 2rem;
+    height: 1.2rem;
   }
 }
 
@@ -459,4 +594,102 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
 
 .hw-hc-onboard__btn {
   width: 100%;
+}
+
+/* Mobile / touch text selection action menu */
+.hw-hc-sel-menu {
+  position: fixed;
+  z-index: 9995;
+  pointer-events: auto;
+  max-width: calc(100vw - 1rem);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.28));
+}
+
+.hw-hc-sel-menu__row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  max-width: calc(100vw - 1rem);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.3rem 0.35rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, #1a2233 92%, #000);
+  border: 1px solid color-mix(in srgb, #fff 14%, transparent);
+}
+
+.hw-hc-sel-menu__row::-webkit-scrollbar {
+  display: none;
+}
+
+.hw-hc-sel-menu__btn {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.5rem 0.72rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f4f7fb;
+  font-family: Inter, "Noto Sans JP", sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-hc-sel-menu__btn:hover,
+.hw-hc-sel-menu__btn:focus-visible {
+  background: color-mix(in srgb, #fff 12%, transparent);
+  outline: none;
+}
+
+.hw-hc-sel-menu__btn--accent {
+  color: var(--hw-hc-blue-light, #a8ddf5);
+}
+
+.hw-hc-sel-menu__more {
+  font-size: 1rem;
+  padding-inline: 0.62rem;
+}
+
+.hw-hc-sel-menu__sub {
+  margin-top: 0.35rem;
+  padding: 0.35rem;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, #1a2233 94%, #000);
+  border: 1px solid color-mix(in srgb, #fff 12%, transparent);
+}
+
+.hw-hc-sel-menu__sub-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f4f7fb;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-hc-sel-menu__sub-btn:hover,
+.hw-hc-sel-menu__sub-btn:focus-visible {
+  background: color-mix(in srgb, #fff 10%, transparent);
+  outline: none;
+}
+
+@media (max-width: 767px) {
+  .hw-hc-sel-menu__btn {
+    padding: 0.55rem 0.8rem;
+    font-size: 0.875rem;
+  }
 }

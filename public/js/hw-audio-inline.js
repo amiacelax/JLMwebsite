@@ -123,9 +123,9 @@
       stopStream();
       stopTimer();
       mediaRecorder = null;
-      idleEl?.removeAttribute("hidden");
-      liveEl?.setAttribute("hidden", "");
-      previewEl?.setAttribute("hidden", "");
+      if (idleEl) idleEl.hidden = false;
+      if (liveEl) liveEl.hidden = true;
+      if (previewEl) previewEl.hidden = true;
       if (timerEl) timerEl.textContent = "0:00";
     }
 
@@ -145,6 +145,9 @@
 
     function resetUi() {
       clearRecording();
+      delete mount.dataset.mediaId;
+      delete mount.dataset.mediaKind;
+      delete mount.dataset.hwAnswerSaved;
       showIdle();
     }
 

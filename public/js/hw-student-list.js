@@ -1,48 +1,45 @@
 /**
- * Student accounts for teacher UI — merges KV signups with legacy hw-auth list.
+ * Student accounts for teacher UI — live list from KV (signups + published homework).
  */
 (function (global) {
-  const DEFAULT_STUDENTS = [
-    { username: "benm", displayName: "Ben M" },
-    { username: "benc", displayName: "benc" },
-    { username: "deme", displayName: "Deme" },
-    { username: "ivan", displayName: "Ivan" },
-    { username: "joshs", displayName: "Josh S" },
-    { username: "noplan", displayName: "No Plan" },
-  ];
-
   let cachedStudents = null;
   let fetchPromise = null;
+
+  function normalizeStudent(entry) {
+    const username = String(entry?.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return null;
+    const displayName = String(entry?.displayName || username).trim() || username;
+    return { username, displayName };
+  }
 
   function mergeStudentLists(...lists) {
     const byUser = new Map();
     lists.flat().forEach((a) => {
-      const username = String(a?.username || "")
-        .trim()
-        .toLowerCase();
-      if (!username) return;
-      byUser.set(username, {
-        username,
-        displayName: String(a.displayName || username).trim() || username,
-      });
+      const row = normalizeStudent(a);
+      if (row) byUser.set(row.username, row);
     });
     return [...byUser.values()].sort((a, b) => a.username.localeCompare(b.username));
   }
 
-  function localStudents() {
-    const auth = global.HwAuth?.listStudentAccounts?.();
-    if (auth?.length) return mergeStudentLists(auth, DEFAULT_STUDENTS);
-    return DEFAULT_STUDENTS.slice();
+  function getTeacherUsername() {
+    return global.HwAuth?.getTeacherSession?.()?.username || "";
+  }
+
+  function resetCache() {
+    cachedStudents = null;
+    fetchPromise = null;
   }
 
   function setStudents(students) {
     if (!Array.isArray(students)) return;
-    cachedStudents = mergeStudentLists(students, localStudents());
+    cachedStudents = mergeStudentLists(students);
     fetchPromise = Promise.resolve(cachedStudents);
   }
 
   function getStudentsSync() {
-    return cachedStudents || localStudents();
+    return cachedStudents ? cachedStudents.slice() : [];
   }
 
   function isKnownStudent(username) {
@@ -53,37 +50,65 @@
     return getStudentsSync().some((s) => s.username === key);
   }
 
-  async function fetchStudents() {
-    if (cachedStudents) return cachedStudents;
-    if (fetchPromise) return fetchPromise;
+  /**
+   * @param {{ force?: boolean, teacherUsername?: string }} [opts]
+   */
+  async function fetchStudents(opts) {
+    opts = opts || {};
+    if (!opts.force && cachedStudents) return cachedStudents;
+    if (!opts.force && fetchPromise) return fetchPromise;
+
     fetchPromise = (async () => {
-      try {
-        const res = await fetch("/api/homework-catalog", { cache: "no-store" });
-        if (res.ok) {
+      const teacherUsername = String(opts.teacherUsername || getTeacherUsername() || "").trim();
+      const attempts = [];
+
+      if (teacherUsername) {
+        attempts.push(async () => {
+          const res = await fetch(
+            "/api/homework-students?teacherUsername=" + encodeURIComponent(teacherUsername),
+            { cache: "no-store" }
+          );
+          if (!res.ok) return null;
           const data = await res.json();
-          if (Array.isArray(data.students)) {
-            cachedStudents = mergeStudentLists(data.students, localStudents());
+          return Array.isArray(data.students) ? data.students : null;
+        });
+      }
+
+      attempts.push(async () => {
+        const res = await fetch("/api/homework-catalog", { cache: "no-store" });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return Array.isArray(data.students) ? data.students : null;
+      });
+
+      for (const load of attempts) {
+        try {
+          const students = await load();
+          if (students?.length) {
+            cachedStudents = mergeStudentLists(students);
             return cachedStudents;
           }
+        } catch {
+          /* try next source */
         }
-      } catch {
-        /* fall back to local list */
       }
-      cachedStudents = localStudents();
+
+      cachedStudents = [];
       return cachedStudents;
     })();
+
     return fetchPromise;
   }
 
   function studentOptionLabel(account) {
     const name = account.displayName || account.username;
     if (!name || name === account.username) return account.username;
-    return account.username + " — " + name;
+    return name + " (" + account.username + ")";
   }
 
   /**
    * @param {HTMLSelectElement|null} selectEl
-   * @param {{ keepValue?: string, includeAllOption?: boolean, allLabel?: string, emptyLabel?: string, required?: boolean }} opts
+   * @param {{ keepValue?: string, includeAllOption?: boolean, allLabel?: string, emptyLabel?: string, required?: boolean, placeholder?: string }} opts
    */
   function fillStudentSelect(selectEl, opts) {
     if (!selectEl) return;
@@ -98,10 +123,10 @@
       all.value = "";
       all.textContent = opts.allLabel || "All students";
       selectEl.appendChild(all);
-    } else {
+    } else if (opts.placeholder !== false) {
       const empty = document.createElement("option");
       empty.value = "";
-      empty.textContent = opts.emptyLabel || "— Choose student —";
+      empty.textContent = opts.emptyLabel || opts.placeholder || "— Choose student —";
       if (opts.required !== false && selectEl.required) empty.disabled = true;
       selectEl.appendChild(empty);
     }
@@ -119,17 +144,18 @@
   }
 
   async function refreshSelect(selectEl, opts) {
-    await fetchStudents();
+    await fetchStudents({ force: true, teacherUsername: getTeacherUsername() });
     fillStudentSelect(selectEl, opts);
   }
 
   const TEACHER_FILTER_SELECTS = [
     { selector: "#hw-mistakes-feed-student", opts: { includeAllOption: true, allLabel: "All students" } },
     { selector: "#hw-submissions-student", opts: { includeAllOption: true, allLabel: "All students" } },
+    { selector: "#hw-teacher-viewas-select", opts: { placeholder: "— Teacher hub —", required: false } },
   ];
 
   async function refreshTeacherFilterSelects() {
-    await fetchStudents();
+    await fetchStudents({ force: true, teacherUsername: getTeacherUsername() });
     TEACHER_FILTER_SELECTS.forEach(({ selector, opts }) => {
       const el = document.querySelector(selector);
       if (el) fillStudentSelect(el, { ...opts, keepValue: el.value });
@@ -137,10 +163,10 @@
   }
 
   global.HwStudentList = {
-    DEFAULT_STUDENTS,
     fetchStudents,
     getStudentsSync,
     setStudents,
+    resetCache,
     isKnownStudent,
     fillStudentSelect,
     refreshSelect,
