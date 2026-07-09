@@ -726,7 +726,8 @@ body.hw-mg-onboarding-active .hw-mg-lens {
     height: 2.8rem;
   }
 
-  .hw-tools-cleanup__icon {
+  .hw-tools-cleanup__body,
+  .hw-tools-cleanup__bolts {
     width: 24px;
     height: 24px;
   }
@@ -763,7 +764,10 @@ body.hw-mg-onboarding-active .hw-mg-lens {
   opacity: 1;
   color: var(--color-text, #e8edf4);
   background: color-mix(in srgb, var(--color-bg-elevated, #1e2a3d) 78%, #fff);
-  transform: scale(1.04);
+}
+
+.hw-tools-cleanup:hover:not(:disabled) .hw-tools-cleanup__magnet {
+  animation: hw-magnet-vibrate 0.11s linear infinite;
 }
 
 .hw-tools-cleanup:disabled {
@@ -777,11 +781,115 @@ body.hw-mg-onboarding-active .hw-mg-lens {
   outline-offset: 2px;
 }
 
-.hw-tools-cleanup__icon {
+.hw-tools-cleanup__magnet {
+  position: relative;
   display: block;
-  flex-shrink: 0;
   width: 1.875rem;
   height: 1.875rem;
+}
+
+.hw-tools-cleanup__body,
+.hw-tools-cleanup__bolts {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hw-tools-cleanup__body {
+  z-index: 1;
+}
+
+.hw-tools-cleanup__bolts {
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  animation: hw-magnet-bolt-wipe-up 2.6s ease-in-out infinite;
+}
+
+@keyframes hw-magnet-bolt-wipe-up {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0.88;
+  }
+
+  38% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+
+  62% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+
+  100% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 0.88;
+  }
+}
+
+@keyframes hw-magnet-vibrate {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(-0.9px, 0.45px) rotate(-0.6deg);
+  }
+
+  50% {
+    transform: translate(0.85px, -0.5px) rotate(0.55deg);
+  }
+
+  75% {
+    transform: translate(-0.55px, -0.35px) rotate(-0.35deg);
+  }
+
+  100% {
+    transform: translate(0.45px, 0.3px) rotate(0.3deg);
+  }
+}
+
+.hw-tools-cleanup:hover:not(:disabled) .hw-tools-cleanup__bolts {
+  animation: none;
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  filter: brightness(1.08);
+}
+
+.hw-tools-cleanup:disabled .hw-tools-cleanup__magnet,
+.hw-tools-cleanup:disabled .hw-tools-cleanup__bolts {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-tools-cleanup__magnet,
+  .hw-tools-cleanup__bolts {
+    animation: none !important;
+  }
+}
+
+/* Hide worksheet tools until mount + layout are finished (no staggered pop-in). */
+body.hw-worksheet-tools-booting .hw-hub-v2-worksheet > .hw-tools-cleanup,
+body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-hc-shell,
+body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-mg-shell,
+.hw-hub-v2-worksheet.hw-worksheet-tools-booting > .hw-tools-cleanup,
+.hw-hub-v2-worksheet.hw-worksheet-tools-booting .hw-hc-shell,
+.hw-hub-v2-worksheet.hw-worksheet-tools-booting .hw-mg-shell {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.hw-hub-v2-worksheet.hw-worksheet-tools-ready > .hw-tools-cleanup,
+.hw-hub-v2-worksheet.hw-worksheet-tools-ready .hw-hc-shell,
+.hw-hub-v2-worksheet.hw-worksheet-tools-ready .hw-mg-shell {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.18s ease;
 }
 
 .hw-hc-launcher.hw-tools-returning,

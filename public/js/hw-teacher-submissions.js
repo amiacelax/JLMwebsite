@@ -250,7 +250,7 @@
     const heading = document.createElement("h4");
     heading.className = "hw-submission-comments__heading";
     heading.textContent =
-      "Student notes (" +
+      "Notes (" +
       (entry.displayName || entry.username || "Student") +
       " · " +
       (entry.lessonName || entry.title || entry.assignmentId || "Worksheet") +
@@ -260,10 +260,21 @@
     ul.className = "hw-submission-comments__list";
 
     list.forEach((comment) => {
+      const author = String(comment?.author || "student").toLowerCase();
       const text = String(comment?.text || "").trim();
-      if (!text) return;
+      const teacherRemark = String(comment?.teacherRemark || "").trim();
+      const teacherRemarkMedia = comment?.teacherRemarkMedia;
+      if (!text && !teacherRemark && !teacherRemarkMedia?.id) return;
       const item = document.createElement("div");
-      item.className = "hw-submission-comments__item";
+      item.className =
+        "hw-submission-comments__item" +
+        (author === "teacher" ? " hw-submission-comments__item--teacher" : "");
+      if (author === "teacher") {
+        const tag = document.createElement("p");
+        tag.className = "hw-submission-comments__tag";
+        tag.textContent = "JD note";
+        item.appendChild(tag);
+      }
       const anchor = String(comment?.anchor || "").trim();
       if (anchor) {
         const quote = document.createElement("p");
@@ -271,10 +282,24 @@
         quote.textContent = "“" + anchor + "”";
         item.appendChild(quote);
       }
-      const p = document.createElement("p");
-      p.className = "hw-submission-comments__text";
-      p.textContent = text;
-      item.appendChild(p);
+      if (text) {
+        const p = document.createElement("p");
+        p.className = "hw-submission-comments__text";
+        p.textContent = text;
+        item.appendChild(p);
+      }
+      if (teacherRemark) {
+        const remark = document.createElement("p");
+        remark.className = "hw-submission-comments__remark";
+        remark.textContent = "JD: " + teacherRemark;
+        item.appendChild(remark);
+      }
+      if (teacherRemarkMedia?.id) {
+        const playback = document.createElement("div");
+        playback.className = "hw-submission-comments__playback";
+        item.appendChild(playback);
+        global.HwReviewMedia?.renderPlayback?.(playback, teacherRemarkMedia);
+      }
       ul.appendChild(item);
     });
 
@@ -487,6 +512,13 @@
 
       top.append(date, type);
 
+      if (entry.reviewStatus === "reviewed") {
+        const reviewed = document.createElement("span");
+        reviewed.className = "hw-submissions-item__type hw-submissions-item__type--reviewed";
+        reviewed.textContent = "Reviewed";
+        top.appendChild(reviewed);
+      }
+
       const title = document.createElement("h3");
       title.className = "hw-submissions-item__title";
       title.textContent = entry.displayName + " — " + (entry.lessonName || entry.title || entry.assignmentId);
@@ -523,8 +555,17 @@
       const viewBtn = document.createElement("button");
       viewBtn.type = "button";
       viewBtn.className = "btn btn--primary btn--sm";
-      viewBtn.textContent = "Review";
+      viewBtn.textContent =
+        entry.type === "online"
+          ? entry.reviewStatus === "reviewed"
+            ? "Open review"
+            : "Review worksheet"
+          : "Review";
       viewBtn.addEventListener("click", () => {
+        if (entry.type === "online" && options?.openWorksheetReview) {
+          options.openWorksheetReview(entry);
+          return;
+        }
         expandedId = entry.id;
         renderList();
       });

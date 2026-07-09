@@ -64,7 +64,7 @@
       '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__cancel">Cancel</button>' +
       "</div>" +
       '<div class="hw-audio-inline__preview" hidden>' +
-      '<audio class="hw-audio-inline__playback" controls aria-label="Recorded answer preview"></audio>' +
+      '<audio class="hw-audio-inline__playback" preload="metadata" aria-label="Recorded answer preview"></audio>' +
       '<div class="hw-audio-inline__preview-actions">' +
       '<button type="button" class="btn btn--primary btn--sm hw-audio-inline__upload">Send audio</button>' +
       '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__retake">Record again</button>' +
@@ -164,7 +164,10 @@
         return;
       }
       previewObjectUrl = URL.createObjectURL(recordedBlob);
-      if (playbackAudio) playbackAudio.src = previewObjectUrl;
+      if (playbackAudio) {
+        playbackAudio.src = previewObjectUrl;
+        if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(playbackAudio);
+      }
       showPreview();
       setStatus("Preview your clip, then send it.");
     }
@@ -256,6 +259,7 @@
       body.append("lessonName", meta.lessonName || "Audio homework");
       if (meta.promptId) body.append("promptId", meta.promptId);
       if (meta.promptLabel) body.append("promptLabel", meta.promptLabel);
+      body.append("inlineSave", "1");
 
       try {
         const res = await fetch("/api/homework-audio-upload", {

@@ -3,9 +3,13 @@
  * Checked before Jisho for readings and short glosses.
  */
 (function (global) {
-  /** Commas, periods, brackets, etc. — not lookup targets. */
+  /**
+   * Commas, periods, brackets, etc. — not lookup targets.
+   * Do NOT include ー (katakana/hiragana long vowel). It belongs inside
+   * words like コーヒー / らーめん, not as a segment boundary.
+   */
   const PUNCT_RE =
-    /^[\s、。．，,.!?！？：:；;「」『』（）()\[\]{}…・~～\-—ー'\"“”‘’]+$/;
+    /^[\s、。．，,.!?！？：:；;「」『』（）()\[\]{}…・~～\-—'\"“”‘’]+$/;
 
   const JA_CHAR = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff々ー]/;
   const LATIN_OR_DIGIT_RE = /^[A-Za-z0-9Ａ-Ｚａ-ｚ０-９][A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-_.']*$/;

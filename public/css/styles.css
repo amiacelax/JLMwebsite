@@ -5777,6 +5777,127 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   margin: 0.35rem 0 0.65rem;
 }
 
+.hw-audio-player__el,
+.hw-audio-chrome {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  min-height: 2.75rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.hw-audio-chrome__el {
+  display: none;
+}
+
+.hw-audio-chrome__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated, #1e2a3d);
+  box-sizing: border-box;
+}
+
+.hw-audio-chrome__play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-brand-blue, #67c4eb);
+  color: #0b1220;
+  cursor: pointer;
+}
+
+.hw-audio-chrome__play svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.hw-audio-chrome__play:hover {
+  filter: brightness(1.06);
+}
+
+.hw-audio-chrome__seek-wrap {
+  position: relative;
+  flex: 1 1 6rem;
+  min-width: 4rem;
+  display: flex;
+  align-items: center;
+}
+
+.hw-audio-chrome__seek {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--color-brand-blue, #67c4eb);
+  cursor: pointer;
+}
+
+.hw-audio-chrome__scrub-tip {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  transform: translateX(-50%);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 12, 20, 0.92);
+  color: #e8edf4;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hw-audio-chrome__time {
+  flex-shrink: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.hw-audio-chrome__speed {
+  flex-shrink: 0;
+  min-width: 3.1rem;
+  padding: 0.2rem 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.hw-audio-player--inline .hw-audio-chrome {
+  max-width: none;
+}
+
+.hw-audio-player--inline .hw-audio-chrome__bar {
+  border: none;
+  padding: 0.2rem 0;
+  background: transparent;
+}
+
+.hw-listen-card .hw-audio-chrome {
+  max-width: 100%;
+}
+
+body.hw-hw-focus-mode .hw-audio-chrome__bar {
+  background: rgba(12, 18, 28, 0.85);
+}
+
 .hw-audio-player__el {
   display: block;
   width: 100%;
@@ -6232,6 +6353,57 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
 
 .hw-video-inline__status[data-tone="pending"] {
   color: var(--color-accent);
+}
+
+.hw-video-inline--playback .hw-video-inline__card {
+  display: none;
+}
+
+.hw-video-inline--playback .hw-video-inline__playback-only {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.hw-video-inline__playback--submitted {
+  width: 100%;
+  max-width: 28rem;
+  border-radius: var(--radius-md);
+  background: #000;
+}
+
+.hw-video-inline--playback .hw-video-inline__audio-playback.hw-video-inline__playback--submitted {
+  height: auto;
+  min-height: 2.75rem;
+}
+
+.hw-worksheet--readonly .hw-video-inline--playback video,
+.hw-worksheet--readonly .hw-video-inline--playback audio {
+  pointer-events: auto;
+}
+
+.hw-submission-media-view {
+  margin: 0 auto;
+  padding: 1.25rem 1rem 1.5rem;
+  max-width: 36rem;
+}
+
+.hw-submission-media-view__title {
+  margin: 0 0 0.35rem;
+  font-family: Josefin Sans, Inter, sans-serif;
+  font-size: 1.15rem;
+  color: var(--color-text);
+}
+
+.hw-submission-media-view__when {
+  margin: 0 0 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.hw-submission-media-view__player {
+  width: 100%;
 }
 
 .hw-builder__field-label {
@@ -8269,6 +8441,26 @@ body.hw-role-teacher #hw-teacher-hub {
   background: rgba(180, 83, 9, 0.12);
 }
 
+.hw-submissions-item__type--reviewed {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.hw-submission-comments__tag {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+
+.hw-submission-comments__remark {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: #0f766e;
+}
+
 .hw-submissions-item__title {
   margin: 0 0 0.25rem;
   font-size: 1rem;
@@ -8906,7 +9098,23 @@ body.hw-role-teacher #hw-teacher-hub {
 
 .hw-worksheet__slide-sticky-head .hw-worksheet__slide-nav {
   margin-top: 0;
+  margin-bottom: 0;
+}
+
+.hw-worksheet__slide-nav-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
   margin-bottom: 0.65rem;
+}
+
+.hw-worksheet__slide-nav-row .hw-worksheet__slide-nav {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: center;
+  width: 100%;
+  max-width: 100%;
 }
 
 .hw-translation-block__japanese {
@@ -10331,6 +10539,19 @@ textarea.hw-blank.hw-blank--open {
   font-size: 0.875rem;
   line-height: 1.45;
   color: var(--color-text);
+}
+
+.hw-star-block--replay .hw-star-block__pool {
+  display: none;
+}
+
+.hw-star-block--replay .hw-star-block__reset {
+  display: none;
+}
+
+.hw-star-block--replay .hw-star-block__slot {
+  cursor: default;
+  pointer-events: none;
 }
 
 .hw-worksheet:has(.hw-worksheet__actions-tools) {

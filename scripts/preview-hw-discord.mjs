@@ -103,19 +103,24 @@ function normalizeRow(row, index) {
 function formatRow(row, index) {
   const fmt = normalizeRow(row, index);
   const lines = [`${fmt.num}`];
-  if (fmt.question) lines.push(`   ${fmt.question}`);
+  const top = fmt.question?.trim() || fmt.piecesLine?.trim() || "";
+
+  if (top) {
+    lines.push(`   ${top}`);
+  }
+
   if (fmt.mediaLabel) {
-    lines.push(`   ${fmt.mediaLabel}`);
+    lines.push(`   【${fmt.mediaLabel}】`);
     if (fmt.mediaId) {
       const listen = `${BASE}/api/homework-submissions/video?id=${encodeURIComponent(fmt.mediaId)}&teacherUsername=${TEACHER}`;
       const download = `${listen}&download=1`;
       lines.push(`   Listen: ${listen}`);
       lines.push(`   Download: ${download}`);
     }
-  } else if (fmt.answer) {
-    lines.push(`   ${fmt.answer}`);
+  } else {
+    lines.push(`   【${fmt.answer?.trim() || "(blank)"}】`);
   }
-  if (fmt.piecesLine) lines.push(`   ${fmt.piecesLine}`);
+
   return lines.join("\n");
 }
 

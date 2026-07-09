@@ -124,6 +124,56 @@
     el?.closest("form")?.dispatchEvent(new CustomEvent("hw-worksheet-answer", { bubbles: true }));
   }
 
+  function submissionMediaUrl(mediaId) {
+    return "/api/hw-m/" + encodeURIComponent(String(mediaId || "").trim());
+  }
+
+  /**
+   * Read-only playback for archived / reviewed worksheet answers.
+   * @param {HTMLElement} mountEl
+   * @param {{ mediaId?: string, mediaKind?: string }} options
+   */
+  function mountPlayback(mountEl, options) {
+    options = options || {};
+    const mediaId = String(options.mediaId || "").trim();
+    if (!mountEl || !mediaId) return;
+
+    const kind = options.mediaKind === "audio" ? "audio" : "video";
+    const url = submissionMediaUrl(mediaId);
+
+    mountEl.className = "hw-video-inline hw-video-inline--playback";
+    mountEl.dataset.mediaId = mediaId;
+    mountEl.dataset.mediaKind = kind;
+    mountEl.dataset.bound = "playback";
+    mountEl.replaceChildren();
+
+    const wrap = document.createElement("div");
+    wrap.className = "hw-video-inline__playback-only";
+
+    if (kind === "audio") {
+      const audio = document.createElement("audio");
+      audio.className =
+        "hw-video-inline__playback hw-video-inline__audio-playback hw-video-inline__playback--submitted";
+      audio.preload = "metadata";
+      audio.setAttribute("aria-label", "Your recorded answer");
+      audio.src = url;
+      wrap.appendChild(audio);
+      if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(audio);
+      else audio.controls = true;
+    } else {
+      const video = document.createElement("video");
+      video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.setAttribute("aria-label", "Your recorded answer");
+      video.src = url;
+      wrap.appendChild(video);
+    }
+
+    mountEl.appendChild(wrap);
+  }
+
   function mount(mount, meta) {
     if (!mount || mount.dataset.bound === "true") return;
     mount.dataset.bound = "true";
@@ -535,6 +585,7 @@
       );
       if (meta.promptId) body.append("promptId", meta.promptId);
       if (meta.promptLabel) body.append("promptLabel", meta.promptLabel);
+      body.append("inlineSave", "1");
 
       const endpoint = isAudioMode() ? "/api/homework-audio-upload" : "/api/homework-video-upload";
 
@@ -607,5 +658,5 @@
     showIdle();
   }
 
-  global.HwVideoInline = { mount, prepareForSubmit };
+  global.HwVideoInline = { mount, mountPlayback, prepareForSubmit, mediaUrl: submissionMediaUrl };
 })(window);

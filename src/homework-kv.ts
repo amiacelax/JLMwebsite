@@ -634,7 +634,12 @@ export async function loadPublishedCatalogEntries(kv: KVNamespace): Promise<Reco
       const raw = await kv.get(catalogKey(id));
       if (!raw) return null;
       try {
-        return JSON.parse(raw) as Record<string, unknown>;
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const { assignment: entry, repaired } = repairAssignmentRecord(parsed);
+        if (repaired) {
+          await kv.put(catalogKey(id), JSON.stringify(entry));
+        }
+        return entry;
       } catch {
         return null;
       }
@@ -1412,9 +1417,21 @@ export interface HomeworkSubmissionVideo {
   name?: string;
 }
 
+export interface HomeworkReviewMedia {
+  id: string;
+  kind: "audio" | "video";
+  mimeType?: string;
+}
+
 export interface HomeworkComment {
   id: string;
   text: string;
+  /** Who authored the cloud / question note. Defaults to student when omitted (legacy). */
+  author?: "student" | "teacher";
+  /** JD reply attached to a student memo. */
+  teacherRemark?: string;
+  /** JD audio/video reply attached to a student memo (or teacher note). */
+  teacherRemarkMedia?: HomeworkReviewMedia;
   anchor?: string;
   anchorRect?: {
     left: number;
@@ -1432,6 +1449,8 @@ export interface HomeworkComment {
   updatedAt?: string;
 }
 
+export type HomeworkReviewStatus = "submitted" | "reviewed";
+
 export interface HomeworkSubmission {
   id: string;
   type: "online" | "photo" | "video";
@@ -1448,11 +1467,22 @@ export interface HomeworkSubmission {
   listening?: HomeworkAnswerRow[];
   /** Worksheet-order answers (matches Discord checker layout). */
   answers?: HomeworkAnswerRow[];
-  /** Student notes / questions on the worksheet at submit time. */
+  /** Student notes / questions on the worksheet at submit time (+ teacher remarks after review). */
   comments?: HomeworkComment[];
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
+  /** After student submit; becomes reviewed when teacher submits notes. */
+  reviewStatus?: HomeworkReviewStatus;
+  reviewedAt?: string;
+  teacherNotesSubmittedAt?: string;
+}
+
+export interface HomeworkReviewSaveInput {
+  teacherUsername?: string;
+  submissionId?: string;
+  comments?: HomeworkComment[];
+  markReviewed?: boolean;
 }
 
 export interface HomeworkOnlineSubmitInput {
@@ -1613,6 +1643,20 @@ async function storeSubmissionVideo(
   return { id, mimeType, name: String(file.name || "").trim() || undefined };
 }
 
+export async function saveHomeworkReviewMedia(
+  teacherUsername: string | undefined,
+  file: File,
+  env: KvEnv
+): Promise<HomeworkReviewMedia> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const stored = await storeSubmissionVideo(kv, file);
+  const kind = stored.mimeType.startsWith("audio/") ? "audio" : "video";
+  return { id: stored.id, kind, mimeType: stored.mimeType };
+}
+
 async function writeSubmission(kv: KVNamespace, submission: HomeworkSubmission): Promise<void> {
   await kv.put(submissionKey(submission.id), JSON.stringify(submission));
   const index = await readSubmissionsIndex(kv);
@@ -1663,10 +1707,156 @@ export async function saveHomeworkOnlineSubmission(
     answers: answers.length ? answers : undefined,
     comments: comments.length ? comments : undefined,
     submittedAt: new Date().toISOString(),
+    reviewStatus: "submitted",
   };
 
   await writeSubmission(kv, submission);
   return { id: submission.id };
+}
+
+function normalizeStoredComment(raw: HomeworkComment | Record<string, unknown>): HomeworkComment | null {
+  if (!raw || typeof raw !== "object") return null;
+  const id = String((raw as HomeworkComment).id || "").trim();
+  const text = String((raw as HomeworkComment).text || "");
+  const teacherRemark = String((raw as HomeworkComment).teacherRemark || "").trim();
+  const remarkMediaRaw = (raw as HomeworkComment).teacherRemarkMedia;
+  let teacherRemarkMedia: HomeworkReviewMedia | undefined;
+  if (remarkMediaRaw && typeof remarkMediaRaw === "object") {
+    const mediaId = String((remarkMediaRaw as HomeworkReviewMedia).id || "").trim();
+    const kindRaw = String((remarkMediaRaw as HomeworkReviewMedia).kind || "").trim().toLowerCase();
+    const kind: "audio" | "video" = kindRaw === "audio" ? "audio" : "video";
+    if (mediaId) {
+      teacherRemarkMedia = {
+        id: mediaId,
+        kind,
+        mimeType: String((remarkMediaRaw as HomeworkReviewMedia).mimeType || "").trim() || undefined,
+      };
+    }
+  }
+  const authorRaw = String((raw as HomeworkComment).author || "").trim().toLowerCase();
+  const author: "student" | "teacher" =
+    authorRaw === "teacher" ? "teacher" : "student";
+  const anchor = (raw as HomeworkComment).anchor
+    ? String((raw as HomeworkComment).anchor)
+    : undefined;
+  if (!id) return null;
+  if (!text.trim() && !anchor && !teacherRemark && !teacherRemarkMedia && author !== "teacher") return null;
+
+  const rect = (raw as HomeworkComment).anchorRect;
+  return {
+    id,
+    text,
+    author,
+    teacherRemark: teacherRemark || undefined,
+    teacherRemarkMedia,
+    anchor,
+    anchorRect:
+      rect && typeof rect === "object"
+        ? {
+            left: Number(rect.left),
+            top: Number(rect.top),
+            right: Number(rect.right),
+            bottom: Number(rect.bottom),
+            width: Number(rect.width),
+            height: Number(rect.height),
+          }
+        : undefined,
+    slideIndex:
+      typeof (raw as HomeworkComment).slideIndex === "number"
+        ? (raw as HomeworkComment).slideIndex
+        : 0,
+    x: typeof (raw as HomeworkComment).x === "number" ? (raw as HomeworkComment).x : undefined,
+    y: typeof (raw as HomeworkComment).y === "number" ? (raw as HomeworkComment).y : undefined,
+    createdAt: String((raw as HomeworkComment).createdAt || new Date().toISOString()),
+    updatedAt: (raw as HomeworkComment).updatedAt
+      ? String((raw as HomeworkComment).updatedAt)
+      : undefined,
+  };
+}
+
+/**
+ * Teacher submits review notes for an existing submission.
+ * Merges teacher remarks onto student memos and appends teacher-authored question notes.
+ */
+export async function saveHomeworkReview(
+  data: HomeworkReviewSaveInput,
+  env: KvEnv
+): Promise<HomeworkSubmission> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const submissionId = String(data.submissionId || "").trim();
+  if (!submissionId) throw new Error("SUBMISSION_REQUIRED");
+
+  const existing = await getHomeworkSubmission(env, submissionId);
+  if (!existing) throw new Error("NOT_FOUND");
+
+  const incoming = Array.isArray(data.comments) ? data.comments : [];
+  const byId = new Map<string, HomeworkComment>();
+  for (const raw of existing.comments || []) {
+    const c = normalizeStoredComment(raw);
+    if (c) byId.set(c.id, c);
+  }
+
+  const now = new Date().toISOString();
+  for (const raw of incoming) {
+    const next = normalizeStoredComment(raw);
+    if (!next) continue;
+    const prev = byId.get(next.id);
+    if (prev) {
+      const author =
+        prev.author === "teacher" || next.author === "teacher"
+          ? next.author === "teacher"
+            ? "teacher"
+            : prev.author || "student"
+          : prev.author || "student";
+      if (author === "teacher" || prev.author === "teacher") {
+        byId.set(next.id, {
+          ...prev,
+          ...next,
+          author: "teacher",
+          text: next.text.trim() ? next.text : prev.text,
+          teacherRemark: undefined,
+          updatedAt: now,
+        });
+      } else {
+        byId.set(next.id, {
+          ...prev,
+          author: "student",
+          teacherRemark: next.teacherRemark || prev.teacherRemark || undefined,
+          teacherRemarkMedia: next.teacherRemarkMedia || prev.teacherRemarkMedia,
+          anchor: next.anchor || prev.anchor,
+          anchorRect: next.anchorRect || prev.anchorRect,
+          slideIndex:
+            typeof next.slideIndex === "number" ? next.slideIndex : prev.slideIndex,
+          x: typeof next.x === "number" ? next.x : prev.x,
+          y: typeof next.y === "number" ? next.y : prev.y,
+          /* Never let a review wipe the student memo body. */
+          text: prev.text,
+          updatedAt: now,
+        });
+      }
+    } else if (next.author === "teacher") {
+      byId.set(next.id, { ...next, author: "teacher", updatedAt: now });
+    }
+  }
+
+  const comments = [...byId.values()].filter((c) => {
+    if (c.author === "teacher") return Boolean(c.text.trim() || c.teacherRemarkMedia);
+    return Boolean(c.anchor || c.text.trim() || c.teacherRemark || c.teacherRemarkMedia);
+  });
+
+  const markReviewed = data.markReviewed !== false;
+  const updated: HomeworkSubmission = {
+    ...existing,
+    comments: comments.length ? comments : undefined,
+    reviewStatus: markReviewed ? "reviewed" : existing.reviewStatus || "submitted",
+    reviewedAt: markReviewed ? now : existing.reviewedAt,
+    teacherNotesSubmittedAt: now,
+  };
+
+  await writeSubmission(kv, updated);
+  return updated;
 }
 
 export async function saveHomeworkPhotoSubmission(
@@ -1692,6 +1882,7 @@ export async function saveHomeworkPhotoSubmission(
     lessonName: String(data.lessonName || "").trim() || undefined,
     photo,
     submittedAt: new Date().toISOString(),
+    reviewStatus: "submitted",
   };
 
   await writeSubmission(kv, submission);
@@ -1721,6 +1912,7 @@ export async function saveHomeworkVideoSubmission(
     lessonName: String(data.lessonName || "").trim() || undefined,
     video,
     submittedAt: new Date().toISOString(),
+    reviewStatus: "submitted",
   };
 
   await writeSubmission(kv, submission);

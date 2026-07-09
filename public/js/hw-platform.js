@@ -36,6 +36,7 @@
   /** Hub v4: worksheet on top, cards below. Legacy bottom worksheet for noplan only. */
   function usesHubV4Layout() {
     if (isTeacher) return false;
+    if (global.__JLM_HUB_V5) return true;
     return session.username !== "noplan";
   }
 
@@ -116,8 +117,16 @@
     const v4Intro = document.getElementById("hw-v4-worksheet-intro");
 
     if (titleEl) {
-      titleEl.textContent =
-        assignment?.title || assignment?.lessonName || titleEl.textContent || "Homework";
+      const meta = studentViewMeta(
+        {
+          date: assignment?.date,
+          title: assignment?.title,
+          id: assignment?.id,
+          lessonName: assignment?.lessonName,
+        },
+        assignment
+      );
+      titleEl.textContent = meta.listLabel || assignment?.title || "Homework";
     }
 
     const answered =
@@ -294,11 +303,13 @@
     const pick = document.getElementById("hw-hub-tier-pick");
     const desc = document.getElementById("hw-hub-desc");
 
-    if (pick) {
+    if (pick && !global.__JLM_HUB_V5) {
       pick.hidden = false;
       bindTierDetailModal();
       renderHubTierPlans();
       global.HwCheckout?.bindCheckoutControls?.(pick);
+    } else if (pick && global.__JLM_HUB_V5) {
+      pick.hidden = true;
     }
 
     if (desc) desc.hidden = true;
@@ -777,6 +788,62 @@
     );
   }
 
+  function isLinkablePastSubmission(entry) {
+    if (!entry) return false;
+    if (entry.type === "online") return true;
+    if (entry.type === "video" && entry.video?.id) return true;
+    return false;
+  }
+
+  function pastSubmissionListTitle(entry) {
+    const title = submissionListTitle(entry);
+    if (entry.type === "video") return "Video upload — " + title;
+    return title;
+  }
+
+  function renderSubmissionMediaView(mount, submission) {
+    if (!mount) return false;
+    mount.replaceChildren();
+
+    const wrap = document.createElement("section");
+    wrap.className = "hw-submission-media-view hw-hub-worksheet-card";
+    wrap.setAttribute("aria-label", "Submitted recording");
+
+    const heading = document.createElement("h2");
+    heading.className = "hw-submission-media-view__title";
+    heading.textContent = pastSubmissionListTitle(submission);
+    wrap.appendChild(heading);
+
+    const when = document.createElement("p");
+    when.className = "hw-submission-media-view__when";
+    when.textContent = "Submitted " + formatSubmissionWhen(submission.submittedAt);
+    wrap.appendChild(when);
+
+    const mediaId = submission.video?.id;
+    if (!mediaId) return false;
+
+    const url =
+      (global.HwVideoInline?.mediaUrl && global.HwVideoInline.mediaUrl(mediaId)) ||
+      "/api/hw-m/" + encodeURIComponent(mediaId);
+
+    const playerMount = document.createElement("div");
+    playerMount.className = "hw-submission-media-view__player";
+    if (global.HwVideoInline?.mountPlayback) {
+      global.HwVideoInline.mountPlayback(playerMount, { mediaId, mediaKind: "video" });
+    } else {
+      const video = document.createElement("video");
+      video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.src = url;
+      playerMount.appendChild(video);
+    }
+    wrap.appendChild(playerMount);
+    mount.appendChild(wrap);
+    return true;
+  }
+
   async function fetchStudentSubmissions(options) {
     options = options || {};
     if (!options.bypassCache && studentSubmissionsCache) return studentSubmissionsCache;
@@ -827,7 +894,7 @@
       }
     }
     if (offlineCard) offlineCard.hidden = Boolean(viewing);
-    if (pastFold && viewing) pastFold.open = true;
+    if (pastFold && viewing && !global.__JLM_HUB_V5) pastFold.open = true;
   }
 
   function bindOfflineTools() {
@@ -848,21 +915,43 @@
     offlineCard.hidden = !show;
   }
 
-  function renderStudentPastList(submissions, activeSubmissionId) {
-    const list = document.getElementById("hw-student-past-list");
-    const meta = document.getElementById("hw-student-past-meta");
+  function openPastAssignment(entry) {
+    if (global.__JLM_HUB_V5) {
+      const parts = parseStudentHash();
+      let returnHash = "";
+      if (parts.kind === "assignment" && parts.id) {
+        returnHash = "#hw-" + parts.id;
+      } else {
+        const id = guessedAssignmentId();
+        if (id) returnHash = "#hw-" + id;
+      }
+      try {
+        if (returnHash) {
+          sessionStorage.setItem("hw-v5-archive-return-hash", returnHash);
+        } else {
+          sessionStorage.removeItem("hw-v5-archive-return-hash");
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    window.location.hash = "hw-submission-" + entry.id;
+  }
+
+  function renderStudentPastListInto(list, metaEl, submissions, activeSubmissionId, options) {
+    options = options || {};
     if (!list) return;
 
-    const online = (submissions || []).filter((entry) => entry.type === "online");
+    const linkable = (submissions || []).filter(isLinkablePastSubmission);
     list.replaceChildren();
 
-    if (meta) {
-      meta.textContent = online.length
-        ? online.length + " submitted worksheet" + (online.length === 1 ? "" : "s")
+    if (metaEl) {
+      metaEl.textContent = linkable.length
+        ? linkable.length + " submission" + (linkable.length === 1 ? "" : "s")
         : "No submitted worksheets yet.";
     }
 
-    if (!online.length) {
+    if (!linkable.length) {
       const empty = document.createElement("li");
       empty.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
       empty.textContent = "When you submit homework online, it will appear here.";
@@ -870,7 +959,7 @@
       return;
     }
 
-    online.forEach((entry) => {
+    linkable.forEach((entry) => {
       const li = document.createElement("li");
       li.className = "hw-hub-v2-past-list__item";
       if (entry.id === activeSubmissionId) {
@@ -882,39 +971,83 @@
       btn.className = "hw-hub-v2-past-list__btn";
       btn.innerHTML =
         "<span>" +
-        escapeHtml(submissionListTitle(entry)) +
+        escapeHtml(pastSubmissionListTitle(entry)) +
         '</span><time datetime="' +
         escapeHtml(entry.submittedAt || "") +
         '">' +
         escapeHtml(formatSubmissionWhen(entry.submittedAt)) +
         "</time>";
       btn.addEventListener("click", () => {
-        window.location.hash = "hw-submission-" + entry.id;
+        if (options.closeModal) closePastAssignmentsModal();
+        openPastAssignment(entry);
       });
       li.appendChild(btn);
       list.appendChild(li);
     });
+  }
 
-    const other = (submissions || []).filter((entry) => entry.type !== "online");
-    other.forEach((entry) => {
-      const li = document.createElement("li");
-      li.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--muted";
-      const label =
-        entry.type === "photo"
-          ? "Photo upload"
-          : entry.type === "video"
-            ? "Video upload"
-            : "Submission";
-      li.innerHTML =
-        "<span>" +
-        escapeHtml(label + " — " + submissionListTitle(entry)) +
-        '</span><time datetime="' +
-        escapeHtml(entry.submittedAt || "") +
-        '">' +
-        escapeHtml(formatSubmissionWhen(entry.submittedAt)) +
-        "</time>";
-      list.appendChild(li);
+  function renderStudentPastList(submissions, activeSubmissionId) {
+    renderStudentPastListInto(
+      document.getElementById("hw-student-past-list"),
+      document.getElementById("hw-student-past-meta"),
+      submissions,
+      activeSubmissionId
+    );
+    renderStudentPastListInto(
+      document.getElementById("hw-past-assignments-modal-list"),
+      document.getElementById("hw-past-assignments-modal-meta"),
+      submissions,
+      activeSubmissionId,
+      { closeModal: true }
+    );
+  }
+
+  let pastAssignmentsModalBound = false;
+
+  function closePastAssignmentsModal() {
+    const modal = document.getElementById("hw-past-assignments-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove("is-modal-open");
+  }
+
+  function bindPastAssignmentsModal() {
+    if (pastAssignmentsModalBound) return;
+    pastAssignmentsModalBound = true;
+
+    const modal = document.getElementById("hw-past-assignments-modal");
+    if (!modal) return;
+
+    modal.querySelectorAll("[data-hw-past-modal-close]").forEach((el) => {
+      el.addEventListener("click", () => closePastAssignmentsModal());
     });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape") return;
+      if (modal.hidden) return;
+      ev.preventDefault();
+      closePastAssignmentsModal();
+    });
+  }
+
+  async function openPastAssignmentsModal() {
+    const modal = document.getElementById("hw-past-assignments-modal");
+    if (!modal) return;
+
+    bindPastAssignmentsModal();
+    modal.hidden = false;
+    document.body.classList.add("is-modal-open");
+
+    const meta = document.getElementById("hw-past-assignments-modal-meta");
+    if (meta) meta.textContent = "Loading past homework…";
+
+    try {
+      await loadStudentPastHomework();
+    } catch {
+      /* loadStudentPastHomework updates meta on error */
+    }
+
+    modal.querySelector(".hw-breakdown-modal__close")?.focus();
   }
 
   function escapeHtml(text) {
@@ -937,7 +1070,9 @@
   }
 
   async function loadStudentPastHomework(options) {
-    const list = document.getElementById("hw-student-past-list");
+    const list =
+      document.getElementById("hw-student-past-list") ||
+      document.getElementById("hw-past-assignments-modal-list");
     if (!list) return;
 
     const hash = window.location.hash.replace(/^#/, "");
@@ -971,15 +1106,25 @@
       if (!res.ok) throw new Error(data.error || "Could not load submission.");
       submission = data.submission;
     } catch (err) {
-      if (intro) intro.textContent = (err && err.message) || "Could not load submission.";
-      if (v4Intro) {
-        v4Intro.textContent = (err && err.message) || "Could not load submission.";
-        v4Intro.hidden = false;
-      }
       setSubmissionViewChrome(null, false);
-      return;
+      if (mount) mount.innerHTML = "";
+      return false;
     }
-    if (isStale()) return;
+    if (isStale()) return false;
+
+    if (submission.type === "video" && submission.video?.id) {
+      if (v2Title) {
+        v2Title.textContent = pastSubmissionListTitle(submission);
+      }
+      if (intro) intro.hidden = true;
+      if (v4Intro) v4Intro.hidden = true;
+      if (mount) {
+        renderSubmissionMediaView(mount, submission);
+      }
+      setSubmissionViewChrome(submission, true);
+      scheduleStudentSubmissionsLoad({ bypassCache: true });
+      return true;
+    }
 
     if (submission.type !== "online") {
       if (v4Intro) {
@@ -989,7 +1134,7 @@
       if (mount) mount.innerHTML = "";
       setSubmissionViewChrome(submission, true);
       scheduleStudentSubmissionsLoad({ bypassCache: true });
-      return;
+      return true;
     }
 
     let assignment;
@@ -1003,9 +1148,9 @@
         v4Intro.textContent = "Could not load the worksheet for this submission.";
         v4Intro.hidden = false;
       }
-      return;
+      return true;
     }
-    if (isStale()) return;
+    if (isStale()) return false;
 
     const view = studentViewMeta(
       { id: submission.assignmentId, title: submission.title, lessonName: submission.lessonName },
@@ -1016,7 +1161,7 @@
     if (intro) intro.hidden = true;
     if (v4Intro) v4Intro.hidden = true;
 
-    if (!mount) return;
+    if (!mount) return true;
 
     const form = HwWorksheet.render(mount, assignment, {
       omitMetaTitle: usesHubV4Layout(),
@@ -1044,6 +1189,7 @@
         initialComments: submission.comments,
       });
     }
+    return true;
   }
 
   function bindWorksheetSave(form, assignmentMeta, options) {
@@ -1061,6 +1207,7 @@
     const storageKey = `jlm-hw-answers-${session.username}-${assignmentId}`;
     const storageTsKey = storageKey + ":ts";
     const submittedKey = `jlm-hw-submitted-${session.username}-${assignmentId}`;
+    const ultraUnlimited = session.tier === "tier3";
     const inputs = form.querySelectorAll("input.hw-blank, textarea.hw-blank");
     const saveStatus = form.querySelector("#hw-save-status");
     const SUBMIT_COOLDOWN_MS = 2000;
@@ -1374,7 +1521,11 @@
         if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.clearDraftStorage) {
           await global.HwHomeworkComments.clearDraftStorage();
         }
-        if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.freezeAfterSubmit) {
+        if (
+          !ultraUnlimited &&
+          global.HwFeatureFlags?.homeworkComments?.() &&
+          global.HwHomeworkComments?.freezeAfterSubmit
+        ) {
           global.HwHomeworkComments.freezeAfterSubmit();
         }
         invalidateStudentSubmissionsCache();
@@ -1382,6 +1533,11 @@
         if (global.HwWorksheet?.enableSeeAnswers) {
           HwWorksheet.enableSeeAnswers(form);
         }
+        document.dispatchEvent(
+          new CustomEvent("hw-platform-homework-submitted", {
+            detail: { assignmentId, username: session.username },
+          })
+        );
         scheduleSubmitCooldown(submitBtn);
       } catch (err) {
         if (saveStatus) {
@@ -1432,11 +1588,24 @@
     bindWorksheetSave(form, assignment, { preview: true });
   }
 
+  function syncV5HomeworkTitle(listLabel) {
+    if (!global.__JLM_HUB_V5 || !listLabel) return;
+    const mount = document.getElementById("hw-v2-worksheet-mount");
+    if (mount?.querySelector("#hw-worksheet-form")) return;
+    const titleEl = document.getElementById("hw-v2-title");
+    if (titleEl) titleEl.textContent = listLabel;
+  }
+
   function bindCurrentAssignmentPills(active) {
     const pillOnline = document.getElementById("hw-pill-online");
     const pillsWrap = document.getElementById("hw-current-assignment-pills");
 
-    if (!active || usesHubV4Layout()) {
+    if (!active) {
+      if (pillsWrap) pillsWrap.hidden = true;
+      return;
+    }
+
+    if (usesHubV4Layout() && !global.__JLM_HUB_V5) {
       if (pillsWrap) pillsWrap.hidden = true;
       return;
     }
@@ -1444,12 +1613,17 @@
     if (pillsWrap) pillsWrap.hidden = false;
     if (pillOnline) {
       pillOnline.hidden = false;
-      pillOnline.href = "#hw-worksheet-section";
-      pillOnline.onclick = () => {
+      pillOnline.href = "#hw-v2-worksheet-mount";
+      pillOnline.textContent = "Start Homework";
+      pillOnline.onclick = (e) => {
+        e.preventDefault();
         const targetHash = "hw-" + active.id;
         if (window.location.hash !== "#" + targetHash) {
           window.location.hash = targetHash;
         }
+        document
+          .getElementById("hw-v2-worksheet-mount")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
       };
     }
   }
@@ -1467,7 +1641,9 @@
       return;
     }
 
-    titleEl.textContent = studentViewMeta(active, null).listLabel;
+    const label = studentViewMeta(active, null).listLabel;
+    titleEl.textContent = label;
+    syncV5HomeworkTitle(label);
     bindCurrentAssignmentPills(active);
   }
 
@@ -2509,7 +2685,281 @@
     return teacherTabApi;
   }
 
-  async function loadTeacherHub() {
+  let teacherReviewSubmission = null;
+  let teacherReviewBusy = false;
+  let teacherReviewDraftBusy = false;
+  let teacherReviewDraftTimer = null;
+  let teacherReviewHasUnsaved = false;
+  const TEACHER_REVIEW_DRAFT_MS = 1500;
+
+  function setTeacherReviewStatus(msg, isError, state) {
+    const el = document.getElementById("hw-teacher-review-status");
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("is-error", Boolean(isError));
+    el.classList.toggle("is-saving", state === "is-saving");
+    el.classList.toggle("is-saved", state === "is-saved");
+    el.classList.toggle("is-dirty", state === "is-dirty");
+  }
+
+  function clearTeacherReviewDraftTimer() {
+    if (teacherReviewDraftTimer) {
+      clearTimeout(teacherReviewDraftTimer);
+      teacherReviewDraftTimer = null;
+    }
+  }
+
+  function scheduleTeacherReviewDraftSave() {
+    if (!teacherReviewSubmission || teacherReviewBusy) return;
+    teacherReviewHasUnsaved = true;
+    setTeacherReviewStatus("Unsaved changes — saving draft…", false, "is-dirty");
+    clearTeacherReviewDraftTimer();
+    teacherReviewDraftTimer = setTimeout(() => {
+      void saveTeacherReviewDraft();
+    }, TEACHER_REVIEW_DRAFT_MS);
+  }
+
+  async function saveTeacherReviewDraft() {
+    if (teacherReviewDraftBusy || teacherReviewBusy || !teacherReviewSubmission) return;
+    const session = getTeacherSessionForApi();
+    if (!session) return;
+
+    const comments =
+      global.HwHomeworkComments?.getCommentsForReview?.() ||
+      global.HwHomeworkComments?.getCommentsForSubmit?.() ||
+      [];
+
+    teacherReviewDraftBusy = true;
+    setTeacherReviewStatus("Saving draft…", false, "is-saving");
+
+    try {
+      const res = await fetch("/api/homework-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: session.username,
+          submissionId: teacherReviewSubmission.id,
+          comments,
+          markReviewed: false,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save draft.");
+
+      teacherReviewHasUnsaved = false;
+      setTeacherReviewStatus(
+        "Draft saved — click “Send to student” when you are ready to mark reviewed.",
+        false,
+        "is-saved"
+      );
+    } catch (err) {
+      setTeacherReviewStatus(
+        (err && err.message) || "Could not save draft — try again or send to student.",
+        true
+      );
+    } finally {
+      teacherReviewDraftBusy = false;
+    }
+  }
+
+  async function closeTeacherWorksheetReview() {
+    clearTeacherReviewDraftTimer();
+    if (teacherReviewHasUnsaved && teacherReviewSubmission && !teacherReviewBusy) {
+      await saveTeacherReviewDraft();
+    }
+    const overlay = document.getElementById("hw-teacher-review-overlay");
+    const mount = document.getElementById("hw-teacher-review-mount");
+    if (overlay) overlay.hidden = true;
+    document.body.classList.remove("hw-teacher-review-open");
+    if (global.HwHomeworkComments?.destroy) global.HwHomeworkComments.destroy();
+    if (mount) mount.replaceChildren();
+    teacherReviewSubmission = null;
+    teacherReviewHasUnsaved = false;
+    setTeacherReviewStatus("");
+    const submitBtn = document.getElementById("hw-teacher-review-submit");
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
+  async function openTeacherWorksheetReview(entry) {
+    if (!entry?.id || entry.type !== "online") {
+      showToast("Open the answers checklist for photo/video submissions.");
+      return;
+    }
+    const session = getTeacherSessionForApi();
+    if (!session) return;
+
+    const overlay = document.getElementById("hw-teacher-review-overlay");
+    const mount = document.getElementById("hw-teacher-review-mount");
+    const titleEl = document.getElementById("hw-teacher-review-title");
+    const subEl = document.getElementById("hw-teacher-review-sub");
+    if (!overlay || !mount) {
+      showToast("Review sheet UI is missing.");
+      return;
+    }
+
+    teacherReviewSubmission = entry;
+    teacherReviewHasUnsaved = false;
+    clearTeacherReviewDraftTimer();
+    if (titleEl) {
+      titleEl.textContent =
+        (entry.displayName || entry.username || "Student") +
+        " — " +
+        (entry.lessonName || entry.title || entry.assignmentId || "Homework");
+    }
+    if (subEl) {
+      subEl.textContent = [
+        entry.reviewStatus === "reviewed" ? "Already reviewed" : "Awaiting your notes",
+        entry.assignmentId,
+        formatSubmissionWhen?.(entry.submittedAt) || entry.submittedAt || "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+
+    mount.replaceChildren();
+    setTeacherReviewStatus("Loading worksheet…");
+    overlay.hidden = false;
+    document.body.classList.add("hw-teacher-review-open");
+
+    let assignment;
+    try {
+      assignment = await fetchAssignmentJson(entry.assignmentId, { bypassCache: true });
+    } catch (err) {
+      setTeacherReviewStatus(
+        (err && err.message) || "Could not load the worksheet for this submission.",
+        true
+      );
+      return;
+    }
+
+    const form = HwWorksheet.render(mount, assignment, {
+      readOnly: true,
+      omitMetaHint: true,
+    });
+    HwWorksheet.applySubmissionAnswers(form, entry);
+    if (HwWorksheet.hasListenTeacherAnswers?.(form)) {
+      HwWorksheet.revealTeacherAnswers(form);
+    }
+    HwWorksheet.setFormReadOnly(form);
+
+    if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
+      global.HwHomeworkComments.attachTo(form, {
+        username: entry.username,
+        assignmentId: entry.assignmentId,
+        submissionId: entry.id,
+        teacherReview: true,
+        teacherUsername: session.username,
+        readOnly: true,
+        skipOnboarding: true,
+        initialComments: entry.comments || [],
+      });
+    }
+
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+      global.HwMagnifyingGlass.refresh();
+    }
+
+    setTeacherReviewStatus(
+      entry.reviewStatus === "reviewed"
+        ? "Loaded — edits auto-save as drafts. Send to student when ready to update their view."
+        : "Loaded — click a cloud to reply. Edits auto-save as drafts.",
+      false,
+      "is-saved"
+    );
+  }
+
+  async function submitTeacherReviewNotes() {
+    if (teacherReviewBusy || !teacherReviewSubmission) return;
+    const session = getTeacherSessionForApi();
+    if (!session) return;
+
+    clearTeacherReviewDraftTimer();
+    teacherReviewHasUnsaved = false;
+
+    const comments =
+      global.HwHomeworkComments?.getCommentsForReview?.() ||
+      global.HwHomeworkComments?.getCommentsForSubmit?.() ||
+      [];
+
+    teacherReviewBusy = true;
+    const submitBtn = document.getElementById("hw-teacher-review-submit");
+    if (submitBtn) submitBtn.disabled = true;
+    setTeacherReviewStatus("Sending to student…", false, "is-saving");
+
+    try {
+      const res = await fetch("/api/homework-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: session.username,
+          submissionId: teacherReviewSubmission.id,
+          comments,
+          markReviewed: true,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not submit notes.");
+
+      const student = teacherReviewSubmission.username;
+      const assignmentId = teacherReviewSubmission.assignmentId;
+      try {
+        if (student && assignmentId) {
+          localStorage.setItem(
+            "jlm-hw-reviewed-" + String(student).toLowerCase() + "-" + assignmentId,
+            "1"
+          );
+        }
+      } catch {
+        /* ignore */
+      }
+
+      showToast("Notes sent — student can see your feedback.");
+      await closeTeacherWorksheetReview();
+      if (global.HwTeacherSubmissions?.reload) {
+        await global.HwTeacherSubmissions.reload();
+      }
+    } catch (err) {
+      setTeacherReviewStatus((err && err.message) || "Could not submit notes.", true);
+      if (submitBtn) submitBtn.disabled = false;
+    } finally {
+      teacherReviewBusy = false;
+    }
+  }
+
+  function bindTeacherReviewChrome() {
+    const back = document.getElementById("hw-teacher-review-back");
+    const submit = document.getElementById("hw-teacher-review-submit");
+    const overlay = document.getElementById("hw-teacher-review-overlay");
+    if (back && !back.dataset.bound) {
+      back.dataset.bound = "true";
+      back.addEventListener("click", () => {
+        void closeTeacherWorksheetReview();
+      });
+    }
+    if (submit && !submit.dataset.bound) {
+      submit.dataset.bound = "true";
+      submit.addEventListener("click", () => {
+        void submitTeacherReviewNotes();
+      });
+    }
+    if (!document.body.dataset.teacherReviewChangeBound) {
+      document.body.dataset.teacherReviewChangeBound = "true";
+      document.addEventListener("hw-teacher-review-change", () => {
+        scheduleTeacherReviewDraftSave();
+      });
+    }
+    if (overlay && !overlay.dataset.escapeBound) {
+      overlay.dataset.escapeBound = "true";
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape") return;
+        if (overlay.hidden) return;
+        ev.preventDefault();
+        void closeTeacherWorksheetReview();
+      });
+    }
+  }
+
+  function showTeacherHubAndBindTabs() {
     document.body.classList.add("hw-role-teacher");
     document.documentElement.classList.add("hw-is-teacher");
 
@@ -2523,13 +2973,15 @@
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
-    if (global.HwStudentList?.fetchStudents) {
-      await global.HwStudentList.fetchStudents({
-        force: true,
-        teacherUsername: teacherSession?.username,
-      });
-      await global.HwStudentList.refreshTeacherFilterSelects?.();
+    const teacherTabs = initTeacherTabs();
+    if (teacherTabs?.activate && teacherTabs.initial) {
+      teacherTabs.activate(teacherTabs.initial);
     }
+    return teacherTabs;
+  }
+
+  async function loadTeacherHub() {
+    bindTeacherReviewChrome();
 
     if (global.HwTeacherLookupLexicon?.init) {
       HwTeacherLookupLexicon.init({
@@ -2538,8 +2990,6 @@
       });
     }
 
-    const teacherTabs = initTeacherTabs();
-    initTeacherEditor();
     if (global.HwTeacherIdeas?.init) {
       HwTeacherIdeas.init({
         getTeacherSession: () => getTeacherSessionForApi(),
@@ -2550,6 +3000,7 @@
       HwTeacherSubmissions.init({
         getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
+        openWorksheetReview: openTeacherWorksheetReview,
       });
     }
     if (global.HwTeacherMistakes?.init) {
@@ -2577,20 +3028,32 @@
       });
     }
 
-    if (teacherTabs?.activate && teacherTabs.initial) {
-      teacherTabs.activate(teacherTabs.initial);
+    const studentsTask = global.HwStudentList?.fetchStudents
+      ? global.HwStudentList.fetchStudents({
+          force: true,
+          teacherUsername: teacherSession?.username,
+        }).then(() => global.HwStudentList.refreshTeacherFilterSelects?.())
+      : Promise.resolve();
+
+    let catalogTask = Promise.resolve(catalogCache);
+    if (!catalogCache) {
+      catalogTask = fetchCatalog()
+        .then((catalog) => {
+          catalogCache = catalog;
+          return catalog;
+        })
+        .catch(() => null);
     }
 
-    const searchInput = document.getElementById("hw-library-search");
+    await Promise.all([studentsTask, catalogTask]);
+
+    const teacherTabs = teacherTabApi;
+
     if (!catalogCache) {
-      try {
-        catalogCache = await fetchCatalog();
-      } catch {
-        const meta = document.getElementById("hw-library-meta");
-        if (meta) meta.textContent = "Could not load worksheet library.";
-        if (global.HwTeacherEditor?.bootstrap) await HwTeacherEditor.bootstrap();
-        return;
-      }
+      const meta = document.getElementById("hw-library-meta");
+      if (meta) meta.textContent = "Could not load worksheet library.";
+      if (global.HwTeacherEditor?.bootstrap) await HwTeacherEditor.bootstrap();
+      return;
     }
 
     if (global.HwStudentList?.setStudents) {
@@ -2611,6 +3074,7 @@
       HwTeacherEditor.bootstrap();
     }
 
+    const searchInput = document.getElementById("hw-library-search");
     if (searchInput && !librarySearchBound) {
       librarySearchBound = true;
       searchInput.addEventListener("input", () => {
@@ -2643,6 +3107,18 @@
     return { kind: "none", id: "" };
   }
 
+  function clearStaleSubmissionHash() {
+    const raw = window.location.hash.replace(/^#/, "");
+    if (!/^hw-submission-/.test(raw)) return false;
+    const path = window.location.pathname + window.location.search;
+    if (window.history.replaceState) {
+      window.history.replaceState(null, "", path);
+    } else {
+      window.location.hash = "";
+    }
+    return true;
+  }
+
   function guessedAssignmentId() {
     const hashParts = parseStudentHash();
     if (hashParts.kind === "assignment") return hashParts.id;
@@ -2668,6 +3144,24 @@
     }
   }
 
+  function notifyStudentHubReady() {
+    if (isTeacher) return;
+    document.dispatchEvent(new CustomEvent("hw-platform-student-ready"));
+  }
+
+  function finishStudentWorksheetMount(form) {
+    if (global.HwWorksheetToolLayout?.revealWorksheetTools) {
+      global.HwWorksheetToolLayout.revealWorksheetTools(form, notifyStudentHubReady);
+      return;
+    }
+    notifyStudentHubReady();
+  }
+
+  function abortStudentWorksheetBoot() {
+    global.HwWorksheetToolLayout?.cancelWorksheetToolBoot?.();
+    notifyStudentHubReady();
+  }
+
   async function loadStudentHub(options) {
     options = options || {};
     const loadGen = ++studentHubLoadGen;
@@ -2684,6 +3178,14 @@
     const heading = document.getElementById("hw-worksheet-heading");
     const intro = document.getElementById("hw-worksheet-intro");
     const v4Intro = document.getElementById("hw-v4-worksheet-intro");
+
+    if (v4Intro) {
+      const staleIntro = String(v4Intro.textContent || "");
+      if (/not allowed|could not load submission/i.test(staleIntro)) {
+        v4Intro.textContent = "";
+        v4Intro.hidden = true;
+      }
+    }
 
     const hashParts = parseStudentHash();
     const hashId = hashParts.kind === "assignment" ? hashParts.id : "";
@@ -2703,6 +3205,7 @@
       catalog = await catalogPromise;
     } catch {
       if (intro) intro.textContent = "Could not load homework catalog.";
+      abortStudentWorksheetBoot();
       return;
     }
     if (isStale()) return;
@@ -2726,11 +3229,25 @@
     if (hashParts.kind === "submission") {
       bindPhotoUpload(null);
       bindVideoUpload(null);
-      await loadSubmissionView(hashParts.id, loadGen, isStale);
-      return;
+      global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
+      const submissionOk = await loadSubmissionView(hashParts.id, loadGen, isStale);
+      if (submissionOk) {
+        finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"));
+        return;
+      }
+      clearStaleSubmissionHash();
+      if (intro) {
+        intro.textContent = "";
+        intro.hidden = false;
+      }
+      if (v4Intro) {
+        v4Intro.textContent = "";
+        v4Intro.hidden = true;
+      }
+      if (isStale()) return;
+    } else {
+      setSubmissionViewChrome(null, false);
     }
-
-    setSubmissionViewChrome(null, false);
     bindPhotoUpload(active);
     bindVideoUpload(active);
 
@@ -2749,6 +3266,7 @@
         background: Boolean(options.background),
         bypassCache: Boolean(options.bypassCache),
       });
+      abortStudentWorksheetBoot();
       return;
     }
 
@@ -2761,6 +3279,7 @@
         background: true,
         bypassCache: Boolean(options.bypassCache),
       });
+      finishStudentWorksheetMount(mount.querySelector("#hw-worksheet-form"));
       return;
     }
 
@@ -2778,6 +3297,7 @@
           background: Boolean(options.background),
           bypassCache: Boolean(options.bypassCache),
         });
+        abortStudentWorksheetBoot();
         return;
       }
       if (isStale()) return;
@@ -2830,7 +3350,8 @@
       return form;
     }
 
-    mountWorksheet(assignment);
+    global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
+    const form = mountWorksheet(assignment);
     if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
@@ -2840,6 +3361,7 @@
       background: Boolean(options.background),
       bypassCache: Boolean(options.bypassCache),
     });
+    finishStudentWorksheetMount(form);
   }
 
   function ensureTeacherEditorMounted() {
@@ -2849,6 +3371,7 @@
 
   function returnToTeacherHub() {
     invalidateCatalogCaches();
+    clearStaleSubmissionHash();
     HwAuth.clearViewAsStudent();
     window.location.reload();
   }
@@ -2897,6 +3420,7 @@
           select.value = isViewingAsStudent ? session.username : "";
           return;
         }
+        clearStaleSubmissionHash();
         window.location.reload();
       })();
     });
@@ -2916,30 +3440,61 @@
     })();
   }
 
-  async function enrichViewAsSessionFromProfile() {
-    if (!isViewingAsStudent || !teacherSession?.username || !session?.username) return;
+  async function enrichStudentSessionFromProfile(targetSession) {
+    const s = targetSession || session;
+    if (!s || s.role !== "student" || !s.username) return s;
+
+    const teacherUsername =
+      teacherSession?.username ||
+      (HwAuth.getTeacherSession?.() || {}).username ||
+      "jlm";
+
     try {
       const url =
         "/api/homework-student-profile?teacherUsername=" +
-        encodeURIComponent(teacherSession.username) +
+        encodeURIComponent(teacherUsername) +
         "&studentUsername=" +
-        encodeURIComponent(session.username);
-      const res = await fetch(url);
-      const data = await res.json();
+        encodeURIComponent(s.username) +
+        "&_=" +
+        Date.now();
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
       const profile = data?.profile;
-      if (!profile) return;
+      if (!profile) return s;
+
       if (profile.accountLabel) {
-        session.accountLabel = profile.accountLabel;
-        session.accountLabelDisplay =
+        s.accountLabel = profile.accountLabel;
+        s.accountLabelDisplay =
           HwAuth.ACCOUNT_LABELS[profile.accountLabel] || profile.accountLabel;
       }
       if (profile.tier) {
-        session.tier = profile.tier;
-        session.tierDisplay = HwAuth.TIERS[profile.tier]?.name || profile.tier;
+        s.tier = profile.tier;
+        s.tierDisplay = HwAuth.TIERS[profile.tier]?.name || profile.tier;
+        s.videoResponseUnlock = profile.tier === "tier3" || Boolean(s.videoResponseUnlock);
+      }
+
+      HwAuth.setAccountOverride?.(s.username, {
+        accountLabel: s.accountLabel,
+        tier: s.tier,
+      });
+
+      if (!isViewingAsStudent && !s.viewAs) {
+        try {
+          const remember = Boolean(localStorage.getItem(HwAuth.SESSION_KEY));
+          HwAuth.persistSession?.(s, remember);
+        } catch {
+          /* ignore */
+        }
       }
     } catch {
       /* profile optional */
     }
+    return s;
+  }
+
+  async function enrichViewAsSessionFromProfile() {
+    if (!isViewingAsStudent || !teacherSession?.username || !session?.username) return;
+    await enrichStudentSessionFromProfile(session);
   }
 
   function init() {
@@ -2960,13 +3515,20 @@
 
     if (isTeacher) {
       initTeacherViewAsControls();
-      initTeacherEditor();
+      showTeacherHubAndBindTabs();
+      bindTeacherReviewChrome();
       void loadTeacherHub();
-      requestAnimationFrame(ensureTeacherEditorMounted);
-      setTimeout(ensureTeacherEditorMounted, 0);
+      requestAnimationFrame(() => {
+        initTeacherEditor();
+        ensureTeacherEditorMounted();
+      });
     } else if (isViewingAsStudent) {
       initTeacherViewAsControls();
       applyHubLayout();
+      global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
+      document.addEventListener("hw-v5-retry-student-hub", () => {
+        void loadStudentHub({ bypassCache: true, metadataOnly: false });
+      });
       void enrichViewAsSessionFromProfile().then(() => {
         renderAccountBar();
         renderStudentHubHeader();
@@ -2983,12 +3545,18 @@
       }
     } else {
       applyHubLayout();
-      renderAccountBar();
-      renderStudentHubHeader();
-      renderGamesHubCard();
-      bindWeeklyUpgradeCard();
-      bindOfflineTools();
-      loadStudentHub();
+      global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
+      document.addEventListener("hw-v5-retry-student-hub", () => {
+        void loadStudentHub({ bypassCache: true, metadataOnly: false });
+      });
+      void enrichStudentSessionFromProfile(session).then(() => {
+        renderAccountBar();
+        renderStudentHubHeader();
+        renderGamesHubCard();
+        bindWeeklyUpgradeCard();
+        bindOfflineTools();
+        loadStudentHub();
+      });
       window.addEventListener("hashchange", () => {
         loadStudentHub();
       });
@@ -3026,4 +3594,9 @@
   }
 
   init();
+
+  global.HwStudentPast = {
+    openPicker: openPastAssignmentsModal,
+    closePicker: closePastAssignmentsModal,
+  };
 })();

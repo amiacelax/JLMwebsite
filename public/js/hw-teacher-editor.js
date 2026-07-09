@@ -1393,6 +1393,13 @@
           lessonPlaylistUrl: media.lessonPlaylistUrl || undefined,
         };
 
+        if (media.accountLabel || media.tier) {
+          global.HwAuth?.setAccountOverride?.(media.studentUsername, {
+            accountLabel: media.accountLabel,
+            tier: media.tier,
+          });
+        }
+
         if (homeworkChanged) {
           setAccountStatus("Saved links — assigning “" + selectedHomeworkId + "”…");
           await publishWorksheetToStudent({

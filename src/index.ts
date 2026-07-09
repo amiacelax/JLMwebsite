@@ -52,8 +52,10 @@ import {
   saveHomeworkVideoSubmission,
   listHomeworkSubmissions,
   getHomeworkSubmission,
+  saveHomeworkReview,
   loadHomeworkSubmissionPhoto,
   loadHomeworkSubmissionVideo,
+  saveHomeworkReviewMedia,
   loadHomeworkDraft,
   saveHomeworkDraft,
   deleteHomeworkDraft,
@@ -72,6 +74,7 @@ import {
   type HomeworkOnlineSubmitInput,
   type HomeworkPhotoSubmitInput,
   type HomeworkVideoSubmitInput,
+  type HomeworkReviewSaveInput,
   listStudentMistakes,
   saveStudentMistake,
   deleteStudentMistake,
@@ -148,6 +151,8 @@ interface HomeworkAnswerRow {
   suffix?: string;
   /** Star-order pieces joined for reference. */
   piecesDisplay?: string;
+  /** Star-order slot fill order as JSON array string. */
+  slotOrder?: string;
   mediaId?: string;
   mediaKind?: "video" | "audio";
 }
@@ -1009,18 +1014,23 @@ function formatHomeworkAnswerDiscord(
 ): string {
   const fmt = normalizeSubmissionRow(row, index);
   const lines = [`${fmt.num}`];
-  if (fmt.question) lines.push(`   ${fmt.question}`);
+  const top = fmt.question?.trim() || fmt.piecesLine?.trim() || "";
+
+  if (top) {
+    lines.push(`   ${top}`);
+  }
+
   if (fmt.mediaLabel) {
-    lines.push(`   ${fmt.mediaLabel}`);
+    lines.push(`   【${fmt.mediaLabel}】`);
     if (fmt.mediaId && request) {
       const listen = homeworkShortMediaUrl(request, fmt.mediaId, false);
       const download = homeworkShortMediaUrl(request, fmt.mediaId, true);
       lines.push(`   [Listen](${listen}) · [Download](${download})`);
     }
   } else {
-    if (fmt.answer) lines.push(`   ${fmt.answer}`);
+    lines.push(`   【${fmt.answer?.trim() || "(blank)"}】`);
   }
-  if (fmt.piecesLine) lines.push(`   ${fmt.piecesLine}`);
+
   return lines.join("\n");
 }
 
@@ -1519,6 +1529,9 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     const assignmentId = String(form.get("assignmentId") || "video-homework").trim();
     const lessonName = String(form.get("lessonName") || assignmentId).trim();
     const promptLabel = String(form.get("promptLabel") || "").trim();
+    const promptId = String(form.get("promptId") || "").trim();
+    const inlineSave =
+      form.get("inlineSave") === "1" || Boolean(promptId || promptLabel);
     const file = form.get("video");
 
     if (!username) return jsonResponse({ error: "Username is required." }, 400);
@@ -1560,6 +1573,23 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
       if (code !== "KV_NOT_CONFIGURED") {
         console.error("homework-video store failed:", err);
       }
+    }
+
+    if (inlineSave) {
+      if (!stored) {
+        return jsonResponse(
+          {
+            error:
+              "Video upload is not set up on the server yet. Ask JD to enable homework storage.",
+          },
+          503
+        );
+      }
+      return jsonResponse({
+        success: true,
+        mediaId: saveResult?.videoId,
+        message: "Audio/video saved.",
+      });
     }
 
     const webhook = resolveHomeworkWebhook(env);
@@ -1649,6 +1679,9 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     const assignmentId = String(form.get("assignmentId") || "audio-homework").trim();
     const lessonName = String(form.get("lessonName") || assignmentId).trim();
     const promptLabel = String(form.get("promptLabel") || "").trim();
+    const promptId = String(form.get("promptId") || "").trim();
+    const inlineSave =
+      form.get("inlineSave") === "1" || Boolean(promptId || promptLabel);
     const file = form.get("audio");
 
     if (!username) return jsonResponse({ error: "Username is required." }, 400);
@@ -1690,6 +1723,23 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
       if (code !== "KV_NOT_CONFIGURED") {
         console.error("homework-audio store failed:", err);
       }
+    }
+
+    if (inlineSave) {
+      if (!stored) {
+        return jsonResponse(
+          {
+            error:
+              "Audio upload is not set up on the server yet. Ask JD to enable homework storage.",
+          },
+          503
+        );
+      }
+      return jsonResponse({
+        success: true,
+        mediaId: saveResult?.videoId,
+        message: "Audio/video saved.",
+      });
     }
 
     const webhook = resolveHomeworkWebhook(env);
@@ -1764,6 +1814,50 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     const detail = err instanceof Error ? err.message : String(err);
     console.error("homework-audio-upload failed:", detail);
     return jsonResponse({ error: "Audio upload failed. Please try again later." }, 500);
+  }
+}
+
+async function handleHomeworkReviewMediaUpload(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  try {
+    const form = await request.formData();
+    const teacherUsername = String(form.get("teacherUsername") || "").trim();
+    if (!isTeacherMistakesAccess({ teacherUsername }, env)) {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+
+    const file = form.get("media") || form.get("audio") || form.get("video");
+    if (!isUploadedFile(file)) {
+      return jsonResponse({ error: "Audio or video file is required." }, 400);
+    }
+
+    const saved = await saveHomeworkReviewMedia(teacherUsername, file, env);
+    return jsonResponse({
+      success: true,
+      mediaId: saved.id,
+      mediaKind: saved.kind,
+      mimeType: saved.mimeType,
+      message: "Review clip saved.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Review media storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "VIDEO_TYPE") {
+      return jsonResponse({ error: "Please upload an audio or video file." }, 400);
+    }
+    if (code === "VIDEO_TOO_LARGE") {
+      return jsonResponse({ error: "File must be under 24 MB." }, 400);
+    }
+    console.error("homework-review-media-upload failed:", err);
+    return jsonResponse({ error: "Could not save review clip." }, 500);
   }
 }
 
@@ -2851,6 +2945,52 @@ async function handleHomeworkCommentsDraft(request: Request, env: Env): Promise<
   }
 }
 
+async function handleHomeworkReview(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let body: HomeworkReviewSaveInput;
+  try {
+    body = (await request.json()) as HomeworkReviewSaveInput;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = String(body.teacherUsername || "")
+    .trim()
+    .toLowerCase();
+  if (!teacherUsername || teacherUsername !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const submission = await saveHomeworkReview(body, env);
+    return jsonResponse(
+      { ok: true, submission },
+      200,
+      { "Cache-Control": "private, no-store" }
+    );
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    if (code === "SUBMISSION_REQUIRED") {
+      return jsonResponse({ error: "Submission id is required." }, 400);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Submission not found." }, 404);
+    }
+    console.error("homework-review failed:", err);
+    return jsonResponse({ error: "Could not save review notes." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3449,6 +3589,10 @@ export default {
       return handleHomeworkSubmit(request, env);
     }
 
+    if (url.pathname === "/api/homework-review") {
+      return handleHomeworkReview(request, env);
+    }
+
     if (url.pathname === "/api/homework-draft") {
       return handleHomeworkDraft(request, env);
     }
@@ -3503,6 +3647,10 @@ export default {
 
     if (url.pathname === "/api/homework-audio-upload") {
       return handleHomeworkAudioUpload(request, env);
+    }
+
+    if (url.pathname === "/api/homework-review-media-upload") {
+      return handleHomeworkReviewMediaUpload(request, env);
     }
 
     if (url.pathname === "/api/homework-generate") {

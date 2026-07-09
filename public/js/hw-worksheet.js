@@ -902,7 +902,7 @@
     question.textContent = promptText;
     wrap.appendChild(question);
 
-    if (!renderOptions.preview) {
+    if (!renderOptions.preview && !renderOptions.readOnly) {
       const head = document.createElement("div");
       head.className = "hw-video-prompt__head";
       head.appendChild(
@@ -916,11 +916,13 @@
       wrap.appendChild(head);
     }
 
-    const instruction = document.createElement("p");
-    instruction.className = "hw-video-prompt__instruction";
-    instruction.textContent =
-      "Choose video or audio-only, record your answer in Japanese, then save it.";
-    wrap.appendChild(instruction);
+    if (!renderOptions.readOnly) {
+      const instruction = document.createElement("p");
+      instruction.className = "hw-video-prompt__instruction";
+      instruction.textContent =
+        "Choose video or audio-only, record your answer in Japanese, then save it.";
+      wrap.appendChild(instruction);
+    }
 
     const recorderMount = document.createElement("div");
     recorderMount.className = "hw-video-prompt__recorder";
@@ -929,7 +931,7 @@
     if (renderOptions.preview) {
       recorderMount.innerHTML =
         '<p class="hw-video-prompt__note">Students record and send their answer here.</p>';
-    } else if (global.HwVideoInline?.mount) {
+    } else if (!renderOptions.readOnly && global.HwVideoInline?.mount) {
       const meta = resolveRecorderMeta(renderOptions, renderOptions.assignment);
       global.HwVideoInline.mount(recorderMount, {
         username: meta.username,
@@ -997,7 +999,7 @@
     prompt.textContent = item.prompt || "Answer this question on audio.";
     head.appendChild(prompt);
 
-    if (!renderOptions.preview) {
+    if (!renderOptions.preview && !renderOptions.readOnly) {
       head.appendChild(
         renderRecordingTip(item.id || "aud-" + (index + 1), {
           label: "IMPORTANT",
@@ -1016,7 +1018,7 @@
     if (renderOptions.preview) {
       recorderMount.innerHTML =
         '<p class="hw-audio-prompt__note">Students record and send their answer here.</p>';
-    } else if (global.HwAudioInline?.mount) {
+    } else if (!renderOptions.readOnly && global.HwAudioInline?.mount) {
       const meta = resolveRecorderMeta(renderOptions, renderOptions.assignment);
       global.HwAudioInline.mount(recorderMount, {
         username: meta.username,
@@ -1665,11 +1667,13 @@
 
     mount.appendChild(form);
 
-    if (!authoring && !options.preview && !options.readOnly) {
+    if (!authoring && !options.preview) {
       initSlideMode(form);
-      initFocusMode(form);
-      initSeeAnswers(form);
-      initSubmitGate(form);
+      if (!options.readOnly) {
+        initFocusMode(form);
+        initSeeAnswers(form);
+        initSubmitGate(form);
+      }
     }
     if (!authoring && global.HwStarBlock?.initForm) {
       global.HwStarBlock.initForm(form);
@@ -1712,7 +1716,27 @@
     form.querySelectorAll(".hw-worksheet__actions-primary").forEach((el) => {
       el.hidden = true;
     });
+    form.querySelectorAll(".hw-star-block--replay").forEach((line) => {
+      const pool = line.querySelector(".hw-star-block__pool");
+      const reset = line.querySelector(".hw-star-block__reset");
+      if (pool) {
+        pool.hidden = true;
+        pool.style.pointerEvents = "none";
+      }
+      if (reset) reset.hidden = true;
+      const zone = line.querySelector(".hw-star-block__answer-zone");
+      if (zone) {
+        zone.removeAttribute("aria-hidden");
+        zone.style.pointerEvents = "none";
+        zone.style.opacity = "1";
+      }
+      line.querySelectorAll(".hw-star-block__slot").forEach((slot) => {
+        slot.draggable = false;
+        slot.querySelector(".hw-star-block__slot-clear")?.remove();
+      });
+    });
     form.querySelectorAll(".hw-star-block__pool, .hw-star-block__answer-zone").forEach((el) => {
+      if (el.closest(".hw-star-block--replay")) return;
       el.setAttribute("aria-hidden", "true");
       el.style.pointerEvents = "none";
       el.style.opacity = "0.45";
@@ -1735,8 +1759,12 @@
   function applySubmissionAnswers(form, submission) {
     if (!form || !submission) return;
 
+    function isMediaStatusText(text) {
+      return /^(video|audio) submitted$/i.test(String(text || "").trim());
+    }
+
     function applyReplayNote(lineEl, row) {
-      if (!row?.student) return;
+      if (!row?.student || isMediaStatusText(row.student)) return;
       const text = row.student === "(blank)" ? "" : String(row.student);
       if (!text) return;
       let note = lineEl.querySelector(".hw-submission-replay-note");
@@ -1746,6 +1774,22 @@
         lineEl.appendChild(note);
       }
       note.textContent = text;
+    }
+
+    function applyMediaReplay(lineEl, row) {
+      lineEl.querySelector(".hw-submission-replay-note")?.remove();
+      const mediaId = String(row?.mediaId || "").trim();
+      const recorder =
+        lineEl.querySelector(".hw-video-prompt__recorder") ||
+        lineEl.querySelector(".hw-audio-prompt__recorder");
+      if (mediaId && recorder && global.HwVideoInline?.mountPlayback) {
+        global.HwVideoInline.mountPlayback(recorder, {
+          mediaId,
+          mediaKind: row.mediaKind || "video",
+        });
+        return;
+      }
+      applyReplayNote(lineEl, row);
     }
 
     const ordered =
@@ -1758,14 +1802,14 @@
 
         if (mode === "video-response") {
           secEl.querySelectorAll(".hw-worksheet__line--video").forEach((lineEl) => {
-            applyReplayNote(lineEl, ordered[rowIdx++]);
+            applyMediaReplay(lineEl, ordered[rowIdx++]);
           });
           return;
         }
 
         if (mode === "audio-prompt") {
           secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((lineEl) => {
-            applyReplayNote(lineEl, ordered[rowIdx++]);
+            applyMediaReplay(lineEl, ordered[rowIdx++]);
           });
           return;
         }
@@ -1774,7 +1818,11 @@
           const row = ordered[rowIdx++];
           if (!row) return;
           if (mode === "star-order") {
-            applyReplayNote(lineEl, row);
+            if (global.HwStarBlock?.restoreLineFromSubmission) {
+              global.HwStarBlock.restoreLineFromSubmission(lineEl, row);
+            } else {
+              applyReplayNote(lineEl, row);
+            }
             return;
           }
           const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
@@ -1802,7 +1850,7 @@
             ? ".hw-worksheet__line--video"
             : ".hw-worksheet__line--audio-prompt";
         secEl.querySelectorAll(selector).forEach((lineEl) => {
-          applyReplayNote(lineEl, rows[rowIdx++]);
+          applyMediaReplay(lineEl, rows[rowIdx++]);
         });
         return;
       }
@@ -2016,12 +2064,16 @@
 
     nav.append(prevBtn, counter, nextBtn);
 
+    const navRow = document.createElement("div");
+    navRow.className = "hw-worksheet__slide-nav-row";
+    navRow.appendChild(nav);
+
     const firstSection = form.querySelector(".hw-worksheet__section");
     const insertBefore = firstSection || form.querySelector(".hw-worksheet__actions");
     const brief = form.querySelector(".hw-worksheet__topic-brief");
     const stickyHead = document.createElement("div");
     stickyHead.className = "hw-worksheet__slide-sticky-head";
-    stickyHead.appendChild(nav);
+    stickyHead.appendChild(navRow);
     if (brief) {
       brief.classList.add("hw-worksheet__topic-brief--slide");
       stickyHead.appendChild(brief);
@@ -2579,6 +2631,8 @@
         }
         if (mode === "star-order") {
           const { assembled, piecesDisplay, staticDisplay, prefix, suffix } = starOrderFromLine(lineEl);
+          const slotHidden = lineEl.querySelector(".hw-star-block__answer");
+          const slotOrder = slotHidden?.value?.trim() || "";
           return {
             progress,
             blockType: blockTypeLabel(mode),
@@ -2588,6 +2642,7 @@
             suffix,
             student: assembled || "(blank)",
             piecesDisplay: piecesDisplay || undefined,
+            slotOrder: slotOrder || undefined,
           };
         }
         if (mode === "translation") {

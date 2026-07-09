@@ -346,8 +346,8 @@
       '" aria-label="View ' +
       escapeHtml(plan.title) +
       ' plan details">' +
-      '<span class="course-card__status-text course-card__status-text--locked">Locked</span>' +
-      '<span class="course-card__status-text course-card__status-text--unlock">Details</span>' +
+      '<span class="course-card__status-text course-card__status-text--locked">LOCKED</span>' +
+      '<span class="course-card__status-text course-card__status-text--unlock">UNLOCK?</span>' +
       "</button>" +
       '<span class="course-card__price" aria-label="' +
       escapeHtml(priceAria(plan.price)) +
@@ -374,8 +374,8 @@
       '<button type="button" class="course-card__status" data-hw-v5-weekly-upgrade aria-label="Add weekly homework for ' +
       price +
       ' dollars per month">' +
-      '<span class="course-card__status-text course-card__status-text--locked">Add-on</span>' +
-      '<span class="course-card__status-text course-card__status-text--unlock">Upgrade?</span>' +
+      '<span class="course-card__status-text course-card__status-text--locked">LOCKED</span>' +
+      '<span class="course-card__status-text course-card__status-text--unlock">UNLOCK?</span>' +
       "</button>" +
       '<span class="course-card__price" aria-label="' +
       escapeHtml(priceAria(price)) +
@@ -407,28 +407,31 @@
     return article;
   }
 
-  function setSellupHeading(heading, headingText, variant) {
-    if (!heading || !headingText) return;
-    heading.hidden = false;
-    heading.className = "hw-hub-v5-sellup-heading hw-hub-v5-sellup-heading--" + variant;
-    headingText.innerHTML = "";
+  function sellupCaptionText(variant) {
     if (variant === "upgrade-lessons") {
-      headingText.innerHTML =
-        '<span class="hw-hub-v5-sellup-heading__accent">Let\u2019s keep learning!</span>' +
-        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 upgrade or take lessons</span>';
-    } else if (variant === "weekly") {
-      headingText.innerHTML =
-        '<span class="hw-hub-v5-sellup-heading__accent">Level up your lesson plan</span>' +
-        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 add weekly homework</span>';
-    } else if (variant === "tiers") {
-      headingText.innerHTML =
-        '<span class="hw-hub-v5-sellup-heading__accent">Want more from Homework Hub?</span>' +
-        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 pick your next tier</span>';
-    } else if (variant === "lessons") {
-      headingText.innerHTML =
-        '<span class="hw-hub-v5-sellup-heading__accent">Ready for live coaching?</span>' +
-        ' <span class="hw-hub-v5-sellup-heading__rest">\u2014 lessons pair perfectly with HW</span>';
+      return "Let\u2019s keep learning \u2014 upgrade or take lessons";
     }
+    if (variant === "weekly") {
+      return "Level up your lesson plan \u2014 add weekly homework";
+    }
+    if (variant === "tiers") {
+      return "Want more from Homework Hub? \u2014 pick your next tier";
+    }
+    if (variant === "lessons") {
+      return "Ready for live coaching? \u2014 lessons pair perfectly with HW";
+    }
+    return "";
+  }
+
+  function pickSellupVariant(offers) {
+    const hasTiers = offers.some((o) => o.kind === "tier");
+    const hasWeekly = offers.some((o) => o.kind === "weekly_homework");
+    const hasLessons = offers.some((o) => o.kind === "lessons");
+    if (hasWeekly) return "weekly";
+    if (hasTiers && hasLessons) return "upgrade-lessons";
+    if (hasTiers) return "tiers";
+    if (hasLessons) return "lessons";
+    return "";
   }
 
   function renderCompleteCard(status) {
@@ -445,30 +448,21 @@
 
   function renderSellup() {
     const mount = document.getElementById("hw-v5-sellup");
-    const heading = document.getElementById("hw-v5-sellup-heading");
-    const headingText = document.getElementById("hw-v5-sellup-heading-text");
+    const caption = document.getElementById("hw-v5-sellup-caption");
+    const frame = document.getElementById("hw-v5-sellup-frame");
     if (!mount) return;
 
     const session = getPreviewSession();
     const offers = global.HwAuth?.getPostSubmitSellupOffers?.(session) || [];
     mount.replaceChildren();
-    mount.hidden = offers.length === 0;
+    const show = offers.length > 0;
+    mount.hidden = !show;
 
-    if (heading) {
-      heading.hidden = true;
-      heading.className = "hw-hub-v5-sellup-heading";
+    if (caption) {
+      caption.hidden = !show;
+      caption.textContent = show ? sellupCaptionText(pickSellupVariant(offers)) : "";
     }
-    if (headingText) headingText.innerHTML = "";
-
-    if (heading && headingText && offers.length) {
-      const hasTiers = offers.some((o) => o.kind === "tier");
-      const hasWeekly = offers.some((o) => o.kind === "weekly_homework");
-      const hasLessons = offers.some((o) => o.kind === "lessons");
-      if (hasWeekly) setSellupHeading(heading, headingText, "weekly");
-      else if (hasTiers && hasLessons) setSellupHeading(heading, headingText, "upgrade-lessons");
-      else if (hasTiers) setSellupHeading(heading, headingText, "tiers");
-      else if (hasLessons) setSellupHeading(heading, headingText, "lessons");
-    }
+    if (frame) frame.hidden = !show;
 
     offers.forEach((offer) => {
       let node = null;

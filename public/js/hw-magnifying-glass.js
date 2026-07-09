@@ -1080,7 +1080,7 @@
     }
 
     hoverHighlightEl.replaceChildren();
-    const rects = range.getClientRects();
+    const rects = mergeClientRects(Array.from(range.getClientRects()));
     for (const rect of rects) {
       if (!rect.width || !rect.height) continue;
       const box = document.createElement("span");
@@ -1095,6 +1095,54 @@
     if (!hoverHighlightEl.childElementCount) {
       clearHoverHighlight();
     }
+  }
+
+  /**
+   * Ruby / okurigana often split one logical word across adjacent spans
+   * (新 + しい). getClientRects() then draws two boxes — merge near-touching
+   * same-line rects so the highlight reads as one unit.
+   */
+  function mergeClientRects(rawRects) {
+    const sorted = rawRects
+      .filter((r) => r && r.width > 0 && r.height > 0)
+      .map((r) => ({
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+        width: r.width,
+        height: r.height,
+      }))
+      .sort((a, b) => a.top - b.top || a.left - b.left);
+
+    if (sorted.length <= 1) return sorted;
+
+    const gapX = 3;
+    const gapY = 4;
+    const merged = [];
+    for (const rect of sorted) {
+      const prev = merged[merged.length - 1];
+      if (!prev) {
+        merged.push({ ...rect });
+        continue;
+      }
+      const sameLine =
+        Math.abs(prev.top - rect.top) <= gapY &&
+        Math.abs(prev.bottom - rect.bottom) <= Math.max(gapY, prev.height * 0.45);
+      const near =
+        rect.left <= prev.right + gapX && prev.left <= rect.right + gapX;
+      if (sameLine && near) {
+        prev.left = Math.min(prev.left, rect.left);
+        prev.top = Math.min(prev.top, rect.top);
+        prev.right = Math.max(prev.right, rect.right);
+        prev.bottom = Math.max(prev.bottom, rect.bottom);
+        prev.width = prev.right - prev.left;
+        prev.height = prev.bottom - prev.top;
+      } else {
+        merged.push({ ...rect });
+      }
+    }
+    return merged;
   }
 
   function lookupTargetFromPoint(clientX, clientY) {

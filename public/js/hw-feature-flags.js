@@ -35,9 +35,58 @@
     return true;
   }
 
+  /**
+   * Homework Hub v5 student layout (tabs, post-submit sellup, review zone).
+   * Default on everywhere; force off with localStorage hw-hubv5-dev=0.
+   * Demo simulate bar stays local-only (see hw-hub-v5-live.js).
+   */
+  function hubV5() {
+    try {
+      if (localStorage.getItem("hw-hubv5-dev") === "0") return false;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (new URLSearchParams(location.search).get("hubv5") === "0") return false;
+    } catch {
+      /* ignore */
+    }
+    return true;
+  }
+
+  /** Hub v5 simulate/account bar — explicit opt-in only (never auto on localhost). */
+  function hubV5Demo() {
+    try {
+      if (new URLSearchParams(location.search).get("hubv5demo") === "0") return false;
+      if (localStorage.getItem("hw-hubv5-demo") === "0") return false;
+    } catch {
+      /* ignore */
+    }
+    if (devOverride("hw-hubv5-demo")) return true;
+    try {
+      if (new URLSearchParams(location.search).get("hubv5demo") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  if (hubV5()) {
+    global.__JLM_HUB_V5 = true;
+  }
+  try {
+    if (new URLSearchParams(location.search).get("hubv5") === "1") {
+      global.__JLM_HUB_V5 = true;
+    }
+  } catch {
+    /* ignore */
+  }
+
   global.HwFeatureFlags = {
     isLocalDev,
     magnifyingGlass,
     homeworkComments,
+    hubV5,
+    hubV5Demo,
   };
 })(window);

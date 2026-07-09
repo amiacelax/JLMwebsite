@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>JLM logomark hourglass — preview only</title>
+  <style>
+    :root {
+      --day-mountain: #67c4eb;
+      --day-sun: #e85545;
+      --night-mountain: #1e5082;
+      --night-moon: #e8edf5;
+      --night-moon-shadow: #c5d0e0;
+      --snow: #f4f6fa;
+      --night-snow: #c8d8ea;
+      --stroke: #1a2744;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1.25rem;
+      background: #0b162a;
+      color: #f4f6fa;
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    .preview {
+      width: min(34rem, 100%);
+      text-align: center;
+    }
+
+    .preview h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .preview p {
+      margin: 0 0 1rem;
+      font-size: 0.875rem;
+      color: #9fb0c8;
+      line-height: 1.5;
+    }
+
+    .preview__note {
+      margin: 0 0 1.5rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.8125rem;
+      color: #b8c8dc;
+      background: color-mix(in srgb, #f4f6fa 5%, #0b162a);
+      border: 1px solid color-mix(in srgb, #f4f6fa 10%, transparent);
+    }
+
+    .preview__ref {
+      width: 5.5rem;
+      margin: 0 auto 1.25rem;
+      opacity: 0.95;
+    }
+
+    .preview__stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.65rem;
+      margin: 0 auto 2rem;
+      padding: 2.25rem 1.5rem 2rem;
+      border-radius: 1rem;
+      background: color-mix(in srgb, #f4f6fa 6%, #0b162a);
+      border: 1px solid color-mix(in srgb, #f4f6fa 12%, transparent);
+    }
+
+    .preview__stage .hw-hourglass-wrap {
+      width: 48px;
+    }
+
+    .preview__still {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1.5rem 2rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .preview__still-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      color: #9fb0c8;
+    }
+
+    .preview__still-item .hw-hourglass-wrap {
+      width: 56px;
+    }
+
+    .preview__sizes {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 1.5rem 2rem;
+    }
+
+    .preview__size {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      color: #9fb0c8;
+    }
+
+    .preview__size .hw-hourglass-wrap {
+      width: var(--w, 26px);
+    }
+
+    /* Preview-only logomark hourglass (not used on live site) */
+    .hw-hourglass-wrap {
+      display: inline-block;
+      line-height: 0;
+    }
+
+    .hw-hourglass--logomark {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+      animation: hw-hourglass-turn 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    .hw-hourglass--logomark.is-still {
+      animation: none;
+    }
+
+    .hw-hourglass__fill--top {
+      opacity: 0.9;
+      animation: hw-hourglass-top-fill 2.5s ease-in-out infinite;
+    }
+
+    .hw-hourglass__fill--bottom {
+      opacity: 0.35;
+      animation: hw-hourglass-bottom-fill 2.5s ease-in-out infinite;
+    }
+
+    .hw-hourglass--logomark.is-still .hw-hourglass__fill--top,
+    .hw-hourglass--logomark.is-still .hw-hourglass__fill--bottom {
+      animation: none;
+      opacity: 0.9;
+    }
+
+    @keyframes hw-hourglass-turn {
+      0%,
+      42% {
+        transform: rotate(0deg);
+      }
+      50%,
+      92% {
+        transform: rotate(180deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes hw-hourglass-top-fill {
+      0%,
+      42% {
+        opacity: 0.9;
+      }
+      50%,
+      92% {
+        opacity: 0.35;
+      }
+      100% {
+        opacity: 0.9;
+      }
+    }
+
+    @keyframes hw-hourglass-bottom-fill {
+      0%,
+      42% {
+        opacity: 0.35;
+      }
+      50%,
+      92% {
+        opacity: 0.9;
+      }
+      100% {
+        opacity: 0.35;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <img
+      class="preview__ref"
+      src="/images/jlm-logomark-hourglass-ref.png"
+      width="88"
+      height="88"
+      alt="Your hourglass mockup"
+    >
+    <h1>Logomark hourglass experiment</h1>
+    <p>Top half = day (red sun, bright blue mountain). Bottom half = night (moon, darker blue).</p>
+    <p class="preview__note">Preview only — the live site still uses the classic CSS hourglass. Nothing here ships until you say so.</p>
+
+    <div class="preview__still" aria-hidden="true">
+      <div class="preview__still-item">
+        <span id="still-day"></span>
+        <span>Day (top)</span>
+      </div>
+      <div class="preview__still-item">
+        <span id="still-night"></span>
+        <span>Night (bottom)</span>
+      </div>
+    </div>
+
+    <div class="preview__stage" id="preview-stage" aria-busy="true">
+      <p style="margin:0;color:#c5d3e4;font-size:0.875rem;">Loading worksheet…</p>
+    </div>
+
+    <div class="preview__sizes" aria-hidden="true">
+      <div class="preview__size" style="--w:20px"><span id="size-sm"></span><span>Small</span></div>
+      <div class="preview__size" style="--w:26px"><span id="size-md"></span><span>Default</span></div>
+      <div class="preview__size" style="--w:36px"><span id="size-lg"></span><span>Large</span></div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const DAY = {
+        mountain: "#67c4eb",
+        sun: "#e85545",
+        snow: "#f4f6fa",
+      };
+      const NIGHT = {
+        mountain: "#1e5082",
+        moon: "#e8edf5",
+        moonShadow: "#c5d0e0",
+        snow: "#c8d8ea",
+      };
+      const STROKE = "#1a2744";
+
+      function moonMarkup(cx, cy, r) {
+        return (
+          '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + NIGHT.moon + '" opacity="0.96"/>' +
+          '<circle cx="' + (cx + 1.6) + '" cy="' + (cy - 1.2) + '" r="' + (r * 0.82) + '" fill="' + NIGHT.moonShadow + '" opacity="0.55"/>'
+        );
+      }
+
+      function hourglassSvg(options) {
+        options = options || {};
+        const still = Boolean(options.still);
+        const showTop = options.half !== "bottom";
+        const showBottom = options.half !== "top";
+        const animate = still ? "" : ' class="hw-hourglass--logomark"';
+        const stillClass = still ? " is-still" : "";
+
+        let svg =
+          '<svg viewBox="0 0 32 56"' + animate + stillClass + ' role="img" aria-label="Loading" xmlns="http://www.w3.org/2000/svg">';
+
+        if (showBottom) {
+          svg += moonMarkup(22, 33, 6.5);
+        }
+
+        if (showTop) {
+          svg +=
+            '<circle cx="10.5" cy="10" r="6.5" fill="' + DAY.sun + '" opacity="0.92"/>' +
+            '<g class="hw-hourglass__bulb hw-hourglass__bulb--top">' +
+            '<path fill="' + DAY.snow + '" stroke="' + STROKE + '" stroke-width="1.5" stroke-linejoin="round" d="M11.5 25.5 16 28.5 20.5 25.5z"/>' +
+            '<path fill="none" stroke="' + STROKE + '" stroke-width="1.4" stroke-linejoin="round" d="M16 25.5v3"/>' +
+            '<path class="hw-hourglass__fill hw-hourglass__fill--top" fill="' + DAY.mountain + '" stroke="' + STROKE + '" stroke-width="1.5" stroke-linejoin="round" d="M8 6 16 25.5 24 6z"/>' +
+            "</g>";
+        }
+
+        if (showBottom) {
+          svg +=
+            '<g class="hw-hourglass__bulb hw-hourglass__bulb--bottom">' +
+            '<path fill="' + NIGHT.snow + '" stroke="' + STROKE + '" stroke-width="1.5" stroke-linejoin="round" d="M7.5 50 16 30 24.5 50z"/>' +
+            '<path fill="none" stroke="' + STROKE + '" stroke-width="1.4" stroke-linejoin="round" d="M16 30v8.5"/>' +
+            '<path class="hw-hourglass__fill hw-hourglass__fill--bottom" fill="' + NIGHT.mountain + '" stroke="' + STROKE + '" stroke-width="1.5" stroke-linejoin="round" d="M10.5 50 16 38.5 21.5 50z"/>' +
+            "</g>";
+        }
+
+        svg += "</svg>";
+        return svg;
+      }
+
+      function mountHourglass(target, options) {
+        const wrap = document.createElement("span");
+        wrap.className = "hw-hourglass-wrap";
+        wrap.innerHTML = hourglassSvg(options);
+        target.appendChild(wrap);
+        return wrap;
+      }
+
+      const stage = document.getElementById("preview-stage");
+      const animated = mountHourglass(stage, { still: false });
+      stage.insertBefore(animated, stage.firstChild);
+
+      mountHourglass(document.getElementById("still-day"), { still: true, half: "top" });
+      mountHourglass(document.getElementById("still-night"), { still: true, half: "bottom" });
+
+      ["size-sm", "size-md", "size-lg"].forEach(function (id) {
+        const slot = document.getElementById(id);
+        if (slot) mountHourglass(slot, { still: false });
+      });
+    })();
+  </script>
+</body>
+</html>

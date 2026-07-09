@@ -63,7 +63,6 @@
   function enhanceAudioElement(audio, url) {
     const clipUrl = normalizeMediaUrl(url);
     if (!clipUrl) return false;
-    audio.controls = true;
     audio.preload = "metadata";
     audio.setAttribute("playsinline", "");
     audio.setAttribute("webkit-playsinline", "");
@@ -71,6 +70,11 @@
       audio.src = clipUrl;
     } catch {
       return false;
+    }
+    if (global.HwAudioPlayer?.mount) {
+      global.HwAudioPlayer.mount(audio);
+    } else {
+      audio.controls = true;
     }
     return true;
   }

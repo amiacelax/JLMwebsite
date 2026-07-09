@@ -95,6 +95,21 @@ Replace `REPLACE_YOUTUBE_*` in JSON when the unlisted video is up.
 
 Students click **Submit homework**. The Worker posts to `#homework` channel (`DISCORD_HOMEWORK_CHANNEL_ID`).
 
+Each answer item:
+
+```
+1
+   うんらべたいです
+   【うん、食べたいです。】
+```
+
+- **Top line:** question / prompt (no brackets)
+- **Bottom line:** student answer in `【】` (audio/video: `【Audio submitted】` + Listen · Download links)
+
+Inline audio/video **save** does not post to Discord — only full submit does.
+
+Teacher memo review roadmap: [`docs/TEACHER-MEMO-REVIEW.md`](TEACHER-MEMO-REVIEW.md).
+
 Secrets (production + `.dev.vars`):
 
 ```bash

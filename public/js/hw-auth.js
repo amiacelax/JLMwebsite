@@ -6,6 +6,7 @@
   const SESSION_KEY = "jlm-hw-session";
   const VIEW_AS_KEY = "jlm-hw-view-as";
   const VIDEO_UNLOCK_PREFIX = "jlm-hw-video-unlock-";
+  const ACCOUNT_OVERRIDES_KEY = "jlm-hw-account-overrides";
   const PLATFORM_PATH = "/homework/platform.html";
   const LOGIN_PATH = "/homework.html";
 
@@ -72,7 +73,7 @@
       displayName: "Ben M",
       role: "student",
       accountLabel: "current_student",
-      tier: "student_special",
+      tier: "pending",
       videoResponseUnlock: false,
     },
     joshs: {
@@ -95,16 +96,16 @@
       password: "jelly",
       displayName: "Ivan",
       role: "student",
-      accountLabel: "current_student",
-      tier: "student_special",
+      accountLabel: "homework_only",
+      tier: "pending",
       videoResponseUnlock: false,
     },
     benc: {
       password: "jelly",
       displayName: "benc",
       role: "student",
-      accountLabel: "homework_only",
-      tier: "pending",
+      accountLabel: "current_student",
+      tier: "student_special",
       videoResponseUnlock: false,
     },
     noplan: {
@@ -135,7 +136,63 @@
     else localStorage.removeItem(key);
   }
 
+  function readAccountOverrides() {
+    try {
+      const raw = localStorage.getItem(ACCOUNT_OVERRIDES_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeAccountOverrides(map) {
+    try {
+      localStorage.setItem(ACCOUNT_OVERRIDES_KEY, JSON.stringify(map || {}));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getAccountOverride(username) {
+    const key = normalizeUsername(username);
+    if (!key) return null;
+    const entry = readAccountOverrides()[key];
+    if (!entry || typeof entry !== "object") return null;
+    return {
+      accountLabel: entry.accountLabel || null,
+      tier: entry.tier || null,
+    };
+  }
+
+  function setAccountOverride(username, settings) {
+    const key = normalizeUsername(username);
+    if (!key || !settings) return;
+    const map = readAccountOverrides();
+    map[key] = {
+      accountLabel: settings.accountLabel || map[key]?.accountLabel || "homework_only",
+      tier: settings.tier || map[key]?.tier || "pending",
+    };
+    writeAccountOverrides(map);
+  }
+
+  function applyAccountOverride(data) {
+    if (!data?.username) return data;
+    const override = getAccountOverride(data.username);
+    if (!override) return data;
+    return {
+      ...data,
+      accountLabel: override.accountLabel || data.accountLabel,
+      tier: override.tier || data.tier,
+    };
+  }
+
   function enrichSession(data) {
+    return enrichSessionRaw(applyAccountOverride(data));
+  }
+
+  function enrichSessionRaw(data) {
     if (!data?.username) return null;
 
     if (data.source === "server") {
@@ -157,6 +214,7 @@
         videoResponseUnlock,
         source: "server",
         loggedInAt: data.loggedInAt || Date.now(),
+        viewAs: Boolean(data.viewAs),
       };
     }
 
@@ -184,6 +242,7 @@
       videoResponseUnlock,
       source: "local",
       loggedInAt: data.loggedInAt || Date.now(),
+      viewAs: Boolean(data.viewAs),
     };
   }
 
@@ -341,7 +400,7 @@
       s &&
         s.role === "student" &&
         s.accountLabel === "current_student" &&
-        s.tier === "student_special"
+        (s.tier === "student_special" || s.tier === "pending")
     );
   }
 
@@ -357,8 +416,8 @@
     const tier = s.tier || "pending";
     const label = s.accountLabel || "homework_only";
 
-    if (label === "current_student" && tier === "student_special") {
-      return [{ kind: "weekly_homework" }];
+    if (label === "current_student" && (tier === "student_special" || tier === "pending")) {
+      return [{ kind: "weekly_homework", studentSpecial: true }];
     }
 
     if (tier === "pending" || !hasActiveSubscription(s)) {
@@ -387,8 +446,12 @@
       }
     }
 
+    /* Lesson students already taking HW — Ultra video feedback + games, not Private lessons. */
     if (label === "current_student") {
-      return [{ kind: "lessons" }];
+      return [
+        { kind: "tier", plan: "ultra" },
+        { kind: "games" },
+      ];
     }
 
     return [];
@@ -593,5 +656,8 @@
     setViewAsStudentAsync,
     clearViewAsStudent,
     buildStudentViewSession,
+    persistSession,
+    setAccountOverride,
+    getAccountOverride,
   };
 })(window);

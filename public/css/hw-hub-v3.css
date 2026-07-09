@@ -19,6 +19,10 @@ body.hw-hub-v3-page {
   background: linear-gradient(90deg, #55efc4, #67c4eb);
 }
 
+.hw-hub-v2-banner[hidden] {
+  display: none !important;
+}
+
 .hw-hub-v2-demo-bar {
   position: sticky;
   top: calc(var(--header-height) + env(safe-area-inset-top, 0) + 2.125rem);
@@ -34,6 +38,11 @@ body.hw-hub-v3-page {
   color: var(--color-text-muted);
   background: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* Author display:flex would otherwise override the HTML hidden attribute */
+.hw-hub-v2-demo-bar[hidden] {
+  display: none !important;
 }
 
 .hw-hub-v2-demo-bar__label {

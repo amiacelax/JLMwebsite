@@ -1174,7 +1174,141 @@
 
 
 
-  global.HwStarBlock = { initForm, initLine };
+  function restoreSlotReadOnly(slot, piece, line) {
+
+    const colorIndex = colorIndexForPiece(line, piece);
+
+    slot.dataset.value = piece;
+
+    slot.dataset.color = colorIndex;
+
+    slot.className =
+
+      "hw-star-block__slot hw-star-block__slot--filled hw-star-block__slot--color-" + colorIndex;
+
+    slot.draggable = false;
+
+    slot.setAttribute("aria-label", "Answer: " + piece);
+
+    slot.replaceChildren();
+
+
+
+    const text = document.createElement("span");
+
+    text.className = "hw-star-block__slot-text";
+
+    text.textContent = piece;
+
+    slot.appendChild(text);
+
+  }
+
+
+
+  function parseSlotOrderFromRow(row) {
+
+    if (!row) return [];
+
+    if (row.slotOrder) {
+
+      try {
+
+        const parsed = JSON.parse(row.slotOrder);
+
+        if (Array.isArray(parsed)) {
+
+          return parsed.map((part) => String(part || "").trim());
+
+        }
+
+      } catch (_) {}
+
+    }
+
+    if (row.piecesDisplay) {
+
+      return row.piecesDisplay
+
+        .split(" · ")
+
+        .map((part) => part.trim())
+
+        .filter(Boolean);
+
+    }
+
+    return [];
+
+  }
+
+
+
+  /** Place submitted star-order chips in slots (read-only archive replay). */
+
+  function restoreLineFromSubmission(line, row) {
+
+    if (!line || !row) return;
+
+    const pool = line.querySelector(".hw-star-block__pool");
+
+    const slots = Array.from(line.querySelectorAll(".hw-star-block__slot"));
+
+    const hidden = line.querySelector(".hw-star-block__answer");
+
+    const resetBtn = line.querySelector(".hw-star-block__reset");
+
+    if (!slots.length) return;
+
+
+
+    let order = parseSlotOrderFromRow(row);
+
+    if (order.length !== slots.length) {
+
+      const padded = order.slice();
+
+      while (padded.length < slots.length) padded.push("");
+
+      order = padded.slice(0, slots.length);
+
+    }
+
+
+
+    slots.forEach((slot, index) => {
+
+      const piece = order[index] || "";
+
+      if (!piece) return;
+
+      restoreSlotReadOnly(slot, piece, line);
+
+      if (pool) hideChip(pool, piece);
+
+    });
+
+
+
+    if (hidden && order.length && order.every(Boolean)) {
+
+      hidden.value = JSON.stringify(order);
+
+    }
+
+
+
+    if (pool) pool.hidden = true;
+
+    if (resetBtn) resetBtn.hidden = true;
+
+    line.classList.add("hw-star-block--replay");
+
+  }
+
+
+
+  global.HwStarBlock = { initForm, initLine, restoreLineFromSubmission };
 
 })(window);
 

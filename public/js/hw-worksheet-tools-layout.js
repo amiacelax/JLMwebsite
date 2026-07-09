@@ -20,7 +20,7 @@
 
   const ANCHOR_KINDS = new Set(["hc-mini", "hc-memo"]);
 
-  const MOVABLE_KINDS = new Set(["mg-lens", "mg-popup", "hc-launcher"]);
+  const MOVABLE_KINDS = new Set(["mg-lens", "mg-popup"]);
 
 
 
@@ -183,6 +183,14 @@
     return kinds.has("mg-lens") && kinds.has("hc-launcher");
   }
 
+  /** Main cloud launcher stays put when note tips open — never auto-nudge it for minis/memos. */
+  function isLauncherTipPair(a, b) {
+    const kinds = new Set([a.kind, b.kind]);
+    return (
+      kinds.has("hc-launcher") && (kinds.has("hc-mini") || kinds.has("hc-memo"))
+    );
+  }
+
   function separation(fixed, moving, gap) {
 
     const ox = Math.min(fixed.right, moving.right) - Math.max(fixed.left, moving.left);
@@ -252,61 +260,43 @@
 
 
   /** Pick which tool to nudge when two overlap. Anchors always win over movable tools. */
-
   function pickMove(fixed, movable, gap) {
-
-    const sep = isToolRowPair(fixed, movable)
-      ? separationHorizontalOnly(fixed.rect, movable.rect, gap)
-      : separation(fixed.rect, movable.rect, gap);
-
+    if (!MOVABLE_KINDS.has(movable.kind)) return null;
+    let sep;
+    if (movable.kind === "hc-launcher" || isToolRowPair(fixed, movable)) {
+      sep = separationHorizontalOnly(fixed.rect, movable.rect, gap);
+    } else {
+      sep = separation(fixed.rect, movable.rect, gap);
+    }
     if (!sep) return null;
-
     return { tool: movable, sep };
-
   }
 
-
-
   function resolvePair(a, b, gap) {
+    if (isLauncherTipPair(a, b)) return null;
 
     const aAnchor = ANCHOR_KINDS.has(a.kind);
-
     const bAnchor = ANCHOR_KINDS.has(b.kind);
-
     const aMovable = MOVABLE_KINDS.has(a.kind);
-
     const bMovable = MOVABLE_KINDS.has(b.kind);
 
-
+    /* Minis/memos are fixed tips — never shove them when a memo opens nearby. */
+    if (aAnchor && bAnchor) return null;
 
     if (aAnchor && bMovable) return pickMove(a, b, gap);
-
     if (bAnchor && aMovable) return pickMove(b, a, gap);
 
-
-
     if (a.priority >= 100 && aMovable === false && bMovable) return pickMove(a, b, gap);
-
     if (b.priority >= 100 && bMovable === false && aMovable) return pickMove(b, a, gap);
 
-
-
     if (aMovable && !bMovable) return pickMove(b, a, gap);
-
     if (bMovable && !aMovable) return pickMove(a, b, gap);
 
-
-
     if (aMovable && bMovable) {
-
       if (a.priority <= b.priority) return pickMove(b, a, gap);
-
       return pickMove(a, b, gap);
-
     }
-
     return null;
-
   }
 
 
@@ -321,90 +311,58 @@
 
 
 
-  /** Magnifying glass top-right; cloud launcher beside title. */
+  /** Magnifying glass top-right; cloud launcher top-left (host-local px, snap like lens). */
   function computeNeutralPositions(hostEl) {
     if (!hostEl) return null;
     const hostRect = hostEl.getBoundingClientRect();
     if (!hostRect.width || !hostRect.height) return null;
 
-    const launcherEl = hostEl.querySelector(".hw-hc-launcher");
-    const lensEl = hostEl.querySelector(".hw-mg-widget");
-    const title = hostEl.querySelector(".hw-hub-v2-top__title, #hw-v2-title, .hw-worksheet__meta-title");
-    const header = hostEl.querySelector(".hw-hub-v2-top--in-card, .hw-hub-v2-top");
-    const toolW =
-      launcherEl?.getBoundingClientRect().width ||
-      lensEl?.getBoundingClientRect().width ||
-      72;
-    const half = toolW / 2;
     const pad = 12;
-    const titleGap = 10;
     const broomLane = 76;
-
-    let rowY;
-    let cloudCenterX;
-
-    if (title && title.getClientRects().length) {
-      const t = title.getBoundingClientRect();
-      rowY = t.top + t.height / 2 - hostRect.top;
-      cloudCenterX = t.left - hostRect.left - titleGap - half;
-    } else if (header && header.getClientRects().length) {
-      const h = header.getBoundingClientRect();
-      rowY = h.top + h.height / 2 - hostRect.top;
-      cloudCenterX = hostRect.width * 0.42;
-    } else {
-      rowY = pad + half;
-      cloudCenterX = hostRect.width * 0.4;
-    }
-
-    let cloudX = cloudCenterX;
-    const minCloudX = broomLane + half;
-    const maxCloudX = hostRect.width - half - pad;
-    cloudX = Math.max(minCloudX, Math.min(cloudX, maxCloudX));
-
-    const sharedY = Math.max(half + pad, Math.min(rowY, hostRect.height - half - pad));
+    const half = 36;
+    const cloudLeft = broomLane + half;
     const lensX = hostRect.width - pad;
     const lensY = pad;
 
     return {
-      sharedY,
       lensX,
       lensY,
       lens: { x: lensX, y: lensY },
       lensSnap: "tr",
-      launcher: {
-        x: (cloudX / hostRect.width) * 100,
-        y: (sharedY / hostRect.height) * 100,
-      },
+      launcher: { x: cloudLeft, y: pad + half },
+      launcherSnap: "tl",
     };
   }
 
-  function applyToolRowY(hostEl, sharedY, persist) {
-    if (!hostEl) return;
-    const yPct = (sharedY / hostEl.clientHeight) * 100;
-    const launcherEl = hostEl.querySelector(".hw-hc-launcher");
-    if (launcherEl && global.HwHomeworkComments?.setLauncherPosition) {
-      const x = parseFloat(launcherEl.style.left) || 0;
-      global.HwHomeworkComments.setLauncherPosition(x, yPct, persist);
+  function applyLauncherNeutral(hostEl, neutral, persist) {
+    if (!neutral) return;
+    if (neutral.launcherSnap && global.HwHomeworkComments?.setLauncherSnap) {
+      global.HwHomeworkComments.setLauncherSnap(neutral.launcherSnap);
+    } else {
+      global.HwHomeworkComments?.setLauncherPositionLocal?.(
+        neutral.launcher.x,
+        neutral.launcher.y,
+        persist
+      );
     }
   }
 
-  function finalizeNeutralPositions(hostEl, neutral) {
+  function finalizeNeutralPositions(hostEl, neutral, options) {
+    options = options || {};
     if (!hostEl || !neutral) return;
-    const yPct =
-      neutral.sharedY != null
-        ? (neutral.sharedY / hostEl.clientHeight) * 100
-        : neutral.launcher.y;
     if (neutral.lensSnap && global.HwMagnifyingGlass?.setLensSnap) {
       global.HwMagnifyingGlass.setLensSnap(neutral.lensSnap);
     } else {
       global.HwMagnifyingGlass?.setLensPositionLocal?.(neutral.lens.x, neutral.lens.y, true);
     }
-    global.HwHomeworkComments?.setLauncherPosition?.(neutral.launcher.x, yPct, true);
+    if (options.includeLauncher) {
+      applyLauncherNeutral(hostEl, neutral, true);
+    }
   }
 
   function syncNeutralToolRow(hostEl) {
     const neutral = computeNeutralPositions(hostEl);
-    if (neutral) finalizeNeutralPositions(hostEl, neutral);
+    if (neutral) finalizeNeutralPositions(hostEl, neutral, { includeLauncher: false });
   }
 
   function toolsOverlap(hostEl) {
@@ -435,17 +393,12 @@
     syncNeutralToolRow(hostEl);
   }
 
-  function broomIconSvg() {
+  function cleanupButtonIconHtml() {
     return (
-      '<svg class="hw-tools-cleanup__icon" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false">' +
-      '<path fill="currentColor" d="M16.75 4.25 15.05 5.95l-6.3 6.3 1.7 1.7 6.3-6.3 1.7-1.7a1.2 1.2 0 0 0 0-1.7l-1.1-1.1a1.2 1.2 0 0 0-1.7 0z"/>' +
-      '<path fill="currentColor" d="M4.25 16.25c0-1.65 3.15-3.25 6.75-3.25s6.75 1.6 6.75 3.25c0 1.35-2.15 3.75-6.75 3.75s-6.75-2.4-6.75-3.75z"/>' +
-      '<path fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" d="M6.5 15.25c1.6-.85 3.4-1 4.85-.55 1.2.38 2.15 1.15 2.55 2.15" opacity="0.42"/>' +
-      '<path fill="none" stroke="currentColor" stroke-width="0.95" stroke-linecap="round" d="M7.25 17.1c1.9-.55 3.7-.45 5.2.35" opacity="0.32"/>' +
-      '<circle cx="15.15" cy="17.35" r="1.05" fill="currentColor"/>' +
-      '<circle cx="17.2" cy="18.15" r="0.72" fill="currentColor" opacity="0.85"/>' +
-      '<circle cx="18.65" cy="16.55" r="0.58" fill="currentColor" opacity="0.7"/>' +
-      "</svg>"
+      '<span class="hw-tools-cleanup__magnet" aria-hidden="true">' +
+      '<img class="hw-tools-cleanup__body" src="/images/hw-tool-magnet-body.png?v=3" width="30" height="30" alt="" decoding="async" />' +
+      '<img class="hw-tools-cleanup__bolts" src="/images/hw-tool-magnet-sparks.png?v=3" width="30" height="30" alt="" decoding="async" />' +
+      "</span>"
     );
   }
 
@@ -481,14 +434,9 @@
     global.HwMagnifyingGlass?.setArmed?.(false);
 
     const neutral = computeNeutralPositions(hostEl);
-    const launcherEl = hostEl.querySelector(".hw-hc-launcher");
-    const lensEl = hostEl.querySelector(".hw-mg-widget");
 
     if (neutral) {
-      applyToolRowY(hostEl, neutral.sharedY, false);
-      const jobs = [];
-      if (launcherEl) jobs.push(animateToolReturnX(launcherEl, neutral.launcher.x, "%"));
-      await Promise.all(jobs);
+      applyLauncherNeutral(hostEl, neutral, false);
     }
 
     try {
@@ -496,7 +444,7 @@
       localStorage.removeItem("hw-mg-position-v2");
     } catch (_) {}
 
-    if (neutral) finalizeNeutralPositions(hostEl, neutral);
+    if (neutral) finalizeNeutralPositions(hostEl, neutral, { includeLauncher: true });
 
     resetBusy = false;
     if (cleanupBtn) cleanupBtn.disabled = false;
@@ -528,8 +476,8 @@
     }
 
     if (existing) {
-      const icon = existing.querySelector(".hw-tools-cleanup__icon");
-      if (!icon) existing.innerHTML = broomIconSvg();
+      const magnet = existing.querySelector(".hw-tools-cleanup__magnet");
+      if (!magnet || !magnet.querySelector(".hw-tools-cleanup__bolts")) existing.innerHTML = cleanupButtonIconHtml();
       requestAnimationFrame(() => syncNeutralToolRowIfUnset(hostEl));
       return;
     }
@@ -544,12 +492,56 @@
 
     btn.title = "Reset tool positions";
 
-    btn.innerHTML = broomIconSvg();
+    btn.innerHTML = cleanupButtonIconHtml();
 
     btn.addEventListener("click", () => resetToolPositions(hostEl));
 
     hostEl.appendChild(btn);
     requestAnimationFrame(() => syncNeutralToolRowIfUnset(hostEl));
+  }
+
+
+
+  function worksheetToolHost(hostOrForm) {
+    if (!hostOrForm) return null;
+    return hostOrForm.closest?.(".hw-hub-v2-worksheet") || hostOrForm;
+  }
+
+  function beginWorksheetToolBoot() {
+    document.body.classList.add("hw-worksheet-tools-booting");
+    document.querySelectorAll(".hw-hub-v2-worksheet").forEach((hostEl) => {
+      hostEl.classList.remove("hw-worksheet-tools-ready");
+      hostEl.classList.add("hw-worksheet-tools-booting");
+    });
+  }
+
+  function cancelWorksheetToolBoot() {
+    document.body.classList.remove("hw-worksheet-tools-booting");
+    document.querySelectorAll(".hw-hub-v2-worksheet").forEach((hostEl) => {
+      hostEl.classList.remove("hw-worksheet-tools-booting");
+    });
+  }
+
+  function revealWorksheetTools(hostOrForm, done) {
+    const hostEl = worksheetToolHost(hostOrForm);
+    if (!hostEl) {
+      cancelWorksheetToolBoot();
+      if (typeof done === "function") done();
+      return;
+    }
+
+    global.HwMagnifyingGlass?.refresh?.();
+    global.HwHomeworkComments?.applyLauncherPosition?.();
+    syncNeutralToolRowIfUnset(hostEl);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.body.classList.remove("hw-worksheet-tools-booting");
+        hostEl.classList.remove("hw-worksheet-tools-booting");
+        hostEl.classList.add("hw-worksheet-tools-ready");
+        if (typeof done === "function") done();
+      });
+    });
   }
 
 
@@ -621,6 +613,12 @@
     resetToolPositions,
 
     computeNeutralPositions,
+
+    beginWorksheetToolBoot,
+
+    cancelWorksheetToolBoot,
+
+    revealWorksheetTools,
 
   };
 

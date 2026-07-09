@@ -14,9 +14,8 @@
   })();
 
   const DRAFT_SAVE_MS = 700;
-  /** Fallback cloud launcher — beside title when title anchor is missing. */
-  const LAUNCHER_POS = { x: 18, y: 12 };
   const LAUNCHER_POS_KEY = "jlm-hc-launcher-pos";
+  const LAUNCHER_SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
   const ONBOARD_KEY = "hw-hc-onboarding-v1";
   const MG_ONBOARD_KEY = "hw-mg-onboarding-v1";
   const DRAG_THRESHOLD = 5;
@@ -96,6 +95,9 @@
   let shellEl = null;
   let layersEl = null;
   let launcherEl = null;
+  let launcherSnapId = "tl";
+  let launcherPosition = { x: 100, y: 48 };
+  let launcherResizeObserver = null;
   let config = null;
   let comments = [];
   let armed = false;
@@ -162,20 +164,97 @@
     return Math.min(100 - halfBubblePct, Math.max(halfBubblePct, xPct));
   }
 
-  function loadLauncherPos() {
+  function launcherSnapPoints() {
+    const pad = 12;
+    const broomLane = 76;
+    const w = hostEl?.clientWidth || 520;
+    const h = hostEl?.clientHeight || 480;
+    const half = 36;
+    const cloudLeft = broomLane + half;
+    const midY = h * 0.5;
+    return {
+      tl: { x: cloudLeft, y: pad + half },
+      tc: { x: w * 0.5, y: pad + half },
+      tr: { x: w - pad - half, y: pad + half },
+      ml: { x: cloudLeft, y: midY },
+      mr: { x: w - pad - half, y: midY },
+      bl: { x: cloudLeft, y: h - pad - half },
+      bc: { x: w * 0.5, y: h - pad - half },
+      br: { x: w - pad - half, y: h - pad - half },
+    };
+  }
+
+  function clampLauncherLocal(x, y) {
+    const pad = 8;
+    const half = 36;
+    const w = hostEl?.clientWidth || 0;
+    const h = hostEl?.clientHeight || 0;
+    return {
+      x: Math.max(half + pad, Math.min(x, w - half - pad)),
+      y: Math.max(half + pad, Math.min(y, h - half - pad)),
+    };
+  }
+
+  function applyLauncherPosition() {
+    if (!launcherEl || !hostEl) return;
+    if (launcherSnapId) {
+      const p = launcherSnapPoints()[launcherSnapId] || launcherSnapPoints().tl;
+      launcherPosition = { x: p.x, y: p.y };
+    } else {
+      launcherPosition = clampLauncherLocal(launcherPosition.x, launcherPosition.y);
+    }
+    launcherEl.style.left = launcherPosition.x + "px";
+    launcherEl.style.top = launcherPosition.y + "px";
+  }
+
+  function saveLauncherPosition() {
     try {
-      const raw = JSON.parse(localStorage.getItem(LAUNCHER_POS_KEY) || "null");
-      if (raw && typeof raw.x === "number" && typeof raw.y === "number") {
-        return { x: pctClamp(raw.x), y: pctClamp(raw.y) };
+      if (launcherSnapId) {
+        localStorage.setItem(LAUNCHER_POS_KEY, JSON.stringify({ snap: launcherSnapId }));
+      } else {
+        localStorage.setItem(
+          LAUNCHER_POS_KEY,
+          JSON.stringify({ x: launcherPosition.x, y: launcherPosition.y })
+        );
       }
     } catch (_) {}
-    return { ...LAUNCHER_POS };
+  }
+
+  function loadLauncherPosition() {
+    launcherSnapId = "tl";
+    launcherPosition = launcherSnapPoints().tl;
+    try {
+      const raw = JSON.parse(localStorage.getItem(LAUNCHER_POS_KEY) || "null");
+      if (!raw) return;
+      if (raw.snap && LAUNCHER_SNAP_IDS.includes(raw.snap)) {
+        launcherSnapId = raw.snap;
+        return;
+      }
+      if (typeof raw.x === "number" && typeof raw.y === "number") {
+        if (raw.x <= 100 && raw.y <= 100) {
+          const w = hostEl?.clientWidth || 520;
+          const h = hostEl?.clientHeight || 480;
+          launcherSnapId = null;
+          launcherPosition = clampLauncherLocal((raw.x / 100) * w, (raw.y / 100) * h);
+          saveLauncherPosition();
+        } else {
+          launcherSnapId = null;
+          launcherPosition = { x: raw.x, y: raw.y };
+        }
+      }
+    } catch (_) {}
+  }
+
+  function loadLauncherPos() {
+    return launcherSnapId
+      ? { ...(launcherSnapPoints()[launcherSnapId] || launcherSnapPoints().tl) }
+      : { ...launcherPosition };
   }
 
   function saveLauncherPos(x, y) {
-    try {
-      localStorage.setItem(LAUNCHER_POS_KEY, JSON.stringify({ x: pctClamp(x), y: pctClamp(y) }));
-    } catch (_) {}
+    launcherSnapId = null;
+    launcherPosition = clampLauncherLocal(x, y);
+    saveLauncherPosition();
   }
 
   function hostRectToPct(rect) {
@@ -231,9 +310,11 @@
     comments = comments.map((c) =>
       c.id === id ? { ...c, x: pctClamp(x), y: pctClamp(y), updatedAt: now } : c
     );
-    if (persist) {
+    if (persist && !config?.teacherReview) {
       saveLocal();
       queueDraftSave();
+    } else if (persist && config?.teacherReview) {
+      notifyTeacherReviewChange();
     }
   }
 
@@ -277,6 +358,9 @@
       byAnchor.set(key, {
         ...keep,
         text: keep.text.trim() ? keep.text : drop.text,
+        author: keep.author || drop.author,
+        teacherRemark: keep.teacherRemark || drop.teacherRemark,
+        teacherRemarkMedia: keep.teacherRemarkMedia || drop.teacherRemarkMedia,
         anchorRect: keep.anchorRect || drop.anchorRect,
         x: typeof keep.x === "number" ? keep.x : drop.x,
         y: typeof keep.y === "number" ? keep.y : drop.y,
@@ -289,30 +373,55 @@
     if (!Array.isArray(raw)) return [];
     const list = dedupeComments(
       raw
-      .map((c) => ({
-        id: String(c.id || uid()),
-        text: String(c.text || ""),
-        anchor: c.anchor ? String(c.anchor) : undefined,
-        anchorRect:
-          c.anchorRect && typeof c.anchorRect === "object"
-            ? {
-                left: Number(c.anchorRect.left),
-                top: Number(c.anchorRect.top),
-                right: Number(c.anchorRect.right),
-                bottom: Number(c.anchorRect.bottom),
-                width: Number(c.anchorRect.width),
-                height: Number(c.anchorRect.height),
-              }
-            : undefined,
-        x: typeof c.x === "number" ? c.x : undefined,
-        y: typeof c.y === "number" ? c.y : undefined,
-        slideIndex: typeof c.slideIndex === "number" ? c.slideIndex : 0,
-        createdAt: c.createdAt || new Date().toISOString(),
-        updatedAt: c.updatedAt,
-      }))
-      .filter((c) => c.anchor || c.text.trim().length > 0)
+      .map((c) => {
+        const authorRaw = String(c.author || "").trim().toLowerCase();
+        const author = authorRaw === "teacher" ? "teacher" : "student";
+        const teacherRemark = String(c.teacherRemark || c.jdRemark || "").trim();
+        const remarkMediaRaw = c.teacherRemarkMedia;
+        let teacherRemarkMedia;
+        if (remarkMediaRaw && typeof remarkMediaRaw === "object" && remarkMediaRaw.id) {
+          teacherRemarkMedia = {
+            id: String(remarkMediaRaw.id),
+            kind: remarkMediaRaw.kind === "video" ? "video" : "audio",
+            mimeType: remarkMediaRaw.mimeType ? String(remarkMediaRaw.mimeType) : undefined,
+          };
+        }
+        return {
+          id: String(c.id || uid()),
+          text: String(c.text || ""),
+          author,
+          teacherRemark: teacherRemark || undefined,
+          teacherRemarkMedia,
+          anchor: c.anchor ? String(c.anchor) : undefined,
+          anchorRect:
+            c.anchorRect && typeof c.anchorRect === "object"
+              ? {
+                  left: Number(c.anchorRect.left),
+                  top: Number(c.anchorRect.top),
+                  right: Number(c.anchorRect.right),
+                  bottom: Number(c.anchorRect.bottom),
+                  width: Number(c.anchorRect.width),
+                  height: Number(c.anchorRect.height),
+                }
+              : undefined,
+          x: typeof c.x === "number" ? c.x : undefined,
+          y: typeof c.y === "number" ? c.y : undefined,
+          slideIndex: typeof c.slideIndex === "number" ? c.slideIndex : 0,
+          createdAt: c.createdAt || new Date().toISOString(),
+          updatedAt: c.updatedAt,
+        };
+      })
+      .filter((c) => {
+        if (c.author === "teacher") return c.text.trim().length > 0 || c.teacherRemarkMedia;
+        return c.anchor || c.text.trim().length > 0 || c.teacherRemark || c.teacherRemarkMedia;
+      })
     );
-    if (forSubmit) return list.filter((c) => c.text.trim().length > 0);
+    if (forSubmit) {
+      return list.filter((c) => {
+        if (c.author === "teacher") return c.text.trim().length > 0 || c.teacherRemarkMedia;
+        return c.text.trim().length > 0 || c.teacherRemark || c.teacherRemarkMedia;
+      });
+    }
     return list;
   }
 
@@ -326,7 +435,7 @@
   }
 
   async function saveDraftToServer(list) {
-    if (!config?.username || !config?.assignmentId || config.readOnly) return;
+    if (!config?.username || !config?.assignmentId || config.readOnly || config.teacherReview) return;
     const payload = {
       username: config.username,
       assignmentId: config.assignmentId,
@@ -350,7 +459,7 @@
   }
 
   function queueDraftSave() {
-    if (config?.readOnly) return;
+    if (config?.readOnly || config?.teacherReview) return;
     clearTimeout(draftSaveTimer);
     draftSaveTimer = setTimeout(() => {
       void flushDraftSave();
@@ -358,7 +467,7 @@
   }
 
   async function flushDraftSave() {
-    if (config?.readOnly) return;
+    if (config?.readOnly || config?.teacherReview) return;
     const list = normalizeComments(comments);
     saveLocal();
     const work = saveDraftToServer(list)
@@ -371,7 +480,7 @@
   }
 
   async function hydrateDraftFromAccount() {
-    if (config?.readOnly) return;
+    if (config?.readOnly || config?.teacherReview) return;
     const key = storageKey();
     if (!key) return;
 
@@ -462,20 +571,15 @@
     return next;
   }
 
+  /** Tip point under both mini + memo (translate(-50%, calc(-100% - 0.35rem))). */
   function cloudPosFromVisual(el, mode) {
     if (!el || !hostEl) return null;
     const hostRect = hostEl.getBoundingClientRect();
     if (!hostRect.width || !hostRect.height) return null;
     const r = el.getBoundingClientRect();
-    if (mode === "memo") {
-      return {
-        x: pctClamp(((r.left + r.width / 2 - hostRect.left) / hostRect.width) * 100),
-        y: pctClamp(((r.bottom - hostRect.top) / hostRect.height) * 100),
-      };
-    }
     return {
-      x: pctClamp(((r.right - hostRect.left) / hostRect.width) * 100),
-      y: pctClamp(((r.top - hostRect.top) / hostRect.height) * 100),
+      x: pctClamp(((r.left + r.width / 2 - hostRect.left) / hostRect.width) * 100),
+      y: pctClamp(((r.bottom - hostRect.top) / hostRect.height) * 100),
     };
   }
 
@@ -484,8 +588,16 @@
       const id = activeCommentId;
       const comment = comments.find((c) => c.id === id);
       if (comment && !comment.text.trim()) {
-        removeComment(id);
-        return;
+        if (config?.teacherReview) {
+          if (comment.author === "teacher") {
+            removeComment(id);
+            return;
+          }
+          /* Keep empty student memos during review — only remarks matter. */
+        } else {
+          removeComment(id);
+          return;
+        }
       }
     }
     activeCommentId = null;
@@ -498,9 +610,15 @@
     renderAll();
     requestAnimationFrame(() => {
       fitExpandedMemo(id);
-      if (config?.readOnly) return;
-      const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"] textarea');
-      memo?.focus();
+      if (config?.readOnly && !config?.teacherReview) return;
+      const focusEl =
+        layersEl?.querySelector(
+          '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__remark'
+        ) ||
+        layersEl?.querySelector(
+          '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__input:not([readonly])'
+        );
+      focusEl?.focus();
       const memoEl = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"]');
       resolveToolLayout(memoEl);
     });
@@ -525,7 +643,7 @@
     const newY = pctClamp(pos.y + (dy / hostRect.height) * 100);
     memo.style.left = newX + "%";
     memo.style.top = newY + "%";
-    updateCloudPos(id, newX, newY);
+    /* Visual-only clamp — don't rewrite the shared mini/memo tip position. */
     resolveToolLayout(memo);
   }
 
@@ -559,41 +677,51 @@
   }
 
   function getLauncherPosition() {
-    if (!launcherEl) return { ...LAUNCHER_POS };
-    return {
-      x: parseFloat(launcherEl.style.left) || LAUNCHER_POS.x,
-      y: parseFloat(launcherEl.style.top) || LAUNCHER_POS.y,
-    };
+    if (!launcherEl) return loadLauncherPos();
+    return { ...launcherPosition };
   }
 
-  function setLauncherPosition(xPct, yPct, persist) {
+  function setLauncherPositionLocal(localX, localY, persist) {
     if (!launcherEl) return;
-    const nx = pctClamp(xPct);
-    const ny = pctClamp(yPct);
-    launcherEl.style.left = nx + "%";
-    launcherEl.style.top = ny + "%";
-    if (persist !== false) saveLauncherPos(nx, ny);
+    launcherSnapId = null;
+    launcherPosition = clampLauncherLocal(localX, localY);
+    applyLauncherPosition();
+    if (persist !== false) saveLauncherPosition();
+  }
+
+  function setLauncherSnap(id) {
+    if (!id || !LAUNCHER_SNAP_IDS.includes(id) || !launcherEl || !hostEl) return;
+    launcherSnapId = id;
+    applyLauncherPosition();
+    saveLauncherPosition();
+  }
+
+  /** @deprecated use setLauncherPositionLocal — kept for tool-layout reset helpers */
+  function setLauncherPosition(x, y, persist) {
+    setLauncherPositionLocal(x, y, persist);
   }
 
   function resetLauncherPosition(target) {
     try {
       localStorage.removeItem(LAUNCHER_POS_KEY);
     } catch (_) {}
-    const pos = target || LAUNCHER_POS;
-    setLauncherPosition(pos.x, pos.y, false);
+    if (target?.snap && LAUNCHER_SNAP_IDS.includes(target.snap)) {
+      setLauncherSnap(target.snap);
+      return;
+    }
+    if (target && typeof target.x === "number" && typeof target.y === "number") {
+      setLauncherPositionLocal(target.x, target.y, false);
+      return;
+    }
+    setLauncherSnap("tl");
   }
 
   function offsetLauncherBy(dx, dy) {
     if (!hostEl || !launcherEl || launcherEl.hidden) return;
-    const hostRect = hostEl.getBoundingClientRect();
-    if (!hostRect.width || !hostRect.height) return;
-    const x = (parseFloat(launcherEl.style.left) || LAUNCHER_POS.x) + (dx / hostRect.width) * 100;
-    const y = (parseFloat(launcherEl.style.top) || LAUNCHER_POS.y) + (dy / hostRect.height) * 100;
-    const nx = pctClamp(x);
-    const ny = pctClamp(y);
-    launcherEl.style.left = nx + "%";
-    launcherEl.style.top = ny + "%";
-    saveLauncherPos(nx, ny);
+    launcherSnapId = null;
+    launcherPosition = clampLauncherLocal(launcherPosition.x + dx, launcherPosition.y + dy);
+    applyLauncherPosition();
+    saveLauncherPosition();
   }
 
   function offsetActiveMemoBy(dx, dy) {
@@ -613,19 +741,93 @@
     updateCloudPos(activeCommentId, nx, ny, false);
   }
 
+  function notifyTeacherReviewChange() {
+    if (!config?.teacherReview) return;
+    document.dispatchEvent(
+      new CustomEvent("hw-teacher-review-change", {
+        bubbles: true,
+        detail: { submissionId: config.submissionId || "" },
+      })
+    );
+  }
+
   function updateCommentText(id, text) {
     const now = new Date().toISOString();
     comments = comments.map((c) =>
       c.id === id ? { ...c, text, updatedAt: now } : c
     );
-    queueDraftSave();
+    if (config?.teacherReview) notifyTeacherReviewChange();
+    else queueDraftSave();
+  }
+
+  function updateTeacherRemarkMedia(id, media) {
+    const now = new Date().toISOString();
+    comments = comments.map((c) =>
+      c.id === id
+        ? {
+            ...c,
+            teacherRemarkMedia: media?.id
+              ? {
+                  id: String(media.id),
+                  kind: media.kind === "video" ? "video" : "audio",
+                  mimeType: media.mimeType ? String(media.mimeType) : undefined,
+                }
+              : undefined,
+            updatedAt: now,
+          }
+        : c
+    );
+    notifyTeacherReviewChange();
+  }
+
+  function appendStudentRemarkMedia(body, comment) {
+    if (!comment?.teacherRemarkMedia?.id) return;
+    const mediaBlock = document.createElement("div");
+    mediaBlock.className = "hw-hc-memo__jd-block hw-hc-memo__jd-block--media";
+    const mediaHead = document.createElement("p");
+    mediaHead.className = "hw-hc-memo__remark-label";
+    mediaHead.textContent =
+      comment.teacherRemarkMedia.kind === "video" ? "JD’s video remark" : "JD’s audio remark";
+    const playback = document.createElement("div");
+    playback.className = "hw-hc-memo__remark-playback";
+    mediaBlock.append(mediaHead, playback);
+    body.appendChild(mediaBlock);
+    global.HwReviewMedia?.renderPlayback?.(playback, comment.teacherRemarkMedia);
+  }
+
+  function appendTeacherRemarkRecorder(body, comment) {
+    const mediaBlock = document.createElement("div");
+    mediaBlock.className = "hw-hc-memo__remark-media";
+    const mediaLabel = document.createElement("p");
+    mediaLabel.className = "hw-hc-memo__remark-label";
+    mediaLabel.textContent = "Audio or video reply (optional)";
+    const mediaMount = document.createElement("div");
+    mediaMount.className = "hw-hc-memo__remark-media-mount";
+    mediaBlock.append(mediaLabel, mediaMount);
+    body.appendChild(mediaBlock);
+    global.HwReviewMedia?.mountRemarkRecorder?.(mediaMount, {
+      teacherUsername: config?.teacherUsername || "",
+      existing: comment.teacherRemarkMedia,
+      onChange: (media) => updateTeacherRemarkMedia(comment.id, media),
+    });
+  }
+
+  function updateTeacherRemark(id, teacherRemark) {
+    const now = new Date().toISOString();
+    comments = comments.map((c) =>
+      c.id === id
+        ? { ...c, teacherRemark: String(teacherRemark || ""), updatedAt: now }
+        : c
+    );
+    notifyTeacherReviewChange();
   }
 
   function removeComment(id) {
     comments = comments.filter((c) => c.id !== id);
     if (activeCommentId === id) activeCommentId = null;
     renderAll();
-    queueDraftSave();
+    if (config?.teacherReview) notifyTeacherReviewChange();
+    else queueDraftSave();
   }
 
   function findCommentByAnchor(anchor) {
@@ -643,11 +845,28 @@
     comments.push({
       id,
       text: "",
+      author: "student",
       anchor: text,
       anchorRect,
       slideIndex: getSlideIndex(),
       createdAt: new Date().toISOString(),
     });
+    return id;
+  }
+
+  function createTeacherQuestionNote() {
+    const id = uid();
+    const idx = getSlideIndex();
+    comments.push({
+      id,
+      text: "",
+      author: "teacher",
+      slideIndex: idx,
+      x: 72,
+      y: 18 + commentsForCurrentSlide().filter((c) => c.author === "teacher").length * 8,
+      createdAt: new Date().toISOString(),
+    });
+    notifyTeacherReviewChange();
     return id;
   }
 
@@ -1138,7 +1357,6 @@
   }
 
   function onLauncherClick(ev) {
-    ev.preventDefault();
     ev.stopPropagation();
   }
 
@@ -1158,7 +1376,7 @@
   }
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
-    if (config?.readOnly || ev.button !== 0) return;
+    if ((config?.readOnly && !config?.teacherReview) || ev.button !== 0) return;
     if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover")) return;
 
     ev.stopPropagation();
@@ -1454,15 +1672,14 @@
   function bindLauncherDrag() {
     if (!launcherEl) return;
     launcherEl.addEventListener("pointerdown", (ev) => {
-      if (config?.readOnly || ev.button !== 0) return;
+      if (ev.button !== 0) return;
       ev.stopPropagation();
-      const pos = loadLauncherPos();
       launcherDrag = {
         pointerId: ev.pointerId,
         startX: ev.clientX,
         startY: ev.clientY,
-        originX: parseFloat(launcherEl.style.left) || pos.x,
-        originY: parseFloat(launcherEl.style.top) || pos.y,
+        originX: launcherPosition.x,
+        originY: launcherPosition.y,
         moved: false,
       };
       launcherEl.classList.add("is-dragging");
@@ -1475,20 +1692,19 @@
       if (!launcherDrag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       launcherDrag.moved = true;
       ev.preventDefault();
-      const hostRect = hostEl.getBoundingClientRect();
-      if (!hostRect.width || !hostRect.height) return;
-      launcherEl.style.left =
-        pctClamp(launcherDrag.originX + (dx / hostRect.width) * 100) + "%";
-      launcherEl.style.top =
-        pctClamp(launcherDrag.originY + (dy / hostRect.height) * 100) + "%";
+      launcherSnapId = null;
+      launcherPosition = clampLauncherLocal(
+        launcherDrag.originX + (ev.clientX - launcherDrag.startX),
+        launcherDrag.originY + (ev.clientY - launcherDrag.startY)
+      );
+      applyLauncherPosition();
     });
     launcherEl.addEventListener("pointerup", (ev) => {
       if (!launcherDrag || launcherDrag.pointerId !== ev.pointerId) return;
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
-        resolveToolLayout(launcherEl);
-        saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
-      } else {
+        saveLauncherPosition();
+      } else if (!config?.readOnly && !config?.teacherReview) {
         setArmed(!armed);
       }
       launcherDrag = null;
@@ -1500,8 +1716,7 @@
       if (!launcherDrag || launcherDrag.pointerId !== ev.pointerId) return;
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
-        resolveToolLayout(launcherEl);
-        saveLauncherPos(parseFloat(launcherEl.style.left), parseFloat(launcherEl.style.top));
+        saveLauncherPosition();
       }
       launcherDrag = null;
     });
@@ -1546,15 +1761,26 @@
   }
 
   function renderMini(comment) {
-    if (!comment.anchorRect || activeCommentId === comment.id) return null;
+    if (activeCommentId === comment.id) return null;
+    if (!comment.anchorRect && comment.author !== "teacher") return null;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "hw-hc-mini";
+    btn.className =
+      "hw-hc-mini" +
+      (comment.author === "teacher" ? " hw-hc-mini--teacher" : "") +
+      (comment.teacherRemark || comment.teacherRemarkMedia ? " hw-hc-mini--has-remark" : "");
     btn.dataset.id = comment.id;
     applyCloudPos(btn, comment, "mini");
-    const label = comment.text.trim()
-      ? "View note on “" + comment.anchor + "”"
-      : "Add note on “" + comment.anchor + "”";
+    const label =
+      comment.author === "teacher"
+        ? comment.text.trim()
+          ? "View JD note"
+          : "Add JD note on this question"
+        : comment.teacherRemark || comment.teacherRemarkMedia
+          ? "View note with JD remark on “" + (comment.anchor || "worksheet") + "”"
+          : comment.text.trim()
+            ? "View note on “" + (comment.anchor || "worksheet") + "”"
+            : "Add note on “" + (comment.anchor || "worksheet") + "”";
     btn.setAttribute("aria-label", label);
     btn.setAttribute("aria-expanded", "false");
     btn.innerHTML = cloudIconSvg("hw-hc-mini__icon");
@@ -1563,7 +1789,7 @@
       if (Date.now() < suppressMiniClickUntil) return;
       expandComment(comment.id);
     });
-    if (!config?.readOnly) bindCloudDrag(btn, comment.id, "mini");
+    if (!config?.readOnly || config?.teacherReview) bindCloudDrag(btn, comment.id, "mini");
     return btn;
   }
 
@@ -1578,35 +1804,116 @@
   }
 
   function renderMemo(comment) {
-    if (activeCommentId !== comment.id || !comment.anchorRect) return null;
+    if (activeCommentId !== comment.id) return null;
+    /* Student memos need an anchor rect; teacher-only notes use free placement. */
+    if (!comment.anchorRect && comment.author !== "teacher") return null;
 
     const wrap = document.createElement("div");
-    wrap.className = "hw-hc-memo hw-hc-memo--expanded";
+    wrap.className =
+      "hw-hc-memo hw-hc-memo--expanded" +
+      (comment.author === "teacher" ? " hw-hc-memo--teacher" : "") +
+      (config?.teacherReview ? " hw-hc-memo--review" : "");
     wrap.dataset.id = comment.id;
     applyCloudPos(wrap, comment, "memo");
     wrap.setAttribute("role", "dialog");
-    wrap.setAttribute("aria-label", "Note on “" + comment.anchor + "”");
+    wrap.setAttribute(
+      "aria-label",
+      comment.author === "teacher"
+        ? "JD note on this question"
+        : "Note on “" + (comment.anchor || "worksheet") + "”"
+    );
 
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body";
-    if (!config?.readOnly) body.title = "Drag to move";
+    if (!config?.readOnly || config?.teacherReview) body.title = "Drag to move";
 
-    const input = document.createElement("textarea");
-    input.className = "hw-hc-memo__input";
-    input.rows = 3;
-    input.maxLength = 500;
-    input.placeholder = "Write a note...JD will see it later!";
-    input.value = comment.text || "";
-    input.readOnly = !!config?.readOnly;
-    input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
-    input.addEventListener("click", (ev) => ev.stopPropagation());
-    input.addEventListener("input", () => {
-      updateCommentText(comment.id, input.value);
-    });
+    const isTeacherNote = comment.author === "teacher";
+    const reviewStudentMemo = !!config?.teacherReview && !isTeacherNote;
+    const studentReadonlyView = !!config?.readOnly && !config?.teacherReview;
 
-    body.appendChild(input);
+    if (reviewStudentMemo) {
+      if (comment.anchor) {
+        const quote = document.createElement("p");
+        quote.className = "hw-hc-memo__quote";
+        quote.textContent = "“" + comment.anchor + "”";
+        body.appendChild(quote);
+      }
+      const studentNote = document.createElement("p");
+      studentNote.className = "hw-hc-memo__student-text";
+      studentNote.textContent = comment.text || "(No note text)";
+      body.appendChild(studentNote);
 
-    if (!config?.readOnly) {
+      const remarkLabel = document.createElement("label");
+      remarkLabel.className = "hw-hc-memo__remark-label";
+      remarkLabel.textContent = "Your remark";
+      const remark = document.createElement("textarea");
+      remark.className = "hw-hc-memo__remark";
+      remark.rows = 4;
+      remark.maxLength = 2000;
+      remark.placeholder = "Reply to this memo for the student…";
+      remark.value = comment.teacherRemark || "";
+      remark.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      remark.addEventListener("click", (ev) => ev.stopPropagation());
+      remark.addEventListener("input", () => {
+        updateTeacherRemark(comment.id, remark.value);
+      });
+      remarkLabel.appendChild(remark);
+      body.appendChild(remarkLabel);
+      appendTeacherRemarkRecorder(body, comment);
+    } else {
+      const input = document.createElement("textarea");
+      input.className = "hw-hc-memo__input";
+      input.rows = isTeacherNote ? 5 : 3;
+      input.maxLength = isTeacherNote ? 2000 : 500;
+      input.placeholder = isTeacherNote
+        ? "Write a note on this question for the student…"
+        : "Write a note...JD will see it later!";
+      input.value = comment.text || "";
+      input.readOnly = studentReadonlyView || (config?.teacherReview && !isTeacherNote);
+      input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      input.addEventListener("click", (ev) => ev.stopPropagation());
+      if (!input.readOnly) {
+        input.addEventListener("input", () => {
+          updateCommentText(comment.id, input.value);
+        });
+      }
+      body.appendChild(input);
+
+      if (config?.teacherReview && isTeacherNote) {
+        appendTeacherRemarkRecorder(body, comment);
+      }
+
+      if (studentReadonlyView && comment.teacherRemark) {
+        const remarkBlock = document.createElement("div");
+        remarkBlock.className = "hw-hc-memo__jd-block";
+        const remarkHead = document.createElement("p");
+        remarkHead.className = "hw-hc-memo__remark-label";
+        remarkHead.textContent = "JD’s remark";
+        const remarkText = document.createElement("p");
+        remarkText.className = "hw-hc-memo__jd-text";
+        remarkText.textContent = comment.teacherRemark;
+        remarkBlock.append(remarkHead, remarkText);
+        body.appendChild(remarkBlock);
+      }
+
+      if (studentReadonlyView) appendStudentRemarkMedia(body, comment);
+    }
+
+    if (config?.teacherReview && isTeacherNote) {
+      const actions = document.createElement("div");
+      actions.className = "hw-hc-memo__actions";
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "hw-hc-memo__remove";
+      removeBtn.setAttribute("aria-label", "Delete note");
+      removeBtn.textContent = "DELETE";
+      actions.appendChild(
+        attachDeleteConfirm(removeBtn, () => {
+          removeComment(comment.id);
+        })
+      );
+      body.appendChild(actions);
+    } else if (!config?.readOnly && !config?.teacherReview) {
       const actions = document.createElement("div");
       actions.className = "hw-hc-memo__actions";
 
@@ -1626,7 +1933,9 @@
     wrap.append(body);
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
-    if (!config?.readOnly) bindCloudDrag(body, comment.id, "memo", wrap);
+    if (!config?.readOnly || config?.teacherReview) {
+      bindCloudDrag(body, comment.id, "memo", wrap);
+    }
     return wrap;
   }
 
@@ -1655,12 +1964,13 @@
     scheduleCloudLayout(pin || null);
   }
 
-  function initialLauncherPos() {
-    try {
-      if (localStorage.getItem(LAUNCHER_POS_KEY)) return loadLauncherPos();
-    } catch (_) {}
-    const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
-    return neutral?.launcher || loadLauncherPos();
+  function bindLauncherResize() {
+    launcherResizeObserver?.disconnect();
+    if (!hostEl) return;
+    launcherResizeObserver = new ResizeObserver(() => {
+      applyLauncherPosition();
+    });
+    launcherResizeObserver.observe(hostEl);
   }
 
   function buildShell() {
@@ -1677,12 +1987,24 @@
     launcherEl = document.createElement("button");
     launcherEl.type = "button";
     launcherEl.className = "hw-hc-launcher";
-    const launcherPos = initialLauncherPos();
-    launcherEl.style.left = launcherPos.x + "%";
-    launcherEl.style.top = launcherPos.y + "%";
     launcherEl.setAttribute("aria-label", "Add a note on highlighted text");
     launcherEl.setAttribute("aria-pressed", "false");
     launcherEl.innerHTML = cloudIconSvg("hw-hc-launcher__icon");
+
+    loadLauncherPosition();
+    try {
+      if (!localStorage.getItem(LAUNCHER_POS_KEY)) {
+        const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
+        if (neutral?.launcherSnap && LAUNCHER_SNAP_IDS.includes(neutral.launcherSnap)) {
+          launcherSnapId = neutral.launcherSnap;
+        } else if (neutral?.launcher) {
+          launcherSnapId = null;
+          launcherPosition = { x: neutral.launcher.x, y: neutral.launcher.y };
+        }
+      }
+    } catch (_) {}
+    applyLauncherPosition();
+    bindLauncherResize();
 
     launcherEl.addEventListener("click", onLauncherClick);
     bindLauncherDrag();
@@ -1705,14 +2027,24 @@
     onboardScheduleTimer = null;
     dragState = null;
     launcherDrag = null;
+    launcherResizeObserver?.disconnect();
+    launcherResizeObserver = null;
     dismissOnboarding();
     unbindTouchSelection();
     unbindDocPointer();
     unbindKeyDown();
     if (hostEl) {
       hostEl.removeEventListener("mouseup", onHostMouseUp);
-      hostEl.classList.remove("hw-hc-host", "hw-hc-armed", "hw-hc-onboarding", "hw-hc-coarse", "hw-hc-touch-selecting");
+      hostEl.classList.remove(
+        "hw-hc-host",
+        "hw-hc-armed",
+        "hw-hc-onboarding",
+        "hw-hc-coarse",
+        "hw-hc-touch-selecting",
+        "hw-hc-teacher-review"
+      );
       hostEl.querySelector(":scope > .hw-hc-shell")?.remove();
+      hostEl.querySelector(":scope > .hw-hc-teacher-bar")?.remove();
     }
     if (worksheetFormEl && slideChangeBound) {
       worksheetFormEl.removeEventListener("hw-worksheet-slide", slideChangeBound);
@@ -1724,6 +2056,8 @@
     shellEl = null;
     layersEl = null;
     launcherEl = null;
+    launcherSnapId = "tl";
+    launcherPosition = { x: 100, y: 48 };
     built = false;
     armed = false;
     activeCommentId = null;
@@ -1736,8 +2070,11 @@
     config = {
       username: options.username || "",
       assignmentId: options.assignmentId || formEl?.getAttribute("data-assignment-id") || "",
-      readOnly: !!options.readOnly,
-      skipOnboarding: !!options.skipOnboarding,
+      readOnly: !!options.readOnly || !!options.teacherReview,
+      teacherReview: !!options.teacherReview,
+      submissionId: options.submissionId || "",
+      teacherUsername: options.teacherUsername || "",
+      skipOnboarding: !!options.skipOnboarding || !!options.teacherReview,
     };
 
     if (options.initialComments?.length) {
@@ -1746,7 +2083,11 @@
       comments = [];
     }
 
-    hostEl = formEl?.closest(".hw-hub-v2-worksheet") || formEl?.parentElement || findHost();
+    hostEl =
+      formEl?.closest(".hw-hub-v2-worksheet") ||
+      formEl?.closest(".hw-teacher-review-worksheet") ||
+      formEl?.parentElement ||
+      findHost();
     if (!hostEl) return false;
 
     worksheetFormEl = formEl;
@@ -1758,8 +2099,15 @@
 
     buildShell();
 
-    if (config.readOnly) {
+    if (config.teacherReview) {
       if (launcherEl) launcherEl.hidden = true;
+      hostEl.classList.add("hw-hc-teacher-review");
+      ensureTeacherReviewChrome();
+      renderAll();
+      return true;
+    }
+
+    if (config.readOnly) {
       renderAll();
       return true;
     }
@@ -1773,12 +2121,51 @@
     return true;
   }
 
+  function ensureTeacherReviewChrome() {
+    if (!hostEl || !shellEl) return;
+    let bar = hostEl.querySelector(".hw-hc-teacher-bar");
+    if (bar) return;
+    bar = document.createElement("div");
+    bar.className = "hw-hc-teacher-bar";
+    bar.innerHTML =
+      '<p class="hw-hc-teacher-bar__hint">Click a cloud to reply. Add a note on any question that needs feedback.</p>' +
+      '<div class="hw-hc-teacher-bar__actions">' +
+      '<button type="button" class="btn btn--ghost btn--sm" id="hw-hc-add-question-note">Add note on this question</button>' +
+      "</div>";
+    bar
+      .querySelector("#hw-hc-add-question-note")
+      ?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = createTeacherQuestionNote();
+        expandComment(id);
+      });
+    hostEl.insertBefore(bar, shellEl);
+  }
+
+  function getCommentsForReview() {
+    return normalizeComments(comments).map((c) => ({
+      id: c.id,
+      text: c.text,
+      author: c.author || "student",
+      teacherRemark: c.teacherRemark || undefined,
+      teacherRemarkMedia: c.teacherRemarkMedia || undefined,
+      anchor: c.anchor,
+      anchorRect: c.anchorRect,
+      slideIndex: c.slideIndex ?? 0,
+      x: c.x,
+      y: c.y,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
+  }
+
   function onVisibility() {
     if (document.visibilityState === "hidden") void flushDraftSave();
   }
 
   function onPageHide() {
-    if (config?.readOnly || !config?.username || !config?.assignmentId) return;
+    if (config?.readOnly || config?.teacherReview || !config?.username || !config?.assignmentId) return;
     saveLocal();
     const payload = JSON.stringify({
       username: config.username,
@@ -1868,12 +2255,16 @@
     setArmed,
     disarm,
     getCommentsForSubmit,
+    getCommentsForReview,
     clearDraft,
     clearDraftStorage,
     freezeAfterSubmit,
     resetOnboarding,
     getLauncherPosition,
     setLauncherPosition,
+    setLauncherPositionLocal,
+    setLauncherSnap,
+    applyLauncherPosition,
     resetLauncherPosition,
     offsetLauncherBy,
     offsetActiveMemoBy,
