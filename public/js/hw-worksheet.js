@@ -726,7 +726,7 @@
         audioPreviewMount.innerHTML = "";
         const url = String(audioInput.value || "").trim();
         if (!url) return;
-        audioPreviewMount.appendChild(renderAudioPlayer(url, { inline: true }));
+        audioPreviewMount.appendChild(renderListenSlideAudio(url));
       }
       syncAuthorAudioPreview();
       audioInput.addEventListener("input", syncAuthorAudioPreview);
@@ -827,15 +827,15 @@
     }
     const audio = document.createElement("audio");
     audio.className = "hw-audio-player__el";
-    const bound = global.HwCompat?.enhanceAudioElement
+    const playerRoot = global.HwCompat?.enhanceAudioElement
       ? global.HwCompat.enhanceAudioElement(audio, clipUrl)
       : (function () {
           audio.controls = true;
           audio.preload = "metadata";
           audio.src = clipUrl;
-          return true;
+          return audio;
         })();
-    if (!bound) {
+    if (!playerRoot) {
       wrap.innerHTML = '<p class="hw-audio-player__missing">Audio clip could not be loaded.</p>';
       return wrap;
     }
@@ -848,7 +848,7 @@
         "Audio could not load in this browser. Try refreshing the page.";
       wrap.appendChild(note);
     });
-    wrap.appendChild(audio);
+    wrap.appendChild(playerRoot);
     if (!options.inline) {
       const hint = document.createElement("p");
       hint.className = "hw-audio-player__hint";
@@ -856,7 +856,50 @@
         "Play the clip as many times as you need, then write what you hear below.";
       wrap.appendChild(hint);
     }
+    if (options.listenCard) {
+      const card = document.createElement("div");
+      card.className = "hw-listen-card";
+      card.appendChild(wrap);
+      return card;
+    }
     return wrap;
+  }
+
+  /** Listen-slide audio shell — use for every homework audio player (clips + replays). */
+  function renderListenSlideAudio(url, options) {
+    options = options || {};
+    const card = document.createElement("div");
+    card.className = "hw-listen-card";
+    card.appendChild(renderAudioPlayer(url, { inline: true }));
+    if (options.ariaLabel) {
+      card
+        .querySelector(".hw-audio-player__el")
+        ?.setAttribute("aria-label", options.ariaLabel);
+    }
+    return card;
+  }
+
+  /** Same listen-slide player for recorded audio answers (video/audio prompts). */
+  function setAudioAnswerReplay(contextEl, url, options) {
+    options = options || {};
+    const lineEl = contextEl?.closest?.(".hw-worksheet__line") || contextEl;
+    if (!lineEl) return;
+    clearAudioAnswerReplay(lineEl);
+    const clipUrl = String(url || "").trim();
+    if (!clipUrl) return;
+    const anchor =
+      lineEl.querySelector(".hw-video-prompt__question") ||
+      lineEl.querySelector(".hw-audio-prompt__head");
+    if (!anchor) return;
+    const slot = document.createElement("div");
+    slot.className = "hw-listen-replay-slot";
+    slot.appendChild(renderListenSlideAudio(clipUrl, options));
+    anchor.insertAdjacentElement("afterend", slot);
+  }
+
+  function clearAudioAnswerReplay(contextEl) {
+    const lineEl = contextEl?.closest?.(".hw-worksheet__line") || contextEl;
+    lineEl?.querySelector(".hw-listen-replay-slot")?.remove();
   }
 
   function resolveRecorderMeta(renderOptions, assignment) {
@@ -1778,14 +1821,31 @@
 
     function applyMediaReplay(lineEl, row) {
       lineEl.querySelector(".hw-submission-replay-note")?.remove();
+      clearAudioAnswerReplay(lineEl);
       const mediaId = String(row?.mediaId || "").trim();
       const recorder =
         lineEl.querySelector(".hw-video-prompt__recorder") ||
         lineEl.querySelector(".hw-audio-prompt__recorder");
-      if (mediaId && recorder && global.HwVideoInline?.mountPlayback) {
+      if (!mediaId) {
+        applyReplayNote(lineEl, row);
+        return;
+      }
+
+      const mediaKind = row.mediaKind === "audio" ? "audio" : "video";
+      if (mediaKind === "audio") {
+        const url = global.HwVideoInline?.mediaUrl
+          ? global.HwVideoInline.mediaUrl(mediaId)
+          : "/api/hw-m/" + encodeURIComponent(mediaId);
+        setAudioAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
+        if (recorder) recorder.hidden = true;
+        return;
+      }
+
+      if (recorder) recorder.hidden = false;
+      if (recorder && global.HwVideoInline?.mountPlayback) {
         global.HwVideoInline.mountPlayback(recorder, {
           mediaId,
-          mediaKind: row.mediaKind || "video",
+          mediaKind: "video",
         });
         return;
       }
@@ -2822,6 +2882,10 @@
     buildRegisterVariants,
     enrichGrammarVariants,
     enrichAssignmentMedia,
+    renderAudioPlayer,
+    renderListenSlideAudio,
+    setAudioAnswerReplay,
+    clearAudioAnswerReplay,
     applyAnswerVariants,
     isImmersionKitMediaUrl,
     parseImmersionKitMediaPaste,

@@ -805,28 +805,28 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 .hw-tools-cleanup__bolts {
   z-index: 2;
   pointer-events: none;
-  transform-origin: 50% 100%;
+  transform-origin: 0% 100%;
   animation: hw-magnet-bolt-wipe-up 2.6s ease-in-out infinite;
 }
 
 @keyframes hw-magnet-bolt-wipe-up {
   0% {
-    clip-path: inset(0 0 100% 0);
+    clip-path: polygon(0 100%, 0 100%, 0 100%);
     opacity: 0.88;
   }
 
   38% {
-    clip-path: inset(0 0 0 0);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
     opacity: 1;
   }
 
   62% {
-    clip-path: inset(0 0 0 0);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
     opacity: 1;
   }
 
   100% {
-    clip-path: inset(100% 0 0 0);
+    clip-path: polygon(100% 0, 100% 0, 100% 0);
     opacity: 0.88;
   }
 }

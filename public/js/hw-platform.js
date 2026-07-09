@@ -383,13 +383,11 @@
     const date = assignment?.date || catalogEntry?.date || "";
     const title =
       assignment?.title || catalogEntry?.title || catalogEntry?.id || "Homework";
-    const line = date ? date + " · " + title : title;
-    const lessonName = date ? date + " — " + title : title;
     return {
-      listLabel: line,
-      lessonMeta: line,
+      listLabel: title,
+      lessonMeta: title,
       heading: "Your homework",
-      lessonName,
+      lessonName: title,
       title,
       date,
     };

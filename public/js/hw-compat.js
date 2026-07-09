@@ -62,21 +62,25 @@
 
   function enhanceAudioElement(audio, url) {
     const clipUrl = normalizeMediaUrl(url);
-    if (!clipUrl) return false;
-    audio.preload = "metadata";
+    if (!clipUrl) return null;
+    audio.preload = "auto";
     audio.setAttribute("playsinline", "");
     audio.setAttribute("webkit-playsinline", "");
     try {
       audio.src = clipUrl;
     } catch {
-      return false;
+      return null;
+    }
+    try {
+      audio.load();
+    } catch {
+      /* ignore — src is set; browser will load on play */
     }
     if (global.HwAudioPlayer?.mount) {
-      global.HwAudioPlayer.mount(audio);
-    } else {
-      audio.controls = true;
+      return global.HwAudioPlayer.mount(audio);
     }
-    return true;
+    audio.controls = true;
+    return audio;
   }
 
   global.HwCompat = {

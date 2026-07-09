@@ -16,6 +16,8 @@ npm run dev      # local :8787 with Wrangler live reload
 npm run deploy   # production
 ```
 
+**Deploy policy:** after any change, deploy automatically. Say **local** to skip. Do not ask permission.
+
 Deploy docs: `docs/DEPLOY.md`. Future platform: `docs/NIHONGO-WEEKLY-PLATFORM.md`.
 
 ## Pickup rules

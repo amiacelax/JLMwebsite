@@ -5615,6 +5615,13 @@ button.course-card__status:disabled {
 }
 
 .hw-listen-card {
+  --hw-hourglass-day: #67c4eb;
+  --hw-hourglass-sun: #e85545;
+  --hw-hourglass-night: #1e5082;
+  --hw-hourglass-snow: #f4f6fa;
+  --hw-hourglass-night-snow: #c8d8ea;
+  --hw-hourglass-moon: #e8edf5;
+  --hw-hourglass-stroke: #1a2744;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -5623,9 +5630,9 @@ button.course-card__status:disabled {
   max-width: 28rem;
   margin: 0 auto 0.75rem;
   padding: 0.5rem 0.65rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-snow) 12%, transparent);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--hw-hourglass-snow) 6%, #0b162a);
   box-sizing: border-box;
 }
 
@@ -5777,7 +5784,6 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   margin: 0.35rem 0 0.65rem;
 }
 
-.hw-audio-player__el,
 .hw-audio-chrome {
   display: block;
   width: 100%;
@@ -5798,10 +5804,16 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.35rem 0.55rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-night-snow, #c8d8ea) 22%, transparent);
   border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated, #1e2a3d);
+  background: color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 72%, #0b162a);
   box-sizing: border-box;
+}
+
+.hw-listen-card .hw-audio-chrome__bar {
+  border-color: color-mix(in srgb, var(--hw-hourglass-day) 18%, var(--hw-hourglass-stroke));
+  background: color-mix(in srgb, var(--hw-hourglass-night) 55%, #0b162a);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hw-hourglass-snow) 8%, transparent);
 }
 
 .hw-audio-chrome__play {
@@ -5809,23 +5821,31 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
+  width: 2.35rem;
+  height: 1.85rem;
   padding: 0;
   border: none;
-  border-radius: 999px;
-  background: var(--color-brand-blue, #67c4eb);
-  color: #0b1220;
+  border-radius: 0.45rem;
+  background: var(--hw-hourglass-day, var(--color-brand-blue, #67c4eb));
+  color: var(--hw-hourglass-stroke, #1a2744);
   cursor: pointer;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-hourglass-stroke, #1a2744) 35%, transparent);
+}
+
+.hw-audio-chrome__play:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--hw-hourglass-stroke, #1a2744) 35%, transparent),
+    0 0 12px color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 45%, transparent);
+}
+
+.hw-audio-chrome__play:active {
+  background: color-mix(in srgb, var(--hw-hourglass-sun, #e85545) 28%, var(--hw-hourglass-day, #67c4eb));
 }
 
 .hw-audio-chrome__play svg {
   width: 1rem;
   height: 1rem;
-}
-
-.hw-audio-chrome__play:hover {
-  filter: brightness(1.06);
 }
 
 .hw-audio-chrome__seek-wrap {
@@ -5839,7 +5859,45 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
 .hw-audio-chrome__seek {
   width: 100%;
   margin: 0;
-  accent-color: var(--color-brand-blue, #67c4eb);
+  height: 0.35rem;
+  accent-color: var(--hw-hourglass-sun, #e85545);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.hw-audio-chrome__seek::-webkit-slider-runnable-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hw-hourglass-night-snow, #c8d8ea) 22%, #0b162a);
+}
+
+.hw-audio-chrome__seek::-moz-range-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hw-hourglass-night-snow, #c8d8ea) 22%, #0b162a);
+}
+
+.hw-audio-chrome__seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-top: -0.625rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--hw-hourglass-sun, #e85545);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.hw-audio-chrome__seek::-moz-range-thumb {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--hw-hourglass-sun, #e85545);
+  box-shadow: none;
   cursor: pointer;
 }
 
@@ -5849,11 +5907,14 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   transform: translateX(-50%);
   padding: 0.15rem 0.4rem;
   border-radius: var(--radius-sm);
-  background: rgba(8, 12, 20, 0.92);
-  color: #e8edf4;
-  font-family: ui-monospace, monospace;
+  background: color-mix(in srgb, var(--hw-hourglass-stroke, #1a2744) 92%, #000);
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-sun, #e85545) 35%, transparent);
+  color: var(--hw-hourglass-moon, #e8edf5);
+  font-family: "DM Mono", "SF Mono", "Cascadia Code", ui-monospace, monospace;
   font-size: 0.75rem;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   pointer-events: none;
   z-index: 2;
@@ -5861,10 +5922,12 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
 
 .hw-audio-chrome__time {
   flex-shrink: 0;
-  font-family: ui-monospace, monospace;
-  font-size: 0.75rem;
+  font-family: "DM Mono", "SF Mono", "Cascadia Code", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  color: var(--hw-hourglass-night-snow, #c8d8ea);
   white-space: nowrap;
 }
 
@@ -5872,12 +5935,21 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   flex-shrink: 0;
   min-width: 3.1rem;
   padding: 0.2rem 0.25rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 22%, var(--hw-hourglass-stroke, #1a2744));
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 40%, #0b162a);
+  color: var(--hw-hourglass-moon, #e8edf5);
   font-size: 0.75rem;
   cursor: pointer;
+}
+
+.hw-audio-chrome__speed:hover {
+  border-color: color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 45%, transparent);
+}
+
+.hw-audio-chrome__speed:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 55%, transparent);
+  outline-offset: 1px;
 }
 
 .hw-audio-player--inline .hw-audio-chrome {
@@ -5894,19 +5966,39 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
   max-width: 100%;
 }
 
-body.hw-hw-focus-mode .hw-audio-chrome__bar {
-  background: rgba(12, 18, 28, 0.85);
+body.hw-hw-focus-mode .hw-listen-card .hw-audio-chrome__bar {
+  background: color-mix(in srgb, var(--hw-hourglass-night) 62%, #0b162a);
+  border-color: color-mix(in srgb, var(--hw-hourglass-day) 22%, var(--hw-hourglass-stroke));
+}
+
+[data-theme="light"] .hw-listen-card {
+  background: color-mix(in srgb, var(--hw-hourglass-day) 7%, #fff);
+  border-color: color-mix(in srgb, var(--hw-hourglass-night) 14%, transparent);
+}
+
+[data-theme="light"] .hw-listen-card .hw-audio-chrome__bar {
+  background: color-mix(in srgb, var(--hw-hourglass-night-snow) 55%, #fff);
+  border-color: color-mix(in srgb, var(--hw-hourglass-night) 16%, transparent);
+}
+
+[data-theme="light"] .hw-listen-card .hw-audio-chrome__time,
+[data-theme="light"] .hw-listen-card .hw-audio-chrome__speed {
+  color: var(--hw-hourglass-stroke);
+}
+
+[data-theme="light"] .hw-listen-card .hw-audio-chrome__speed {
+  background: color-mix(in srgb, var(--hw-hourglass-day) 10%, #fff);
 }
 
 .hw-audio-player__el {
   display: block;
   width: 100%;
   max-width: 28rem;
+  min-width: 0;
   min-height: 2.75rem;
   height: auto;
   margin: 0;
   color-scheme: light;
-  flex: 0 0 auto;
 }
 
 .hw-listen-card .hw-audio-player {
@@ -5917,10 +6009,13 @@ body.hw-hw-focus-mode .hw-audio-chrome__bar {
   max-width: 100%;
 }
 
+.hw-worksheet--readonly .hw-video-prompt__recorder[hidden],
+.hw-worksheet--readonly .hw-audio-prompt__recorder[hidden] {
+  display: none !important;
+}
+
 body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
-  color-scheme: light;
-  background: #f3f4f6;
-  border-radius: var(--radius-sm);
+  color-scheme: dark;
 }
 
 .hw-audio-player__hint,
@@ -5983,9 +6078,11 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
 .hw-video-prompt__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 0.45rem 0.65rem;
   margin-bottom: 0.65rem;
+  width: 100%;
 }
 
 .hw-video-prompt__recorder {
@@ -6007,6 +6104,27 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
+}
+
+.hw-listen-replay-slot {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto 0.75rem;
+  box-sizing: border-box;
+}
+
+.hw-listen-replay-slot > .hw-listen-card {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.hw-worksheet__line--video .hw-worksheet__content,
+.hw-worksheet__line--audio-prompt .hw-worksheet__content {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
 
 .hw-video-inline__card {

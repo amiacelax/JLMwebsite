@@ -54,14 +54,20 @@
     const kind = media.kind === "audio" ? "audio" : "video";
 
     if (kind === "audio") {
-      const audio = document.createElement("audio");
-      audio.className = "hw-review-media__playback";
-      audio.preload = "metadata";
-      audio.setAttribute("aria-label", "JD audio remark");
-      audio.src = url;
-      container.appendChild(audio);
-      if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(audio);
-      else audio.controls = true;
+      if (global.HwWorksheet?.renderListenSlideAudio) {
+        const player = global.HwWorksheet.renderListenSlideAudio(url, {
+          ariaLabel: "JD audio remark",
+        });
+        player.classList.add("hw-review-media__playback");
+        container.appendChild(player);
+      } else if (global.HwWorksheet?.renderAudioPlayer) {
+        const player = global.HwWorksheet.renderAudioPlayer(url, {
+          inline: true,
+          listenCard: true,
+        });
+        player.classList.add("hw-review-media__playback");
+        container.appendChild(player);
+      } else {
       return;
     }
 
@@ -241,12 +247,26 @@
       if (!previewEl) return;
       previewEl.replaceChildren();
       if (mode === "audio") {
-        const audio = document.createElement("audio");
-        audio.className = "hw-review-media__playback";
-        audio.src = previewUrl;
-        previewEl.appendChild(audio);
-        if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(audio);
-        else audio.controls = true;
+        if (global.HwWorksheet?.renderListenSlideAudio) {
+          previewEl.appendChild(
+            global.HwWorksheet.renderListenSlideAudio(previewUrl, {
+              ariaLabel: "Recorded remark preview",
+            })
+          );
+        } else if (global.HwWorksheet?.renderAudioPlayer) {
+          previewEl.appendChild(
+            global.HwWorksheet.renderAudioPlayer(previewUrl, {
+              inline: true,
+              listenCard: true,
+            })
+          );
+        } else {
+          const audio = document.createElement("audio");
+          audio.className = "hw-review-media__playback";
+          audio.controls = true;
+          audio.src = previewUrl;
+          previewEl.appendChild(audio);
+        }
       } else {
         const video = document.createElement("video");
         video.className = "hw-review-media__playback hw-review-media__playback--video";

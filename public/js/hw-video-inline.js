@@ -129,7 +129,7 @@
   }
 
   /**
-   * Read-only playback for archived / reviewed worksheet answers.
+   * Read-only playback for archived / reviewed worksheet answers (video only).
    * @param {HTMLElement} mountEl
    * @param {{ mediaId?: string, mediaKind?: string }} options
    */
@@ -137,40 +137,27 @@
     options = options || {};
     const mediaId = String(options.mediaId || "").trim();
     if (!mountEl || !mediaId) return;
+    if (options.mediaKind === "audio") return;
 
-    const kind = options.mediaKind === "audio" ? "audio" : "video";
     const url = submissionMediaUrl(mediaId);
 
     mountEl.className = "hw-video-inline hw-video-inline--playback";
     mountEl.dataset.mediaId = mediaId;
-    mountEl.dataset.mediaKind = kind;
+    mountEl.dataset.mediaKind = "video";
     mountEl.dataset.bound = "playback";
+    mountEl.hidden = false;
     mountEl.replaceChildren();
 
     const wrap = document.createElement("div");
     wrap.className = "hw-video-inline__playback-only";
-
-    if (kind === "audio") {
-      const audio = document.createElement("audio");
-      audio.className =
-        "hw-video-inline__playback hw-video-inline__audio-playback hw-video-inline__playback--submitted";
-      audio.preload = "metadata";
-      audio.setAttribute("aria-label", "Your recorded answer");
-      audio.src = url;
-      wrap.appendChild(audio);
-      if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(audio);
-      else audio.controls = true;
-    } else {
-      const video = document.createElement("video");
-      video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
-      video.controls = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.setAttribute("aria-label", "Your recorded answer");
-      video.src = url;
-      wrap.appendChild(video);
-    }
-
+    const video = document.createElement("video");
+    video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
+    video.controls = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.setAttribute("aria-label", "Your recorded answer");
+    video.src = url;
+    wrap.appendChild(video);
     mountEl.appendChild(wrap);
   }
 
@@ -222,7 +209,6 @@
       '<div class="hw-video-inline__viewport hw-video-inline__preview-viewport">' +
       '<video class="hw-video-inline__playback" playsinline controls aria-label="Recorded answer preview"></video>' +
       "</div>" +
-      '<audio class="hw-video-inline__audio-playback" controls hidden aria-label="Recorded answer preview"></audio>' +
       '<p class="hw-video-inline__preview-label">Review your clip, then save it.</p>' +
       '<div class="hw-video-inline__toolbar">' +
       '<button type="button" class="btn btn--primary hw-video-inline__save">Save video</button>' +
@@ -232,8 +218,7 @@
       '<div class="hw-video-inline__saved" hidden>' +
       '<div class="hw-video-inline__saved-badge" aria-hidden="true">✓</div>' +
       '<p class="hw-video-inline__saved-title">Answer saved</p>' +
-      '<p class="hw-video-inline__saved-hint">Included when you send homework to JD.</p>' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__record-again">Record again</button>' +
+      '<button type="button" class="btn btn--ghost btn--sm hw-video-inline__record-again">Record again?</button>' +
       "</div>" +
       "</div>" +
       '<p class="hw-video-inline__status" role="status" aria-live="polite"></p>';
@@ -248,12 +233,12 @@
     const audioLiveEl = mount.querySelector(".hw-video-inline__audio-live");
     const liveVideo = mount.querySelector(".hw-video-inline__live-video");
     const playbackVideo = mount.querySelector(".hw-video-inline__playback");
-    const playbackAudio = mount.querySelector(".hw-video-inline__audio-playback");
     const timerEl = mount.querySelector(".hw-video-inline__timer");
     const audioTimerEl = mount.querySelector(".hw-video-inline__audio-timer");
     const idleHintEl = mount.querySelector(".hw-video-inline__idle-hint");
     const saveBtn = mount.querySelector(".hw-video-inline__save");
     const savedTitleEl = mount.querySelector(".hw-video-inline__saved-title");
+    const previewLabelEl = mount.querySelector(".hw-video-inline__preview-label");
     const statusEl = mount.querySelector(".hw-video-inline__status");
     const modeEl = mount.querySelector(".hw-video-inline__mode");
     const modeBtns = mount.querySelectorAll(".hw-video-inline__mode-btn");
@@ -344,10 +329,7 @@
         playbackVideo.removeAttribute("src");
         playbackVideo.load();
       }
-      if (playbackAudio) {
-        playbackAudio.removeAttribute("src");
-        playbackAudio.load();
-      }
+      global.HwWorksheet?.clearAudioAnswerReplay?.(mount);
     }
 
     function clearSavedMedia() {
@@ -397,12 +379,15 @@
       setCardState("preview");
       if (isAudioMode()) {
         if (previewViewportEl) previewViewportEl.hidden = true;
-        if (playbackAudio) playbackAudio.hidden = false;
       } else {
         if (previewViewportEl) previewViewportEl.hidden = false;
-        if (playbackAudio) playbackAudio.hidden = true;
       }
       if (saveBtn) saveBtn.textContent = saveButtonLabel();
+      if (previewLabelEl) {
+        previewLabelEl.textContent = isAudioMode()
+          ? "Clip ready — save or re-record."
+          : "Review your clip, then save it.";
+      }
     }
 
     function showSaved() {
@@ -415,6 +400,11 @@
       setCardState("saved");
       if (savedTitleEl) {
         savedTitleEl.textContent = isAudioMode() ? "Audio saved" : "Video saved";
+      }
+      if (isAudioMode() && mount.dataset.mediaId) {
+        global.HwWorksheet?.setAudioAnswerReplay?.(mount, submissionMediaUrl(mount.dataset.mediaId), {
+          ariaLabel: "Your recorded answer",
+        });
       }
       emitWorksheetAnswerChange(mount);
     }
@@ -439,10 +429,13 @@
         resetUi();
         return;
       }
-      previewObjectUrl = URL.createObjectURL(recordedBlob);
       if (isAudioMode()) {
-        if (playbackAudio) playbackAudio.src = previewObjectUrl;
+        previewObjectUrl = URL.createObjectURL(recordedBlob);
+        global.HwWorksheet?.setAudioAnswerReplay?.(mount, previewObjectUrl, {
+          ariaLabel: "Recorded answer preview",
+        });
       } else if (playbackVideo) {
+        previewObjectUrl = URL.createObjectURL(recordedBlob);
         playbackVideo.src = previewObjectUrl;
       }
       showPreview();
@@ -602,7 +595,7 @@
         }
         clearRecording();
         showSaved();
-        setStatus(data.message || "Audio/video saved.", "success");
+        setStatus("");
         return { ok: true };
       } catch (err) {
         const message = (err && err.message) || "Save failed — try again.";

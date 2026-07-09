@@ -1218,13 +1218,20 @@ async function postDiscordWebhook(
   return { ok: false, status: res.status, detail: clip(detail, 500) };
 }
 
+/** Discord MessageFlags.SUPPRESS_EMBEDS — hide link previews / inline players. */
+const DISCORD_SUPPRESS_EMBEDS = 4;
+
 async function notifyHomeworkDiscord(
   webhookUrl: string,
   text: string
 ): Promise<{ ok: true } | { ok: false; status: number; detail: string }> {
-  const result = await postDiscordWebhook(webhookUrl, { content: clip(text, 2000) });
+  const result = await postDiscordWebhook(webhookUrl, {
+    content: clip(text, 2000),
+    flags: DISCORD_SUPPRESS_EMBEDS,
+  });
   if (result.ok) return result;
   return postDiscordWebhook(webhookUrl, {
+    flags: DISCORD_SUPPRESS_EMBEDS,
     embeds: [
       {
         title: "Homework submitted",

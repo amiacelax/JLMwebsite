@@ -1,20 +1,33 @@
-/**
+﻿/**
  * Custom audio chrome — scrub timestamp tooltip + playback speed for all homework audio.
  */
 (function (global) {
-  const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 1.75, 2];
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2];
 
   const ICON_PLAY =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v13.72L19 12 8 5.14z"/></svg>';
   const ICON_PAUSE =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>';
 
+  /** SS:T or M:SS:T — seconds + tenths; minutes only when needed. */
   function formatTime(seconds) {
-    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-    const total = Math.floor(seconds);
-    const min = Math.floor(total / 60);
-    const sec = total % 60;
-    return min + ":" + String(sec).padStart(2, "0");
+    if (!Number.isFinite(seconds) || seconds < 0) return "00:0";
+    const totalTenths = Math.min(Math.max(0, Math.round(seconds * 10)), 359999);
+    const min = Math.floor(totalTenths / 600);
+    const sec = Math.floor((totalTenths % 600) / 10);
+    const tenth = totalTenths % 10;
+    const secPart = String(sec).padStart(2, "0") + ":" + tenth;
+    return min > 0 ? min + ":" + secPart : secPart;
+  }
+
+  function durationTenths(audio) {
+    const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+    return dur > 0 ? Math.max(1, Math.round(dur * 10)) : 1;
+  }
+
+  function currentTenths(audio) {
+    const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    return Math.min(Math.max(0, Math.round(cur * 10)), durationTenths(audio));
   }
 
   function nearestSpeed(rate) {
@@ -26,7 +39,10 @@
   }
 
   function mount(audio) {
-    if (!audio || audio.dataset.hwAudioPlayer === "1") return audio;
+    if (!audio) return null;
+    if (audio.dataset.hwAudioPlayer === "1") {
+      return audio.closest(".hw-audio-chrome") || audio;
+    }
     audio.dataset.hwAudioPlayer = "1";
     audio.controls = false;
     audio.classList.add("hw-audio-chrome__el");
@@ -50,7 +66,7 @@
     seek.type = "range";
     seek.className = "hw-audio-chrome__seek";
     seek.min = "0";
-    seek.max = "1000";
+    seek.max = "1";
     seek.step = "1";
     seek.value = "0";
     seek.setAttribute("aria-label", "Seek");
@@ -62,7 +78,7 @@
 
     const timeEl = document.createElement("span");
     timeEl.className = "hw-audio-chrome__time";
-    timeEl.textContent = "0:00 / 0:00";
+    timeEl.textContent = "00:0 / 00:0";
 
     const speed = document.createElement("select");
     speed.className = "hw-audio-chrome__speed";
@@ -96,13 +112,35 @@
       playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
     }
 
+    function syncSeekRange() {
+      const maxT = durationTenths(audio);
+      seek.max = String(maxT);
+      if (!scrubbing) {
+        seek.value = String(currentTenths(audio));
+      }
+    }
+
     function syncTime() {
       const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
       const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-      timeEl.textContent = formatTime(cur) + " / " + (dur ? formatTime(dur) : "0:00");
-      if (!scrubbing && dur > 0) {
-        seek.value = String(Math.round((cur / dur) * 1000));
-      }
+      timeEl.textContent = formatTime(cur) + " / " + (dur ? formatTime(dur) : "00:0");
+      syncSeekRange();
+    }
+
+    function seekTenthsFromRatio(ratio) {
+      const maxT = durationTenths(audio);
+      if (maxT <= 0) return 0;
+      const clamped = Math.min(Math.max(ratio, 0), 1);
+      return Math.min(Math.round(clamped * maxT), maxT);
+    }
+
+    function applySeekTenths(tenths) {
+      const maxT = durationTenths(audio);
+      if (maxT <= 0) return;
+      const t = Math.min(Math.max(tenths, 0), maxT);
+      seek.value = String(t);
+      audio.currentTime = t / 10;
+      timeEl.textContent = formatTime(audio.currentTime) + " / " + formatTime(audio.duration);
     }
 
     function seekRatioFromEvent(ev) {
@@ -115,7 +153,8 @@
     function showScrubTip(ev) {
       const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
       const ratio = seekRatioFromEvent(ev);
-      scrubTip.textContent = formatTime(ratio * dur);
+      const tenths = seekTenthsFromRatio(ratio);
+      scrubTip.textContent = formatTime(tenths / 10);
       scrubTip.style.left = ratio * 100 + "%";
       scrubTip.hidden = false;
     }
@@ -137,22 +176,20 @@
     audio.addEventListener("timeupdate", syncTime);
 
     seek.addEventListener("input", () => {
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
-      if (dur > 0) {
-        audio.currentTime = (Number(seek.value) / 1000) * dur;
-        timeEl.textContent = formatTime(audio.currentTime) + " / " + formatTime(dur);
-      }
+      applySeekTenths(Number(seek.value));
     });
 
     seek.addEventListener("pointerdown", (ev) => {
       scrubbing = true;
       seekPointerId = ev.pointerId;
       seek.setPointerCapture?.(ev.pointerId);
+      applySeekTenths(seekTenthsFromRatio(seekRatioFromEvent(ev)));
       showScrubTip(ev);
     });
 
     seek.addEventListener("pointermove", (ev) => {
       if (!scrubbing) return;
+      applySeekTenths(seekTenthsFromRatio(seekRatioFromEvent(ev)));
       showScrubTip(ev);
     });
 

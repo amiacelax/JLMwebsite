@@ -64,7 +64,7 @@
       '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__cancel">Cancel</button>' +
       "</div>" +
       '<div class="hw-audio-inline__preview" hidden>' +
-      '<audio class="hw-audio-inline__playback" preload="metadata" aria-label="Recorded answer preview"></audio>' +
+      '<div class="hw-audio-inline__preview-player"></div>' +
       '<div class="hw-audio-inline__preview-actions">' +
       '<button type="button" class="btn btn--primary btn--sm hw-audio-inline__upload">Send audio</button>' +
       '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__retake">Record again</button>' +
@@ -75,7 +75,7 @@
     const idleEl = mount.querySelector(".hw-audio-inline__idle");
     const liveEl = mount.querySelector(".hw-audio-inline__live");
     const previewEl = mount.querySelector(".hw-audio-inline__preview");
-    const playbackAudio = mount.querySelector(".hw-audio-inline__playback");
+    const previewPlayerMount = mount.querySelector(".hw-audio-inline__preview-player");
     const timerEl = mount.querySelector(".hw-audio-inline__timer");
     const statusEl = mount.querySelector(".hw-audio-inline__status");
 
@@ -113,10 +113,7 @@
         URL.revokeObjectURL(previewObjectUrl);
         previewObjectUrl = "";
       }
-      if (playbackAudio) {
-        playbackAudio.removeAttribute("src");
-        playbackAudio.load();
-      }
+      if (previewPlayerMount) previewPlayerMount.replaceChildren();
     }
 
     function showIdle() {
@@ -164,9 +161,33 @@
         return;
       }
       previewObjectUrl = URL.createObjectURL(recordedBlob);
-      if (playbackAudio) {
-        playbackAudio.src = previewObjectUrl;
-        if (global.HwAudioPlayer?.mount) global.HwAudioPlayer.mount(playbackAudio);
+      if (previewPlayerMount) {
+        previewPlayerMount.replaceChildren();
+        if (global.HwWorksheet?.renderListenSlideAudio) {
+          previewPlayerMount.appendChild(
+            global.HwWorksheet.renderListenSlideAudio(previewObjectUrl, {
+              ariaLabel: "Recorded answer preview",
+            })
+          );
+        } else if (global.HwWorksheet?.renderAudioPlayer) {
+          previewPlayerMount.appendChild(
+            global.HwWorksheet.renderAudioPlayer(previewObjectUrl, {
+              inline: true,
+              listenCard: true,
+            })
+          );
+          previewPlayerMount
+            .querySelector(".hw-audio-player__el")
+            ?.setAttribute("aria-label", "Recorded answer preview");
+        } else {
+          const audio = document.createElement("audio");
+          audio.className = "hw-audio-inline__playback";
+          audio.controls = true;
+          audio.preload = "metadata";
+          audio.setAttribute("aria-label", "Recorded answer preview");
+          audio.src = previewObjectUrl;
+          previewPlayerMount.appendChild(audio);
+        }
       }
       showPreview();
       setStatus("Preview your clip, then send it.");

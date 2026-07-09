@@ -1,0 +1,14 @@
+---
+description: Auto-deploy JLM Website after changes unless user says local
+alwaysApply: true
+---
+
+# Deploy policy
+
+After completing any JLM Website change (copy, styling, layout, features, bug fixes, Worker/KV):
+
+1. Run `npm run deploy` automatically — do **not** ask first.
+2. Briefly confirm deployment in the reply.
+3. **Skip deploy** only when the user explicitly says **local** (or clearly asks to keep changes local-only).
+
+Do not warn about behavior vs styling changes before deploying. The user opts out with "local", not in.

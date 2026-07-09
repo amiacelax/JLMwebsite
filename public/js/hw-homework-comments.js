@@ -102,6 +102,11 @@
   let comments = [];
   let armed = false;
   let activeCommentId = null;
+  /** Student memo ids with the teacher reply panel open (review mode). */
+  let teacherReplyOpenIds = new Set();
+  /** Student memos dismissed (hidden) in teacher review for this session. */
+  let dismissedStudentReviewIds = new Set();
+  let reviewResizeObserver = null;
   let draftSaveTimer = null;
   let draftSaveInFlight = null;
   let built = false;
@@ -122,6 +127,236 @@
   let contextMenuBound = null;
   let coarseResizeBound = null;
   let readAloudUtterance = null;
+
+  function hasTeacherReply(comment) {
+    return !!(String(comment?.teacherRemark || "").trim() || comment?.teacherRemarkMedia?.id);
+  }
+
+  function isTeacherReplyOpen(comment) {
+    return teacherReplyOpenIds.has(comment.id);
+  }
+
+  function closeTeacherReply(id) {
+    teacherReplyOpenIds.delete(id);
+    renderAll();
+  }
+
+  function dismissStudentReviewMemo(id) {
+    dismissedStudentReviewIds.add(id);
+    teacherReplyOpenIds.delete(id);
+    renderAll();
+  }
+
+  function attachMemoCloseBtn(body, onClose, extraClass) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hw-hc-memo__close" + (extraClass ? " " + extraClass : "");
+    btn.setAttribute("aria-label", "Close");
+    btn.textContent = "\u00d7";
+    btn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      onClose();
+    });
+    if (!extraClass || extraClass.indexOf("--inline") < 0) {
+      body.appendChild(btn);
+    }
+    return btn;
+  }
+
+  function openTeacherReply(id) {
+    teacherReplyOpenIds.add(id);
+    renderAll();
+    requestAnimationFrame(() => {
+      const pair = layersEl?.querySelector('.hw-hc-review-pair[data-id="' + id + '"]');
+      const focusEl = pair?.querySelector(".hw-hc-memo__remark");
+      focusEl?.focus();
+      resolveToolLayout(pair || null);
+    });
+  }
+
+  function seedTeacherReplyOpen() {
+    teacherReplyOpenIds = new Set();
+    comments.forEach((c) => {
+      if (c.author !== "teacher" && hasTeacherReply(c)) {
+        teacherReplyOpenIds.add(c.id);
+      }
+    });
+  }
+
+  function rightArrowIconSvg(className) {
+    return (
+      '<svg class="' +
+      (className || "hw-hc-review-comment-btn__icon") +
+      '" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M4 12h14M14 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>' +
+      "</svg>"
+    );
+  }
+
+  function autosizeReviewMemoInput(input) {
+    if (!input) return;
+    const resize = () => {
+      input.style.height = "0";
+      const next = Math.ceil(input.scrollHeight);
+      input.style.height = (next > 0 ? next : 0) + "px";
+    };
+    resize();
+    requestAnimationFrame(resize);
+  }
+
+  function squigglyConnectorEl() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "hw-hc-review-connect hw-hc-review-connect--diagonal");
+    svg.setAttribute("viewBox", "0 0 88 72");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute(
+      "d",
+      "M6 8 C22 8, 26 26, 38 38 S58 58, 70 62 S80 66, 82 66"
+    );
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "6");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function buildTeacherReplyBody(comment) {
+    const body = document.createElement("div");
+    body.className = "hw-hc-memo__body hw-hc-memo__body--teacher-reply";
+
+    attachMemoCloseBtn(body, () => closeTeacherReply(comment.id), "hw-hc-memo__close--teacher");
+
+    const remarkLabel = document.createElement("label");
+    remarkLabel.className = "hw-hc-memo__remark-label";
+    remarkLabel.textContent = "Teacher comment";
+    const remark = document.createElement("textarea");
+    remark.className = "hw-hc-memo__remark";
+    remark.rows = 5;
+    remark.maxLength = 2000;
+    remark.placeholder = "Write a note on this question for the student…";
+    remark.value = comment.teacherRemark || "";
+    remark.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    remark.addEventListener("click", (ev) => ev.stopPropagation());
+    remark.addEventListener("input", () => {
+      updateTeacherRemark(comment.id, remark.value);
+    });
+    remarkLabel.appendChild(remark);
+    body.appendChild(remarkLabel);
+    appendTeacherRemarkRecorder(body, comment);
+    return body;
+  }
+
+  function buildReviewStudentMemo(comment, pair) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-hc-memo hw-hc-memo--expanded hw-hc-memo--review-student";
+    wrap.dataset.id = comment.id;
+
+    const body = document.createElement("div");
+    body.className = "hw-hc-memo__body";
+
+    const input = document.createElement("textarea");
+    input.className = "hw-hc-memo__input hw-hc-memo__input--review-auto";
+    input.rows = 1;
+    input.maxLength = 500;
+    input.readOnly = true;
+    input.placeholder = "Write a note...JD will see it later!";
+    input.value = comment.text || "";
+    input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    input.addEventListener("click", (ev) => ev.stopPropagation());
+    body.appendChild(input);
+    autosizeReviewMemoInput(input);
+
+    const actions = document.createElement("div");
+    actions.className = "hw-hc-memo__actions hw-hc-memo__actions--review";
+
+    actions.appendChild(
+      attachMemoCloseBtn(body, () => dismissStudentReviewMemo(comment.id), "hw-hc-memo__close--inline")
+    );
+
+    if (!isTeacherReplyOpen(comment)) {
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "hw-hc-review-comment-btn hw-hc-review-comment-btn--arrow";
+      openBtn.setAttribute("aria-label", "Teacher comment");
+      openBtn.innerHTML = rightArrowIconSvg();
+      openBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      openBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openTeacherReply(comment.id);
+      });
+      actions.appendChild(openBtn);
+    }
+
+    body.appendChild(actions);
+
+    body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    body.addEventListener("click", (ev) => ev.stopPropagation());
+    wrap.append(body);
+    return wrap;
+  }
+
+  function renderReviewPair(comment) {
+    if (!comment.anchorRect) return null;
+    if (dismissedStudentReviewIds.has(comment.id)) return null;
+
+    const pair = document.createElement("div");
+    pair.className = "hw-hc-review-pair";
+    pair.dataset.id = comment.id;
+    applyCloudPos(pair, comment, "mini");
+    pair.setAttribute("role", "group");
+    pair.setAttribute(
+      "aria-label",
+      "Student memo on “" + (comment.anchor || "worksheet") + "”"
+    );
+
+    const stack = document.createElement("div");
+    stack.className = "hw-hc-review-pair__anchor";
+
+    const studentSlot = document.createElement("div");
+    studentSlot.className = "hw-hc-review-pair__student";
+    studentSlot.appendChild(buildReviewStudentMemo(comment, pair));
+    stack.appendChild(studentSlot);
+
+    if (isTeacherReplyOpen(comment)) {
+      stack.appendChild(squigglyConnectorEl());
+      const teacherSlot = document.createElement("div");
+      teacherSlot.className = "hw-hc-review-pair__teacher";
+      const teacherMemo = document.createElement("div");
+      teacherMemo.className = "hw-hc-memo hw-hc-memo--expanded hw-hc-memo--review-teacher";
+      const teacherBody = buildTeacherReplyBody(comment);
+      const teacherDrag = document.createElement("div");
+      teacherDrag.className = "hw-hc-memo__drag";
+      teacherDrag.title = "Drag to move";
+      teacherDrag.setAttribute("aria-hidden", "true");
+      teacherBody.insertBefore(teacherDrag, teacherBody.querySelector(".hw-hc-memo__remark-label"));
+      bindCloudDrag(teacherDrag, comment.id, "memo", pair);
+      teacherMemo.appendChild(teacherBody);
+      teacherSlot.appendChild(teacherMemo);
+      stack.appendChild(teacherSlot);
+    }
+
+    pair.appendChild(stack);
+    pair.addEventListener("click", (ev) => ev.stopPropagation());
+    return pair;
+  }
+
+  function renderReviewAnchorHighlight(comment) {
+    if (!config?.teacherReview || comment.author === "teacher" || !comment.anchorRect) return null;
+    if (dismissedStudentReviewIds.has(comment.id)) return null;
+    const anchorRect = resolveCommentAnchorRect(comment);
+    if (!anchorRect) return null;
+    const el = document.createElement("div");
+    el.className = "hw-hc-anchor-highlight";
+    el.dataset.id = comment.id;
+    el.setAttribute("aria-hidden", "true");
+    Object.assign(el.style, pctRectToStyle(anchorRect));
+    return el;
+  }
 
   function suppressStarInteraction(ms) {
     global._hwSuppressStarUntil = Date.now() + (ms || 450);
@@ -271,6 +506,130 @@
     };
   }
 
+  function padHighlightRect(rect) {
+    const padX = 2;
+    const padY = 2;
+    return {
+      left: rect.left - padX,
+      top: rect.top - padY,
+      right: rect.right + padX,
+      bottom: rect.bottom + padY,
+      width: rect.width + padX * 2,
+      height: rect.height + padY * 2,
+    };
+  }
+
+  function anchorRectFromRange(range) {
+    const rect = rangeRectUnion(range);
+    if (!rect) return null;
+    return padHighlightRect(rect);
+  }
+
+  function rangeRectUnion(range) {
+    const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
+    if (!rects.length) {
+      const r = range.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 ? r : null;
+    }
+    let x1 = Infinity;
+    let y1 = Infinity;
+    let x2 = -Infinity;
+    let y2 = -Infinity;
+    rects.forEach((r) => {
+      x1 = Math.min(x1, r.left);
+      y1 = Math.min(y1, r.top);
+      x2 = Math.max(x2, r.right);
+      y2 = Math.max(y2, r.bottom);
+    });
+    return { left: x1, top: y1, right: x2, bottom: y2, width: x2 - x1, height: y2 - y1 };
+  }
+
+  function rangeForSubstring(root, needle) {
+    if (!root || !needle) return null;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let full = "";
+    const chunks = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.nodeValue) continue;
+      if (node.parentElement?.closest("[hidden]")) continue;
+      chunks.push({ node, start: full.length, text: node.nodeValue });
+      full += node.nodeValue;
+    }
+    const idx = full.indexOf(needle);
+    if (idx < 0) return null;
+    const endIdx = idx + needle.length;
+    let startNode = null;
+    let startOff = 0;
+    let endNode = null;
+    let endOff = 0;
+    for (const chunk of chunks) {
+      const chunkEnd = chunk.start + chunk.text.length;
+      if (!startNode && idx >= chunk.start && idx < chunkEnd) {
+        startNode = chunk.node;
+        startOff = idx - chunk.start;
+      }
+      if (endIdx > chunk.start && endIdx <= chunkEnd) {
+        endNode = chunk.node;
+        endOff = endIdx - chunk.start;
+        break;
+      }
+    }
+    if (!startNode || !endNode) return null;
+    const range = document.createRange();
+    try {
+      range.setStart(startNode, startOff);
+      range.setEnd(endNode, endOff);
+      return range;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function anchorSearchRoots() {
+    const roots = [];
+    const lines = worksheetFormEl?.querySelectorAll(".hw-worksheet__line:not([hidden])");
+    const selector =
+      ".hw-star-block__sentence, .hw-star-block__slot-text, .hw-star-block__fixed, .hw-star-block__prefix, .hw-star-block__suffix, .hw-translation-block__japanese, .hw-worksheet__content";
+    if (lines?.length) {
+      lines.forEach((line) => {
+        line.querySelectorAll(selector).forEach((el) => {
+          if (!el.closest("[hidden]")) roots.push(el);
+        });
+      });
+    } else if (hostEl) {
+      hostEl.querySelectorAll(selector).forEach((el) => {
+        if (!el.closest("[hidden]")) roots.push(el);
+      });
+    }
+    return roots;
+  }
+
+  function findAnchorRectInHost(anchorText) {
+    const needle = String(anchorText || "").trim();
+    if (!needle || !hostEl) return null;
+    for (const root of anchorSearchRoots()) {
+      const range = rangeForSubstring(root, needle);
+      if (!range) continue;
+      const rect = anchorRectFromRange(range);
+      if (!rect?.width) continue;
+      const pct = hostRectToPct(rect);
+      if (pct) return pct;
+    }
+    return null;
+  }
+
+  function resolveCommentAnchorRect(comment) {
+    if (!comment) return null;
+    const live = comment.anchor ? findAnchorRectInHost(comment.anchor) : null;
+    return live || comment.anchorRect || null;
+  }
+
+  function reviewCloudPos(comment) {
+    const anchorRect = resolveCommentAnchorRect(comment);
+    return defaultCloudPos({ ...comment, anchorRect });
+  }
+
   function pctRectToStyle(anchorRect) {
     if (!anchorRect) return {};
     return {
@@ -299,7 +658,10 @@
   }
 
   function applyCloudPos(el, comment, mode) {
-    const pos = getCloudPos(comment, mode);
+    const pos =
+      config?.teacherReview && comment.author !== "teacher"
+        ? reviewCloudPos(comment)
+        : getCloudPos(comment, mode);
     el.style.left = pos.x + "%";
     el.style.top = pos.y + "%";
   }
@@ -825,6 +1187,7 @@
   function removeComment(id) {
     comments = comments.filter((c) => c.id !== id);
     if (activeCommentId === id) activeCommentId = null;
+    teacherReplyOpenIds.delete(id);
     renderAll();
     if (config?.teacherReview) notifyTeacherReviewChange();
     else queueDraftSave();
@@ -1364,7 +1727,19 @@
     if (dragState?.moved) return;
     if (ev.target.closest(".hw-hc-sel-menu")) return;
     if (!ev.target.closest(".hw-hc-sel-menu")) hideSelectionMenu();
-    if (!activeCommentId) return;
+    if (config?.teacherReview) {
+      if (
+        ev.target.closest(".hw-hc-review-pair") ||
+        ev.target.closest(".hw-hc-teacher-bar")
+      ) {
+        return;
+      }
+      if (!activeCommentId) return;
+      const active = comments.find((c) => c.id === activeCommentId);
+      if (active?.author !== "teacher") return;
+    } else if (!activeCommentId) {
+      return;
+    }
     if (
       ev.target.closest(".hw-hc-memo") ||
       ev.target.closest(".hw-hc-mini") ||
@@ -1377,7 +1752,7 @@
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
     if ((config?.readOnly && !config?.teacherReview) || ev.button !== 0) return;
-    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover")) return;
+    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remark") || ev.target.closest(".hw-hc-review-comment-btn") || ev.target.closest(".hw-hc-memo__close") || ev.target.closest(".hw-review-media") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover")) return;
 
     ev.stopPropagation();
 
@@ -1434,7 +1809,9 @@
       if (state.mode === "mini") suppressMiniClickUntil = Date.now() + 300;
       renderAll();
       if (state.mode === "memo") {
-        const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + state.commentId + '"]');
+        const memo =
+          layersEl?.querySelector('.hw-hc-memo[data-id="' + state.commentId + '"]') ||
+          layersEl?.querySelector('.hw-hc-review-pair[data-id="' + state.commentId + '"]');
         resolveToolLayout(memo);
       } else if (state.mode === "mini") {
         resolveToolLayout(state.el);
@@ -1761,6 +2138,7 @@
   }
 
   function renderMini(comment) {
+    if (config?.teacherReview && comment.author !== "teacher") return null;
     if (activeCommentId === comment.id) return null;
     if (!comment.anchorRect && comment.author !== "teacher") return null;
     const btn = document.createElement("button");
@@ -1804,6 +2182,7 @@
   }
 
   function renderMemo(comment) {
+    if (config?.teacherReview && comment.author !== "teacher") return null;
     if (activeCommentId !== comment.id) return null;
     /* Student memos need an anchor rect; teacher-only notes use free placement. */
     if (!comment.anchorRect && comment.author !== "teacher") return null;
@@ -1828,39 +2207,13 @@
     if (!config?.readOnly || config?.teacherReview) body.title = "Drag to move";
 
     const isTeacherNote = comment.author === "teacher";
-    const reviewStudentMemo = !!config?.teacherReview && !isTeacherNote;
     const studentReadonlyView = !!config?.readOnly && !config?.teacherReview;
 
-    if (reviewStudentMemo) {
-      if (comment.anchor) {
-        const quote = document.createElement("p");
-        quote.className = "hw-hc-memo__quote";
-        quote.textContent = "“" + comment.anchor + "”";
-        body.appendChild(quote);
-      }
-      const studentNote = document.createElement("p");
-      studentNote.className = "hw-hc-memo__student-text";
-      studentNote.textContent = comment.text || "(No note text)";
-      body.appendChild(studentNote);
+    if (config?.teacherReview && isTeacherNote) {
+      attachMemoCloseBtn(body, () => minimizeActive(), "hw-hc-memo__close--teacher");
+    }
 
-      const remarkLabel = document.createElement("label");
-      remarkLabel.className = "hw-hc-memo__remark-label";
-      remarkLabel.textContent = "Your remark";
-      const remark = document.createElement("textarea");
-      remark.className = "hw-hc-memo__remark";
-      remark.rows = 4;
-      remark.maxLength = 2000;
-      remark.placeholder = "Reply to this memo for the student…";
-      remark.value = comment.teacherRemark || "";
-      remark.addEventListener("pointerdown", (ev) => ev.stopPropagation());
-      remark.addEventListener("click", (ev) => ev.stopPropagation());
-      remark.addEventListener("input", () => {
-        updateTeacherRemark(comment.id, remark.value);
-      });
-      remarkLabel.appendChild(remark);
-      body.appendChild(remarkLabel);
-      appendTeacherRemarkRecorder(body, comment);
-    } else {
+    {
       const input = document.createElement("textarea");
       input.className = "hw-hc-memo__input";
       input.rows = isTeacherNote ? 5 : 3;
@@ -1934,7 +2287,12 @@
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
     if (!config?.readOnly || config?.teacherReview) {
-      bindCloudDrag(body, comment.id, "memo", wrap);
+      const dragHandle = document.createElement("div");
+      dragHandle.className = "hw-hc-memo__drag";
+      dragHandle.title = "Drag to move";
+      dragHandle.setAttribute("aria-hidden", "true");
+      body.insertBefore(dragHandle, body.firstChild);
+      bindCloudDrag(dragHandle, comment.id, "memo", wrap);
     }
     return wrap;
   }
@@ -1951,6 +2309,14 @@
     if (!layersEl) return;
     layersEl.replaceChildren();
     commentsForCurrentSlide().forEach((comment) => {
+      if (config?.teacherReview && comment.author !== "teacher") {
+        if (dismissedStudentReviewIds.has(comment.id)) return;
+        const highlight = renderReviewAnchorHighlight(comment);
+        const pair = renderReviewPair(comment);
+        if (highlight) layersEl.appendChild(highlight);
+        if (pair) layersEl.appendChild(pair);
+        return;
+      }
       const highlight = renderAnchorHighlight(comment);
       const mini = renderMini(comment);
       const memo = renderMemo(comment);
@@ -1960,7 +2326,8 @@
     });
     const pin =
       activeCommentId &&
-      layersEl.querySelector('.hw-hc-memo[data-id="' + activeCommentId + '"]');
+      (layersEl.querySelector('.hw-hc-memo[data-id="' + activeCommentId + '"]') ||
+        layersEl.querySelector('.hw-hc-review-pair[data-id="' + activeCommentId + '"]'));
     scheduleCloudLayout(pin || null);
   }
 
@@ -1971,6 +2338,15 @@
       applyLauncherPosition();
     });
     launcherResizeObserver.observe(hostEl);
+  }
+
+  function bindReviewResize() {
+    reviewResizeObserver?.disconnect();
+    if (!config?.teacherReview || !hostEl) return;
+    reviewResizeObserver = new ResizeObserver(() => {
+      renderAll();
+    });
+    reviewResizeObserver.observe(hostEl);
   }
 
   function buildShell() {
@@ -2029,6 +2405,8 @@
     launcherDrag = null;
     launcherResizeObserver?.disconnect();
     launcherResizeObserver = null;
+    reviewResizeObserver?.disconnect();
+    reviewResizeObserver = null;
     dismissOnboarding();
     unbindTouchSelection();
     unbindDocPointer();
@@ -2061,6 +2439,8 @@
     built = false;
     armed = false;
     activeCommentId = null;
+    teacherReplyOpenIds = new Set();
+    dismissedStudentReviewIds = new Set();
   }
 
   function attachTo(formEl, options) {
@@ -2100,9 +2480,11 @@
     buildShell();
 
     if (config.teacherReview) {
+      seedTeacherReplyOpen();
       if (launcherEl) launcherEl.hidden = true;
       hostEl.classList.add("hw-hc-teacher-review");
       ensureTeacherReviewChrome();
+      bindReviewResize();
       renderAll();
       return true;
     }
@@ -2128,7 +2510,7 @@
     bar = document.createElement("div");
     bar.className = "hw-hc-teacher-bar";
     bar.innerHTML =
-      '<p class="hw-hc-teacher-bar__hint">Click a cloud to reply. Add a note on any question that needs feedback.</p>' +
+      '<p class="hw-hc-teacher-bar__hint">Student memos stay open on each highlight. Click the <strong>→</strong> on a memo to reply, or add a note on any question.</p>' +
       '<div class="hw-hc-teacher-bar__actions">' +
       '<button type="button" class="btn btn--ghost btn--sm" id="hw-hc-add-question-note">Add note on this question</button>' +
       "</div>";

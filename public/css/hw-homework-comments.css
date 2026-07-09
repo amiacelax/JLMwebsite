@@ -213,9 +213,9 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   z-index: 58;
   box-sizing: border-box;
   pointer-events: none;
-  border-radius: 0.28rem;
-  background: color-mix(in srgb, var(--hw-hc-blue) 32%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-hc-blue) 48%, transparent);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--hw-hc-blue) 36%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-hc-blue) 55%, transparent);
 }
 
 .hw-hc-memo__body {
@@ -995,4 +995,285 @@ body.hw-teacher-review-open {
 body.hw-teacher-review-open .hw-teacher-hub > .hw-teacher-panel,
 body.hw-teacher-review-open .hw-teacher-tabs {
   visibility: hidden;
+}
+
+/* Room for open student memos above star/grammar slides */
+body.hw-teacher-review-open .hw-worksheet__slide-sticky-head {
+  margin-bottom: 2rem;
+  padding-bottom: 0.65rem;
+}
+
+body.hw-teacher-review-open .hw-worksheet__topic-brief--slide {
+  margin-bottom: 0.35rem;
+}
+
+body.hw-teacher-review-open .hw-worksheet__section-intro {
+  margin-top: 0.85rem;
+  margin-bottom: 1.35rem;
+}
+
+body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
+  padding-top: 0.35rem;
+}
+
+/* Teacher review: paired student + teacher memos */
+.hw-hc-review-pair {
+  position: absolute;
+  z-index: 62;
+  transform: translate(-50%, calc(-100% - 0.35rem));
+  pointer-events: auto;
+  cursor: default;
+  touch-action: none;
+  filter: drop-shadow(0 4px 14px rgba(12, 24, 48, 0.2));
+}
+
+.hw-hc-review-pair.is-dragging {
+  filter: drop-shadow(0 6px 18px rgba(12, 24, 48, 0.26));
+}
+
+.hw-hc-review-pair__anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hw-hc-review-pair__student {
+  position: relative;
+  z-index: 2;
+}
+
+.hw-hc-review-pair__teacher {
+  position: absolute;
+  right: calc(100% - 0.35rem);
+  bottom: calc(100% - 0.15rem);
+  z-index: 3;
+}
+
+.hw-hc-review-pair__drag {
+  cursor: grab;
+  touch-action: none;
+}
+
+.hw-hc-review-pair.is-dragging .hw-hc-review-pair__drag {
+  cursor: grabbing;
+}
+
+/* Student memo in review — same expanded bubble as student HW */
+.hw-hc-review-pair .hw-hc-memo--review-student {
+  position: relative;
+  transform: none;
+  width: min(17rem, calc(100vw - 2rem));
+  min-width: 11rem;
+  max-width: min(17rem, calc(100vw - 2rem));
+  filter: none;
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body {
+  padding: 0.42rem 0.55rem 0.38rem 0.55rem;
+}
+
+.hw-hc-memo__body--teacher-reply {
+  padding-top: 0.55rem;
+}
+
+.hw-hc-memo__close {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 14%, transparent);
+  color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 78%, transparent);
+  font-family: Inter, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-hc-memo__close:hover,
+.hw-hc-memo__close:focus-visible {
+  background: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 24%, transparent);
+  color: var(--hw-hc-ink, #1a2744);
+  outline: none;
+}
+
+.hw-hc-memo__close--teacher {
+  background: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 20%, #fff);
+  color: var(--hw-hc-ink, #1a2744);
+}
+
+.hw-hc-review-pair .hw-hc-memo__input--review-auto {
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  overflow: hidden;
+  resize: none;
+  field-sizing: content;
+  padding: 0.15rem 0.2rem;
+  line-height: 1.3;
+  font-size: 0.8125rem;
+}
+
+.hw-hc-review-pair .hw-hc-memo--review-teacher {
+  position: relative;
+  transform: none;
+  filter: none;
+  cursor: default;
+  z-index: 2;
+}
+
+.hw-hc-review-pair .hw-hc-memo--review-student.is-dragging {
+  cursor: grabbing;
+}
+
+.hw-hc-memo__actions--review {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.28rem;
+  margin-top: 0.2rem;
+}
+
+.hw-hc-memo__actions--review .hw-hc-memo__close--inline,
+.hw-hc-memo__actions--review .hw-hc-review-comment-btn--arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.hw-hc-memo__close--inline {
+  position: static;
+  border-radius: 0.32rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+body.hw-teacher-review-open .hw-hc-anchor-highlight,
+.hw-hc-host.hw-hc-teacher-review .hw-hc-anchor-highlight {
+  transform: none;
+}
+
+.hw-hc-review-comment-btn--arrow {
+  border-radius: 0.32rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent-vivid, #e85545) 70%, #1a2744);
+  background: var(--color-accent, #c0392b);
+  color: #fff;
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-accent, #c0392b) 30%, transparent);
+}
+
+.hw-hc-review-comment-btn--arrow:hover,
+.hw-hc-review-comment-btn--arrow:focus-visible {
+  background: var(--color-accent-vivid, #e85545);
+  border-color: var(--color-accent-hover, #e74c3c);
+  outline: none;
+}
+
+.hw-hc-review-comment-btn__icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  display: block;
+}
+
+.hw-hc-memo__body--teacher-reply {
+  min-width: min(20rem, 72vw);
+  max-width: min(24rem, 80vw);
+  background: var(--color-green, #4ade80);
+  border-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #4ade80));
+}
+
+.hw-hc-memo__body--teacher-reply::after {
+  left: auto;
+  right: 0.65rem;
+  transform: translateX(0) rotate(45deg);
+  background: var(--color-green, #4ade80);
+  border-right-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #4ade80));
+  border-bottom-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #4ade80));
+}
+
+.hw-hc-memo__body--teacher-reply .hw-hc-memo__remark-label {
+  color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 55%, #fff);
+}
+
+.hw-hc-memo__body--teacher-reply .hw-hc-memo__remark {
+  min-height: 7rem;
+  font-size: 0.9375rem;
+}
+
+.hw-hc-review-connect {
+  pointer-events: none;
+  color: var(--color-green, #4ade80);
+  opacity: 0.98;
+}
+
+.hw-hc-review-connect--diagonal {
+  position: absolute;
+  right: calc(100% - 2.5rem);
+  bottom: calc(100% - 1.75rem);
+  width: 5.5rem;
+  height: 4rem;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hw-hc-review-comment-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hw-hc-memo__actions--review .hw-hc-review-comment-btn {
+  margin-top: 0;
+}
+
+.hw-hc-review-comment-btn:hover,
+.hw-hc-review-comment-btn:focus-visible {
+  outline: none;
+}
+
+.hw-hc-memo__drag {
+  width: 2.6rem;
+  height: 0.38rem;
+  margin: 0 auto 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 22%, transparent);
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.hw-hc-memo--teacher .hw-hc-memo__drag {
+  background: color-mix(in srgb, #fff 38%, transparent);
+}
+
+.hw-hc-memo.is-dragging .hw-hc-memo__drag {
+  cursor: grabbing;
+}
+
+.hw-hc-memo__body--teacher-reply .hw-review-media {
+  pointer-events: auto;
 }
