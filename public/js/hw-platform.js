@@ -830,12 +830,21 @@
       global.HwVideoInline.mountPlayback(playerMount, { mediaId, mediaKind: "video" });
     } else {
       const video = document.createElement("video");
-      video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
-      video.controls = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.src = url;
-      playerMount.appendChild(video);
+      video.setAttribute("aria-label", "Your recorded answer");
+      const player =
+        global.HwCompat?.enhanceVideoElement?.(video, url, { compact: true }) ||
+        (function () {
+          video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          video.src = url;
+          return video;
+        })();
+      if (player !== video) {
+        player.classList.add("hw-video-inline__playback", "hw-video-inline__playback--submitted");
+      }
+      playerMount.appendChild(player);
     }
     wrap.appendChild(playerMount);
     mount.appendChild(wrap);
@@ -2770,6 +2779,7 @@
     if (overlay) overlay.hidden = true;
     document.body.classList.remove("hw-teacher-review-open");
     if (global.HwHomeworkComments?.destroy) global.HwHomeworkComments.destroy();
+    if (global.HwMagnifyingGlass?.releaseOverride) global.HwMagnifyingGlass.releaseOverride();
     if (mount) mount.replaceChildren();
     teacherReviewSubmission = null;
     teacherReviewHasUnsaved = false;
@@ -2853,14 +2863,20 @@
       });
     }
 
-    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo) {
+      global.HwMagnifyingGlass.attachTo(mount, {
+        skipOnboarding: true,
+        storageKey: "hw-mg-teacher-review-v1",
+        defaultSnap: "tl",
+      });
+    } else if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
 
     setTeacherReviewStatus(
       entry.reviewStatus === "reviewed"
         ? "Loaded — edits auto-save as drafts. Send to student when ready to update their view."
-        : "Loaded — click a cloud to reply. Edits auto-save as drafts.",
+        : "Loaded — reply to open memos or add a question note. Edits auto-save as drafts.",
       false,
       "is-saved"
     );

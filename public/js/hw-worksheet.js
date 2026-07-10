@@ -827,8 +827,9 @@
     }
     const audio = document.createElement("audio");
     audio.className = "hw-audio-player__el";
+    if (options.compactSpeed) audio.dataset.compactSpeed = "1";
     const playerRoot = global.HwCompat?.enhanceAudioElement
-      ? global.HwCompat.enhanceAudioElement(audio, clipUrl)
+      ? global.HwCompat.enhanceAudioElement(audio, clipUrl, { compactSpeed: options.compactSpeed })
       : (function () {
           audio.controls = true;
           audio.preload = "metadata";
@@ -869,14 +870,23 @@
   function renderListenSlideAudio(url, options) {
     options = options || {};
     const card = document.createElement("div");
-    card.className = "hw-listen-card";
-    card.appendChild(renderAudioPlayer(url, { inline: true }));
+    card.className =
+      "hw-listen-card" + (options.compact ? " hw-listen-card--review-compact" : "");
+    card.appendChild(renderAudioPlayer(url, { inline: true, compactSpeed: options.compact }));
     if (options.ariaLabel) {
       card
         .querySelector(".hw-audio-player__el")
         ?.setAttribute("aria-label", options.ariaLabel);
     }
     return card;
+  }
+
+  function mediaReplayAnchor(lineEl) {
+    return (
+      lineEl?.querySelector(".hw-video-prompt__question") ||
+      lineEl?.querySelector(".hw-audio-prompt__head") ||
+      null
+    );
   }
 
   /** Same listen-slide player for recorded audio answers (video/audio prompts). */
@@ -887,9 +897,7 @@
     clearAudioAnswerReplay(lineEl);
     const clipUrl = String(url || "").trim();
     if (!clipUrl) return;
-    const anchor =
-      lineEl.querySelector(".hw-video-prompt__question") ||
-      lineEl.querySelector(".hw-audio-prompt__head");
+    const anchor = mediaReplayAnchor(lineEl);
     if (!anchor) return;
     const slot = document.createElement("div");
     slot.className = "hw-listen-replay-slot";
@@ -900,6 +908,44 @@
   function clearAudioAnswerReplay(contextEl) {
     const lineEl = contextEl?.closest?.(".hw-worksheet__line") || contextEl;
     lineEl?.querySelector(".hw-listen-replay-slot")?.remove();
+  }
+
+  /** Custom blu/orange video chrome for recorded video answers (video prompts). */
+  function setVideoAnswerReplay(contextEl, url, options) {
+    options = options || {};
+    const lineEl = contextEl?.closest?.(".hw-worksheet__line") || contextEl;
+    if (!lineEl) return;
+    clearVideoAnswerReplay(lineEl);
+    const clipUrl = global.HwCompat?.normalizeMediaUrl
+      ? global.HwCompat.normalizeMediaUrl(url)
+      : String(url || "").trim();
+    if (!clipUrl) return;
+    const anchor = mediaReplayAnchor(lineEl);
+    if (!anchor) return;
+    const slot = document.createElement("div");
+    slot.className = "hw-video-replay-slot";
+    const video = document.createElement("video");
+    video.setAttribute("aria-label", options.ariaLabel || "Recorded answer");
+    const player =
+      global.HwCompat?.enhanceVideoElement?.(video, clipUrl, { compact: true }) ||
+      (function () {
+        video.className = "hw-video-replay-slot__el";
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.src = clipUrl;
+        return video;
+      })();
+    if (player !== video) {
+      player.classList.add("hw-video-replay-slot__player");
+    }
+    slot.appendChild(player);
+    anchor.insertAdjacentElement("afterend", slot);
+  }
+
+  function clearVideoAnswerReplay(contextEl) {
+    const lineEl = contextEl?.closest?.(".hw-worksheet__line") || contextEl;
+    lineEl?.querySelector(".hw-video-replay-slot")?.remove();
   }
 
   function resolveRecorderMeta(renderOptions, assignment) {
@@ -1822,6 +1868,7 @@
     function applyMediaReplay(lineEl, row) {
       lineEl.querySelector(".hw-submission-replay-note")?.remove();
       clearAudioAnswerReplay(lineEl);
+      clearVideoAnswerReplay(lineEl);
       const mediaId = String(row?.mediaId || "").trim();
       const recorder =
         lineEl.querySelector(".hw-video-prompt__recorder") ||
@@ -1832,24 +1879,17 @@
       }
 
       const mediaKind = row.mediaKind === "audio" ? "audio" : "video";
+      const url = global.HwVideoInline?.mediaUrl
+        ? global.HwVideoInline.mediaUrl(mediaId)
+        : "/api/hw-m/" + encodeURIComponent(mediaId);
       if (mediaKind === "audio") {
-        const url = global.HwVideoInline?.mediaUrl
-          ? global.HwVideoInline.mediaUrl(mediaId)
-          : "/api/hw-m/" + encodeURIComponent(mediaId);
         setAudioAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
         if (recorder) recorder.hidden = true;
         return;
       }
 
-      if (recorder) recorder.hidden = false;
-      if (recorder && global.HwVideoInline?.mountPlayback) {
-        global.HwVideoInline.mountPlayback(recorder, {
-          mediaId,
-          mediaKind: "video",
-        });
-        return;
-      }
-      applyReplayNote(lineEl, row);
+      setVideoAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
+      if (recorder) recorder.hidden = true;
     }
 
     const ordered =
@@ -2886,6 +2926,8 @@
     renderListenSlideAudio,
     setAudioAnswerReplay,
     clearAudioAnswerReplay,
+    setVideoAnswerReplay,
+    clearVideoAnswerReplay,
     applyAnswerVariants,
     isImmersionKitMediaUrl,
     parseImmersionKitMediaPaste,

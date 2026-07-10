@@ -137,6 +137,11 @@
 
   function findHost() {
     if (overrideHostEl && hostIsVisible(overrideHostEl)) return overrideHostEl;
+    const reviewOverlay = document.getElementById("hw-teacher-review-overlay");
+    const reviewMount = document.getElementById("hw-teacher-review-mount");
+    if (reviewOverlay && !reviewOverlay.hidden && reviewMount && hostIsVisible(reviewMount)) {
+      return reviewMount;
+    }
     const v4 = document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet");
     if (v4 && !v4.hidden && !v4.closest("[hidden]")) return v4;
     const legacy = document.getElementById("hw-worksheet-section");

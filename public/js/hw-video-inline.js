@@ -151,13 +151,21 @@
     const wrap = document.createElement("div");
     wrap.className = "hw-video-inline__playback-only";
     const video = document.createElement("video");
-    video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
-    video.controls = true;
-    video.playsInline = true;
-    video.preload = "metadata";
     video.setAttribute("aria-label", "Your recorded answer");
-    video.src = url;
-    wrap.appendChild(video);
+    const player =
+      global.HwCompat?.enhanceVideoElement?.(video, url, { compact: true }) ||
+      (function () {
+        video.className = "hw-video-inline__playback hw-video-inline__playback--submitted";
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.src = url;
+        return video;
+      })();
+    if (player !== video) {
+      player.classList.add("hw-video-inline__playback", "hw-video-inline__playback--submitted");
+    }
+    wrap.appendChild(player);
     mountEl.appendChild(wrap);
   }
 
@@ -206,8 +214,8 @@
       "</div>" +
       "</div>" +
       '<div class="hw-video-inline__preview" hidden>' +
-      '<div class="hw-video-inline__viewport hw-video-inline__preview-viewport">' +
-      '<video class="hw-video-inline__playback" playsinline controls aria-label="Recorded answer preview"></video>' +
+      '<div class="hw-video-inline__viewport hw-video-inline__preview-viewport" hidden>' +
+      '<video class="hw-video-inline__playback" playsinline aria-hidden="true" hidden></video>' +
       "</div>" +
       '<p class="hw-video-inline__preview-label">Review your clip, then save it.</p>' +
       '<div class="hw-video-inline__toolbar">' +
@@ -330,6 +338,7 @@
         playbackVideo.load();
       }
       global.HwWorksheet?.clearAudioAnswerReplay?.(mount);
+      global.HwWorksheet?.clearVideoAnswerReplay?.(mount);
     }
 
     function clearSavedMedia() {
@@ -377,11 +386,7 @@
       hideAllPanels();
       if (previewEl) previewEl.hidden = false;
       setCardState("preview");
-      if (isAudioMode()) {
-        if (previewViewportEl) previewViewportEl.hidden = true;
-      } else {
-        if (previewViewportEl) previewViewportEl.hidden = false;
-      }
+      if (previewViewportEl) previewViewportEl.hidden = true;
       if (saveBtn) saveBtn.textContent = saveButtonLabel();
       if (previewLabelEl) {
         previewLabelEl.textContent = isAudioMode()
@@ -403,6 +408,10 @@
       }
       if (isAudioMode() && mount.dataset.mediaId) {
         global.HwWorksheet?.setAudioAnswerReplay?.(mount, submissionMediaUrl(mount.dataset.mediaId), {
+          ariaLabel: "Your recorded answer",
+        });
+      } else if (!isAudioMode() && mount.dataset.mediaId) {
+        global.HwWorksheet?.setVideoAnswerReplay?.(mount, submissionMediaUrl(mount.dataset.mediaId), {
           ariaLabel: "Your recorded answer",
         });
       }
@@ -434,9 +443,11 @@
         global.HwWorksheet?.setAudioAnswerReplay?.(mount, previewObjectUrl, {
           ariaLabel: "Recorded answer preview",
         });
-      } else if (playbackVideo) {
+      } else {
         previewObjectUrl = URL.createObjectURL(recordedBlob);
-        playbackVideo.src = previewObjectUrl;
+        global.HwWorksheet?.setVideoAnswerReplay?.(mount, previewObjectUrl, {
+          ariaLabel: "Recorded answer preview",
+        });
       }
       showPreview();
       setStatus("");

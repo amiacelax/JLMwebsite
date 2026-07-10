@@ -170,6 +170,7 @@
     requestAnimationFrame(() => {
       const pair = layersEl?.querySelector('.hw-hc-review-pair[data-id="' + id + '"]');
       const focusEl = pair?.querySelector(".hw-hc-memo__remark");
+      pair?.querySelectorAll(".hw-hc-memo__remark--review-auto").forEach(autosizeReviewMemoInput);
       focusEl?.focus();
       resolveToolLayout(pair || null);
     });
@@ -205,23 +206,21 @@
     requestAnimationFrame(resize);
   }
 
-  function squigglyConnectorEl() {
+  function straightConnectorEl() {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", "hw-hc-review-connect hw-hc-review-connect--diagonal");
-    svg.setAttribute("viewBox", "0 0 88 72");
+    svg.setAttribute("class", "hw-hc-review-connect hw-hc-review-connect--straight");
+    svg.setAttribute("viewBox", "0 0 28 16");
     svg.setAttribute("preserveAspectRatio", "none");
     svg.setAttribute("aria-hidden", "true");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute(
-      "d",
-      "M6 8 C22 8, 26 26, 38 38 S58 58, 70 62 S80 66, 82 66"
-    );
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", "currentColor");
-    path.setAttribute("stroke-width", "6");
-    path.setAttribute("stroke-linecap", "round");
-    path.setAttribute("stroke-linejoin", "round");
-    svg.appendChild(path);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", "5");
+    line.setAttribute("y1", "12");
+    line.setAttribute("x2", "23");
+    line.setAttribute("y2", "3");
+    line.setAttribute("stroke", "currentColor");
+    line.setAttribute("stroke-width", "2");
+    line.setAttribute("stroke-linecap", "round");
+    svg.appendChild(line);
     return svg;
   }
 
@@ -229,14 +228,9 @@
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body hw-hc-memo__body--teacher-reply";
 
-    attachMemoCloseBtn(body, () => closeTeacherReply(comment.id), "hw-hc-memo__close--teacher");
-
-    const remarkLabel = document.createElement("label");
-    remarkLabel.className = "hw-hc-memo__remark-label";
-    remarkLabel.textContent = "Teacher comment";
     const remark = document.createElement("textarea");
-    remark.className = "hw-hc-memo__remark";
-    remark.rows = 5;
+    remark.className = "hw-hc-memo__remark hw-hc-memo__remark--review-auto";
+    remark.rows = 1;
     remark.maxLength = 2000;
     remark.placeholder = "Write a note on this question for the student…";
     remark.value = comment.teacherRemark || "";
@@ -244,10 +238,69 @@
     remark.addEventListener("click", (ev) => ev.stopPropagation());
     remark.addEventListener("input", () => {
       updateTeacherRemark(comment.id, remark.value);
+      autosizeReviewMemoInput(remark);
     });
-    remarkLabel.appendChild(remark);
-    body.appendChild(remarkLabel);
-    appendTeacherRemarkRecorder(body, comment);
+    body.appendChild(remark);
+    autosizeReviewMemoInput(remark);
+
+    const mediaMount = document.createElement("div");
+    mediaMount.className = "hw-hc-memo__remark-media-mount hw-hc-memo__remark-media-mount--compact";
+    body.appendChild(mediaMount);
+
+    const actions = document.createElement("div");
+    actions.className = "hw-hc-memo__actions hw-hc-memo__actions--review hw-hc-memo__actions--teacher-reply";
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "hw-hc-memo__close hw-hc-memo__close--inline";
+    deleteBtn.setAttribute("aria-label", "Delete JD memo");
+    deleteBtn.textContent = "\u00d7";
+    deleteBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+
+    const audioBtn = document.createElement("button");
+    audioBtn.type = "button";
+    audioBtn.className = "hw-hc-review-media-btn hw-hc-review-media-btn--audio";
+    audioBtn.setAttribute("aria-label", "Record audio reply");
+    audioBtn.textContent = "\u266A";
+    audioBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    audioBtn.addEventListener("click", (ev) => ev.stopPropagation());
+
+    const videoBtn = document.createElement("button");
+    videoBtn.type = "button";
+    videoBtn.className = "hw-hc-review-media-btn hw-hc-review-media-btn--video";
+    videoBtn.setAttribute("aria-label", "Record video reply");
+    videoBtn.textContent = "\uD83D\uDCF8";
+    videoBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    videoBtn.addEventListener("click", (ev) => ev.stopPropagation());
+
+    actions.appendChild(deleteBtn);
+    actions.appendChild(audioBtn);
+    actions.appendChild(videoBtn);
+    body.appendChild(actions);
+
+    let resetMedia = null;
+    global.HwReviewMedia?.mountRemarkRecorder?.(mediaMount, {
+      teacherUsername: config?.teacherUsername || "",
+      existing: comment.teacherRemarkMedia,
+      onChange: (media) => updateTeacherRemarkMedia(comment.id, media),
+      compactToolbar: true,
+      audioBtn,
+      videoBtn,
+      onReady: (api) => {
+        resetMedia = api.resetAll;
+      },
+    });
+
+    deleteBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openDeleteConfirmPopover(deleteBtn, () => {
+        resetMedia?.();
+        updateTeacherRemark(comment.id, "");
+        updateTeacherRemarkMedia(comment.id, null);
+        closeTeacherReply(comment.id);
+      });
+    });
+
     return body;
   }
 
@@ -294,6 +347,8 @@
 
     body.appendChild(actions);
 
+    attachMemoDragHandles(body, comment.id, pair);
+
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
     wrap.append(body);
@@ -323,18 +378,14 @@
     stack.appendChild(studentSlot);
 
     if (isTeacherReplyOpen(comment)) {
-      stack.appendChild(squigglyConnectorEl());
+      stack.appendChild(straightConnectorEl());
       const teacherSlot = document.createElement("div");
       teacherSlot.className = "hw-hc-review-pair__teacher";
       const teacherMemo = document.createElement("div");
-      teacherMemo.className = "hw-hc-memo hw-hc-memo--expanded hw-hc-memo--review-teacher";
+      teacherMemo.className =
+        "hw-hc-memo hw-hc-memo--expanded hw-hc-memo--teacher hw-hc-memo--review-teacher";
       const teacherBody = buildTeacherReplyBody(comment);
-      const teacherDrag = document.createElement("div");
-      teacherDrag.className = "hw-hc-memo__drag";
-      teacherDrag.title = "Drag to move";
-      teacherDrag.setAttribute("aria-hidden", "true");
-      teacherBody.insertBefore(teacherDrag, teacherBody.querySelector(".hw-hc-memo__remark-label"));
-      bindCloudDrag(teacherDrag, comment.id, "memo", pair);
+      attachMemoDragHandles(teacherBody, comment.id, pair);
       teacherMemo.appendChild(teacherBody);
       teacherSlot.appendChild(teacherMemo);
       stack.appendChild(teacherSlot);
@@ -348,7 +399,7 @@
   function renderReviewAnchorHighlight(comment) {
     if (!config?.teacherReview || comment.author === "teacher" || !comment.anchorRect) return null;
     if (dismissedStudentReviewIds.has(comment.id)) return null;
-    const anchorRect = resolveCommentAnchorRect(comment);
+    const anchorRect = resolveHighlightAnchorRect(comment);
     if (!anchorRect) return null;
     const el = document.createElement("div");
     el.className = "hw-hc-anchor-highlight";
@@ -492,37 +543,42 @@
     saveLauncherPosition();
   }
 
-  function hostRectToPct(rect) {
+  function pctDim(n) {
+    return Math.min(100, Math.max(0, n));
+  }
+
+  function hostRectToPct(rect, options) {
     if (!hostEl) return null;
     const hostRect = hostEl.getBoundingClientRect();
     if (!hostRect.width || !hostRect.height || !rect.width) return null;
+    const toPos = options?.exact ? pctDim : pctClamp;
     return {
-      left: pctClamp(((rect.left - hostRect.left) / hostRect.width) * 100),
-      top: pctClamp(((rect.top - hostRect.top) / hostRect.height) * 100),
-      right: pctClamp(((rect.right - hostRect.left) / hostRect.width) * 100),
-      bottom: pctClamp(((rect.bottom - hostRect.top) / hostRect.height) * 100),
-      width: pctClamp((rect.width / hostRect.width) * 100),
-      height: pctClamp((rect.height / hostRect.height) * 100),
+      left: toPos(((rect.left - hostRect.left) / hostRect.width) * 100),
+      top: toPos(((rect.top - hostRect.top) / hostRect.height) * 100),
+      right: toPos(((rect.right - hostRect.left) / hostRect.width) * 100),
+      bottom: toPos(((rect.bottom - hostRect.top) / hostRect.height) * 100),
+      width: pctDim((rect.width / hostRect.width) * 100),
+      height: pctDim((rect.height / hostRect.height) * 100),
     };
   }
 
-  function padHighlightRect(rect) {
-    const padX = 2;
-    const padY = 2;
+  /** Symmetric inset around native Range client-rect union (browser selection bounds). */
+  function padHighlightRect(rect, pad) {
+    const p = pad == null ? 1 : pad;
     return {
-      left: rect.left - padX,
-      top: rect.top - padY,
-      right: rect.right + padX,
-      bottom: rect.bottom + padY,
-      width: rect.width + padX * 2,
-      height: rect.height + padY * 2,
+      left: rect.left - p,
+      top: rect.top - p,
+      right: rect.right + p,
+      bottom: rect.bottom + p,
+      width: rect.width + p * 2,
+      height: rect.height + p * 2,
     };
   }
 
   function anchorRectFromRange(range) {
     const rect = rangeRectUnion(range);
     if (!rect) return null;
-    return padHighlightRect(rect);
+    return padHighlightRect(rect, 1);
   }
 
   function rangeRectUnion(range) {
@@ -589,8 +645,9 @@
   function anchorSearchRoots() {
     const roots = [];
     const lines = worksheetFormEl?.querySelectorAll(".hw-worksheet__line:not([hidden])");
+    /* Prefer tight text nodes (slot-text, fixed) before whole-sentence roots. */
     const selector =
-      ".hw-star-block__sentence, .hw-star-block__slot-text, .hw-star-block__fixed, .hw-star-block__prefix, .hw-star-block__suffix, .hw-translation-block__japanese, .hw-worksheet__content";
+      ".hw-star-block__slot-text, .hw-star-block__fixed, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__sentence, .hw-translation-block__japanese, .hw-worksheet__content";
     if (lines?.length) {
       lines.forEach((line) => {
         line.querySelectorAll(selector).forEach((el) => {
@@ -605,29 +662,62 @@
     return roots;
   }
 
-  function findAnchorRectInHost(anchorText) {
+  function findAnchorRangeInHost(anchorText) {
     const needle = String(anchorText || "").trim();
     if (!needle || !hostEl) return null;
     for (const root of anchorSearchRoots()) {
       const range = rangeForSubstring(root, needle);
-      if (!range) continue;
-      const rect = anchorRectFromRange(range);
-      if (!rect?.width) continue;
-      const pct = hostRectToPct(rect);
-      if (pct) return pct;
+      if (range) return range;
     }
     return null;
   }
 
+  function findAnchorRectInHost(anchorText) {
+    const range = findAnchorRangeInHost(anchorText);
+    if (!range) return null;
+    const rect = anchorRectFromRange(range);
+    if (!rect?.width) return null;
+    return hostRectToPct(rect, { exact: true });
+  }
+
+  /** Memo / bubble layout — teacher review keeps student-saved pct rect. */
   function resolveCommentAnchorRect(comment) {
     if (!comment) return null;
+    if (config?.teacherReview && comment.anchorRect) {
+      return comment.anchorRect;
+    }
     const live = comment.anchor ? findAnchorRectInHost(comment.anchor) : null;
     return live || comment.anchorRect || null;
+  }
+
+  /** Live blue highlight — always prefer native Range client rects when host is visible. */
+  function resolveHighlightAnchorRect(comment) {
+    if (!comment) return null;
+    if (comment.anchor && hostEl && hostIsVisible(hostEl)) {
+      const live = findAnchorRectInHost(comment.anchor);
+      if (live) return live;
+    }
+    return comment.anchorRect || null;
   }
 
   function reviewCloudPos(comment) {
     const anchorRect = resolveCommentAnchorRect(comment);
     return defaultCloudPos({ ...comment, anchorRect });
+  }
+
+  function hasCustomCloudPos(comment) {
+    return typeof comment.x === "number" && typeof comment.y === "number";
+  }
+
+  /** Anchor-derived pos in teacher review; stored x/y when the memo was dragged. */
+  function resolveCloudPos(comment, mode) {
+    if (hasCustomCloudPos(comment)) {
+      return { x: comment.x, y: comment.y };
+    }
+    if (config?.teacherReview && comment.author !== "teacher") {
+      return reviewCloudPos(comment);
+    }
+    return getCloudPos(comment, mode);
   }
 
   function pctRectToStyle(anchorRect) {
@@ -658,10 +748,7 @@
   }
 
   function applyCloudPos(el, comment, mode) {
-    const pos =
-      config?.teacherReview && comment.author !== "teacher"
-        ? reviewCloudPos(comment)
-        : getCloudPos(comment, mode);
+    const pos = resolveCloudPos(comment, mode);
     el.style.left = pos.x + "%";
     el.style.top = pos.y + "%";
   }
@@ -741,7 +828,9 @@
         const teacherRemark = String(c.teacherRemark || c.jdRemark || "").trim();
         const remarkMediaRaw = c.teacherRemarkMedia;
         let teacherRemarkMedia;
-        if (remarkMediaRaw && typeof remarkMediaRaw === "object" && remarkMediaRaw.id) {
+        if (remarkMediaRaw === null) {
+          teacherRemarkMedia = null;
+        } else if (remarkMediaRaw && typeof remarkMediaRaw === "object" && remarkMediaRaw.id) {
           teacherRemarkMedia = {
             id: String(remarkMediaRaw.id),
             kind: remarkMediaRaw.kind === "video" ? "video" : "audio",
@@ -1134,7 +1223,7 @@
                   kind: media.kind === "video" ? "video" : "audio",
                   mimeType: media.mimeType ? String(media.mimeType) : undefined,
                 }
-              : undefined,
+              : null,
             updatedAt: now,
           }
         : c
@@ -1339,8 +1428,8 @@
   function commitSelectionToMemo() {
     const picked = getHostSelection();
     if (!picked) return false;
-    const rect = picked.range.getBoundingClientRect();
-    const anchorRect = hostRectToPct(rect);
+    const rect = anchorRectFromRange(picked.range);
+    const anchorRect = hostRectToPct(rect, { exact: true });
     if (!anchorRect) return false;
     const id = createCommentFromSelection(picked.text, anchorRect);
     setArmed(false);
@@ -1752,13 +1841,13 @@
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
     if ((config?.readOnly && !config?.teacherReview) || ev.button !== 0) return;
-    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remark") || ev.target.closest(".hw-hc-review-comment-btn") || ev.target.closest(".hw-hc-memo__close") || ev.target.closest(".hw-review-media") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover")) return;
+    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remark") || ev.target.closest(".hw-hc-review-comment-btn") || ev.target.closest(".hw-hc-memo__close") || ev.target.closest(".hw-hc-review-media-btn") || ev.target.closest(".hw-review-media") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover") || ev.target.closest(".hw-audio-chrome") || ev.target.closest(".hw-listen-card") || ev.target.closest("button") || ev.target.closest("textarea")) return;
 
     ev.stopPropagation();
 
     const comment = comments.find((c) => c.id === commentId);
     if (!comment) return;
-    const pos = getCloudPos(comment, mode);
+    const pos = resolveCloudPos(comment, mode);
 
     dragState = {
       pointerId: ev.pointerId,
@@ -1823,6 +1912,26 @@
     try {
       (state.handleEl || state.el).releasePointerCapture(ev.pointerId);
     } catch (_) {}
+  }
+
+  const MEMO_EDGE_SIDES = ["top", "right", "bottom", "left"];
+
+  function attachMemoDragHandles(bodyEl, commentId, moveEl) {
+    const dragHandle = document.createElement("div");
+    dragHandle.className = "hw-hc-memo__drag";
+    dragHandle.title = "Drag to move";
+    dragHandle.setAttribute("aria-hidden", "true");
+    bodyEl.insertBefore(dragHandle, bodyEl.firstChild);
+    bindCloudDrag(dragHandle, commentId, "memo", moveEl);
+
+    MEMO_EDGE_SIDES.forEach((side) => {
+      const edge = document.createElement("div");
+      edge.className = "hw-hc-memo__edge hw-hc-memo__edge--" + side;
+      edge.title = "Drag to move";
+      edge.setAttribute("aria-hidden", "true");
+      bodyEl.appendChild(edge);
+      bindCloudDrag(edge, commentId, "memo", moveEl);
+    });
   }
 
   function bindCloudDrag(handleEl, commentId, mode, moveEl) {
@@ -2173,11 +2282,13 @@
 
   function renderAnchorHighlight(comment) {
     if (activeCommentId !== comment.id || !comment.anchorRect) return null;
+    const anchorRect = resolveHighlightAnchorRect(comment);
+    if (!anchorRect) return null;
     const el = document.createElement("div");
     el.className = "hw-hc-anchor-highlight";
     el.dataset.id = comment.id;
     el.setAttribute("aria-hidden", "true");
-    Object.assign(el.style, pctRectToStyle(comment.anchorRect));
+    Object.assign(el.style, pctRectToStyle(anchorRect));
     return el;
   }
 
@@ -2287,12 +2398,7 @@
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
     if (!config?.readOnly || config?.teacherReview) {
-      const dragHandle = document.createElement("div");
-      dragHandle.className = "hw-hc-memo__drag";
-      dragHandle.title = "Drag to move";
-      dragHandle.setAttribute("aria-hidden", "true");
-      body.insertBefore(dragHandle, body.firstChild);
-      bindCloudDrag(dragHandle, comment.id, "memo", wrap);
+      attachMemoDragHandles(body, comment.id, wrap);
     }
     return wrap;
   }
@@ -2360,32 +2466,36 @@
     layersEl = document.createElement("div");
     layersEl.className = "hw-hc-layers";
 
-    launcherEl = document.createElement("button");
-    launcherEl.type = "button";
-    launcherEl.className = "hw-hc-launcher";
-    launcherEl.setAttribute("aria-label", "Add a note on highlighted text");
-    launcherEl.setAttribute("aria-pressed", "false");
-    launcherEl.innerHTML = cloudIconSvg("hw-hc-launcher__icon");
+    shellEl.append(layersEl);
 
-    loadLauncherPosition();
-    try {
-      if (!localStorage.getItem(LAUNCHER_POS_KEY)) {
-        const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
-        if (neutral?.launcherSnap && LAUNCHER_SNAP_IDS.includes(neutral.launcherSnap)) {
-          launcherSnapId = neutral.launcherSnap;
-        } else if (neutral?.launcher) {
-          launcherSnapId = null;
-          launcherPosition = { x: neutral.launcher.x, y: neutral.launcher.y };
+    if (!config?.teacherReview) {
+      launcherEl = document.createElement("button");
+      launcherEl.type = "button";
+      launcherEl.className = "hw-hc-launcher";
+      launcherEl.setAttribute("aria-label", "Add a note on highlighted text");
+      launcherEl.setAttribute("aria-pressed", "false");
+      launcherEl.innerHTML = cloudIconSvg("hw-hc-launcher__icon");
+
+      loadLauncherPosition();
+      try {
+        if (!localStorage.getItem(LAUNCHER_POS_KEY)) {
+          const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
+          if (neutral?.launcherSnap && LAUNCHER_SNAP_IDS.includes(neutral.launcherSnap)) {
+            launcherSnapId = neutral.launcherSnap;
+          } else if (neutral?.launcher) {
+            launcherSnapId = null;
+            launcherPosition = { x: neutral.launcher.x, y: neutral.launcher.y };
+          }
         }
-      }
-    } catch (_) {}
-    applyLauncherPosition();
-    bindLauncherResize();
+      } catch (_) {}
+      applyLauncherPosition();
+      bindLauncherResize();
 
-    launcherEl.addEventListener("click", onLauncherClick);
-    bindLauncherDrag();
+      launcherEl.addEventListener("click", onLauncherClick);
+      bindLauncherDrag();
+      shellEl.append(launcherEl);
+    }
 
-    shellEl.append(layersEl, launcherEl);
     hostEl.appendChild(shellEl);
     global.HwWorksheetToolLayout?.ensureCleanupButton?.(hostEl);
 
@@ -2481,7 +2591,6 @@
 
     if (config.teacherReview) {
       seedTeacherReplyOpen();
-      if (launcherEl) launcherEl.hidden = true;
       hostEl.classList.add("hw-hc-teacher-review");
       ensureTeacherReviewChrome();
       bindReviewResize();
@@ -2526,20 +2635,25 @@
   }
 
   function getCommentsForReview() {
-    return normalizeComments(comments).map((c) => ({
-      id: c.id,
-      text: c.text,
-      author: c.author || "student",
-      teacherRemark: c.teacherRemark || undefined,
-      teacherRemarkMedia: c.teacherRemarkMedia || undefined,
-      anchor: c.anchor,
-      anchorRect: c.anchorRect,
-      slideIndex: c.slideIndex ?? 0,
-      x: c.x,
-      y: c.y,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    }));
+    return normalizeComments(comments).map((c) => {
+      const row = {
+        id: c.id,
+        text: c.text,
+        author: c.author || "student",
+        teacherRemark: c.teacherRemark || undefined,
+        anchor: c.anchor,
+        anchorRect: c.anchorRect,
+        slideIndex: c.slideIndex ?? 0,
+        x: c.x,
+        y: c.y,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      };
+      if (c.teacherRemarkMedia !== undefined) {
+        row.teacherRemarkMedia = c.teacherRemarkMedia;
+      }
+      return row;
+    });
   }
 
   function onVisibility() {

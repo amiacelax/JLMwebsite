@@ -389,12 +389,22 @@
       wrap.appendChild(link);
     } else if (entry.type === "video" && entry.video?.id) {
       const video = document.createElement("video");
-      video.className = "hw-submission-detail__video";
-      video.src = videoUrl(session, entry.video.id);
-      video.controls = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      wrap.appendChild(video);
+      const player =
+        global.HwCompat?.enhanceVideoElement?.(video, videoUrl(session, entry.video.id), {
+          compact: true,
+        }) ||
+        (function () {
+          video.className = "hw-submission-detail__video";
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          video.src = videoUrl(session, entry.video.id);
+          return video;
+        })();
+      if (player !== video) {
+        player.classList.add("hw-submission-detail__video");
+      }
+      wrap.appendChild(player);
 
       const mediaActions = document.createElement("div");
       mediaActions.className = "hw-submission-detail__media-actions";

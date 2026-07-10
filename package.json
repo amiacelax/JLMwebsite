@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "wrangler dev --live-reload",
     "deploy": "wrangler deploy",
-    "preview": "wrangler dev --remote"
+    "preview": "wrangler dev --remote",
+    "sync:kv": "node scripts/sync-kv-prod-to-local.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250508.0",

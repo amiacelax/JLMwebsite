@@ -57,6 +57,7 @@
       if (global.HwWorksheet?.renderListenSlideAudio) {
         const player = global.HwWorksheet.renderListenSlideAudio(url, {
           ariaLabel: "JD audio remark",
+          compact: true,
         });
         player.classList.add("hw-review-media__playback");
         container.appendChild(player);
@@ -68,17 +69,31 @@
         player.classList.add("hw-review-media__playback");
         container.appendChild(player);
       } else {
+        const audio = document.createElement("audio");
+        audio.className = "hw-review-media__playback";
+        audio.controls = true;
+        audio.src = url;
+        container.appendChild(audio);
+      }
       return;
     }
 
     const video = document.createElement("video");
-    video.className = "hw-review-media__playback hw-review-media__playback--video";
-    video.controls = true;
-    video.playsInline = true;
-    video.preload = "metadata";
     video.setAttribute("aria-label", "JD video remark");
-    video.src = url;
-    container.appendChild(video);
+    const player =
+      global.HwCompat?.enhanceVideoElement?.(video, url, { compact: true }) ||
+      (function () {
+        video.className = "hw-review-media__playback hw-review-media__playback--video";
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.src = url;
+        return video;
+      })();
+    if (player !== video) {
+      player.classList.add("hw-review-media__playback", "hw-review-media__playback--video");
+    }
+    container.appendChild(player);
   }
 
   /**
@@ -87,14 +102,17 @@
    *   teacherUsername?: string,
    *   existing?: { id?: string, kind?: string, mimeType?: string },
    *   onChange?: (media: { id: string, kind: 'audio'|'video', mimeType?: string } | null) => void,
-   *   onBusy?: (busy: boolean) => void
+   *   onBusy?: (busy: boolean) => void,
+   *   compactToolbar?: boolean,
+   *   audioBtn?: HTMLButtonElement,
+   *   videoBtn?: HTMLButtonElement
    * }} options
    */
   function mountRemarkRecorder(mount, options) {
     options = options || {};
     if (!mount || mount.dataset.bound === "1") return;
     mount.dataset.bound = "1";
-    mount.className = "hw-review-media";
+    mount.className = "hw-review-media" + (options.compactToolbar ? " hw-review-media--compact" : "");
 
     let mode = "audio";
     let mediaStream = null;
@@ -125,7 +143,6 @@
       '<div class="hw-review-media__live" hidden>' +
       '<p class="hw-review-media__live-label">Recording… <span class="hw-review-media__timer">0:00</span></p>' +
       '<button type="button" class="btn btn--primary btn--sm hw-review-media__stop">Stop</button>' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-review-media__cancel">Cancel</button>' +
       "</div>" +
       '<div class="hw-review-media__preview" hidden></div>' +
       '<p class="hw-review-media__status" role="status" aria-live="polite"></p>';
@@ -135,6 +152,25 @@
     const previewEl = mount.querySelector(".hw-review-media__preview");
     const statusEl = mount.querySelector(".hw-review-media__status");
     const timerEl = mount.querySelector(".hw-review-media__timer");
+
+    function syncToolbarState() {
+      if (!options.compactToolbar) return;
+      options.audioBtn?.classList.toggle("is-active", currentMedia?.kind === "audio");
+      options.videoBtn?.classList.toggle("is-active", currentMedia?.kind === "video");
+      const recording = state === "live";
+      options.audioBtn?.classList.toggle("is-recording", recording && mode === "audio");
+      options.videoBtn?.classList.toggle("is-recording", recording && mode === "video");
+    }
+
+    function setMode(next) {
+      mode = next === "video" ? "video" : "audio";
+      mount.querySelectorAll(".hw-review-media__mode-btn").forEach((b) => {
+        const active = b.getAttribute("data-mode") === mode;
+        b.classList.toggle("is-active", active);
+        b.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      syncToolbarState();
+    }
 
     function setStatus(msg) {
       if (statusEl) statusEl.textContent = msg || "";
@@ -175,6 +211,7 @@
       if (idleEl) idleEl.hidden = false;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = true;
+      syncToolbarState();
     }
 
     function showLive() {
@@ -182,6 +219,7 @@
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = false;
       if (previewEl) previewEl.hidden = true;
+      syncToolbarState();
     }
 
     function showPreview() {
@@ -191,6 +229,7 @@
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
+      syncToolbarState();
     }
 
     function showSaved() {
@@ -200,6 +239,58 @@
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
+      syncToolbarState();
+    }
+
+    function stopPreviewPlayback() {
+      if (!previewEl) return;
+      previewEl.querySelectorAll("audio, video").forEach((el) => {
+        try {
+          el.pause();
+          el.removeAttribute("src");
+          if (typeof el.load === "function") el.load();
+        } catch (_) {
+          /* ignore */
+        }
+      });
+    }
+
+    function resetSavedClip() {
+      currentMedia = null;
+      clearRecording();
+      stopPreviewPlayback();
+      if (previewEl) {
+        previewEl.replaceChildren();
+        previewEl.hidden = true;
+      }
+      showIdle();
+      setStatus("");
+      syncToolbarState();
+      options.onChange?.(null);
+    }
+
+    function resetAll() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        try {
+          mediaRecorder.stop();
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      stopStream();
+      stopTimer();
+      mediaRecorder = null;
+      resetSavedClip();
+    }
+
+    function dismissPreview() {
+      stopPreviewPlayback();
+      clearRecording();
+      if (previewEl) {
+        previewEl.replaceChildren();
+        previewEl.hidden = true;
+      }
+      setStatus("");
     }
 
     function renderSaved() {
@@ -211,21 +302,6 @@
         return;
       }
       renderPlayback(previewEl, currentMedia);
-      const actions = document.createElement("div");
-      actions.className = "hw-review-media__saved-actions";
-      const removeBtn = document.createElement("button");
-      removeBtn.type = "button";
-      removeBtn.className = "btn btn--ghost btn--sm hw-review-media__remove";
-      removeBtn.textContent = "Remove clip";
-      removeBtn.addEventListener("click", () => {
-        currentMedia = null;
-        clearRecording();
-        showIdle();
-        setStatus("");
-        options.onChange?.(null);
-      });
-      actions.appendChild(removeBtn);
-      previewEl.appendChild(actions);
       showSaved();
     }
 
@@ -251,6 +327,7 @@
           previewEl.appendChild(
             global.HwWorksheet.renderListenSlideAudio(previewUrl, {
               ariaLabel: "Recorded remark preview",
+              compact: true,
             })
           );
         } else if (global.HwWorksheet?.renderAudioPlayer) {
@@ -269,23 +346,25 @@
         }
       } else {
         const video = document.createElement("video");
-        video.className = "hw-review-media__playback hw-review-media__playback--video";
-        video.controls = true;
-        video.playsInline = true;
-        video.src = previewUrl;
-        previewEl.appendChild(video);
+        const player =
+          global.HwCompat?.enhanceVideoElement?.(video, previewUrl, { compact: true }) ||
+          (function () {
+            video.className = "hw-review-media__playback hw-review-media__playback--video";
+            video.controls = true;
+            video.playsInline = true;
+            video.src = previewUrl;
+            return video;
+          })();
+        if (player !== video) {
+          player.classList.add("hw-review-media__playback", "hw-review-media__playback--video");
+        }
+        previewEl.appendChild(player);
       }
       const actions = document.createElement("div");
       actions.className = "hw-review-media__preview-actions";
       actions.innerHTML =
-        '<button type="button" class="btn btn--primary btn--sm hw-review-media__upload">Save clip</button>' +
-        '<button type="button" class="btn btn--ghost btn--sm hw-review-media__retake">Record again</button>';
+        '<button type="button" class="btn btn--primary btn--sm hw-review-media__upload">Save clip</button>';
       previewEl.appendChild(actions);
-      actions.querySelector(".hw-review-media__retake")?.addEventListener("click", () => {
-        clearRecording();
-        showIdle();
-        setStatus("");
-      });
       actions.querySelector(".hw-review-media__upload")?.addEventListener("click", () => {
         void uploadRecording(actions.querySelector(".hw-review-media__upload"));
       });
@@ -342,7 +421,8 @@
       }
       if (state === "live") return;
 
-      clearRecording();
+      if (state === "preview") dismissPreview();
+      else clearRecording();
       setStatus("");
 
       const constraints =
@@ -388,13 +468,7 @@
     mount.querySelectorAll(".hw-review-media__mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (state === "live") return;
-        const next = btn.getAttribute("data-mode") === "video" ? "video" : "audio";
-        mode = next;
-        mount.querySelectorAll(".hw-review-media__mode-btn").forEach((b) => {
-          const active = b.getAttribute("data-mode") === mode;
-          b.classList.toggle("is-active", active);
-          b.setAttribute("aria-pressed", active ? "true" : "false");
-        });
+        setMode(btn.getAttribute("data-mode"));
       });
     });
 
@@ -402,12 +476,25 @@
       void startRecording();
     });
     mount.querySelector(".hw-review-media__stop")?.addEventListener("click", stopRecording);
-    mount.querySelector(".hw-review-media__cancel")?.addEventListener("click", () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
-      clearRecording();
-      showIdle();
-      setStatus("");
-    });
+
+    function bindToolbarRecord(btn, nextMode) {
+      btn?.addEventListener("click", () => {
+        if (state === "live") return;
+        setMode(nextMode);
+        if (state === "saved") {
+          dismissPreview();
+          showIdle();
+        }
+        void startRecording();
+      });
+    }
+
+    if (options.compactToolbar) {
+      bindToolbarRecord(options.audioBtn, "audio");
+      bindToolbarRecord(options.videoBtn, "video");
+    }
+
+    options.onReady?.({ resetAll, resetClip: resetSavedClip });
 
     if (currentMedia?.id) renderSaved();
     else showIdle();

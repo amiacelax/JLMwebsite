@@ -60,10 +60,37 @@
     document.addEventListener("webkitfullscreenchange", handler);
   }
 
-  function enhanceAudioElement(audio, url) {
+  function enhanceVideoElement(video, url, options) {
+    options = options || {};
+    const clipUrl = normalizeMediaUrl(url);
+    if (!clipUrl && !video.src && !video.currentSrc) return null;
+    video.preload = options.preload || "metadata";
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    if (clipUrl) {
+      try {
+        video.src = clipUrl;
+      } catch {
+        return null;
+      }
+      try {
+        video.load();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (global.HwVideoPlayer?.mount) {
+      return global.HwVideoPlayer.mount(video, options);
+    }
+    video.controls = true;
+    return video;
+  }
+
+  function enhanceAudioElement(audio, url, options) {
+    options = options || {};
     const clipUrl = normalizeMediaUrl(url);
     if (!clipUrl) return null;
-    audio.preload = "auto";
+    audio.preload = "metadata";
     audio.setAttribute("playsinline", "");
     audio.setAttribute("webkit-playsinline", "");
     try {
@@ -77,7 +104,7 @@
       /* ignore — src is set; browser will load on play */
     }
     if (global.HwAudioPlayer?.mount) {
-      return global.HwAudioPlayer.mount(audio);
+      return global.HwAudioPlayer.mount(audio, options);
     }
     audio.controls = true;
     return audio;
@@ -92,5 +119,6 @@
     exitFullscreen,
     bindFullscreenChange,
     enhanceAudioElement,
+    enhanceVideoElement,
   };
 })(typeof window !== "undefined" ? window : globalThis);

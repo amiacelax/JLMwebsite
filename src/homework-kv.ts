@@ -1820,11 +1820,17 @@ export async function saveHomeworkReview(
           updatedAt: now,
         });
       } else {
+        const rawIncoming = raw as HomeworkComment & { teacherRemarkMedia?: HomeworkReviewMedia | null };
+        const clearRemarkMedia =
+          Object.prototype.hasOwnProperty.call(rawIncoming, "teacherRemarkMedia") &&
+          rawIncoming.teacherRemarkMedia === null;
         byId.set(next.id, {
           ...prev,
           author: "student",
           teacherRemark: next.teacherRemark || prev.teacherRemark || undefined,
-          teacherRemarkMedia: next.teacherRemarkMedia || prev.teacherRemarkMedia,
+          teacherRemarkMedia: clearRemarkMedia
+            ? undefined
+            : next.teacherRemarkMedia || prev.teacherRemarkMedia,
           anchor: next.anchor || prev.anchor,
           anchorRect: next.anchorRect || prev.anchorRect,
           slideIndex:

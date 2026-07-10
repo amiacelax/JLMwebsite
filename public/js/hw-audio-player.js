@@ -9,25 +9,56 @@
   const ICON_PAUSE =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>';
 
-  /** SS:T or M:SS:T — seconds + tenths; minutes only when needed. */
+  /** MM:SS:CC — minutes, seconds, and centiseconds (hundredths). */
   function formatTime(seconds) {
-    if (!Number.isFinite(seconds) || seconds < 0) return "00:0";
-    const totalTenths = Math.min(Math.max(0, Math.round(seconds * 10)), 359999);
-    const min = Math.floor(totalTenths / 600);
-    const sec = Math.floor((totalTenths % 600) / 10);
-    const tenth = totalTenths % 10;
-    const secPart = String(sec).padStart(2, "0") + ":" + tenth;
-    return min > 0 ? min + ":" + secPart : secPart;
+    if (!Number.isFinite(seconds) || seconds < 0) return "00:00:00";
+    const totalCs = Math.min(Math.max(0, Math.floor(seconds * 100)), 35999999);
+    const min = Math.floor(totalCs / 6000);
+    const sec = Math.floor((totalCs % 6000) / 100);
+    const cs = totalCs % 100;
+    return (
+      String(min).padStart(2, "0") +
+      ":" +
+      String(sec).padStart(2, "0") +
+      ":" +
+      String(cs).padStart(2, "0")
+    );
   }
 
-  function durationTenths(audio) {
-    const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
-    return dur > 0 ? Math.max(1, Math.round(dur * 10)) : 1;
+  function hasKnownDuration(audio) {
+    const dur = Number(audio.duration);
+    return Number.isFinite(dur) && dur > 0;
   }
 
-  function currentTenths(audio) {
+  function bufferedEndSeconds(audio) {
+    try {
+      const ranges = audio.buffered;
+      if (!ranges || !ranges.length) return 0;
+      const end = ranges.end(ranges.length - 1);
+      return Number.isFinite(end) && end > 0 ? end : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Metadata duration, else buffered end / playback estimate (WebM blobs often lack duration). */
+  function effectiveDurationSeconds(audio, estimate) {
+    const known = Number(audio.duration);
+    if (Number.isFinite(known) && known > 0) return known;
+    const buffered = bufferedEndSeconds(audio);
     const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-    return Math.min(Math.max(0, Math.round(cur * 10)), durationTenths(audio));
+    const est = Math.max(estimate || 0, buffered, cur > 0 ? cur + 2 : 0);
+    return est > 0 ? est : 0;
+  }
+
+  function durationCentisecondsFromSeconds(seconds) {
+    return Math.max(1, Math.floor(seconds * 100));
+  }
+
+  function currentCentisecondsFrom(audio, effectiveSeconds) {
+    const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    const maxCs = durationCentisecondsFromSeconds(effectiveSeconds);
+    return Math.min(Math.max(0, Math.floor(cur * 100)), maxCs);
   }
 
   function nearestSpeed(rate) {
@@ -38,17 +69,49 @@
     );
   }
 
-  function mount(audio) {
+  const ICON_CHEVRON =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  const ICON_PIP =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>';
+
+  const ARROW_SEEK_SECONDS = 5;
+
+  function pipDocumentSupported() {
+    return !!global.documentPictureInPicture?.requestWindow;
+  }
+
+  function pipMediaSupported(media) {
+    return !!(
+      document.pictureInPictureEnabled &&
+      media &&
+      typeof media.requestPictureInPicture === "function"
+    );
+  }
+
+  function copyStylesIntoDocument(targetDoc) {
+    document.querySelectorAll('link[rel="stylesheet"][href]').forEach((link) => {
+      const clone = targetDoc.createElement("link");
+      clone.rel = "stylesheet";
+      clone.href = link.href;
+      targetDoc.head.appendChild(clone);
+    });
+    const theme = document.documentElement.getAttribute("data-theme");
+    if (theme) targetDoc.documentElement.setAttribute("data-theme", theme);
+  }
+
+  function mount(audio, options) {
+    options = options || {};
     if (!audio) return null;
     if (audio.dataset.hwAudioPlayer === "1") {
       return audio.closest(".hw-audio-chrome") || audio;
     }
+    const compactSpeed = !!(options.compactSpeed || audio.dataset.compactSpeed === "1");
     audio.dataset.hwAudioPlayer = "1";
     audio.controls = false;
     audio.classList.add("hw-audio-chrome__el");
 
     const chrome = document.createElement("div");
-    chrome.className = "hw-audio-chrome";
+    chrome.className = "hw-audio-chrome" + (compactSpeed ? " hw-audio-chrome--compact-speed" : "");
 
     const bar = document.createElement("div");
     bar.className = "hw-audio-chrome__bar";
@@ -78,21 +141,106 @@
 
     const timeEl = document.createElement("span");
     timeEl.className = "hw-audio-chrome__time";
-    timeEl.textContent = "00:0 / 00:0";
+    timeEl.textContent = "00:00:00 / 00:00:00";
 
-    const speed = document.createElement("select");
-    speed.className = "hw-audio-chrome__speed";
-    speed.setAttribute("aria-label", "Playback speed");
-    SPEED_OPTIONS.forEach((opt) => {
-      const option = document.createElement("option");
-      option.value = String(opt);
-      option.textContent = opt === 1 ? "1×" : opt + "×";
-      if (opt === 1) option.selected = true;
-      speed.appendChild(option);
-    });
+    let speedControl;
+    let applyRate = null;
+
+    if (compactSpeed) {
+      const speedWrap = document.createElement("div");
+      speedWrap.className = "hw-audio-chrome__speed-wrap";
+
+      const speedBtn = document.createElement("button");
+      speedBtn.type = "button";
+      speedBtn.className = "hw-audio-chrome__speed-btn";
+      speedBtn.setAttribute("aria-label", "Playback speed");
+      speedBtn.setAttribute("aria-haspopup", "listbox");
+      speedBtn.setAttribute("aria-expanded", "false");
+      speedBtn.innerHTML = ICON_CHEVRON;
+
+      const speedMenu = document.createElement("div");
+      speedMenu.className = "hw-audio-chrome__speed-menu";
+      speedMenu.setAttribute("role", "listbox");
+      speedMenu.hidden = true;
+
+      function closeSpeedMenu() {
+        speedMenu.hidden = true;
+        speedBtn.setAttribute("aria-expanded", "false");
+      }
+
+      applyRate = function (rate) {
+        const next = nearestSpeed(rate);
+        audio.playbackRate = next;
+        speedMenu.querySelectorAll(".hw-audio-chrome__speed-opt").forEach((btn) => {
+          btn.classList.toggle("is-active", Number(btn.dataset.rate) === next);
+        });
+      };
+
+      SPEED_OPTIONS.forEach((opt) => {
+        const optBtn = document.createElement("button");
+        optBtn.type = "button";
+        optBtn.className = "hw-audio-chrome__speed-opt";
+        optBtn.dataset.rate = String(opt);
+        optBtn.setAttribute("role", "option");
+        optBtn.textContent = opt === 1 ? "1×" : opt + "×";
+        optBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          applyRate(opt);
+          closeSpeedMenu();
+        });
+        speedMenu.appendChild(optBtn);
+      });
+
+      speedBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const open = speedMenu.hidden;
+        speedMenu.hidden = !open;
+        speedBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      speedMenu.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      document.addEventListener("pointerdown", (ev) => {
+        if (!speedWrap.contains(ev.target)) closeSpeedMenu();
+      });
+
+      speedWrap.append(speedBtn, speedMenu);
+      speedControl = speedWrap;
+    } else {
+      const speed = document.createElement("select");
+      speed.className = "hw-audio-chrome__speed";
+      speed.setAttribute("aria-label", "Playback speed");
+      SPEED_OPTIONS.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = String(opt);
+        option.textContent = opt === 1 ? "1×" : opt + "×";
+        if (opt === 1) option.selected = true;
+        speed.appendChild(option);
+      });
+      speed.addEventListener("change", () => {
+        const rate = Number(speed.value);
+        audio.playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
+      });
+      applyRate = function (rate) {
+        const next = nearestSpeed(rate);
+        speed.value = String(next);
+        audio.playbackRate = next;
+      };
+      speedControl = speed;
+    }
 
     seekWrap.append(seek, scrubTip);
-    bar.append(playBtn, seekWrap, timeEl, speed);
+    bar.append(playBtn, seekWrap, timeEl, speedControl);
+
+    let pipBtn = null;
+    if (pipDocumentSupported() || pipMediaSupported(audio)) {
+      pipBtn = document.createElement("button");
+      pipBtn.type = "button";
+      pipBtn.className = "hw-audio-chrome__pip";
+      pipBtn.setAttribute("aria-label", "Picture in picture");
+      pipBtn.setAttribute("aria-pressed", "false");
+      pipBtn.innerHTML = ICON_PIP;
+      bar.appendChild(pipBtn);
+    }
 
     const parent = audio.parentNode;
     if (parent) {
@@ -105,6 +253,25 @@
 
     let scrubbing = false;
     let seekPointerId = null;
+    let durationEstimate = 0;
+    let timeLoopId = null;
+    let lastDisplayedCentiseconds = -1;
+    let pipRestore = null;
+    let pipArrowDoc = null;
+
+    function refreshDurationEstimate() {
+      const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const buffered = bufferedEndSeconds(audio);
+      durationEstimate = Math.max(durationEstimate, buffered, cur > 0 ? cur + 2 : 0);
+      if (hasKnownDuration(audio)) {
+        durationEstimate = Math.max(durationEstimate, audio.duration);
+      }
+    }
+
+    function getEffectiveDuration() {
+      refreshDurationEstimate();
+      return effectiveDurationSeconds(audio, durationEstimate);
+    }
 
     function syncPlayIcon() {
       const playing = !audio.paused && !audio.ended;
@@ -113,34 +280,80 @@
     }
 
     function syncSeekRange() {
-      const maxT = durationTenths(audio);
-      seek.max = String(maxT);
+      const effectiveDur = getEffectiveDuration();
+      if (effectiveDur <= 0) {
+        seek.max = "1";
+        seek.disabled = true;
+        if (!scrubbing) seek.value = "0";
+        return;
+      }
+      seek.disabled = false;
+      const maxCs = durationCentisecondsFromSeconds(effectiveDur);
+      seek.max = String(maxCs);
       if (!scrubbing) {
-        seek.value = String(currentTenths(audio));
+        seek.value = String(currentCentisecondsFrom(audio, effectiveDur));
       }
     }
 
-    function syncTime() {
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+    function durationLabel() {
+      if (hasKnownDuration(audio)) return formatTime(audio.duration);
+      const effectiveDur = getEffectiveDuration();
+      return effectiveDur > 0 ? formatTime(effectiveDur) : "--:--:--";
+    }
+
+    function syncTimeDisplay(force) {
       const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-      timeEl.textContent = formatTime(cur) + " / " + (dur ? formatTime(dur) : "00:0");
+      const cs = Math.floor(cur * 100);
+      if (!force && cs === lastDisplayedCentiseconds) return;
+      lastDisplayedCentiseconds = cs;
+      timeEl.textContent = formatTime(cur) + " / " + durationLabel();
+    }
+
+    function syncTime() {
+      lastDisplayedCentiseconds = -1;
+      syncTimeDisplay(true);
       syncSeekRange();
     }
 
-    function seekTenthsFromRatio(ratio) {
-      const maxT = durationTenths(audio);
-      if (maxT <= 0) return 0;
-      const clamped = Math.min(Math.max(ratio, 0), 1);
-      return Math.min(Math.round(clamped * maxT), maxT);
+    function startTimeLoop() {
+      if (timeLoopId != null) return;
+      const loop = () => {
+        if (!scrubbing) {
+          syncTimeDisplay(false);
+          syncSeekRange();
+        }
+        if (!audio.paused && !audio.ended) {
+          timeLoopId = requestAnimationFrame(loop);
+        } else {
+          timeLoopId = null;
+        }
+      };
+      timeLoopId = requestAnimationFrame(loop);
     }
 
-    function applySeekTenths(tenths) {
-      const maxT = durationTenths(audio);
-      if (maxT <= 0) return;
-      const t = Math.min(Math.max(tenths, 0), maxT);
-      seek.value = String(t);
-      audio.currentTime = t / 10;
-      timeEl.textContent = formatTime(audio.currentTime) + " / " + formatTime(audio.duration);
+    function stopTimeLoop() {
+      if (timeLoopId == null) return;
+      cancelAnimationFrame(timeLoopId);
+      timeLoopId = null;
+    }
+
+    function seekCentisecondsFromRatio(ratio) {
+      const effectiveDur = getEffectiveDuration();
+      if (effectiveDur <= 0) return 0;
+      const maxCs = durationCentisecondsFromSeconds(effectiveDur);
+      const clamped = Math.min(Math.max(ratio, 0), 1);
+      return Math.min(Math.round(clamped * maxCs), maxCs);
+    }
+
+    function applySeekCentiseconds(centiseconds) {
+      const effectiveDur = getEffectiveDuration();
+      if (effectiveDur <= 0) return;
+      const maxCs = durationCentisecondsFromSeconds(effectiveDur);
+      const c = Math.min(Math.max(centiseconds, 0), maxCs);
+      seek.value = String(c);
+      audio.currentTime = c / 100;
+      lastDisplayedCentiseconds = -1;
+      syncTimeDisplay(true);
     }
 
     function seekRatioFromEvent(ev) {
@@ -151,10 +364,14 @@
     }
 
     function showScrubTip(ev) {
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const effectiveDur = getEffectiveDuration();
+      if (effectiveDur <= 0) {
+        scrubTip.hidden = true;
+        return;
+      }
       const ratio = seekRatioFromEvent(ev);
-      const tenths = seekTenthsFromRatio(ratio);
-      scrubTip.textContent = formatTime(tenths / 10);
+      const centiseconds = seekCentisecondsFromRatio(ratio);
+      scrubTip.textContent = formatTime(centiseconds / 100);
       scrubTip.style.left = ratio * 100 + "%";
       scrubTip.hidden = false;
     }
@@ -163,33 +380,176 @@
       scrubTip.hidden = true;
     }
 
+    function seekByArrowSeconds(deltaSeconds) {
+      const effectiveDur = getEffectiveDuration();
+      if (effectiveDur <= 0) return;
+      const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      const next = Math.min(Math.max(0, cur + deltaSeconds), effectiveDur);
+      applySeekCentiseconds(Math.floor(next * 100));
+    }
+
+    function arrowSeekArmed() {
+      return chrome.dataset.hwAudioArmed === "1" || chrome.matches(":focus-within");
+    }
+
+    function onArrowSeekKey(ev) {
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      if (!arrowSeekArmed()) return;
+      const target = ev.target;
+      if (
+        target &&
+        target.closest &&
+        target.closest("textarea, input:not([type=range]), select, [contenteditable='true']")
+      ) {
+        return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      const delta = ev.key === "ArrowLeft" ? -ARROW_SEEK_SECONDS : ARROW_SEEK_SECONDS;
+      seekByArrowSeconds(delta);
+    }
+
+    function bindArrowSeek(doc) {
+      if (!doc || doc === pipArrowDoc) return;
+      if (pipArrowDoc) {
+        pipArrowDoc.removeEventListener("keydown", onArrowSeekKey, true);
+        pipArrowDoc = null;
+      }
+      doc.addEventListener("keydown", onArrowSeekKey, true);
+      pipArrowDoc = doc;
+    }
+
+    function setPipActive(active) {
+      if (!pipBtn) return;
+      pipBtn.classList.toggle("is-active", active);
+      pipBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+
+    function restoreFromPip() {
+      if (!pipRestore) return;
+      const { parent: pipParent, next } = pipRestore;
+      chrome.classList.remove("hw-audio-chrome--pip");
+      if (next && next.parentNode === pipParent) pipParent.insertBefore(chrome, next);
+      else pipParent.appendChild(chrome);
+      pipRestore = null;
+      setPipActive(false);
+      bindArrowSeek(document);
+    }
+
+    async function enterDocumentPip() {
+      const rect = bar.getBoundingClientRect();
+      const pipWindow = await global.documentPictureInPicture.requestWindow({
+        width: Math.round(Math.max(320, rect.width)),
+        height: Math.round(Math.max(72, rect.height + 8)),
+      });
+      copyStylesIntoDocument(pipWindow.document);
+      pipWindow.document.body.className = "hw-audio-chrome--pip-root";
+      const pipParent = chrome.parentNode;
+      const next = chrome.nextSibling;
+      pipRestore = { parent: pipParent, next, pipWindow };
+      chrome.classList.add("hw-audio-chrome--pip");
+      pipWindow.document.body.append(chrome);
+      setPipActive(true);
+      bindArrowSeek(pipWindow.document);
+      pipWindow.addEventListener("pagehide", () => restoreFromPip(), { once: true });
+    }
+
+    async function togglePip() {
+      if (pipRestore) {
+        pipRestore.pipWindow?.close?.();
+        restoreFromPip();
+        return;
+      }
+      if (document.pictureInPictureElement === audio) {
+        await document.exitPictureInPicture();
+        return;
+      }
+      if (pipDocumentSupported()) {
+        try {
+          await enterDocumentPip();
+        } catch (err) {
+          if (err?.name !== "NotAllowedError") {
+            /* ignore — user dismissed or browser blocked */
+          }
+        }
+        return;
+      }
+      if (pipMediaSupported(audio)) {
+        try {
+          await audio.requestPictureInPicture();
+          setPipActive(true);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    chrome.tabIndex = 0;
+    chrome.addEventListener("pointerdown", () => {
+      chrome.dataset.hwAudioArmed = "1";
+    });
+    document.addEventListener(
+      "pointerdown",
+      (ev) => {
+        if (!chrome.contains(ev.target)) delete chrome.dataset.hwAudioArmed;
+      },
+      true
+    );
+    bindArrowSeek(document);
+
+    pipBtn?.addEventListener("click", () => {
+      void togglePip();
+    });
+    audio.addEventListener("enterpictureinpicture", () => {
+      if (!pipRestore) setPipActive(true);
+    });
+    audio.addEventListener("leavepictureinpicture", () => {
+      if (!pipRestore) setPipActive(false);
+    });
+
     playBtn.addEventListener("click", () => {
       if (audio.paused || audio.ended) void audio.play();
       else audio.pause();
     });
 
-    audio.addEventListener("play", syncPlayIcon);
-    audio.addEventListener("pause", syncPlayIcon);
-    audio.addEventListener("ended", syncPlayIcon);
+    audio.addEventListener("play", () => {
+      syncPlayIcon();
+      startTimeLoop();
+    });
+    audio.addEventListener("pause", () => {
+      syncPlayIcon();
+      stopTimeLoop();
+      syncTime();
+    });
+    audio.addEventListener("ended", () => {
+      syncPlayIcon();
+      stopTimeLoop();
+      syncTime();
+    });
     audio.addEventListener("loadedmetadata", syncTime);
+    audio.addEventListener("loadeddata", syncTime);
     audio.addEventListener("durationchange", syncTime);
-    audio.addEventListener("timeupdate", syncTime);
+    audio.addEventListener("canplay", syncTime);
+    audio.addEventListener("progress", syncTime);
+    audio.addEventListener("timeupdate", () => {
+      if (audio.paused || audio.ended) syncTime();
+    });
 
     seek.addEventListener("input", () => {
-      applySeekTenths(Number(seek.value));
+      applySeekCentiseconds(Number(seek.value));
     });
 
     seek.addEventListener("pointerdown", (ev) => {
       scrubbing = true;
       seekPointerId = ev.pointerId;
       seek.setPointerCapture?.(ev.pointerId);
-      applySeekTenths(seekTenthsFromRatio(seekRatioFromEvent(ev)));
+      applySeekCentiseconds(seekCentisecondsFromRatio(seekRatioFromEvent(ev)));
       showScrubTip(ev);
     });
 
     seek.addEventListener("pointermove", (ev) => {
       if (!scrubbing) return;
-      applySeekTenths(seekTenthsFromRatio(seekRatioFromEvent(ev)));
+      applySeekCentiseconds(seekCentisecondsFromRatio(seekRatioFromEvent(ev)));
       showScrubTip(ev);
     });
 
@@ -216,14 +576,8 @@
       if (!scrubbing) hideScrubTip();
     });
 
-    speed.addEventListener("change", () => {
-      const rate = Number(speed.value);
-      audio.playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1;
-    });
-
     const savedRate = nearestSpeed(audio.playbackRate || 1);
-    speed.value = String(savedRate);
-    audio.playbackRate = savedRate;
+    applyRate(savedRate);
     syncPlayIcon();
     syncTime();
 
