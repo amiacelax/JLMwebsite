@@ -204,6 +204,14 @@
   color: var(--color-text-muted);
 }
 
+.hw-hub-v5-review-zone__actions {
+  margin-top: 0.85rem;
+}
+
+.hw-hub-v5-review-zone__actions .btn {
+  margin: 0;
+}
+
 .hw-hub-v5-pending {
   position: relative;
   max-width: 26rem;
@@ -254,6 +262,17 @@
   animation-name: hw-hub-v5-reviewing-pulse;
 }
 
+.hw-hub-v5-pending--acked {
+  border-color: color-mix(in srgb, #c9a227 40%, transparent);
+  background: color-mix(in srgb, #c9a227 10%, var(--color-bg-card));
+}
+
+.hw-hub-v5-pending--acked .hw-hub-v5-pending__pulse {
+  background: #c9a227;
+  box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 55%, transparent);
+  animation-name: hw-hub-v5-acked-pulse;
+}
+
 @keyframes hw-hub-v5-pending-pulse {
   0%,
   100% {
@@ -271,6 +290,18 @@
   100% {
     transform: scale(0.9);
     box-shadow: 0 0 0 0 color-mix(in srgb, #e8a838 45%, transparent);
+  }
+  50% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0.45rem transparent;
+  }
+}
+
+@keyframes hw-hub-v5-acked-pulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 45%, transparent);
   }
   50% {
     transform: scale(1);
@@ -544,11 +575,7 @@
   border-top: none;
 }
 
-/* Past homework — full worksheet; status dot in slide nav (desktop) or corner (mobile) */
-body.hw-hub-v5-page #hw-student-past-fold {
-  display: none !important;
-}
-
+/* Past homework list — hidden only while viewing an archived submission */
 body.hw-hub-v5-archive-mode #hw-v5-complete-card,
 body.hw-hub-v5-archive-mode #hw-v5-sellup-frame,
 body.hw-hub-v5-archive-mode #hw-v5-noplan-sellup-frame,
@@ -616,12 +643,80 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   max-width: 36rem;
 }
 
+.hw-hub-v5-past-box {
+  max-width: none;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-past-box__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.hw-hub-v5-past-box__summary::-webkit-details-marker {
+  display: none;
+}
+
+.hw-hub-v5-past-box__summary::before {
+  content: "▸";
+  display: inline-block;
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  transition: transform 0.15s ease;
+}
+
+.hw-hub-v5-past-box[open] > .hw-hub-v5-past-box__summary::before {
+  transform: rotate(90deg);
+}
+
+.hw-hub-v5-past-box > .hw-platform-card__desc {
+  margin-top: 0.45rem;
+}
+
+.hw-hub-v5-past-box .hw-hub-v2-past-list {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.hw-hub-v5-status-bubble--dock {
+  position: fixed !important;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 520;
+  width: 3.25rem;
+  height: 3.25rem;
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
+.hw-hub-v5-status-bubble--dock:hover {
+  transform: scale(1.06);
+}
+
 @media (max-width: 520px) {
   .hw-hub-v5-status-bubble:not(.hw-hub-v5-status-bubble--in-nav) {
     position: fixed;
     right: 0.85rem;
     bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
-    z-index: 50;
+    z-index: 520;
     width: 3.1rem;
     height: 3.1rem;
   }
@@ -683,6 +778,16 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--color-green) 28%, transparent);
 }
 
+.hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__dot {
+  background: #c9a227;
+}
+
+.hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__ring {
+  opacity: 1;
+  animation: hw-hub-v5-bubble-ring-acked 1.8s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 42%, transparent);
+}
+
 @keyframes hw-hub-v5-bubble-ring {
   0%,
   100% {
@@ -693,9 +798,19 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   }
 }
 
+@keyframes hw-hub-v5-bubble-ring-acked {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 40%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 0.55rem transparent;
+  }
+}
+
 .hw-hub-v5-status-bubble__hint {
   position: fixed;
-  z-index: 201;
+  z-index: 521;
   max-width: 13rem;
   margin: 0;
   padding: 0.45rem 0.65rem;
@@ -736,6 +851,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 @media (prefers-reduced-motion: reduce) {
   .hw-hub-v5-pending__pulse,
   .hw-hub-v5-status-bubble--reviewing .hw-hub-v5-status-bubble__ring,
+  .hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__ring,
   .hw-hub-v5-sellup .hw-hub-tier-plan,
   .hw-hub-v5-sellup .hw-hub-v5-sellup-card--lessons,
   .hw-hub-v5-sellup .hw-hub-v5-sellup-card--weekly,

@@ -125,6 +125,10 @@
   let tierDetailBound = false;
   let uiBound = false;
   let reviewCommentsGen = 0;
+  /** Submission id for the reviewed worksheet open CTA. */
+  let lastReviewedSubmissionId = "";
+  /** Avoid auto-reopening after student returns to hub via status bubble. */
+  let reviewedAutoOpenAttempted = "";
   /** Wait for platform worksheet load before showing empty/upsell shells. */
   let hubReady = false;
   /** Latest submission reviewStatus for the active assignment (from KV). */
@@ -420,11 +424,18 @@
       liveReviewStatusReady = true;
       if (latest?.reviewStatus === "reviewed") {
         liveReviewStatus = "reviewed";
+        lastReviewedSubmissionId = String(latest.id || "");
+        writeReviewedFlag(username, assignmentId);
+      } else if (latest?.reviewStatus === "acknowledged") {
+        liveReviewStatus = "acknowledged";
+        lastReviewedSubmissionId = "";
         writeReviewedFlag(username, assignmentId);
       } else if (latest) {
         liveReviewStatus = "submitted";
+        lastReviewedSubmissionId = "";
       } else {
         liveReviewStatus = null;
+        lastReviewedSubmissionId = "";
       }
       return liveReviewStatus;
     } catch {
@@ -443,7 +454,11 @@
       liveReviewStatusAssignmentId === assignmentId &&
       assignmentId
     ) {
-      if (liveReviewStatus === "reviewed" || liveReviewStatus === "submitted") {
+      if (
+        liveReviewStatus === "reviewed" ||
+        liveReviewStatus === "submitted" ||
+        liveReviewStatus === "acknowledged"
+      ) {
         return liveReviewStatus;
       }
       /* Server has no submission yet — keep optimistic local flags. */
@@ -466,7 +481,7 @@
   }
 
   function isCompleteView(status) {
-    return status === "submitted" || status === "reviewed";
+    return status === "submitted" || status === "reviewed" || status === "acknowledged";
   }
 
   function isUltraTier() {
@@ -841,6 +856,12 @@
       "<strong>JD is reviewing your homework now.</strong></p>" +
       '<p class="hw-hub-v5-pending__sub">He\'ll send his notes back ASAP — watch for a Discord ping.</p>' +
       "</div>" +
+      '<div class="hw-hub-v5-pending hw-hub-v5-pending--acked" id="hw-v5-acked-note" hidden>' +
+      '<p class="hw-hub-v5-pending__line">' +
+      '<span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>' +
+      "<strong>Waiting for your next assignment.</strong></p>" +
+      '<p class="hw-hub-v5-pending__sub">JD got your “done reviewing” ping — new homework will show up here when it\u2019s ready.</p>' +
+      "</div>" +
       '<section class="hw-hub-v5-review-zone" id="hw-v5-review-zone" hidden aria-labelledby="hw-v5-review-zone-title">' +
       '<h3 class="hw-hub-v5-review-zone__title" id="hw-v5-review-zone-title">Review your homework</h3>' +
       '<div class="hw-hub-v5-review-zone__grid">' +
@@ -852,7 +873,11 @@
       '<p class="hw-hub-v5-review-zone__label">JD\u2019s notes</p>' +
       '<div class="hw-hub-v5-review-zone__content hw-hub-v5-review-zone__content--jd" id="hw-v5-jd-review-notes"></div>' +
       "</div></div>" +
-      '<p class="hw-hub-v5-review-zone__soon">Full assignment review — layout coming soon.</p>' +
+      '<div class="hw-hub-v5-review-zone__actions">' +
+      '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn">' +
+      "Open reviewed worksheet</button>" +
+      '<p class="hw-hub-v5-review-zone__soon">Blue clouds = your notes. Green = JD\u2019s reply (play audio/video, no editing).</p>' +
+      "</div>" +
       "</section>" +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-sellup-caption" hidden></p>' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-sellup-frame" hidden>' +
@@ -921,119 +946,127 @@
     const studentGrid = document.getElementById("hw-student-grid");
     if (!studentOnly || !v4Homework || !studentGrid) return;
 
-    shellBuilt = true;
-    v4Homework.classList.add("hw-v5-homework-zone");
+    try {
+      v4Homework.classList.add("hw-v5-homework-zone");
 
-    const worksheetSection = v4Homework.querySelector(".hw-hub-v2-worksheet");
-    const completeCard = ensureCompleteCard();
-    const noHwEmpty = ensureNoHwEmpty();
-    const noPlanWelcome = ensureNoPlanWelcome();
+      const worksheetSection = v4Homework.querySelector(".hw-hub-v2-worksheet");
+      const completeCard = ensureCompleteCard();
+      const noHwEmpty = ensureNoHwEmpty();
+      const noPlanWelcome = ensureNoPlanWelcome();
 
-    const orphanFeedback = document.getElementById("hw-v2-feedback");
-    if (orphanFeedback && completeCard && !completeCard.contains(orphanFeedback)) {
-      orphanFeedback.remove();
-    }
-
-    const assignCard = document.getElementById("hw-current-assignment-card");
-    if (assignCard) {
-      assignCard.classList.add("hw-hub-v5-landing-card");
-      if (worksheetSection) {
-        v4Homework.insertBefore(assignCard, completeCard);
-      } else {
-        v4Homework.insertBefore(assignCard, v4Homework.firstChild);
+      const orphanFeedback = document.getElementById("hw-v2-feedback");
+      if (orphanFeedback && completeCard && !completeCard.contains(orphanFeedback)) {
+        orphanFeedback.remove();
       }
+
+      /* Insert status/empty shells into the DOM first — later insertBefore
+         calls need them as live children of v4Homework. */
+      if (worksheetSection) {
+        v4Homework.insertBefore(completeCard, worksheetSection);
+        v4Homework.insertBefore(noPlanWelcome, worksheetSection);
+        v4Homework.insertBefore(noHwEmpty, worksheetSection);
+      } else {
+        v4Homework.prepend(noHwEmpty);
+        v4Homework.prepend(noPlanWelcome);
+        v4Homework.prepend(completeCard);
+      }
+
+      const assignCard = document.getElementById("hw-current-assignment-card");
+      if (assignCard) {
+        assignCard.classList.add("hw-hub-v5-landing-card");
+        v4Homework.insertBefore(assignCard, completeCard);
+      }
+
+      const offlineCard = document.getElementById("hw-offline-tools-card");
+      if (offlineCard && worksheetSection) {
+        v4Homework.insertBefore(offlineCard, worksheetSection);
+      }
+
+      const app = document.createElement("div");
+      app.className = "hw-hub-v5-app";
+      app.id = "hw-v5-app";
+      app.dataset.v5ActiveTab = "homework";
+
+      const tabs = document.createElement("nav");
+      tabs.className = "hw-hub-v5-tabs";
+      tabs.id = "hw-v5-tabs";
+      tabs.setAttribute("role", "tablist");
+      tabs.setAttribute("aria-label", "Hub sections");
+      tabs.innerHTML =
+        '<button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">HW</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-mistakes" data-v5-tab="mistakes" aria-selected="false" aria-controls="hw-v5-panel-mistakes">Mistakes</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notifications" data-v5-tab="notifications" aria-selected="false" aria-controls="hw-v5-panel-notifications">Notifications</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-games" data-v5-tab="games" aria-selected="false" aria-controls="hw-v5-panel-games">Games</button>';
+
+      const homeworkPanel = document.createElement("div");
+      homeworkPanel.className = "hw-hub-v5-panel hw-hub-v5-panel--homework is-active";
+      homeworkPanel.id = "hw-v5-panel-homework";
+      homeworkPanel.dataset.v5Panel = "homework";
+      homeworkPanel.setAttribute("role", "tabpanel");
+      homeworkPanel.setAttribute("aria-labelledby", "hw-v5-tab-homework");
+      homeworkPanel.appendChild(v4Homework);
+
+      const below = document.createElement("div");
+      below.className = "hw-hub-v5-below hw-platform-grid hw-platform-grid--student hw-hub-v4-below";
+      below.id = "hw-v5-below";
+
+      const gridStack = document.getElementById("hw-grid-stack");
+      const mistakesCard = document.getElementById("hw-student-mistakes-card");
+      const gamesCard = document.getElementById("hw-games-hub-card");
+      const notifsCard = studentGrid.querySelector(".hw-grid-notifs");
+
+      if (gridStack) {
+        below.appendChild(
+          wrapBelowPanel("hw-v5-panel-lessons", "lessons", "hw-v5-tab-lessons", gridStack)
+        );
+      }
+      if (mistakesCard) {
+        below.appendChild(
+          wrapBelowPanel("hw-v5-panel-mistakes", "mistakes", "hw-v5-tab-mistakes", mistakesCard)
+        );
+      }
+      if (notifsCard) {
+        below.appendChild(
+          wrapBelowPanel(
+            "hw-v5-panel-notifications",
+            "notifications",
+            "hw-v5-tab-notifications",
+            notifsCard
+          )
+        );
+      }
+      if (gamesCard) {
+        below.appendChild(
+          wrapBelowPanel("hw-v5-panel-games", "games", "hw-v5-tab-games", gamesCard)
+        );
+      }
+
+      app.appendChild(tabs);
+      app.appendChild(homeworkPanel);
+      app.appendChild(below);
+
+      studentOnly.insertBefore(app, studentOnly.firstChild);
+
+      const legacySection = document.getElementById("hw-worksheet-section");
+      if (legacySection) legacySection.hidden = true;
+
+      const weeklyCard = document.getElementById("hw-weekly-upgrade-card");
+      if (weeklyCard) weeklyCard.hidden = true;
+
+      studentGrid.hidden = true;
+
+      const completeCardMounted = document.getElementById("hw-v5-complete-card");
+      if (!completeCardMounted) {
+        throw new Error("Hub v5 complete card failed to mount");
+      }
+
+      shellBuilt = true;
+      v4Homework.hidden = false;
+    } catch (err) {
+      console.error("[hw-hub-v5] shell build failed", err);
+      shellBuilt = false;
     }
-
-    if (worksheetSection) {
-      v4Homework.insertBefore(completeCard, worksheetSection);
-      v4Homework.insertBefore(noPlanWelcome, worksheetSection);
-      v4Homework.insertBefore(noHwEmpty, worksheetSection);
-    } else {
-      v4Homework.prepend(noHwEmpty);
-      v4Homework.prepend(noPlanWelcome);
-      v4Homework.prepend(completeCard);
-    }
-
-    const offlineCard = document.getElementById("hw-offline-tools-card");
-    if (offlineCard && worksheetSection) {
-      v4Homework.insertBefore(offlineCard, worksheetSection);
-    }
-
-    const app = document.createElement("div");
-    app.className = "hw-hub-v5-app";
-    app.id = "hw-v5-app";
-    app.dataset.v5ActiveTab = "homework";
-
-    const tabs = document.createElement("nav");
-    tabs.className = "hw-hub-v5-tabs";
-    tabs.id = "hw-v5-tabs";
-    tabs.setAttribute("role", "tablist");
-    tabs.setAttribute("aria-label", "Hub sections");
-    tabs.innerHTML =
-      '<button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">HW</button>' +
-      '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons</button>' +
-      '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-mistakes" data-v5-tab="mistakes" aria-selected="false" aria-controls="hw-v5-panel-mistakes">Mistakes</button>' +
-      '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notifications" data-v5-tab="notifications" aria-selected="false" aria-controls="hw-v5-panel-notifications">Notifications</button>' +
-      '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-games" data-v5-tab="games" aria-selected="false" aria-controls="hw-v5-panel-games">Games</button>';
-
-    const homeworkPanel = document.createElement("div");
-    homeworkPanel.className = "hw-hub-v5-panel hw-hub-v5-panel--homework is-active";
-    homeworkPanel.id = "hw-v5-panel-homework";
-    homeworkPanel.dataset.v5Panel = "homework";
-    homeworkPanel.setAttribute("role", "tabpanel");
-    homeworkPanel.setAttribute("aria-labelledby", "hw-v5-tab-homework");
-    homeworkPanel.appendChild(v4Homework);
-
-    const below = document.createElement("div");
-    below.className = "hw-hub-v5-below hw-platform-grid hw-platform-grid--student hw-hub-v4-below";
-    below.id = "hw-v5-below";
-
-    const gridStack = document.getElementById("hw-grid-stack");
-    const mistakesCard = document.getElementById("hw-student-mistakes-card");
-    const gamesCard = document.getElementById("hw-games-hub-card");
-    const notifsCard = studentGrid.querySelector(".hw-grid-notifs");
-
-    if (gridStack) {
-      below.appendChild(
-        wrapBelowPanel("hw-v5-panel-lessons", "lessons", "hw-v5-tab-lessons", gridStack)
-      );
-    }
-    if (mistakesCard) {
-      below.appendChild(
-        wrapBelowPanel("hw-v5-panel-mistakes", "mistakes", "hw-v5-tab-mistakes", mistakesCard)
-      );
-    }
-    if (notifsCard) {
-      below.appendChild(
-        wrapBelowPanel(
-          "hw-v5-panel-notifications",
-          "notifications",
-          "hw-v5-tab-notifications",
-          notifsCard
-        )
-      );
-    }
-    if (gamesCard) {
-      below.appendChild(
-        wrapBelowPanel("hw-v5-panel-games", "games", "hw-v5-tab-games", gamesCard)
-      );
-    }
-
-    app.appendChild(tabs);
-    app.appendChild(homeworkPanel);
-    app.appendChild(below);
-
-    studentOnly.insertBefore(app, studentOnly.firstChild);
-
-    const legacySection = document.getElementById("hw-worksheet-section");
-    if (legacySection) legacySection.hidden = true;
-
-    const weeklyCard = document.getElementById("hw-weekly-upgrade-card");
-    if (weeklyCard) weeklyCard.hidden = true;
-
-    studentGrid.hidden = true;
-
-    v4Homework.hidden = false;
   }
 
   function teardownStatusBubble() {
@@ -1050,38 +1083,10 @@
     if (!bubble || !hint) return;
 
     bubble.hidden = false;
-    const mobile = window.innerWidth <= 520;
-    bubble.classList.toggle("hw-hub-v5-status-bubble--in-nav", false);
-    bubble.classList.toggle("hw-hub-v5-status-bubble--in-head", !mobile);
-
-    if (mobile) {
-      if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
-    } else {
-      const stickyHead = document.querySelector(
-        "#hw-worksheet-form .hw-worksheet__slide-sticky-head"
-      );
-      const navRow =
-        stickyHead?.querySelector(".hw-worksheet__slide-nav-row") ||
-        stickyHead?.querySelector(".hw-worksheet__slide-nav")?.parentElement;
-      const nav = document.querySelector("#hw-worksheet-form .hw-worksheet__slide-nav");
-      if (navRow) {
-        if (bubble.parentElement !== navRow) {
-          navRow.insertBefore(bubble, navRow.firstChild);
-        }
-      } else if (stickyHead) {
-        if (bubble.parentElement !== stickyHead) {
-          stickyHead.insertBefore(bubble, stickyHead.firstChild);
-        }
-      } else if (nav?.parentElement) {
-        const head = nav.parentElement;
-        if (bubble.parentElement !== head) {
-          head.insertBefore(bubble, head.firstChild);
-        }
-      } else if (bubble.parentElement !== document.body) {
-        document.body.appendChild(bubble);
-      }
-    }
-
+    /* Always fixed + obvious while browsing past — not buried in slide nav. */
+    bubble.classList.remove("hw-hub-v5-status-bubble--in-nav", "hw-hub-v5-status-bubble--in-head");
+    bubble.classList.add("hw-hub-v5-status-bubble--dock");
+    if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
     if (hint.parentElement !== document.body) document.body.appendChild(hint);
 
     if (bubble.matches(":hover")) {
@@ -1134,7 +1139,44 @@
     bubble.addEventListener("blur", hideBubbleHint);
   }
 
+  function reviewedDismissStorageKey(submissionId) {
+    return "hw-v5-reviewed-dismissed-" + String(submissionId || "");
+  }
+
+  function isReviewedAutoOpenDismissed(submissionId) {
+    if (!submissionId) return false;
+    try {
+      return sessionStorage.getItem(reviewedDismissStorageKey(submissionId)) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function dismissReviewedAutoOpen(submissionId) {
+    if (!submissionId) return;
+    try {
+      sessionStorage.setItem(reviewedDismissStorageKey(submissionId), "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearReviewedAutoOpenDismiss(submissionId) {
+    if (!submissionId) return;
+    try {
+      sessionStorage.removeItem(reviewedDismissStorageKey(submissionId));
+    } catch {
+      /* ignore */
+    }
+  }
+
   function exitArchiveMode() {
+    const currentSubmissionId =
+      (window.location.hash || "").match(/^#?hw-submission-(.+)$/i)?.[1] || "";
+    if (currentSubmissionId && getHubStatus() === "reviewed") {
+      dismissReviewedAutoOpen(currentSubmissionId);
+    }
+
     let returnHash = "";
     try {
       returnHash = sessionStorage.getItem(STORAGE.archiveReturnHash) || "";
@@ -1167,8 +1209,8 @@
   }
 
   function renderStatusBubble(status) {
-    const show = isArchiveMode() && isCompleteView(status);
-    if (!show) {
+    /* Archive only: status/CTA card collapses into this floating ping. */
+    if (!isArchiveMode()) {
       teardownStatusBubble();
       return;
     }
@@ -1176,56 +1218,87 @@
     ensureStatusBubble();
     bindStatusBubble();
     mountStatusBubble();
+    window.requestAnimationFrame(() => mountStatusBubble());
+    setTimeout(() => mountStatusBubble(), 250);
 
     const bubble = document.getElementById("hw-v5-status-bubble");
     const hint = document.getElementById("hw-v5-status-bubble-hint");
     if (!bubble) return;
 
-    if (!document.querySelector("#hw-worksheet-form .hw-worksheet__slide-nav")) {
-      window.requestAnimationFrame(() => mountStatusBubble());
-    }
-
     bubble.classList.remove(
       "hw-hub-v5-status-bubble--reviewing",
-      "hw-hub-v5-status-bubble--reviewed"
+      "hw-hub-v5-status-bubble--reviewed",
+      "hw-hub-v5-status-bubble--acked"
     );
 
     if (status === "reviewed") {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewed");
-      bubble.setAttribute("aria-label", "JD's notes are ready. Return to main page");
+      bubble.setAttribute("aria-label", "JD’s notes are ready. Click to return to mainpage");
+      if (hint) hint.textContent = "JD’s notes are ready. Click to return to mainpage";
+    } else if (status === "acknowledged") {
+      bubble.classList.add("hw-hub-v5-status-bubble--acked");
+      bubble.setAttribute(
+        "aria-label",
+        "Waiting for new homework. Click to return to mainpage"
+      );
       if (hint) {
-        hint.textContent = "JD's notes are ready. Click to return to mainpage";
+        hint.textContent = "Waiting for JD to send new homework. Click to return to mainpage";
       }
     } else {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
-      bubble.setAttribute("aria-label", "HW under review. Return to main page");
-      if (hint) {
-        hint.textContent = "HW under review. Click to return to mainpage";
-      }
+      bubble.setAttribute("aria-label", "HW under review. Click to return to mainpage");
+      if (hint) hint.textContent = "HW under review. Click to return to mainpage";
     }
   }
 
   function renderCompleteCard(status) {
     const pending = document.getElementById("hw-v5-pending-note");
+    let acked = document.getElementById("hw-v5-acked-note");
     const title = document.getElementById("hw-v5-complete-title");
     const card = document.getElementById("hw-v5-complete-card");
+    const pastBtn = document.getElementById("hw-v5-past-btn");
     const reviewed = status === "reviewed";
+    const acknowledged = status === "acknowledged";
+
+    if (!acked && card && pending) {
+      acked = document.createElement("div");
+      acked.className = "hw-hub-v5-pending hw-hub-v5-pending--acked";
+      acked.id = "hw-v5-acked-note";
+      acked.hidden = true;
+      acked.innerHTML =
+        '<p class="hw-hub-v5-pending__line">' +
+        '<span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>' +
+        "<strong>Waiting for your next assignment.</strong></p>" +
+        '<p class="hw-hub-v5-pending__sub">JD got your “done reviewing” ping — new homework will show up here when it\u2019s ready.</p>';
+      pending.insertAdjacentElement("afterend", acked);
+    }
 
     if (pending) {
       pending.hidden = status !== "submitted";
       pending.classList.toggle("hw-hub-v5-pending--reviewing", status === "submitted");
     }
+    if (acked) {
+      acked.hidden = !acknowledged;
+    }
     const ultra = isUltraTier();
     if (title) {
       title.hidden = reviewed;
-      if (!reviewed) {
+      if (acknowledged) {
+        title.hidden = false;
+        title.textContent = "All caught up for now";
+      } else if (!reviewed) {
         title.textContent = ultra
           ? "Submitted! You can keep practicing."
           : "You've finished your assignment!";
       }
     }
+    if (pastBtn) {
+      pastBtn.textContent = acknowledged
+        ? "Browse past homework"
+        : "View past assignments";
+    }
     let ultraNote = document.getElementById("hw-v5-ultra-practice-note");
-    if (ultra && !reviewed) {
+    if (ultra && !reviewed && !acknowledged) {
       if (!ultraNote && card) {
         ultraNote = document.createElement("p");
         ultraNote.id = "hw-v5-ultra-practice-note";
@@ -1240,7 +1313,10 @@
     } else if (ultraNote) {
       ultraNote.hidden = true;
     }
-    if (card) card.classList.toggle("hw-hub-v5-complete--reviewed", reviewed);
+    if (card) {
+      card.classList.toggle("hw-hub-v5-complete--reviewed", reviewed);
+      card.classList.toggle("hw-hub-v5-complete--acked", acknowledged);
+    }
   }
 
   function renderSellup() {
@@ -1398,7 +1474,11 @@
               new Date(b.submittedAt || 0).getTime() -
               new Date(a.submittedAt || 0).getTime()
           );
-        return normalizeReviewComments(subs[0]?.comments);
+        const latest = subs[0];
+        if (latest?.id && latest.reviewStatus === "reviewed") {
+          lastReviewedSubmissionId = String(latest.id);
+        }
+        return normalizeReviewComments(latest?.comments);
       } catch {
         return [];
       }
@@ -1604,7 +1684,9 @@
     if (reviewZone) reviewZone.hidden = !show;
 
     if (body && show) {
-      body.textContent = jdReviewGreeting(getStudentDisplayName());
+      body.textContent =
+        jdReviewGreeting(getStudentDisplayName()) +
+        " Open the worksheet below (or use the button) to see your notes with JD’s replies.";
     }
 
     if (show) {
@@ -1730,7 +1812,9 @@
         : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
     }
     if (completeCard) completeCard.hidden = !showComplete;
-    if (pastFold) pastFold.hidden = archive || !showComplete || showNoHw;
+    if (pastFold) {
+      pastFold.hidden = archive || !showComplete || showNoHw || showNoPlan;
+    }
     if (offlineCard) offlineCard.hidden = archive || showComplete || showNoHw || showNoPlan;
 
     renderStatusBubble(status);
@@ -1765,6 +1849,25 @@
   }
 
   let liveReviewRefreshQueued = false;
+  let reviewPollTimer = null;
+
+  function clearReviewPoll() {
+    if (reviewPollTimer) {
+      clearInterval(reviewPollTimer);
+      reviewPollTimer = null;
+    }
+  }
+
+  function ensureReviewPoll(status) {
+    clearReviewPoll();
+    if (demoModeEnabled()) return;
+    /* Keep checking while JD hasn't sent notes yet. */
+    if (status !== "submitted") return;
+    reviewPollTimer = setInterval(() => {
+      liveReviewRefreshQueued = false;
+      queueLiveReviewRefresh();
+    }, 15000);
+  }
 
   function queueLiveReviewRefresh() {
     if (demoModeEnabled()) return;
@@ -1779,6 +1882,7 @@
         liveReviewRefreshQueued = false;
         const after = getHubStatus();
         if (after !== before) renderAll();
+        ensureReviewPoll(after);
       })
       .catch(() => {
         liveReviewRefreshQueued = false;
@@ -1799,6 +1903,7 @@
       applyTabPanels(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
     }
     queueLiveReviewRefresh();
+    ensureReviewPoll(status);
   }
 
   function bindUi() {
@@ -1820,6 +1925,19 @@
     });
 
     document.addEventListener("click", (e) => {
+      if (e.target.closest("#hw-v5-open-reviewed-btn")) {
+        e.preventDefault();
+        if (lastReviewedSubmissionId) {
+          clearReviewedAutoOpenDismiss(lastReviewedSubmissionId);
+          reviewedAutoOpenAttempted = "";
+          window.location.hash = "hw-submission-" + lastReviewedSubmissionId;
+          return;
+        }
+        if (global.HwStudentPast?.openPicker) {
+          void global.HwStudentPast.openPicker();
+        }
+        return;
+      }
       if (e.target.closest("#hw-v5-past-btn")) {
         e.preventDefault();
         if (global.HwStudentPast?.openPicker) {
@@ -1830,9 +1948,10 @@
           setActiveTab("homework", { scrollTop: true });
         }
         const fold = document.getElementById("hw-student-past-fold");
-        if (fold && !fold.open) fold.open = true;
-        if (!isMobileTabs()) {
-          fold?.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (fold) {
+          fold.hidden = false;
+          if ("open" in fold) fold.open = true;
+          fold.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }
     });
@@ -1846,7 +1965,14 @@
     document.addEventListener("hw-platform-student-ready", () => {
       hubReady = true;
       liveReviewRefreshQueued = false;
-      liveReviewStatusReady = false;
+      /* Keep gate/API reviewed|submitted|acknowledged status — don't flash back to live homework. */
+      if (
+        liveReviewStatus !== "reviewed" &&
+        liveReviewStatus !== "submitted" &&
+        liveReviewStatus !== "acknowledged"
+      ) {
+        liveReviewStatusReady = false;
+      }
       renderAll();
     });
     document.addEventListener("hw-platform-homework-submitted", () => {
@@ -1855,8 +1981,36 @@
       liveReviewStatusReady = false;
       renderAll();
     });
+    document.addEventListener("hw-platform-student-review-gate", (ev) => {
+      const detail = ev.detail || {};
+      const assignmentId = String(detail.assignmentId || getActiveAssignmentId() || "").trim();
+      const status =
+        detail.status === "reviewed" ||
+        detail.status === "submitted" ||
+        detail.status === "acknowledged"
+          ? detail.status
+          : null;
+      hubReady = true;
+      liveReviewStatusReady = Boolean(status && assignmentId);
+      liveReviewStatusAssignmentId = assignmentId;
+      liveReviewStatus = status;
+      if (status === "reviewed" && detail.submissionId) {
+        lastReviewedSubmissionId = String(detail.submissionId);
+        clearReviewedAutoOpenDismiss(lastReviewedSubmissionId);
+        reviewedAutoOpenAttempted = lastReviewedSubmissionId;
+      }
+      if (status === "acknowledged") {
+        lastReviewedSubmissionId = "";
+        if (detail.submissionId) dismissReviewedAutoOpen(String(detail.submissionId));
+      }
+      renderAll();
+    });
 
     window.addEventListener("hashchange", () => {
+      renderAll();
+    });
+    document.addEventListener("hw-platform-submission-view", () => {
+      hubReady = true;
       renderAll();
     });
   }
