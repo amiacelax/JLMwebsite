@@ -1083,10 +1083,30 @@
     if (!bubble || !hint) return;
 
     bubble.hidden = false;
-    /* Always fixed + obvious while browsing past — not buried in slide nav. */
-    bubble.classList.remove("hw-hub-v5-status-bubble--in-nav", "hw-hub-v5-status-bubble--in-head");
-    bubble.classList.add("hw-hub-v5-status-bubble--dock");
-    if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
+    bubble.classList.remove(
+      "hw-hub-v5-status-bubble--in-nav",
+      "hw-hub-v5-status-bubble--in-head",
+      "hw-hub-v5-status-bubble--dock",
+      "hw-hub-v5-status-bubble--in-card"
+    );
+
+    const worksheetCard = document.querySelector(
+      "#hw-hub-v4-homework .hw-hub-v2-worksheet"
+    );
+    const stickyHead = worksheetCard?.querySelector(".hw-worksheet__slide-sticky-head");
+    const host = stickyHead || worksheetCard;
+
+    if (host) {
+      /* Sit on the past sheet itself (top-right) — same place the status collapsed to. */
+      bubble.classList.add(
+        stickyHead ? "hw-hub-v5-status-bubble--in-head" : "hw-hub-v5-status-bubble--in-card"
+      );
+      if (bubble.parentElement !== host) host.appendChild(bubble);
+    } else {
+      bubble.classList.add("hw-hub-v5-status-bubble--dock");
+      if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
+    }
+
     if (hint.parentElement !== document.body) document.body.appendChild(hint);
 
     if (bubble.matches(":hover")) {
@@ -1220,6 +1240,9 @@
     mountStatusBubble();
     window.requestAnimationFrame(() => mountStatusBubble());
     setTimeout(() => mountStatusBubble(), 250);
+    /* Worksheet chrome mounts after the past sheet loads — remount onto it. */
+    setTimeout(() => mountStatusBubble(), 900);
+    setTimeout(() => mountStatusBubble(), 1800);
 
     const bubble = document.getElementById("hw-v5-status-bubble");
     const hint = document.getElementById("hw-v5-status-bubble-hint");
