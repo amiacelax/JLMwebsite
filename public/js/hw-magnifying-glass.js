@@ -1934,32 +1934,44 @@
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
+      originX: lensPosition.x,
+      originY: lensPosition.y,
       moved: false,
     };
     lensEl.classList.add("is-dragging");
     widgetEl?.classList.add("is-dragging");
+    /* Top sibling paint order among tools — do not rely on z-index alone vs magnet compositing. */
+    if (widgetEl && hostEl && widgetEl.parentElement === hostEl) {
+      hostEl.appendChild(widgetEl);
+    }
     lensEl.setPointerCapture(e.pointerId);
   }
 
   function onPointerMove(e) {
-    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    if (!dragState || dragState.pointerId !== e.pointerId || !hostEl) return;
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
-    if (!dragState.moved && dx * dx + dy * dy > 16) {
-      dragState.moved = true;
-      if (armed) setArmed(false);
-    }
-    if (!dragState.moved) return;
+    if (!dragState.moved && Math.hypot(dx, dy) < 5) return;
+    dragState.moved = true;
+    if (armed) setArmed(false);
+    e.preventDefault();
+    /* Keep lensPosition in sync with the visual so magnet resolve can nudge mid-drag (cloud parity). */
+    lensSnapId = null;
+    lensPosition = clampLocal(
+      dragState.originX + (e.clientX - dragState.startX),
+      dragState.originY + (e.clientY - dragState.startY)
+    );
+    setLensPosition(lensPosition.x, lensPosition.y);
+    resolveToolLayout(widgetEl);
 
-    const local = clientToLocal(e.clientX, e.clientY);
-    setLensPosition(local.x, local.y);
-
-    const snapId = nearestSnap(local.x, local.y);
+    const snapId = nearestSnap(lensPosition.x, lensPosition.y);
     if (snapHintEl && snapId) {
       const p = snapPoints()[snapId];
       snapHintEl.style.left = p.x + "px";
       snapHintEl.style.top = p.y + "px";
       snapHintEl.classList.add("is-visible", "is-target");
+    } else {
+      snapHintEl?.classList.remove("is-visible", "is-target");
     }
   }
 
@@ -1970,11 +1982,10 @@
     snapHintEl?.classList.remove("is-visible", "is-target");
 
     if (dragState.moved) {
-      const local = clientToLocal(e.clientX, e.clientY);
-      const snapId = nearestSnap(local.x, local.y);
+      const snapId = nearestSnap(lensPosition.x, lensPosition.y);
       if (snapId) placeLens(snapId);
-      else setFreeLensPosition(local.x, local.y);
-      resolveToolLayout(lensEl || widgetEl);
+      else saveLensPosition();
+      resolveToolLayout(widgetEl);
     } else {
       setArmed(!armed);
     }
@@ -1985,6 +1996,18 @@
     } catch {
       /* ignore */
     }
+  }
+
+  function onPointerCancel(e) {
+    if (!dragState || dragState.pointerId !== e.pointerId) return;
+    lensEl.classList.remove("is-dragging");
+    widgetEl?.classList.remove("is-dragging");
+    snapHintEl?.classList.remove("is-visible", "is-target");
+    if (dragState.moved) {
+      saveLensPosition();
+      resolveToolLayout(widgetEl);
+    }
+    dragState = null;
   }
 
   function onKeyDown(e) {
@@ -2250,7 +2273,7 @@
     lensEl.addEventListener("pointerdown", onPointerDown);
     lensEl.addEventListener("pointermove", onPointerMove);
     lensEl.addEventListener("pointerup", onPointerUp);
-    lensEl.addEventListener("pointercancel", onPointerUp);
+    lensEl.addEventListener("pointercancel", onPointerCancel);
     lensEl.addEventListener("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
@@ -2279,6 +2302,9 @@
     if (!nextHost || !hostIsVisible(nextHost)) return false;
 
     if (hostEl === nextHost && shellEl?.parentElement === nextHost) {
+      global.HwWorksheetToolLayout?.ensureCleanupButton?.(nextHost);
+      /* After magnet: same paint-order pattern as cloud launcher. */
+      if (widgetEl) nextHost.appendChild(widgetEl);
       applyLensPosition();
       if (!overrideOptions?.skipOnboarding) placeOnboard();
       return true;
@@ -2290,6 +2316,7 @@
     if (hostEl && hostEl !== nextHost) {
       hostEl.classList.remove("hw-mg-host", "hw-mg-armed");
       if (shellEl?.parentElement === hostEl) shellEl.remove();
+      if (widgetEl?.parentElement === hostEl) widgetEl.remove();
     }
 
     hostEl = nextHost;
@@ -2303,7 +2330,9 @@
       hostEl.appendChild(shellEl);
     }
 
-    shellEl.append(snapHintEl, toastEl, widgetEl);
+    shellEl.append(snapHintEl, toastEl);
+    /* Same stacking parent as magnet / cloud — not inside the clip shell. */
+    hostEl.appendChild(widgetEl);
 
     loadLensPosition();
     try {
@@ -2329,6 +2358,8 @@
     bindHostHover();
     preloadLookupAssets();
     global.HwWorksheetToolLayout?.ensureCleanupButton?.(hostEl);
+    /* ensureCleanup may create magnet after this widget; re-append so glass stays above. */
+    hostEl.appendChild(widgetEl);
 
     if (overrideOptions?.autoArm) {
       requestAnimationFrame(() => {
@@ -2357,6 +2388,7 @@
     if (prevHost) {
       prevHost.classList.remove("hw-mg-host", "hw-mg-armed");
       prevHost.querySelector(":scope > .hw-mg-shell")?.remove();
+      prevHost.querySelector(":scope > .hw-mg-widget")?.remove();
     }
     if (hostEl === prevHost) {
       resizeObserver?.disconnect();
@@ -2398,6 +2430,7 @@
     if (hostEl) {
       hostEl.classList.remove("hw-mg-host", "hw-mg-armed");
       hostEl.querySelector(":scope > .hw-mg-shell")?.remove();
+      hostEl.querySelector(":scope > .hw-mg-widget")?.remove();
     }
     resizeObserver?.disconnect();
     hostEl = null;

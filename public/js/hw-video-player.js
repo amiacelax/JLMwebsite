@@ -46,13 +46,19 @@
     }
   }
 
-  /** Metadata duration, else buffered / playback estimate (WebM blobs often lack duration). */
+  /** Metadata duration, else buffered end (never invent from currentTime while playing). */
   function effectiveDurationSeconds(video, estimate) {
     if (hasKnownDuration(video)) return video.duration;
     const buffered = bufferedEndSeconds(video);
-    const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
-    const est = Math.max(estimate || 0, buffered, cur > 0 ? cur + 2 : 0);
+    const est = Math.max(estimate || 0, buffered);
     return est > 0 ? est : 0;
+  }
+
+  function probeMediaDuration(media) {
+    if (global.HwAudioPlayer?.probeMediaDuration) {
+      return global.HwAudioPlayer.probeMediaDuration(media);
+    }
+    return Promise.resolve(hasKnownDuration(media) ? Number(media.duration) : 0);
   }
 
   function pipDocumentSupported() {
@@ -173,11 +179,14 @@
     }
 
     function refreshDurationEstimate() {
-      const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
       const buffered = bufferedEndSeconds(video);
-      durationEstimate = Math.max(durationEstimate, buffered, cur > 0 ? cur + 2 : 0);
+      durationEstimate = Math.max(durationEstimate, buffered);
       if (hasKnownDuration(video)) {
         durationEstimate = Math.max(durationEstimate, video.duration);
+      }
+      if (video.ended) {
+        const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+        if (cur > 0) durationEstimate = Math.max(durationEstimate, cur);
       }
     }
 
@@ -405,6 +414,13 @@
       if (video.paused || video.ended) syncTime();
     });
     video.addEventListener("volumechange", syncVolumeUi);
+
+    void probeMediaDuration(video).then((probed) => {
+      if (probed > durationEstimate) {
+        durationEstimate = probed;
+        syncTime();
+      }
+    });
 
     seek.addEventListener("input", () => {
       applySeekMs(Number(seek.value));

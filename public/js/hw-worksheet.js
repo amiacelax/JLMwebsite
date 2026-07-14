@@ -1878,18 +1878,44 @@
         return;
       }
 
-      const mediaKind = row.mediaKind === "audio" ? "audio" : "video";
       const url = global.HwVideoInline?.mediaUrl
         ? global.HwVideoInline.mediaUrl(mediaId)
         : "/api/hw-m/" + encodeURIComponent(mediaId);
-      if (mediaKind === "audio") {
-        setAudioAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
+      const declared =
+        row.mediaKind === "audio" ? "audio" : row.mediaKind === "video" ? "video" : "";
+      const isVideoLine = lineEl.classList.contains("hw-worksheet__line--video");
+
+      function mountKind(kind) {
+        if (kind === "audio") {
+          setAudioAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
+          if (isVideoLine) {
+            let note = lineEl.querySelector(".hw-video-audio-reply-note");
+            if (!note) {
+              note = document.createElement("p");
+              note.className = "hw-video-audio-reply-note";
+              const slot = lineEl.querySelector(".hw-listen-replay-slot");
+              if (slot) slot.insertAdjacentElement("beforebegin", note);
+              else lineEl.appendChild(note);
+            }
+            note.textContent = "Student answered with audio (no camera video on this clip).";
+          }
+        } else {
+          lineEl.querySelector(".hw-video-audio-reply-note")?.remove();
+          setVideoAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
+        }
         if (recorder) recorder.hidden = true;
-        return;
       }
 
-      setVideoAnswerReplay(lineEl, url, { ariaLabel: "Student's recorded answer" });
-      if (recorder) recorder.hidden = true;
+      /* Prefer real Content-Type — mediaKind can disagree with the stored blob. */
+      fetch(url, { method: "GET", headers: { Range: "bytes=0-0" }, cache: "no-store" })
+        .then((res) => {
+          const ct = String(res.headers.get("content-type") || "").toLowerCase();
+          if (ct.startsWith("video/")) return "video";
+          if (ct.startsWith("audio/")) return "audio";
+          return declared || (isVideoLine ? "video" : "audio");
+        })
+        .catch(() => declared || (isVideoLine ? "video" : "audio"))
+        .then((kind) => mountKind(kind));
     }
 
     const ordered =

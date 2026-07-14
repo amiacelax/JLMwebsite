@@ -1,172 +1,112 @@
 /**
-
  * Keep homework worksheet tools (magnifying glass, cloud launcher, note bubble, lookup popup)
-
  * from stacking on top of each other — lower-priority tools get nudged aside.
-
  */
-
 (function (global) {
-
   const GAP = 10;
-
   const MAX_PASSES = 12;
-
   const RETURN_MS = 620;
-
   const RETURN_EASE = "cubic-bezier(0.25, 0.85, 0.35, 1)";
 
   /** Notes/minis/memor stay anchored; these tools get nudged aside. */
-
-  const ANCHOR_KINDS = new Set(["hc-mini", "hc-memo"]);
-
-  const MOVABLE_KINDS = new Set(["mg-lens", "mg-popup"]);
-
-
+  const ANCHOR_KINDS = new Set(["hc-mini", "hc-memo", "tools-cleanup"]);
+  /** Popups can freely clear; tool-row icons (cloud/glass) only clear the magnet. */
+  const MOVABLE_KINDS = new Set(["mg-popup"]);
+  const TOOL_ROW_KINDS = new Set(["hc-launcher", "mg-lens"]);
 
   let resetBusy = false;
 
-
+  function isToolRowKind(kind) {
+    return TOOL_ROW_KINDS.has(kind);
+  }
 
   function hostLocalRect(el, hostEl) {
-
     const hostRect = hostEl.getBoundingClientRect();
-
     const r = el.getBoundingClientRect();
-
     if (!r.width && !r.height) return null;
-
     return {
-
       left: r.left - hostRect.left,
-
       top: r.top - hostRect.top,
-
       right: r.right - hostRect.left,
-
       bottom: r.bottom - hostRect.top,
-
       width: r.width,
-
       height: r.height,
-
     };
-
   }
-
-
 
   function isVisibleTool(el) {
-
     if (!el || el.hidden) return false;
-
     const r = el.getBoundingClientRect();
-
     return r.width > 0 && r.height > 0;
-
   }
-
-
 
   function toolPriority(el, kind, pinEl, basePriority) {
-
     if (pinEl && el === pinEl && ANCHOR_KINDS.has(kind)) return 100;
-
     return basePriority;
-
   }
-
-
 
   function collectTools(hostEl, pinEl) {
-
     const tools = [];
-
     const specs = [
-
       { el: hostEl.querySelector(".hw-hc-memo--expanded"), kind: "hc-memo", priority: 4 },
-
       { el: hostEl.querySelector(".hw-mg-popup"), kind: "mg-popup", priority: 3 },
-
     ];
-
     specs.forEach((spec) => {
-
       if (!isVisibleTool(spec.el)) return;
-
       const rect = hostLocalRect(spec.el, hostEl);
-
       if (!rect) return;
-
       tools.push({
-
         el: spec.el,
-
         kind: spec.kind,
-
         priority: toolPriority(spec.el, spec.kind, pinEl, spec.priority),
-
         rect,
-
       });
-
     });
-
-    hostEl.querySelectorAll(".hw-hc-mini").forEach((el) => {
-
+    /* Paired blue+green minis are one tip unit — don't treat each child as its own tip. */
+    hostEl.querySelectorAll(".hw-hc-review-mini-pair").forEach((el) => {
       if (!isVisibleTool(el)) return;
-
       const rect = hostLocalRect(el, hostEl);
-
       if (!rect) return;
-
       tools.push({
-
         el,
-
         kind: "hc-mini",
-
         priority: toolPriority(el, "hc-mini", pinEl, 4),
-
         rect,
-
       });
-
     });
-
-    [
-
-      { el: hostEl.querySelector(".hw-hc-launcher"), kind: "hc-launcher", priority: 1 },
-
-      { el: hostEl.querySelector(".hw-mg-widget"), kind: "mg-lens", priority: 1 },
-
-    ].forEach((spec) => {
-
-      if (!isVisibleTool(spec.el)) return;
-
-      const rect = hostLocalRect(spec.el, hostEl);
-
+    hostEl.querySelectorAll(".hw-hc-mini:not(.hw-hc-mini--in-pair)").forEach((el) => {
+      if (!isVisibleTool(el)) return;
+      if (el.closest(".hw-hc-review-mini-pair")) return;
+      const rect = hostLocalRect(el, hostEl);
       if (!rect) return;
-
       tools.push({
-
-        el: spec.el,
-
-        kind: spec.kind,
-
-        priority: toolPriority(spec.el, spec.kind, pinEl, spec.priority),
-
+        el,
+        kind: "hc-mini",
+        priority: toolPriority(el, "hc-mini", pinEl, 4),
         rect,
-
       });
-
     });
-
+    [
+      { el: hostEl.querySelector(":scope > .hw-hc-launcher"), kind: "hc-launcher", priority: 1 },
+      { el: hostEl.querySelector(":scope > .hw-mg-widget"), kind: "mg-lens", priority: 1 },
+      {
+        el: hostEl.querySelector(":scope > .hw-tools-cleanup"),
+        kind: "tools-cleanup",
+        priority: 5,
+      },
+    ].forEach((spec) => {
+      if (!isVisibleTool(spec.el)) return;
+      const rect = hostLocalRect(spec.el, hostEl);
+      if (!rect) return;
+      tools.push({
+        el: spec.el,
+        kind: spec.kind,
+        priority: toolPriority(spec.el, spec.kind, pinEl, spec.priority),
+        rect,
+      });
+    });
     return tools;
-
   }
-
-
 
   function separationHorizontalOnly(fixed, moving, gap) {
     const ox = Math.min(fixed.right, moving.right) - Math.max(fixed.left, moving.left);
@@ -180,90 +120,63 @@
 
   function isToolRowPair(a, b) {
     const kinds = new Set([a.kind, b.kind]);
-    return kinds.has("mg-lens") && kinds.has("hc-launcher");
+    if (kinds.has("mg-lens") && kinds.has("hc-launcher")) return true;
+    /* Keep cloud/glass clearing the magnet with a sideways nudge in the top tool row. */
+    if (kinds.has("tools-cleanup") && (kinds.has("mg-lens") || kinds.has("hc-launcher"))) {
+      return true;
+    }
+    return false;
   }
 
-  /** Main cloud launcher stays put when note tips open — never auto-nudge it for minis/memos. */
+  /** Tool-row icons stay put when note tips open — never auto-nudge for minis/memos. */
   function isLauncherTipPair(a, b) {
     const kinds = new Set([a.kind, b.kind]);
     return (
-      kinds.has("hc-launcher") && (kinds.has("hc-mini") || kinds.has("hc-memo"))
+      (kinds.has("hc-launcher") || kinds.has("mg-lens")) &&
+      (kinds.has("hc-mini") || kinds.has("hc-memo"))
     );
   }
 
   function separation(fixed, moving, gap) {
-
     const ox = Math.min(fixed.right, moving.right) - Math.max(fixed.left, moving.left);
-
     const oy = Math.min(fixed.bottom, moving.bottom) - Math.max(fixed.top, moving.top);
-
     if (ox <= 0 || oy <= 0) return null;
 
-
-
     const fCx = (fixed.left + fixed.right) / 2;
-
     const fCy = (fixed.top + fixed.bottom) / 2;
-
     const mCx = (moving.left + moving.right) / 2;
-
     const mCy = (moving.top + moving.bottom) / 2;
 
-
-
     if (ox < oy) {
-
       const dir = mCx >= fCx ? 1 : -1;
-
       return { dx: dir * (ox + gap), dy: 0 };
-
     }
-
     const dir = mCy >= fCy ? 1 : -1;
-
     return { dx: 0, dy: dir * (oy + gap) };
-
   }
-
-
 
   function applyMove(kind, dx, dy) {
-
     if (!dx && !dy) return;
-
-    if (!MOVABLE_KINDS.has(kind)) return;
-
     if (kind === "mg-lens") {
-
       global.HwMagnifyingGlass?.offsetLensBy?.(dx, dy);
-
       return;
-
     }
-
     if (kind === "mg-popup") {
-
       global.HwMagnifyingGlass?.offsetPopupBy?.(dx, dy);
-
       return;
-
     }
-
     if (kind === "hc-launcher") {
-
       global.HwHomeworkComments?.offsetLauncherBy?.(dx, dy);
-
     }
-
   }
-
-
 
   /** Pick which tool to nudge when two overlap. Anchors always win over movable tools. */
   function pickMove(fixed, movable, gap) {
-    if (!MOVABLE_KINDS.has(movable.kind)) return null;
+    /* Magnet is fixed — nudge the glass/cloud horizontally when they sit on it. */
+    const canMoveToolRow = isToolRowKind(movable.kind) && fixed.kind === "tools-cleanup";
+    if (!MOVABLE_KINDS.has(movable.kind) && !canMoveToolRow) return null;
     let sep;
-    if (movable.kind === "hc-launcher" || isToolRowPair(fixed, movable)) {
+    if (isToolRowKind(movable.kind) || isToolRowPair(fixed, movable)) {
       sep = separationHorizontalOnly(fixed.rect, movable.rect, gap);
     } else {
       sep = separation(fixed.rect, movable.rect, gap);
@@ -277,11 +190,15 @@
 
     const aAnchor = ANCHOR_KINDS.has(a.kind);
     const bAnchor = ANCHOR_KINDS.has(b.kind);
-    const aMovable = MOVABLE_KINDS.has(a.kind);
-    const bMovable = MOVABLE_KINDS.has(b.kind);
+    const aMovable = MOVABLE_KINDS.has(a.kind) || isToolRowKind(a.kind);
+    const bMovable = MOVABLE_KINDS.has(b.kind) || isToolRowKind(b.kind);
 
     /* Minis/memos are fixed tips — never shove them when a memo opens nearby. */
     if (aAnchor && bAnchor) return null;
+
+    /* Only the magnet should push cloud/glass — other anchors leave them alone. */
+    if (isToolRowKind(a.kind) && bAnchor && b.kind !== "tools-cleanup") return null;
+    if (isToolRowKind(b.kind) && aAnchor && a.kind !== "tools-cleanup") return null;
 
     if (aAnchor && bMovable) return pickMove(a, b, gap);
     if (bAnchor && aMovable) return pickMove(b, a, gap);
@@ -299,17 +216,10 @@
     return null;
   }
 
-
-
   function toolsEnabled() {
-
     const flags = global.HwFeatureFlags;
-
     return flags?.magnifyingGlass?.() === true || flags?.homeworkComments?.() === true;
-
   }
-
-
 
   /** Magnifying glass top-right; cloud launcher top-left (host-local px, snap like lens). */
   function computeNeutralPositions(hostEl) {
@@ -366,8 +276,8 @@
   }
 
   function toolsOverlap(hostEl) {
-    const launcher = hostEl.querySelector(".hw-hc-launcher");
-    const lens = hostEl.querySelector(".hw-mg-widget");
+    const launcher = hostEl.querySelector(":scope > .hw-hc-launcher");
+    const lens = hostEl.querySelector(":scope > .hw-mg-widget");
     if (!launcher || !lens) return false;
     const a = launcher.getBoundingClientRect();
     const b = lens.getBoundingClientRect();
@@ -379,7 +289,8 @@
   function syncNeutralToolRowIfUnset(hostEl) {
     if (!hostEl) return;
     const hasBoth =
-      hostEl.querySelector(".hw-hc-launcher") && hostEl.querySelector(".hw-mg-widget");
+      hostEl.querySelector(":scope > .hw-hc-launcher") &&
+      hostEl.querySelector(":scope > .hw-mg-widget");
     if (!hasBoth) return;
     const overlapping = toolsOverlap(hostEl);
     try {
@@ -401,8 +312,6 @@
       "</span>"
     );
   }
-
-
 
   function animateToolReturnX(el, targetLeft, unit) {
     if (!el) return Promise.resolve();
@@ -450,8 +359,6 @@
     if (cleanupBtn) cleanupBtn.disabled = false;
   }
 
-
-
   function isLexiconLookupHost(hostEl) {
     if (!hostEl) return false;
     return (
@@ -461,46 +368,51 @@
     );
   }
 
-  function ensureCleanupButton(hostEl) {
+  /** Keep magnet under cloud/glass: tools use z-index 66 (drag/armed 70), magnet 62; also earlier DOM. */
+  function placeCleanupUnderTools(hostEl, btn) {
+    if (!hostEl || !btn) return;
+    const firstTool = hostEl.querySelector(
+      ":scope > .hw-hc-launcher, :scope > .hw-mg-widget"
+    );
+    if (firstTool) {
+      if (btn.nextElementSibling !== firstTool) {
+        hostEl.insertBefore(btn, firstTool);
+      }
+      return;
+    }
+    if (btn.parentElement !== hostEl) hostEl.appendChild(btn);
+  }
 
+  function ensureCleanupButton(hostEl) {
     if (!hostEl) return;
 
     const existing = hostEl.querySelector(":scope > .hw-tools-cleanup");
 
     if (!toolsEnabled() || isLexiconLookupHost(hostEl)) {
-
       existing?.remove();
-
       return;
-
     }
 
     if (existing) {
       const magnet = existing.querySelector(".hw-tools-cleanup__magnet");
-      if (!magnet || !magnet.querySelector(".hw-tools-cleanup__bolts")) existing.innerHTML = cleanupButtonIconHtml();
+      if (!magnet || !magnet.querySelector(".hw-tools-cleanup__bolts")) {
+        existing.innerHTML = cleanupButtonIconHtml();
+      }
+      placeCleanupUnderTools(hostEl, existing);
       requestAnimationFrame(() => syncNeutralToolRowIfUnset(hostEl));
       return;
     }
 
     const btn = document.createElement("button");
-
     btn.type = "button";
-
     btn.className = "hw-tools-cleanup";
-
     btn.setAttribute("aria-label", "Reset tool positions");
-
     btn.title = "Reset tool positions";
-
     btn.innerHTML = cleanupButtonIconHtml();
-
     btn.addEventListener("click", () => resetToolPositions(hostEl));
-
-    hostEl.appendChild(btn);
+    placeCleanupUnderTools(hostEl, btn);
     requestAnimationFrame(() => syncNeutralToolRowIfUnset(hostEl));
   }
-
-
 
   function worksheetToolHost(hostOrForm) {
     if (!hostOrForm) return null;
@@ -544,84 +456,44 @@
     });
   }
 
-
-
   function resolve(hostEl, options) {
-
     options = options || {};
-
     if (!hostEl) return;
-
     const pin = options.pin || null;
-
     const gap = typeof options.gap === "number" ? options.gap : GAP;
 
-
-
     for (let pass = 0; pass < MAX_PASSES; pass++) {
-
       const tools = collectTools(hostEl, pin);
-
       if (tools.length < 2) return;
-
-
 
       let moved = false;
 
-
-
       for (let i = 0; i < tools.length; i++) {
-
         for (let j = i + 1; j < tools.length; j++) {
-
           const move = resolvePair(tools[i], tools[j], gap);
-
-          if (!move || !MOVABLE_KINDS.has(move.tool.kind)) continue;
-
-
+          const canApply =
+            move && (MOVABLE_KINDS.has(move.tool.kind) || isToolRowKind(move.tool.kind));
+          if (!canApply) continue;
 
           applyMove(move.tool.kind, move.sep.dx, move.sep.dy);
-
           moved = true;
 
-
-
           const refreshed = hostLocalRect(move.tool.el, hostEl);
-
           if (refreshed) move.tool.rect = refreshed;
-
         }
-
       }
 
-
-
       if (!moved) return;
-
     }
-
   }
 
-
-
   global.HwWorksheetToolLayout = {
-
     resolve,
-
     ensureCleanupButton,
-
     resetToolPositions,
-
     computeNeutralPositions,
-
     beginWorksheetToolBoot,
-
     cancelWorksheetToolBoot,
-
     revealWorksheetTools,
-
   };
-
 })(window);
-
-

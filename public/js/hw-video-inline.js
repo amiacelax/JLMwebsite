@@ -438,6 +438,14 @@
         resetUi();
         return;
       }
+      if (!isAudioMode() && !String(recordedBlob.type || "").startsWith("video/")) {
+        setStatus(
+          "Camera video wasn’t captured — allow the camera and record again (or switch to Audio).",
+          "error"
+        );
+        resetUi();
+        return;
+      }
       if (isAudioMode()) {
         previewObjectUrl = URL.createObjectURL(recordedBlob);
         global.HwWorksheet?.setAudioAnswerReplay?.(mount, previewObjectUrl, {

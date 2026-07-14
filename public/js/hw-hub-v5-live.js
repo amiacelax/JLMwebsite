@@ -141,6 +141,10 @@
   let bubblePointerBound = false;
   let bubbleHovering = false;
   const bubblePointer = { x: 0, y: 0 };
+  /** Note-note slide deck on the reviewed complete card. */
+  let reviewSlideIndex = 0;
+  let reviewSlides = [];
+  let reviewSlideNavBound = false;
 
   function clearBubbleHintTimer() {
     if (bubbleHintTimer) {
@@ -506,6 +510,22 @@
   }
 
   function getSellupMountTarget() {
+    /* After submit/review the empty-shell cards are hidden — always mount
+       sellup on the complete card when that view is active. */
+    const status = getHubStatus();
+    if (
+      !isArchiveMode() &&
+      isCompleteView(status) &&
+      (studentHasActiveAssignment() ||
+        status === "reviewed" ||
+        status === "acknowledged")
+    ) {
+      return {
+        mount: "hw-v5-sellup",
+        caption: "hw-v5-sellup-caption",
+        frame: "hw-v5-sellup-frame",
+      };
+    }
     if (isNoPlanAccount()) {
       return {
         mount: "hw-v5-noplan-sellup",
@@ -836,7 +856,10 @@
 
   function ensureCompleteCard() {
     let card = document.getElementById("hw-v5-complete-card");
-    if (card) return card;
+    if (card) {
+      ensureReviewZoneSlideChrome(card);
+      return card;
+    }
 
     card = document.createElement("section");
     card.className = "hw-hub-v5-complete hw-hub-worksheet-card";
@@ -850,6 +873,7 @@
       '<p class="hw-hub-jd-memo__body hw-hub-v2-feedback__body" id="hw-v2-feedback-body"></p>' +
       "</div></section></div>" +
       '<h2 class="hw-hub-v5-complete__title" id="hw-v5-complete-title">You\'ve finished your assignment!</h2>' +
+      '<div class="hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--complete" id="hw-v5-complete-ping-host" hidden></div>' +
       '<div class="hw-hub-v5-pending" id="hw-v5-pending-note" hidden>' +
       '<p class="hw-hub-v5-pending__line">' +
       '<span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>' +
@@ -863,20 +887,21 @@
       '<p class="hw-hub-v5-pending__sub">JD got your “done reviewing” ping — new homework will show up here when it\u2019s ready.</p>' +
       "</div>" +
       '<section class="hw-hub-v5-review-zone" id="hw-v5-review-zone" hidden aria-labelledby="hw-v5-review-zone-title">' +
-      '<h3 class="hw-hub-v5-review-zone__title" id="hw-v5-review-zone-title">Review your homework</h3>' +
-      '<div class="hw-hub-v5-review-zone__grid">' +
-      '<div class="hw-hub-v5-review-zone__block">' +
-      '<p class="hw-hub-v5-review-zone__label">Your notes</p>' +
-      '<div class="hw-hub-v5-review-zone__content hw-hub-v5-review-zone__content--yours" id="hw-v5-student-review-notes"></div>' +
-      "</div>" +
-      '<div class="hw-hub-v5-review-zone__block">' +
-      '<p class="hw-hub-v5-review-zone__label">JD\u2019s notes</p>' +
-      '<div class="hw-hub-v5-review-zone__content hw-hub-v5-review-zone__content--jd" id="hw-v5-jd-review-notes"></div>' +
+      '<div class="hw-hub-v5-review-slide-head" id="hw-v5-review-slide-head">' +
+      '<div class="hw-hub-v5-review-nav-row" id="hw-v5-review-nav-row">' +
+      '<div class="hw-hub-v5-status-ping-host" id="hw-v5-status-ping-host" aria-hidden="false"></div>' +
+      '<div class="hw-worksheet__slide-nav hw-hub-v5-review-nav" id="hw-v5-review-nav" role="navigation" aria-label="Review note navigation">' +
+      '<button type="button" class="hw-worksheet__slide-btn" id="hw-v5-review-prev" aria-label="Previous note">\u2190</button>' +
+      '<p class="hw-worksheet__slide-counter" id="hw-v5-review-counter" aria-live="polite">1 of 1</p>' +
+      '<button type="button" class="hw-worksheet__slide-btn" id="hw-v5-review-next" aria-label="Next note">\u2192</button>' +
       "</div></div>" +
+      '<h3 class="hw-hub-v5-review-zone__title" id="hw-v5-review-zone-title">Review your homework</h3>' +
+      "</div>" +
+      '<div class="hw-hub-v5-review-slides" id="hw-v5-review-slides"></div>' +
       '<div class="hw-hub-v5-review-zone__actions">' +
       '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn">' +
       "Open reviewed worksheet</button>" +
-      '<p class="hw-hub-v5-review-zone__soon">Blue clouds = your notes. Green = JD\u2019s reply (play audio/video, no editing).</p>' +
+      '<p class="hw-hub-v5-review-zone__soon">Blue = your note. Green / handwritten = JD\u2019s reply.</p>' +
       "</div>" +
       "</section>" +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-sellup-caption" hidden></p>' +
@@ -884,9 +909,68 @@
       '<div class="hw-hub-v5-sellup" id="hw-v5-sellup" aria-label="Upgrade options"></div>' +
       "</div>" +
       '<div class="hw-hub-v5-complete__actions">' +
+      '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn" hidden>' +
+      "Open reviewed worksheet</button>" +
       '<button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">View past assignments</button>' +
       "</div>";
     return card;
+  }
+
+  function ensureReviewZoneSlideChrome(card) {
+    const zone = card?.querySelector?.("#hw-v5-review-zone") || document.getElementById("hw-v5-review-zone");
+    if (!zone) return;
+    if (zone.querySelector("#hw-v5-review-slides")) {
+      if (!document.getElementById("hw-v5-complete-ping-host") && card) {
+        const host = document.createElement("div");
+        host.className = "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--complete";
+        host.id = "hw-v5-complete-ping-host";
+        host.hidden = true;
+        const title = card.querySelector("#hw-v5-complete-title");
+        if (title) title.insertAdjacentElement("afterend", host);
+        else card.prepend(host);
+      }
+      const actions = card.querySelector(".hw-hub-v5-complete__actions");
+      if (actions && !actions.querySelector("#hw-v5-open-reviewed-btn")) {
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "btn btn--primary btn--full";
+        openBtn.id = "hw-v5-open-reviewed-btn";
+        openBtn.hidden = true;
+        openBtn.textContent = "Open reviewed worksheet";
+        actions.prepend(openBtn);
+      }
+      return;
+    }
+    const actions =
+      zone.querySelector(".hw-hub-v5-review-zone__actions")?.outerHTML ||
+      '<div class="hw-hub-v5-review-zone__actions">' +
+        '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn">' +
+        "Open reviewed worksheet</button>" +
+        '<p class="hw-hub-v5-review-zone__soon">Blue = your note. Green / handwritten = JD\u2019s reply.</p>' +
+        "</div>";
+    zone.innerHTML =
+      '<div class="hw-hub-v5-review-slide-head" id="hw-v5-review-slide-head">' +
+      '<div class="hw-hub-v5-review-nav-row" id="hw-v5-review-nav-row">' +
+      '<div class="hw-hub-v5-status-ping-host" id="hw-v5-status-ping-host" aria-hidden="false"></div>' +
+      '<div class="hw-worksheet__slide-nav hw-hub-v5-review-nav" id="hw-v5-review-nav" role="navigation" aria-label="Review note navigation">' +
+      '<button type="button" class="hw-worksheet__slide-btn" id="hw-v5-review-prev" aria-label="Previous note">\u2190</button>' +
+      '<p class="hw-worksheet__slide-counter" id="hw-v5-review-counter" aria-live="polite">1 of 1</p>' +
+      '<button type="button" class="hw-worksheet__slide-btn" id="hw-v5-review-next" aria-label="Next note">\u2192</button>' +
+      "</div></div>" +
+      '<h3 class="hw-hub-v5-review-zone__title" id="hw-v5-review-zone-title">Review your homework</h3>' +
+      "</div>" +
+      '<div class="hw-hub-v5-review-slides" id="hw-v5-review-slides"></div>' +
+      actions;
+    if (!document.getElementById("hw-v5-complete-ping-host") && card) {
+      const host = document.createElement("div");
+      host.className = "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--complete";
+      host.id = "hw-v5-complete-ping-host";
+      host.hidden = true;
+      const title = card.querySelector("#hw-v5-complete-title");
+      if (title) title.insertAdjacentElement("afterend", host);
+      else card.prepend(host);
+    }
+    reviewSlideNavBound = false;
   }
 
   function ensureNoHwEmpty() {
@@ -1077,7 +1161,7 @@
     document.getElementById("hw-v5-status-bubble-hint")?.remove();
   }
 
-  function mountStatusBubble() {
+  function mountStatusBubble(status) {
     const bubble = document.getElementById("hw-v5-status-bubble");
     const hint = document.getElementById("hw-v5-status-bubble-hint");
     if (!bubble || !hint) return;
@@ -1087,24 +1171,55 @@
       "hw-hub-v5-status-bubble--in-nav",
       "hw-hub-v5-status-bubble--in-head",
       "hw-hub-v5-status-bubble--dock",
-      "hw-hub-v5-status-bubble--in-card"
+      "hw-hub-v5-status-bubble--in-card",
+      "hw-hub-v5-status-bubble--in-hub",
+      "hw-hub-v5-status-bubble--hub-signal"
     );
 
+    const archive = isArchiveMode();
     const worksheetCard = document.querySelector(
       "#hw-hub-v4-homework .hw-hub-v2-worksheet"
     );
     const stickyHead = worksheetCard?.querySelector(".hw-worksheet__slide-sticky-head");
-    const host = stickyHead || worksheetCard;
+    const navRow = stickyHead?.querySelector(".hw-worksheet__slide-nav-row");
 
-    if (host) {
-      /* Sit on the past sheet itself (top-right) — same place the status collapsed to. */
-      bubble.classList.add(
-        stickyHead ? "hw-hub-v5-status-bubble--in-head" : "hw-hub-v5-status-bubble--in-card"
-      );
-      if (bubble.parentElement !== host) host.appendChild(bubble);
+    if (archive) {
+      const host = navRow || stickyHead || worksheetCard;
+      if (host) {
+        bubble.classList.add(
+          navRow
+            ? "hw-hub-v5-status-bubble--in-nav"
+            : stickyHead
+              ? "hw-hub-v5-status-bubble--in-head"
+              : "hw-hub-v5-status-bubble--in-card"
+        );
+        if (bubble.parentElement !== host) {
+          if (navRow) host.insertBefore(bubble, host.firstChild);
+          else host.appendChild(bubble);
+        }
+      } else {
+        bubble.classList.add("hw-hub-v5-status-bubble--dock");
+        if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
+      }
     } else {
-      bubble.classList.add("hw-hub-v5-status-bubble--dock");
-      if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
+      /* Hub complete screens: same colored ping as archive, at-a-glance status. */
+      ensureCompleteCard();
+      const reviewHost = document.getElementById("hw-v5-status-ping-host");
+      const completeHost = document.getElementById("hw-v5-complete-ping-host");
+      const reviewed = status === "reviewed";
+      const host = reviewed ? reviewHost || completeHost : completeHost || reviewHost;
+      if (completeHost) completeHost.hidden = reviewed;
+      if (host) {
+        host.hidden = false;
+        bubble.classList.add(
+          "hw-hub-v5-status-bubble--in-hub",
+          "hw-hub-v5-status-bubble--hub-signal"
+        );
+        if (bubble.parentElement !== host) host.appendChild(bubble);
+      } else {
+        bubble.classList.add("hw-hub-v5-status-bubble--dock");
+        if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
+      }
     }
 
     if (hint.parentElement !== document.body) document.body.appendChild(hint);
@@ -1125,7 +1240,7 @@
     bubble.id = "hw-v5-status-bubble";
     bubble.className = "hw-hub-v5-status-bubble";
     bubble.hidden = true;
-    bubble.setAttribute("aria-label", "HW under review. Return to main page");
+    bubble.setAttribute("aria-label", "HW under review");
     bubble.innerHTML =
       '<span class="hw-hub-v5-status-bubble__ring" aria-hidden="true"></span>' +
       '<span class="hw-hub-v5-status-bubble__dot" aria-hidden="true"></span>';
@@ -1133,7 +1248,7 @@
     const hint = document.createElement("p");
     hint.id = "hw-v5-status-bubble-hint";
     hint.className = "hw-hub-v5-status-bubble__hint";
-    hint.textContent = "HW under review. Click to return to mainpage";
+    hint.textContent = "HW under review";
 
     document.body.appendChild(hint);
     document.body.appendChild(bubble);
@@ -1148,7 +1263,8 @@
     bubble.dataset.statusBubbleBound = "1";
     bubble.addEventListener("click", (ev) => {
       ev.preventDefault();
-      exitArchiveMode();
+      /* Hub ping is a status signal; only exit archive when browsing past HW. */
+      if (isArchiveMode()) exitArchiveMode();
     });
     bubble.addEventListener("mouseenter", (ev) => {
       trackBubblePointer(ev);
@@ -1229,20 +1345,26 @@
   }
 
   function renderStatusBubble(status) {
-    /* Archive only: status/CTA card collapses into this floating ping. */
-    if (!isArchiveMode()) {
+    const archive = isArchiveMode();
+    const complete = isCompleteView(status);
+    /* Archive past-sheet view OR hub complete states (submitted/reviewed/acked). */
+    if (!archive && !complete) {
       teardownStatusBubble();
+      const completeHost = document.getElementById("hw-v5-complete-ping-host");
+      if (completeHost) completeHost.hidden = true;
       return;
     }
 
     ensureStatusBubble();
     bindStatusBubble();
-    mountStatusBubble();
-    window.requestAnimationFrame(() => mountStatusBubble());
-    setTimeout(() => mountStatusBubble(), 250);
-    /* Worksheet chrome mounts after the past sheet loads — remount onto it. */
-    setTimeout(() => mountStatusBubble(), 900);
-    setTimeout(() => mountStatusBubble(), 1800);
+    mountStatusBubble(status);
+    window.requestAnimationFrame(() => mountStatusBubble(status));
+    setTimeout(() => mountStatusBubble(status), 250);
+    if (archive) {
+      /* Worksheet chrome mounts after the past sheet loads — remount onto it. */
+      setTimeout(() => mountStatusBubble(status), 900);
+      setTimeout(() => mountStatusBubble(status), 1800);
+    }
 
     const bubble = document.getElementById("hw-v5-status-bubble");
     const hint = document.getElementById("hw-v5-status-bubble-hint");
@@ -1256,21 +1378,41 @@
 
     if (status === "reviewed") {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewed");
-      bubble.setAttribute("aria-label", "JD’s notes are ready. Click to return to mainpage");
-      if (hint) hint.textContent = "JD’s notes are ready. Click to return to mainpage";
+      bubble.setAttribute(
+        "aria-label",
+        archive
+          ? "JD’s notes are ready. Click to return to mainpage"
+          : "Homework reviewed — JD’s notes are ready"
+      );
+      if (hint) {
+        hint.textContent = archive
+          ? "JD’s notes are ready. Click to return to mainpage"
+          : "Homework done — JD’s notes are ready";
+      }
     } else if (status === "acknowledged") {
       bubble.classList.add("hw-hub-v5-status-bubble--acked");
       bubble.setAttribute(
         "aria-label",
-        "Waiting for new homework. Click to return to mainpage"
+        archive
+          ? "Waiting for new homework. Click to return to mainpage"
+          : "Waiting for your next homework"
       );
       if (hint) {
-        hint.textContent = "Waiting for JD to send new homework. Click to return to mainpage";
+        hint.textContent = archive
+          ? "Waiting for JD to send new homework. Click to return to mainpage"
+          : "Waiting for JD to send new homework";
       }
     } else {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
-      bubble.setAttribute("aria-label", "HW under review. Click to return to mainpage");
-      if (hint) hint.textContent = "HW under review. Click to return to mainpage";
+      bubble.setAttribute(
+        "aria-label",
+        archive ? "HW under review. Click to return to mainpage" : "Homework under review"
+      );
+      if (hint) {
+        hint.textContent = archive
+          ? "HW under review. Click to return to mainpage"
+          : "JD is reviewing your homework";
+      }
     }
   }
 
@@ -1547,151 +1689,175 @@
     return [];
   }
 
-  function renderReviewEmpty(container, message) {
-    if (!container) return;
-    container.replaceChildren();
+  function buildReviewSlideUnits(comments) {
+    const list = Array.isArray(comments) ? comments : [];
+    const studentNotes = list.filter((c) => c.author !== "teacher");
+    const teacherNotes = list.filter(
+      (c) => c.author === "teacher" && (c.text || c.teacherRemarkMedia)
+    );
+    const slides = [];
+    studentNotes.forEach((comment) => {
+      slides.push({ kind: "pair", student: comment });
+    });
+    teacherNotes.forEach((comment) => {
+      slides.push({ kind: "jd", teacher: comment });
+    });
+    return slides;
+  }
+
+  function renderReviewEmptySlide(message) {
     const empty = document.createElement("p");
     empty.className = "hw-hub-v5-review-zone__empty";
     empty.textContent = message;
-    container.appendChild(empty);
+    return empty;
   }
 
-  function renderYourReviewNotes(container, comments) {
-    if (!container) return;
-    container.replaceChildren();
-    const yours = comments.filter((c) => c.author !== "teacher");
-    if (!yours.length) {
-      renderReviewEmpty(container, "No cloud memos on this assignment yet.");
+  function appendStudentNoteBlock(parent, comment) {
+    const block = document.createElement("div");
+    block.className = "hw-hub-v5-review-slide__block hw-hub-v5-review-slide__block--yours";
+    const label = document.createElement("p");
+    label.className = "hw-hub-v5-review-zone__label";
+    label.textContent = "Your note";
+    block.appendChild(label);
+    if (comment?.anchor) {
+      const anchor = document.createElement("p");
+      anchor.className = "hw-hub-v5-review-memo__anchor";
+      anchor.textContent = "“" + comment.anchor + "”";
+      block.appendChild(anchor);
+    }
+    const text = document.createElement("p");
+    text.className = "hw-hub-v5-review-memo__text";
+    text.textContent = comment?.text || "(No note text)";
+    block.appendChild(text);
+    parent.appendChild(block);
+  }
+
+  function appendJdRemarkBlock(parent, comment, options) {
+    options = options || {};
+    const block = document.createElement("div");
+    block.className = "hw-hub-v5-review-slide__block hw-hub-v5-review-slide__block--jd";
+    const label = document.createElement("p");
+    label.className = "hw-hub-v5-review-zone__label hw-hub-v5-review-zone__label--jd";
+    label.textContent = options.label || "JD’s reply";
+    block.appendChild(label);
+    if (options.showAnchor && comment?.anchor) {
+      const anchor = document.createElement("p");
+      anchor.className = "hw-hub-v5-review-memo__anchor";
+      anchor.textContent = "“" + comment.anchor + "”";
+      block.appendChild(anchor);
+    }
+
+    const remark = document.createElement("p");
+    remark.className = "hw-hub-v5-review-memo__remark";
+    const teacherRemark =
+      comment?.teacherRemark || (options.standalone ? comment?.text : "");
+    if (teacherRemark) {
+      remark.textContent = teacherRemark;
+    } else if (comment?.teacherRemarkMedia) {
+      remark.classList.add("hw-hub-v5-review-memo__remark--pending");
+      remark.textContent = "JD left an audio/video reply below.";
+    } else {
+      remark.classList.add("hw-hub-v5-review-memo__remark--pending");
+      remark.textContent = "JD hasn’t added a remark here yet.";
+    }
+    block.appendChild(remark);
+
+    if (comment?.teacherRemarkMedia?.id) {
+      const playback = document.createElement("div");
+      playback.className = "hw-hub-v5-review-memo__playback";
+      block.appendChild(playback);
+      global.HwReviewMedia?.renderPlayback?.(playback, comment.teacherRemarkMedia);
+    }
+    parent.appendChild(block);
+  }
+
+  function renderActiveReviewSlide() {
+    const mount = document.getElementById("hw-v5-review-slides");
+    const counter = document.getElementById("hw-v5-review-counter");
+    const prevBtn = document.getElementById("hw-v5-review-prev");
+    const nextBtn = document.getElementById("hw-v5-review-next");
+    if (!mount) return;
+
+    mount.replaceChildren();
+    const total = reviewSlides.length;
+    if (!total) {
+      mount.appendChild(renderReviewEmptySlide("No cloud memos on this assignment yet."));
+      if (counter) counter.textContent = "0 of 0";
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
       return;
     }
 
-    yours.forEach((comment) => {
-      const item = document.createElement("article");
-      item.className = "hw-hub-v5-review-memo";
-      if (comment.anchor) {
-        const anchor = document.createElement("p");
-        anchor.className = "hw-hub-v5-review-memo__anchor";
-        anchor.textContent = "\u201c" + comment.anchor + "\u201d";
-        item.appendChild(anchor);
-      }
-      const text = document.createElement("p");
-      text.className = "hw-hub-v5-review-memo__text";
-      text.textContent = comment.text || "(No note text)";
-      item.appendChild(text);
-      container.appendChild(item);
-    });
-  }
+    if (reviewSlideIndex < 0) reviewSlideIndex = 0;
+    if (reviewSlideIndex >= total) reviewSlideIndex = total - 1;
 
-  function renderJdReviewNotes(container, comments) {
-    if (!container) return;
-    container.replaceChildren();
+    const unit = reviewSlides[reviewSlideIndex];
+    const slide = document.createElement("article");
+    slide.className = "hw-hub-v5-review-slide";
+    slide.setAttribute("data-review-slide", String(reviewSlideIndex + 1));
 
-    const studentNotes = comments.filter((c) => c.author !== "teacher");
-    const teacherNotes = comments.filter((c) => c.author === "teacher" && c.text);
-    const hasAnyRemark =
-      studentNotes.some((c) => c.teacherRemark || c.teacherRemarkMedia) || teacherNotes.length > 0;
-
-    if (!studentNotes.length && !teacherNotes.length) {
-      renderReviewEmpty(container, "JD\u2019s remarks will appear here after review.");
-      return;
+    if (unit.kind === "pair") {
+      appendStudentNoteBlock(slide, unit.student);
+      appendJdRemarkBlock(slide, unit.student);
+    } else {
+      appendJdRemarkBlock(slide, unit.teacher, {
+        standalone: true,
+        showAnchor: true,
+        label:
+          typeof unit.teacher?.slideIndex === "number"
+            ? "JD note · Q" + (unit.teacher.slideIndex + 1)
+            : "JD’s note",
+      });
     }
 
-    studentNotes.forEach((comment, index) => {
-      const item = document.createElement("article");
-      item.className = "hw-hub-v5-review-memo hw-hub-v5-review-memo--jd";
-      if (comment.anchor) {
-        const anchor = document.createElement("p");
-        anchor.className = "hw-hub-v5-review-memo__anchor";
-        anchor.textContent = "\u201c" + comment.anchor + "\u201d";
-        item.appendChild(anchor);
-      }
+    mount.appendChild(slide);
+    if (counter) counter.textContent = reviewSlideIndex + 1 + " of " + total;
+    if (prevBtn) prevBtn.disabled = reviewSlideIndex <= 0;
+    if (nextBtn) nextBtn.disabled = reviewSlideIndex >= total - 1;
+  }
 
-      const memoLabel = document.createElement("p");
-      memoLabel.className = "hw-hub-v5-review-memo__subhead";
-      memoLabel.textContent = "Cloud memo";
-      item.appendChild(memoLabel);
-
-      const memoText = document.createElement("p");
-      memoText.className = "hw-hub-v5-review-memo__text";
-      memoText.textContent = comment.text || "(No note text)";
-      item.appendChild(memoText);
-
-      const remarkLabel = document.createElement("p");
-      remarkLabel.className = "hw-hub-v5-review-memo__subhead hw-hub-v5-review-memo__subhead--jd";
-      remarkLabel.textContent = "JD\u2019s remark";
-      item.appendChild(remarkLabel);
-
-      const remark = document.createElement("p");
-      remark.className = "hw-hub-v5-review-memo__remark";
-      const teacherRemark = comment.teacherRemark;
-      if (teacherRemark) {
-        remark.textContent = teacherRemark;
-      } else if (!comment.teacherRemarkMedia) {
-        if (shouldUseDemoReviewData() && index === 1 && !hasAnyRemark) {
-          remark.textContent = MOCK_FEEDBACK;
-        } else {
-          remark.classList.add("hw-hub-v5-review-memo__remark--pending");
-          remark.textContent = "JD hasn\u2019t added a remark here yet.";
-        }
-      } else {
-        remark.classList.add("hw-hub-v5-review-memo__remark--pending");
-        remark.textContent = "JD left an audio/video reply below.";
-      }
-      item.appendChild(remark);
-
-      if (comment.teacherRemarkMedia?.id) {
-        const playback = document.createElement("div");
-        playback.className = "hw-hub-v5-review-memo__playback";
-        item.appendChild(playback);
-        global.HwReviewMedia?.renderPlayback?.(playback, comment.teacherRemarkMedia);
-      }
-
-      container.appendChild(item);
+  function bindReviewSlideNav() {
+    if (reviewSlideNavBound) return;
+    const prevBtn = document.getElementById("hw-v5-review-prev");
+    const nextBtn = document.getElementById("hw-v5-review-next");
+    if (!prevBtn || !nextBtn) return;
+    reviewSlideNavBound = true;
+    prevBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      if (reviewSlideIndex <= 0) return;
+      reviewSlideIndex -= 1;
+      renderActiveReviewSlide();
     });
-
-    teacherNotes.forEach((comment) => {
-      const item = document.createElement("article");
-      item.className = "hw-hub-v5-review-memo hw-hub-v5-review-memo--jd";
-      const head = document.createElement("p");
-      head.className = "hw-hub-v5-review-memo__subhead hw-hub-v5-review-memo__subhead--jd";
-      head.textContent =
-        typeof comment.slideIndex === "number"
-          ? "JD note · question " + (comment.slideIndex + 1)
-          : "JD note on a question";
-      item.appendChild(head);
-      const text = document.createElement("p");
-      text.className = "hw-hub-v5-review-memo__remark";
-      text.textContent = comment.text;
-      item.appendChild(text);
-      if (comment.teacherRemarkMedia?.id) {
-        const playback = document.createElement("div");
-        playback.className = "hw-hub-v5-review-memo__playback";
-        item.appendChild(playback);
-        global.HwReviewMedia?.renderPlayback?.(playback, comment.teacherRemarkMedia);
-      }
-      container.appendChild(item);
+    nextBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      if (reviewSlideIndex >= reviewSlides.length - 1) return;
+      reviewSlideIndex += 1;
+      renderActiveReviewSlide();
     });
   }
 
   async function populateReviewZone() {
-    const yours = document.getElementById("hw-v5-student-review-notes");
-    const jd = document.getElementById("hw-v5-jd-review-notes");
-    if (!yours || !jd) return;
+    ensureCompleteCard();
+    bindReviewSlideNav();
+    const mount = document.getElementById("hw-v5-review-slides");
+    if (!mount) return;
 
     const gen = ++reviewCommentsGen;
-    yours.replaceChildren();
-    jd.replaceChildren();
-    const loading = document.createElement("p");
-    loading.className = "hw-hub-v5-review-zone__empty";
-    loading.textContent = "Loading cloud memos\u2026";
-    yours.appendChild(loading.cloneNode(true));
-    jd.appendChild(loading);
+    reviewSlides = [];
+    reviewSlideIndex = 0;
+    mount.replaceChildren();
+    mount.appendChild(renderReviewEmptySlide("Loading notes…"));
+    renderActiveReviewSlide();
 
     const comments = await fetchReviewComments();
     if (gen !== reviewCommentsGen) return;
 
-    renderYourReviewNotes(yours, comments);
-    renderJdReviewNotes(jd, comments);
+    reviewSlides = buildReviewSlideUnits(comments);
+    if (!reviewSlides.length && shouldUseDemoReviewData()) {
+      reviewSlides = buildReviewSlideUnits(MOCK_CLOUD_MEMOS);
+    }
+    reviewSlideIndex = 0;
+    renderActiveReviewSlide();
   }
 
   function renderFeedback(status) {
@@ -1699,29 +1865,29 @@
     const feedback = document.getElementById("hw-v2-feedback");
     const body = document.getElementById("hw-v2-feedback-body");
     const reviewZone = document.getElementById("hw-v5-review-zone");
-    const show =
-      status === "reviewed" && !isNoPlanAccount() && !isStudentNoHwAccount();
+    const openReviewedBtn = document.getElementById("hw-v5-open-reviewed-btn");
+    /* Hub entry only — the reviewed worksheet itself (all HW slides + notes)
+       is opened like the teacher review view. */
+    const show = status === "reviewed" && !isArchiveMode();
 
     if (banner) banner.hidden = !show;
     if (feedback) feedback.hidden = !show;
-    if (reviewZone) reviewZone.hidden = !show;
+    /* Do not use the old note-note slide deck — notes live on the worksheet. */
+    if (reviewZone) reviewZone.hidden = true;
+    if (openReviewedBtn) {
+      openReviewedBtn.hidden = !show;
+      openReviewedBtn.textContent = "Open reviewed worksheet";
+    }
 
     if (body && show) {
       body.textContent =
         jdReviewGreeting(getStudentDisplayName()) +
-        " Open the worksheet below (or use the button) to see your notes with JD’s replies.";
+        " Open your worksheet to see the same slides as me — every question, with my notes on yours.";
     }
 
-    if (show) {
-      void populateReviewZone();
-    } else {
-      reviewCommentsGen += 1;
-      renderYourReviewNotes(
-        document.getElementById("hw-v5-student-review-notes"),
-        []
-      );
-      renderJdReviewNotes(document.getElementById("hw-v5-jd-review-notes"), []);
-    }
+    reviewCommentsGen += 1;
+    reviewSlides = [];
+    reviewSlideIndex = 0;
   }
 
   function renderNoPlanWelcome(show) {
@@ -1819,15 +1985,25 @@
     }
 
     /* Only show empty/upsell shells when there is no live worksheet.
-       Assigned homework always wins over account-type messaging. */
-    const showNoPlan = isNoPlanAccount() && !hasAssignment;
-    const showNoHw = isStudentNoHwAccount() && !showNoPlan && !hasAssignment;
+       Assigned homework always wins over account-type messaging.
+       Reviewed/submitted complete views must not fall into student_special empty. */
+    const showNoPlan = isNoPlanAccount() && !hasAssignment && !isCompleteView(status);
+    const showNoHw =
+      isStudentNoHwAccount() &&
+      !showNoPlan &&
+      !hasAssignment &&
+      !isCompleteView(status);
     const archive = isArchiveMode();
     const showComplete =
-      !archive && isCompleteView(status) && hasAssignment && !showNoPlan && !showNoHw;
+      !archive &&
+      isCompleteView(status) &&
+      (hasAssignment || status === "reviewed" || status === "acknowledged") &&
+      !showNoPlan &&
+      !showNoHw;
     const ultraPractice = isUltraTier();
 
     document.body.classList.toggle("hw-hub-v5-archive-mode", archive);
+    document.body.classList.toggle("hw-hub-v5-complete-view", showComplete);
 
     if (worksheetSection) {
       worksheetSection.hidden = archive

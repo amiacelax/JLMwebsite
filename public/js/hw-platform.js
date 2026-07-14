@@ -3506,8 +3506,20 @@
           submissionId: latestSub.id,
           assignmentId: active.id,
         });
-        /* Stay on hub status card (review zone + ping). Student opens the sheet
-           via “Open reviewed worksheet” — don’t auto-enter archive mode. */
+        /* Same surface as teacher review: full HW slides + blue/green notes. */
+        const subHash = "hw-submission-" + latestSub.id;
+        if ((window.location.hash || "").replace(/^#/, "") !== subHash) {
+          history.replaceState(
+            null,
+            "",
+            window.location.pathname + window.location.search + "#" + subHash
+          );
+        }
+        const submissionOk = await loadSubmissionView(latestSub.id, loadGen, isStale);
+        if (submissionOk) {
+          finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"));
+          return;
+        }
         mount.innerHTML = "";
         studentMountedAssignmentId = null;
         hubV4WorksheetForm = null;

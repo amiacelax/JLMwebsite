@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20";
+    link.href = "/css/hw-homework-comments.css?v=20260796";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -279,9 +279,14 @@
   function autosizeReviewMemoInput(input) {
     if (!input) return;
     const resize = () => {
-      input.style.height = "0";
-      const next = Math.ceil(input.scrollHeight);
-      input.style.height = (next > 0 ? next : 0) + "px";
+      input.style.setProperty("min-height", "0", "important");
+      input.style.setProperty("height", "0", "important");
+      const line = Math.ceil(parseFloat(getComputedStyle(input).lineHeight) || 20);
+      const padY =
+        (parseFloat(getComputedStyle(input).paddingTop) || 0) +
+        (parseFloat(getComputedStyle(input).paddingBottom) || 0);
+      const next = Math.max(input.scrollHeight, line + padY);
+      input.style.setProperty("height", next + "px", "important");
     };
     resize();
     requestAnimationFrame(resize);
@@ -2036,6 +2041,7 @@
       target.closest(".hw-audio-chrome") ||
       target.closest(".hw-video-chrome") ||
       target.closest(".hw-listen-card") ||
+      target.closest(".hw-review-media") ||
       target.closest("video") ||
       target.closest("audio")
     );
@@ -2043,7 +2049,8 @@
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
     if ((config?.readOnly && !isPairReviewMode()) || ev.button !== 0) return;
-    if (isMemoDragExcludedTarget(ev.target)) return;
+    /* Mini tips are <button>s — memo exclusion would block all mini drag. */
+    if (mode !== "mini" && isMemoDragExcludedTarget(ev.target)) return;
 
     ev.stopPropagation();
 
@@ -2379,12 +2386,14 @@
         launcherDrag.originY + (ev.clientY - launcherDrag.startY)
       );
       applyLauncherPosition();
+      resolveToolLayout(launcherEl);
     });
     launcherEl.addEventListener("pointerup", (ev) => {
       if (!launcherDrag || launcherDrag.pointerId !== ev.pointerId) return;
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
         saveLauncherPosition();
+        resolveToolLayout(launcherEl);
       } else if (!config?.readOnly && !config?.teacherReview) {
         setArmed(!armed);
       }
@@ -2398,6 +2407,7 @@
       launcherEl.classList.remove("is-dragging");
       if (launcherDrag.moved) {
         saveLauncherPosition();
+        resolveToolLayout(launcherEl);
       }
       launcherDrag = null;
     });
@@ -2484,9 +2494,12 @@
     return btn;
   }
 
-  /** Blue + green minis as one unit at the student's saved position. */
+  /** Blue + green minis as one side-by-side unit at the student's saved tip. */
   function renderReviewMiniPair(comment) {
     if (!reviewStudentMinimizedIds.has(comment.id) || !comment.anchorRect) return null;
+    /* Minimized pair means both memos are closed — keep open-ids consistent. */
+    teacherReplyOpenIds.delete(comment.id);
+
     const wrap = document.createElement("div");
     wrap.className = "hw-hc-review-mini-pair";
     wrap.dataset.id = comment.id;
@@ -2498,11 +2511,11 @@
       wrap.appendChild(studentMini);
     }
 
-    if (hasTeacherReply(comment) && !isTeacherReplyOpen(comment)) {
+    if (hasTeacherReply(comment)) {
       const jdMini = document.createElement("button");
       jdMini.type = "button";
       jdMini.className =
-        "hw-hc-mini hw-hc-mini--teacher hw-hc-mini--has-remark hw-hc-mini--jd-reply hw-hc-mini--in-pair hw-hc-mini--jd-pair-offset";
+        "hw-hc-mini hw-hc-mini--teacher hw-hc-mini--has-remark hw-hc-mini--jd-reply hw-hc-mini--in-pair";
       jdMini.dataset.id = comment.id;
       jdMini.dataset.reviewMini = "teacher";
       jdMini.setAttribute("aria-label", "Expand JD reply on “" + (comment.anchor || "worksheet") + "”");
@@ -2549,7 +2562,12 @@
       if (Date.now() < suppressMiniClickUntil) return;
       expandComment(comment.id);
     });
-    if (!config?.readOnly || isPairReviewMode()) bindCloudDrag(btn, comment.id, "mini");
+    /* Standalone tips (incl. teacher/JD green) are free-draggable; paired review minis use renderReviewMiniPair. */
+    if (!config?.readOnly || isPairReviewMode()) {
+      btn.classList.add("hw-hc-mini--draggable");
+      btn.title = "Drag to move";
+      bindCloudDrag(btn, comment.id, "mini");
+    }
     return btn;
   }
 
@@ -2601,8 +2619,11 @@
 
     {
       const input = document.createElement("textarea");
-      input.className = "hw-hc-memo__input";
-      input.rows = isTeacherNote ? 5 : 3;
+      /* Always hug text for JD green notes — never leave a tall white slab */
+      const reviewAuto = isTeacherNote;
+      input.className =
+        "hw-hc-memo__input" + (reviewAuto ? " hw-hc-memo__input--review-auto" : "");
+      input.rows = reviewAuto ? 1 : 3;
       input.maxLength = isTeacherNote ? 2000 : 500;
       input.placeholder = isTeacherNote
         ? "Write a note on this question for the student…"
@@ -2614,9 +2635,11 @@
       if (!input.readOnly) {
         input.addEventListener("input", () => {
           updateCommentText(comment.id, input.value);
+          if (reviewAuto) autosizeReviewMemoInput(input);
         });
       }
       body.appendChild(input);
+      if (reviewAuto) autosizeReviewMemoInput(input);
 
       if (config?.teacherReview && isTeacherNote) {
         appendTeacherRemarkRecorder(body, comment);
@@ -2786,11 +2809,14 @@
 
       launcherEl.addEventListener("click", onLauncherClick);
       bindLauncherDrag();
-      shellEl.append(launcherEl);
     }
 
     hostEl.appendChild(shellEl);
+    /* Same stacking parent as magnet / glass — not inside the note shell. */
+    if (launcherEl) hostEl.appendChild(launcherEl);
     global.HwWorksheetToolLayout?.ensureCleanupButton?.(hostEl);
+    /* Magnet stays under tools (z-index + DOM order); keep launcher after magnet. */
+    if (launcherEl) hostEl.appendChild(launcherEl);
 
     hostEl.addEventListener("mouseup", onHostMouseUp);
     bindTouchSelection();
@@ -2826,6 +2852,7 @@
         "hw-hc-student-reviewed"
       );
       hostEl.querySelector(":scope > .hw-hc-shell")?.remove();
+      hostEl.querySelector(":scope > .hw-hc-launcher")?.remove();
       hostEl.querySelector(":scope > .hw-hc-teacher-bar")?.remove();
       hostEl.querySelector(":scope > .hw-hc-student-ack-bar")?.remove();
     }

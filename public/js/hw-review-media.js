@@ -152,14 +152,21 @@
       '<button type="button" class="btn btn--ghost btn--sm hw-review-media__record">Record reply</button>' +
       "</div>" +
       '<div class="hw-review-media__live" hidden>' +
+      '<div class="hw-review-media__live-viewport" hidden>' +
+      '<video class="hw-review-media__live-video" playsinline muted autoplay aria-hidden="true"></video>' +
+      "</div>" +
+      '<div class="hw-review-media__live-bar">' +
       '<p class="hw-review-media__live-label">Recording… <span class="hw-review-media__timer">0:00</span></p>' +
       '<button type="button" class="btn btn--primary btn--sm hw-review-media__stop">Stop</button>' +
+      "</div>" +
       "</div>" +
       '<div class="hw-review-media__preview" hidden></div>' +
       '<p class="hw-review-media__status" role="status" aria-live="polite"></p>';
 
     const idleEl = mount.querySelector(".hw-review-media__idle");
     const liveEl = mount.querySelector(".hw-review-media__live");
+    const liveViewportEl = mount.querySelector(".hw-review-media__live-viewport");
+    const liveVideo = mount.querySelector(".hw-review-media__live-video");
     const previewEl = mount.querySelector(".hw-review-media__preview");
     const statusEl = mount.querySelector(".hw-review-media__status");
     const timerEl = mount.querySelector(".hw-review-media__timer");
@@ -192,6 +199,8 @@
     }
 
     function stopStream() {
+      if (liveVideo) liveVideo.srcObject = null;
+      if (liveViewportEl) liveViewportEl.hidden = true;
       if (mediaStream) {
         mediaStream.getTracks().forEach((t) => t.stop());
         mediaStream = null;
@@ -219,6 +228,7 @@
       stopStream();
       stopTimer();
       mediaRecorder = null;
+      mount.classList.remove("hw-review-media--live-video");
       if (idleEl) idleEl.hidden = false;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = true;
@@ -230,6 +240,8 @@
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = false;
       if (previewEl) previewEl.hidden = true;
+      if (liveViewportEl) liveViewportEl.hidden = mode !== "video";
+      mount.classList.toggle("hw-review-media--live-video", mode === "video");
       syncToolbarState();
     }
 
@@ -237,6 +249,7 @@
       state = "preview";
       stopStream();
       stopTimer();
+      mount.classList.remove("hw-review-media--live-video");
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
@@ -247,6 +260,7 @@
       state = "saved";
       stopStream();
       stopTimer();
+      mount.classList.remove("hw-review-media--live-video");
       if (idleEl) idleEl.hidden = true;
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
@@ -471,6 +485,14 @@
 
         try {
           mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (mode === "video" && liveVideo) {
+            liveVideo.srcObject = mediaStream;
+            try {
+              await liveVideo.play();
+            } catch (_) {
+              /* autoplay may be blocked; stream still records */
+            }
+          }
           recordedMimeType = mode === "audio" ? pickAudioMime() || "audio/webm" : pickVideoMime() || "video/webm";
           try {
             mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });

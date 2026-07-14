@@ -6408,6 +6408,16 @@ body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
   margin: 0;
 }
 
+.hw-video-audio-reply-note {
+  margin: 0.35rem auto 0.4rem;
+  max-width: 28rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 .hw-video-replay-slot {
   display: block;
   width: 100%;

@@ -74,7 +74,7 @@
 .hw-hub-v5-review-zone {
   max-width: 40rem;
   margin: 0 auto 1.35rem;
-  padding: 1rem 1.1rem 0.9rem;
+  padding: 0.85rem 1.1rem 0.9rem;
   text-align: left;
   border-radius: var(--radius-lg);
   border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
@@ -85,8 +85,66 @@
   display: none !important;
 }
 
-.hw-hub-v5-review-zone__title {
+.hw-hub-v5-review-slide-head {
+  margin: 0 0 0.85rem;
+}
+
+.hw-hub-v5-review-nav-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  margin: 0 0 0.55rem;
+}
+
+.hw-hub-v5-review-nav-row .hw-hub-v5-status-ping-host {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: center;
+  z-index: 3;
+  width: 2.35rem;
+  height: 2.35rem;
+}
+
+.hw-hub-v5-review-nav {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 2;
+  justify-self: center;
+  width: 100%;
+  max-width: 100%;
+  pointer-events: none;
+}
+
+.hw-hub-v5-review-nav .hw-worksheet__slide-btn,
+.hw-hub-v5-review-nav .hw-worksheet__slide-counter {
+  pointer-events: auto;
+}
+
+.hw-hub-v5-status-ping-host--complete {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 2.5rem;
   margin: 0 0 0.75rem;
+}
+
+.hw-hub-v5-status-ping-host--complete[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-status-bubble--in-hub,
+.hw-hub-v5-status-bubble--hub-signal {
+  position: relative;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  transform: none;
+}
+
+.hw-hub-v5-review-zone__title {
+  margin: 0;
   font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
   font-size: 1rem;
   font-weight: 600;
@@ -95,23 +153,28 @@
   text-align: center;
 }
 
-.hw-hub-v5-review-zone__grid {
+.hw-hub-v5-review-slides {
+  min-height: 9rem;
+}
+
+.hw-hub-v5-review-slide {
   display: grid;
   gap: 0.75rem;
 }
 
-@media (min-width: 640px) {
-  .hw-hub-v5-review-zone__grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-}
-
-.hw-hub-v5-review-zone__block {
+.hw-hub-v5-review-slide__block {
   padding: 0.75rem 0.85rem;
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   background: color-mix(in srgb, var(--color-bg) 40%, transparent);
+}
+
+.hw-hub-v5-review-slide__block--yours {
+  border-color: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 40%, transparent);
+}
+
+.hw-hub-v5-review-slide__block--jd {
+  border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 42%, transparent);
 }
 
 .hw-hub-v5-review-zone__label {
@@ -122,6 +185,10 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+.hw-hub-v5-review-zone__label--jd {
+  color: color-mix(in srgb, var(--color-green) 70%, var(--color-text-muted));
 }
 
 .hw-hub-v5-review-zone__content {
@@ -601,36 +668,43 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   .hw-worksheet__slide-sticky-head .hw-hub-v5-status-bubble--in-head {
     position: absolute !important;
     top: 0.55rem;
-    right: 0.65rem;
-    left: auto;
+    left: 0.65rem;
+    right: auto;
     z-index: 30;
     width: 2.85rem;
     height: 2.85rem;
     transform: none;
   }
+}
 
-  .hw-worksheet__slide-nav-row .hw-hub-v5-status-bubble--in-head {
-    grid-column: auto;
-    grid-row: auto;
-    justify-self: auto;
-    align-self: auto;
-  }
+.hw-worksheet__slide-nav-row .hw-hub-v5-status-bubble--in-nav {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: center;
+  z-index: 3;
+  position: relative;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  transform: none;
+}
 
-  .hw-worksheet__slide-nav-row .hw-worksheet__slide-nav {
-    z-index: 2;
-    pointer-events: none;
-  }
+.hw-worksheet__slide-nav-row .hw-worksheet__slide-nav {
+  z-index: 2;
+  pointer-events: none;
+}
 
-  .hw-worksheet__slide-nav-row .hw-worksheet__slide-nav .hw-worksheet__slide-btn,
-  .hw-worksheet__slide-nav-row .hw-worksheet__slide-nav .hw-worksheet__slide-counter {
-    pointer-events: auto;
-  }
+.hw-worksheet__slide-nav-row .hw-worksheet__slide-nav .hw-worksheet__slide-btn,
+.hw-worksheet__slide-nav-row .hw-worksheet__slide-nav .hw-worksheet__slide-counter {
+  pointer-events: auto;
 }
 
 .hw-hub-v5-status-bubble--in-card {
   position: absolute !important;
   top: 0.65rem;
-  right: 0.65rem;
+  left: 0.65rem;
+  right: auto;
   z-index: 30;
   width: 2.85rem;
   height: 2.85rem;
@@ -1287,11 +1361,11 @@ body.hw-hub-v5-noplan-view #hw-v5-review-zone {
   display: none !important;
 }
 
-body.hw-hub-v5-no-hw-view #hw-student-past-fold,
-body.hw-hub-v5-no-hw-view #hw-v5-complete-card,
-body.hw-hub-v5-no-hw-view #hw-v2-feedback,
-body.hw-hub-v5-no-hw-view #hw-v5-reviewed-banner,
-body.hw-hub-v5-no-hw-view #hw-v5-review-zone {
+body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-student-past-fold,
+body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-complete-card,
+body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v2-feedback,
+body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-reviewed-banner,
+body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-review-zone {
   display: none !important;
 }
 

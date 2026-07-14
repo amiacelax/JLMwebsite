@@ -38,14 +38,52 @@
     }
   }
 
-  /** Metadata duration, else buffered end / playback estimate (WebM blobs often lack duration). */
+  /** Metadata duration, else buffered end (never invent from currentTime while playing). */
   function effectiveDurationSeconds(audio, estimate) {
     const known = Number(audio.duration);
     if (Number.isFinite(known) && known > 0) return known;
     const buffered = bufferedEndSeconds(audio);
-    const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-    const est = Math.max(estimate || 0, buffered, cur > 0 ? cur + 2 : 0);
+    const est = Math.max(estimate || 0, buffered);
     return est > 0 ? est : 0;
+  }
+
+  /**
+   * WebM/MediaRecorder blobs often lack duration until we force a seek to the end.
+   * @returns {Promise<number>}
+   */
+  function probeMediaDuration(media) {
+    return new Promise((resolve) => {
+      if (hasKnownDuration(media)) {
+        resolve(Number(media.duration));
+        return;
+      }
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        media.removeEventListener("seeked", onSeeked);
+        media.removeEventListener("error", onFail);
+        resolve(Number.isFinite(value) && value > 0 ? value : 0);
+      };
+      const onFail = () => finish(0);
+      const onSeeked = () => {
+        const probed = Number(media.currentTime);
+        try {
+          media.currentTime = 0;
+        } catch {
+          /* ignore */
+        }
+        finish(probed);
+      };
+      media.addEventListener("seeked", onSeeked);
+      media.addEventListener("error", onFail);
+      try {
+        media.currentTime = 1e101;
+      } catch {
+        onFail();
+      }
+      setTimeout(() => finish(bufferedEndSeconds(media)), 1200);
+    });
   }
 
   function durationCentisecondsFromSeconds(seconds) {
@@ -258,11 +296,14 @@
     let pipArrowDoc = null;
 
     function refreshDurationEstimate() {
-      const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
       const buffered = bufferedEndSeconds(audio);
-      durationEstimate = Math.max(durationEstimate, buffered, cur > 0 ? cur + 2 : 0);
+      durationEstimate = Math.max(durationEstimate, buffered);
       if (hasKnownDuration(audio)) {
         durationEstimate = Math.max(durationEstimate, audio.duration);
+      }
+      if (audio.ended) {
+        const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+        if (cur > 0) durationEstimate = Math.max(durationEstimate, cur);
       }
     }
 
@@ -536,6 +577,13 @@
       if (audio.paused || audio.ended) syncTime();
     });
 
+    void probeMediaDuration(audio).then((probed) => {
+      if (probed > durationEstimate) {
+        durationEstimate = probed;
+        syncTime();
+      }
+    });
+
     seek.addEventListener("input", () => {
       applySeekCentiseconds(Number(seek.value));
     });
@@ -594,5 +642,5 @@
     });
   }
 
-  global.HwAudioPlayer = { mount, enhanceExisting, formatTime };
+  global.HwAudioPlayer = { mount, enhanceExisting, formatTime, probeMediaDuration };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -41,22 +41,37 @@
 
 .hw-mg-widget {
   position: absolute;
-  z-index: 63;
+  /* Above magnet (62); leave room under dragging/armed (70). */
+  z-index: 66 !important;
   display: flex;
   flex-direction: column;
   align-items: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  animation: hw-mg-float 3.6s ease-in-out infinite;
+}
+
+/* Match magnet selector specificity so paint order cannot lose to .hw-tools-cleanup. */
+.hw-mg-host > .hw-mg-widget,
+.hw-hc-host > .hw-mg-widget,
+.hw-hub-v2-worksheet > .hw-mg-widget {
+  z-index: 66 !important;
+}
+
+.hw-mg-host > .hw-hc-launcher,
+.hw-hc-host > .hw-hc-launcher,
+.hw-hub-v2-worksheet > .hw-hc-launcher {
+  z-index: 66 !important;
+}
+
+.hw-mg-widget.is-dragging,
+.hw-mg-widget.is-armed,
+.hw-hc-launcher.is-dragging,
+.hw-hc-launcher.is-armed {
+  z-index: 70 !important;
 }
 
 .hw-mg-widget > .hw-mg-lens {
   position: relative;
-}
-
-.hw-mg-widget.is-dragging,
-.hw-mg-widget.is-armed {
-  animation: none;
 }
 
 .hw-mg-lens {
@@ -126,6 +141,14 @@
   width: 2.35rem;
   height: 2.7rem;
   pointer-events: auto;
+  animation: hw-mg-float 3.6s ease-in-out infinite;
+}
+
+.hw-mg-widget.is-dragging .hw-mg-lens__icon,
+.hw-mg-widget.is-armed .hw-mg-lens__icon,
+.hw-mg-lens.is-dragging .hw-mg-lens__icon,
+.hw-mg-lens.is-armed .hw-mg-lens__icon {
+  animation: none;
 }
 
 .hw-mg-lens__label {
@@ -237,10 +260,10 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 @keyframes hw-mg-float {
   0%,
   100% {
-    transform: translate(-50%, -50%) translateY(0);
+    transform: translateY(0);
   }
   50% {
-    transform: translate(-50%, -50%) translateY(-4px);
+    transform: translateY(-4px);
   }
 }
 
@@ -324,7 +347,7 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hw-mg-widget,
+  .hw-mg-lens__icon,
   .hw-mg-lens,
   .hw-mg-lens::before {
     animation: none !important;
@@ -740,7 +763,8 @@ body.hw-mg-onboarding-active .hw-mg-lens {
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
-  z-index: 64;
+  /* Floor under cloud/glass (66) and dragging/armed (70). Never share their z. */
+  z-index: 62 !important;
   width: 3.5rem;
   height: 3.5rem;
   margin: 0;
@@ -880,9 +904,13 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 
 /* Hide worksheet tools until mount + layout are finished (no staggered pop-in). */
 body.hw-worksheet-tools-booting .hw-hub-v2-worksheet > .hw-tools-cleanup,
+body.hw-worksheet-tools-booting .hw-hub-v2-worksheet > .hw-hc-launcher,
+body.hw-worksheet-tools-booting .hw-hub-v2-worksheet > .hw-mg-widget,
 body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-hc-shell,
 body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-mg-shell,
 .hw-hub-v2-worksheet.hw-worksheet-tools-booting > .hw-tools-cleanup,
+.hw-hub-v2-worksheet.hw-worksheet-tools-booting > .hw-hc-launcher,
+.hw-hub-v2-worksheet.hw-worksheet-tools-booting > .hw-mg-widget,
 .hw-hub-v2-worksheet.hw-worksheet-tools-booting .hw-hc-shell,
 .hw-hub-v2-worksheet.hw-worksheet-tools-booting .hw-mg-shell {
   visibility: hidden !important;
@@ -891,6 +919,8 @@ body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-mg-shell,
 }
 
 .hw-hub-v2-worksheet.hw-worksheet-tools-ready > .hw-tools-cleanup,
+.hw-hub-v2-worksheet.hw-worksheet-tools-ready > .hw-hc-launcher,
+.hw-hub-v2-worksheet.hw-worksheet-tools-ready > .hw-mg-widget,
 .hw-hub-v2-worksheet.hw-worksheet-tools-ready .hw-hc-shell,
 .hw-hub-v2-worksheet.hw-worksheet-tools-ready .hw-mg-shell {
   visibility: visible;
