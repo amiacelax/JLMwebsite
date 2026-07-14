@@ -2249,6 +2249,8 @@
       }
     });
 
+    form._hwGoToSlide = goTo;
+
     applySlideView();
     notifySlideChange();
   }
@@ -2256,6 +2258,12 @@
   function getSlideIndex(form) {
     if (!form || typeof form._hwSlideIndex !== "number") return 0;
     return form._hwSlideIndex;
+  }
+
+  function setSlideIndex(form, index) {
+    if (!form || typeof form._hwGoToSlide !== "function") return false;
+    form._hwGoToSlide(Number(index) || 0);
+    return true;
   }
 
   /**
@@ -2908,6 +2916,7 @@
     isWorksheetComplete,
     updateSubmitButtonState,
     getSlideIndex,
+    setSlideIndex,
     hasMeaningfulStudentAnswer,
     enableSeeAnswers,
     disableSeeAnswers,

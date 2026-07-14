@@ -805,29 +805,34 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 .hw-tools-cleanup__bolts {
   z-index: 2;
   pointer-events: none;
-  transform-origin: 0% 100%;
-  animation: hw-magnet-bolt-wipe-up 2.6s ease-in-out infinite;
+  animation: hw-magnet-bolt-wipe-diag 5s linear infinite;
+  -webkit-mask-image: linear-gradient(to top right, #000 40%, transparent 60%);
+  mask-image: linear-gradient(to top right, #000 40%, transparent 60%);
+  -webkit-mask-size: 250% 250%;
+  mask-size: 250% 250%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
-@keyframes hw-magnet-bolt-wipe-up {
+@keyframes hw-magnet-bolt-wipe-diag {
   0% {
-    clip-path: polygon(0 100%, 0 100%, 0 100%);
-    opacity: 0.88;
+    -webkit-mask-position: 100% 100%;
+    mask-position: 100% 100%;
   }
 
-  38% {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-    opacity: 1;
+  42% {
+    -webkit-mask-position: 0% 0%;
+    mask-position: 0% 0%;
   }
 
-  62% {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-    opacity: 1;
+  58% {
+    -webkit-mask-position: 0% 0%;
+    mask-position: 0% 0%;
   }
 
   100% {
-    clip-path: polygon(100% 0, 100% 0, 100% 0);
-    opacity: 0.88;
+    -webkit-mask-position: -100% -100%;
+    mask-position: -100% -100%;
   }
 }
 
@@ -855,7 +860,8 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 
 .hw-tools-cleanup:hover:not(:disabled) .hw-tools-cleanup__bolts {
   animation: none;
-  clip-path: inset(0 0 0 0);
+  -webkit-mask-image: none;
+  mask-image: none;
   opacity: 1;
   filter: brightness(1.08);
 }

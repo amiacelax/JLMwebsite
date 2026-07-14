@@ -883,6 +883,61 @@
     studentSubmissionsFetchInFlight = null;
   }
 
+  async function acknowledgeStudentReviewNotes(submission) {
+    if (!submission?.id || !session.username) return;
+    const res = await fetch("/api/homework-review-ack", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: session.username,
+        submissionId: submission.id,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not finish reviewing.");
+
+    markLocalSubmissionFlags(submission.assignmentId, "acknowledged");
+    try {
+      localStorage.setItem(
+        "jlm-hw-reviewed-acked-" + session.username + "-" + submission.assignmentId,
+        "1"
+      );
+    } catch {
+      /* ignore */
+    }
+
+    invalidateStudentSubmissionsCache();
+    notifyStudentReviewGate({
+      status: "acknowledged",
+      submissionId: submission.id,
+      assignmentId: submission.assignmentId,
+    });
+
+    showToast("Got it — JD will assign new homework when ready.");
+
+    /* Leave the reviewed sheet and open past homework. */
+    try {
+      const url = window.location.pathname + window.location.search;
+      history.replaceState(null, "", url);
+    } catch {
+      /* ignore */
+    }
+    document.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    if (global.HwStudentPast?.openPicker) {
+      void global.HwStudentPast.openPicker();
+    } else {
+      const fold = document.getElementById("hw-student-past-fold");
+      if (fold) {
+        fold.hidden = false;
+        fold.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    scheduleStudentSubmissionsLoad({ bypassCache: true });
+    void loadStudentHub({ bypassCache: true });
+  }
+
   function setSubmissionViewChrome(submission, viewing) {
     const banner = document.getElementById("hw-submission-view-banner");
     const pastFold = document.getElementById("hw-student-past-fold");
@@ -891,17 +946,32 @@
     if (banner) {
       if (viewing && submission) {
         banner.hidden = false;
-        banner.textContent =
-          "Submitted " +
-          formatSubmissionWhen(submission.submittedAt) +
-          " — view only (answers cannot be edited).";
+        const status = submission.reviewStatus;
+        if (status === "reviewed") {
+          banner.textContent =
+            "Reviewed " +
+            formatSubmissionWhen(submission.reviewedAt || submission.submittedAt) +
+            " — your notes + JD’s notes (view only).";
+        } else if (status === "acknowledged") {
+          banner.textContent =
+            "Finished reviewing " +
+            formatSubmissionWhen(submission.studentNotesAckedAt || submission.reviewedAt) +
+            " — past homework (view only).";
+        } else {
+          banner.textContent =
+            "Submitted " +
+            formatSubmissionWhen(submission.submittedAt) +
+            " — view only (answers cannot be edited).";
+        }
       } else {
         banner.hidden = true;
         banner.textContent = "";
       }
     }
     if (offlineCard) offlineCard.hidden = Boolean(viewing);
-    if (pastFold && viewing && !global.__JLM_HUB_V5) pastFold.open = true;
+    if (pastFold && viewing && !global.__JLM_HUB_V5) {
+      pastFold.hidden = false;
+    }
   }
 
   function bindOfflineTools() {
@@ -1094,6 +1164,31 @@
     }
   }
 
+  function notifySubmissionArchiveView(submission) {
+    if (!submission?.id) return;
+    const wantHash = "hw-submission-" + submission.id;
+    const currentHash = String(window.location.hash || "").replace(/^#/, "");
+    if (currentHash !== wantHash) {
+      try {
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search + "#" + wantHash
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    document.dispatchEvent(
+      new CustomEvent("hw-platform-submission-view", {
+        detail: {
+          submissionId: submission.id,
+          assignmentId: submission.assignmentId || "",
+        },
+      })
+    );
+  }
+
   async function loadSubmissionView(submissionId, loadGen, isStale) {
     const mount = getWorksheetMount();
     const intro = document.getElementById("hw-worksheet-intro");
@@ -1130,6 +1225,7 @@
       }
       setSubmissionViewChrome(submission, true);
       scheduleStudentSubmissionsLoad({ bypassCache: true });
+      notifySubmissionArchiveView(submission);
       return true;
     }
 
@@ -1141,6 +1237,7 @@
       if (mount) mount.innerHTML = "";
       setSubmissionViewChrome(submission, true);
       scheduleStudentSubmissionsLoad({ bypassCache: true });
+      notifySubmissionArchiveView(submission);
       return true;
     }
 
@@ -1189,13 +1286,32 @@
       global.HwMagnifyingGlass.refresh();
     }
     if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
+      const canAck = submission.reviewStatus === "reviewed";
       global.HwHomeworkComments.attachTo(form, {
         username: session.username,
         assignmentId: submission.assignmentId,
+        submissionId: submission.id,
         readOnly: true,
+        studentReviewed:
+          submission.reviewStatus === "reviewed" ||
+          submission.reviewStatus === "acknowledged",
         initialComments: submission.comments,
+        onStudentAckNotes: canAck
+          ? async () => {
+              try {
+                await acknowledgeStudentReviewNotes(submission);
+              } catch (err) {
+                showToast((err && err.message) || "Could not finish reviewing.");
+                throw err;
+              }
+            }
+          : null,
       });
     }
+
+    /* Keep hub archive ping + collapse in sync (replaceState alone does not fire hashchange). */
+    notifySubmissionArchiveView(submission);
+
     return true;
   }
 
@@ -2755,7 +2871,7 @@
 
       teacherReviewHasUnsaved = false;
       setTeacherReviewStatus(
-        "Draft saved — click “Send to student” when you are ready to mark reviewed.",
+        "Draft saved — click “Submit notes” when you are ready to mark reviewed.",
         false,
         "is-saved"
       );
@@ -2788,7 +2904,7 @@
     if (submitBtn) submitBtn.disabled = false;
   }
 
-  async function openTeacherWorksheetReview(entry) {
+  async function openTeacherWorksheetReview(entry, reviewOptions) {
     if (!entry?.id || entry.type !== "online") {
       showToast("Open the answers checklist for photo/video submissions.");
       return;
@@ -2803,6 +2919,11 @@
     if (!overlay || !mount) {
       showToast("Review sheet UI is missing.");
       return;
+    }
+
+    /* Escape nested layout so fixed overlay covers the viewport (not under site nav). */
+    if (overlay.parentElement !== document.body) {
+      document.body.appendChild(overlay);
     }
 
     teacherReviewSubmission = entry;
@@ -2850,6 +2971,9 @@
     }
     HwWorksheet.setFormReadOnly(form);
 
+    const initialComments =
+      reviewOptions?.initialComments || entry.comments || [];
+
     if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
       global.HwHomeworkComments.attachTo(form, {
         username: entry.username,
@@ -2859,7 +2983,19 @@
         teacherUsername: session.username,
         readOnly: true,
         skipOnboarding: true,
-        initialComments: entry.comments || [],
+        initialComments,
+      });
+    }
+
+    if (typeof reviewOptions?.focusSlideIndex === "number") {
+      HwWorksheet.setSlideIndex?.(form, reviewOptions.focusSlideIndex);
+    }
+
+    if (reviewOptions?.focusCommentId && global.HwHomeworkComments?.focusComment) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          global.HwHomeworkComments.focusComment(reviewOptions.focusCommentId);
+        });
       });
     }
 
@@ -2875,11 +3011,19 @@
 
     setTeacherReviewStatus(
       entry.reviewStatus === "reviewed"
-        ? "Loaded — edits auto-save as drafts. Send to student when ready to update their view."
+        ? "Loaded — edits auto-save as drafts. Submit notes when ready to update their view."
         : "Loaded — reply to open memos or add a question note. Edits auto-save as drafts.",
       false,
       "is-saved"
     );
+  }
+
+  async function openTeacherFlashcardReview(entry) {
+    if (global.HwReviewFlashcards?.open) {
+      await global.HwReviewFlashcards.open(entry);
+      return;
+    }
+    await openTeacherWorksheetReview(entry);
   }
 
   async function submitTeacherReviewNotes() {
@@ -3010,11 +3154,20 @@
         showToast,
       });
     }
+    if (global.HwReviewFlashcards?.init) {
+      global.HwReviewFlashcards.init({
+        getTeacherSession: () => getTeacherSessionForApi(),
+        showToast,
+        fetchAssignment: (id) => fetchAssignmentJson(id, { bypassCache: true }),
+        openWorksheetReview: openTeacherWorksheetReview,
+      });
+    }
     if (global.HwTeacherSubmissions?.init) {
       HwTeacherSubmissions.init({
         getTeacherSession: () => getTeacherSessionForApi(),
         showToast,
         openWorksheetReview: openTeacherWorksheetReview,
+        openFlashcardReview: openTeacherFlashcardReview,
       });
     }
     if (global.HwTeacherMistakes?.init) {
@@ -3163,6 +3316,61 @@
     document.dispatchEvent(new CustomEvent("hw-platform-student-ready"));
   }
 
+  function notifyStudentReviewGate(detail) {
+    document.dispatchEvent(
+      new CustomEvent("hw-platform-student-review-gate", { detail: detail || {} })
+    );
+  }
+
+  function markLocalSubmissionFlags(assignmentId, reviewStatus) {
+    if (!session.username || !assignmentId) return;
+    try {
+      localStorage.setItem(
+        "jlm-hw-submitted-" + session.username + "-" + assignmentId,
+        new Date().toISOString()
+      );
+      if (reviewStatus === "reviewed" || reviewStatus === "acknowledged") {
+        localStorage.setItem(
+          "jlm-hw-reviewed-" + session.username + "-" + assignmentId,
+          "1"
+        );
+      }
+      if (reviewStatus === "acknowledged") {
+        localStorage.setItem(
+          "jlm-hw-reviewed-acked-" + session.username + "-" + assignmentId,
+          "1"
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function fetchLatestOnlineSubmission(assignmentId) {
+    if (!session.username || !assignmentId) return null;
+    try {
+      const res = await fetch(
+        "/api/homework-submissions?username=" + encodeURIComponent(session.username),
+        { cache: "no-store" }
+      );
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      const subs = (Array.isArray(data.submissions) ? data.submissions : [])
+        .filter(
+          (entry) =>
+            entry.type === "online" && entry.assignmentId === assignmentId
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.submittedAt || 0).getTime() -
+            new Date(a.submittedAt || 0).getTime()
+        );
+      return subs[0] || null;
+    } catch {
+      return null;
+    }
+  }
+
   function finishStudentWorksheetMount(form) {
     if (global.HwWorksheetToolLayout?.revealWorksheetTools) {
       global.HwWorksheetToolLayout.revealWorksheetTools(form, notifyStudentHubReady);
@@ -3282,6 +3490,74 @@
       });
       abortStudentWorksheetBoot();
       return;
+    }
+
+    /*
+     * If this homework was already submitted/reviewed, do not remount a fresh
+     * editable “Send to JD” sheet. Open the reviewed archive, or show waiting UI.
+     */
+    if (hashParts.kind !== "submission" && !options.skipWorksheet) {
+      const latestSub = await fetchLatestOnlineSubmission(active.id);
+      if (isStale()) return;
+      if (latestSub?.reviewStatus === "reviewed") {
+        markLocalSubmissionFlags(active.id, "reviewed");
+        notifyStudentReviewGate({
+          status: "reviewed",
+          submissionId: latestSub.id,
+          assignmentId: active.id,
+        });
+        /* Stay on hub status card (review zone + ping). Student opens the sheet
+           via “Open reviewed worksheet” — don’t auto-enter archive mode. */
+        mount.innerHTML = "";
+        studentMountedAssignmentId = null;
+        hubV4WorksheetForm = null;
+        setOfflineToolsVisible(false);
+        scheduleStudentMistakesLoad({
+          background: Boolean(options.background),
+          bypassCache: Boolean(options.bypassCache),
+        });
+        abortStudentWorksheetBoot();
+        return;
+      } else if (latestSub?.reviewStatus === "acknowledged") {
+        markLocalSubmissionFlags(active.id, "acknowledged");
+        notifyStudentReviewGate({
+          status: "acknowledged",
+          submissionId: latestSub.id,
+          assignmentId: active.id,
+        });
+        if (session.tier !== "tier3") {
+          mount.innerHTML = "";
+          studentMountedAssignmentId = null;
+          hubV4WorksheetForm = null;
+          setOfflineToolsVisible(false);
+          scheduleStudentMistakesLoad({
+            background: Boolean(options.background),
+            bypassCache: Boolean(options.bypassCache),
+          });
+          abortStudentWorksheetBoot();
+          return;
+        }
+      } else if (latestSub) {
+        markLocalSubmissionFlags(active.id, "submitted");
+        notifyStudentReviewGate({
+          status: "submitted",
+          submissionId: latestSub.id,
+          assignmentId: active.id,
+        });
+        /* Non-Ultra: hide live worksheet — hub shows “JD is reviewing…”. */
+        if (session.tier !== "tier3") {
+          mount.innerHTML = "";
+          studentMountedAssignmentId = null;
+          hubV4WorksheetForm = null;
+          setOfflineToolsVisible(false);
+          scheduleStudentMistakesLoad({
+            background: Boolean(options.background),
+            bypassCache: Boolean(options.bypassCache),
+          });
+          abortStudentWorksheetBoot();
+          return;
+        }
+      }
     }
 
     if (

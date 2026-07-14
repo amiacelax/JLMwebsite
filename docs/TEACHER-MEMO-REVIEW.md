@@ -8,8 +8,10 @@ End-to-end loop: student cloud memos on homework → teacher review → student 
 - Teacher: **Submissions → Review worksheet** — remark on memos, add question notes, **Submit notes**
 - `POST /api/homework-review` sets `reviewStatus: reviewed`
 - Student hub reads `reviewStatus` and fills review zone from submission comments
+- Student **Open reviewed worksheet** uses the same blue+green pair UI (`studentReviewed`) — playback only (no delete / record / Add Note)
+- Student **Done reviewing — ready for new homework** → `POST /api/homework-review-ack` sets `reviewStatus: acknowledged`, Discord ping, opens past homework
 
-## Phase 1b — Flashcard review deck (planned)
+## Phase 1b — Flashcard review deck (usable)
 
 **Goal:** Fastest path through a submission — one item at a time, not a long worksheet to scroll.
 
@@ -37,11 +39,12 @@ Like the Lookup Lexicon tab (one card, submit, next), but for homework review:
 - When the deck is empty → **Submit notes** (marks submission reviewed) or optional "Review full sheet" for a sanity pass.
 - Same data model as Phase 1 (`teacherRemark`, `author: teacher` notes) — flashcards are UI only, not a second storage shape.
 
-**Entry points (later)**
+**Entry points**
 
-- Submissions row: **Review** → choose **Flashcards** (default) or **Full sheet**
-- Phase 3 notification inbox → opens flashcard deck for that submission
+- Submissions row: **Review** opens flashcards (default); **Full sheet** opens the Phase 1 worksheet review.
+- Phase 3 notification inbox → opens flashcard deck for that submission (later)
 
+**Files:** `public/js/hw-review-flashcards.js`, `public/css/hw-review-flashcards.css` — wired from `hw-platform.js` / `hw-teacher-submissions.js`.
 ## Phase 2 — Notebook + pending next assignment
 
 - On submit: stage student memos for Notebook under the HW section

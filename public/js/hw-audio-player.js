@@ -9,20 +9,17 @@
   const ICON_PAUSE =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg>';
 
-  /** MM:SS:CC — minutes, seconds, and centiseconds (hundredths). */
+  /** SS:CC — seconds and centiseconds; MM:SS:CC only when past 59s. */
   function formatTime(seconds) {
-    if (!Number.isFinite(seconds) || seconds < 0) return "00:00:00";
+    if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
     const totalCs = Math.min(Math.max(0, Math.floor(seconds * 100)), 35999999);
     const min = Math.floor(totalCs / 6000);
     const sec = Math.floor((totalCs % 6000) / 100);
     const cs = totalCs % 100;
-    return (
-      String(min).padStart(2, "0") +
-      ":" +
-      String(sec).padStart(2, "0") +
-      ":" +
-      String(cs).padStart(2, "0")
-    );
+    const secPart = String(sec).padStart(2, "0") + ":" + String(cs).padStart(2, "0");
+    return min > 0
+      ? String(min).padStart(2, "0") + ":" + secPart
+      : secPart;
   }
 
   function hasKnownDuration(audio) {
@@ -141,7 +138,7 @@
 
     const timeEl = document.createElement("span");
     timeEl.className = "hw-audio-chrome__time";
-    timeEl.textContent = "00:00:00 / 00:00:00";
+    timeEl.textContent = "00:00 / 00:00";
 
     let speedControl;
     let applyRate = null;
@@ -231,16 +228,17 @@
     seekWrap.append(seek, scrubTip);
     bar.append(playBtn, seekWrap, timeEl, speedControl);
 
-    let pipBtn = null;
-    if (pipDocumentSupported() || pipMediaSupported(audio)) {
-      pipBtn = document.createElement("button");
-      pipBtn.type = "button";
-      pipBtn.className = "hw-audio-chrome__pip";
-      pipBtn.setAttribute("aria-label", "Picture in picture");
-      pipBtn.setAttribute("aria-pressed", "false");
-      pipBtn.innerHTML = ICON_PIP;
-      bar.appendChild(pipBtn);
+    const pipBtn = document.createElement("button");
+    pipBtn.type = "button";
+    pipBtn.className = "hw-audio-chrome__pip";
+    pipBtn.setAttribute("aria-label", "Picture in picture");
+    pipBtn.setAttribute("aria-pressed", "false");
+    pipBtn.innerHTML = ICON_PIP;
+    if (!pipDocumentSupported() && !pipMediaSupported(audio)) {
+      pipBtn.disabled = true;
+      pipBtn.title = "Picture-in-picture is not available in this browser";
     }
+    bar.appendChild(pipBtn);
 
     const parent = audio.parentNode;
     if (parent) {
@@ -282,23 +280,23 @@
     function syncSeekRange() {
       const effectiveDur = getEffectiveDuration();
       if (effectiveDur <= 0) {
-        seek.max = "1";
+        seek.max = "100";
         seek.disabled = true;
         if (!scrubbing) seek.value = "0";
         return;
       }
       seek.disabled = false;
       const maxCs = durationCentisecondsFromSeconds(effectiveDur);
-      seek.max = String(maxCs);
-      if (!scrubbing) {
-        seek.value = String(currentCentisecondsFrom(audio, effectiveDur));
-      }
+      const curCs = currentCentisecondsFrom(audio, effectiveDur);
+      /* Set max before value so the thumb ratio stays correct when duration grows. */
+      if (seek.max !== String(maxCs)) seek.max = String(maxCs);
+      if (!scrubbing && seek.value !== String(curCs)) seek.value = String(curCs);
     }
 
     function durationLabel() {
       if (hasKnownDuration(audio)) return formatTime(audio.duration);
       const effectiveDur = getEffectiveDuration();
-      return effectiveDur > 0 ? formatTime(effectiveDur) : "--:--:--";
+      return effectiveDur > 0 ? formatTime(effectiveDur) : "--:--";
     }
 
     function syncTimeDisplay(force) {
@@ -455,6 +453,7 @@
     }
 
     async function togglePip() {
+      if (pipBtn.disabled) return;
       if (pipRestore) {
         pipRestore.pipWindow?.close?.();
         restoreFromPip();
@@ -497,7 +496,7 @@
     );
     bindArrowSeek(document);
 
-    pipBtn?.addEventListener("click", () => {
+    pipBtn.addEventListener("click", () => {
       void togglePip();
     });
     audio.addEventListener("enterpictureinpicture", () => {
@@ -514,6 +513,8 @@
 
     audio.addEventListener("play", () => {
       syncPlayIcon();
+      refreshDurationEstimate();
+      syncTime();
       startTimeLoop();
     });
     audio.addEventListener("pause", () => {

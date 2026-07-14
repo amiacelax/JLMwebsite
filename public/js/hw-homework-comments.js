@@ -26,6 +26,62 @@
   const TOUCH_SKIP_EXTRA =
     ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled)";
 
+  function openRecordingEraseConfirm(anchorBtn, onConfirm) {
+    if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
+
+    const pop = document.createElement("div");
+    pop.className = "hw-delete-confirm-popover hw-recording-erase-confirm";
+    pop.setAttribute("role", "alertdialog");
+    pop.setAttribute("aria-modal", "true");
+    pop.innerHTML =
+      '<p class="hw-delete-confirm-popover__q">Are you sure? This will erase your current recording.</p>' +
+      '<div class="hw-delete-confirm-popover__actions">' +
+      '<button type="button" class="hw-delete-confirm-popover__yes">Yes</button>' +
+      '<button type="button" class="hw-delete-confirm-popover__no">No</button>' +
+      "</div>";
+
+    document.body.appendChild(pop);
+    if (anchorBtn) {
+      const anchorRect = anchorBtn.getBoundingClientRect();
+      const popRect = pop.getBoundingClientRect();
+      let top = anchorRect.top - popRect.height - 8;
+      let left = anchorRect.left;
+      if (top < 8) top = anchorRect.bottom + 8;
+      left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+      pop.style.top = top + "px";
+      pop.style.left = left + "px";
+    } else {
+      pop.style.top = "50%";
+      pop.style.left = "50%";
+      pop.style.transform = "translate(-50%, -50%)";
+    }
+
+    const close = () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      pop.remove();
+      global._hwDeleteConfirmClose = null;
+    };
+    global._hwDeleteConfirmClose = close;
+
+    const onOutside = (ev) => {
+      if (pop.contains(ev.target)) return;
+      close();
+    };
+    setTimeout(() => document.addEventListener("pointerdown", onOutside, true), 0);
+
+    pop.querySelector(".hw-delete-confirm-popover__yes")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+      onConfirm();
+    });
+    pop.querySelector(".hw-delete-confirm-popover__no")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    });
+  }
+
   function openDeleteConfirmPopover(anchorBtn, onConfirm) {
     if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
 
@@ -104,8 +160,8 @@
   let activeCommentId = null;
   /** Student memo ids with the teacher reply panel open (review mode). */
   let teacherReplyOpenIds = new Set();
-  /** Student memos dismissed (hidden) in teacher review for this session. */
-  let dismissedStudentReviewIds = new Set();
+  /** Student memos minimized to blue mini cloud in teacher review. */
+  let reviewStudentMinimizedIds = new Set();
   let reviewResizeObserver = null;
   let draftSaveTimer = null;
   let draftSaveInFlight = null;
@@ -132,6 +188,11 @@
     return !!(String(comment?.teacherRemark || "").trim() || comment?.teacherRemarkMedia?.id);
   }
 
+  /** Teacher review sheet or student viewing JD notes on the worksheet. */
+  function isPairReviewMode() {
+    return !!(config?.teacherReview || config?.studentReviewed);
+  }
+
   function isTeacherReplyOpen(comment) {
     return teacherReplyOpenIds.has(comment.id);
   }
@@ -141,17 +202,45 @@
     renderAll();
   }
 
-  function dismissStudentReviewMemo(id) {
-    dismissedStudentReviewIds.add(id);
+  function minimizeStudentReviewMemo(id) {
+    reviewStudentMinimizedIds.add(id);
+    teacherReplyOpenIds.delete(id);
+    if (activeCommentId === id) activeCommentId = null;
+    renderAll();
+  }
+
+  function expandStudentReviewMemo(id) {
+    reviewStudentMinimizedIds.delete(id);
+    activeCommentId = id;
+    renderAll();
+  }
+
+  /** Open both blue student memo and green JD reply together. */
+  function expandReviewPair(id) {
+    reviewStudentMinimizedIds.delete(id);
+    teacherReplyOpenIds.add(id);
+    activeCommentId = id;
+    renderAll();
+    requestAnimationFrame(() => {
+      const pair = layersEl?.querySelector('.hw-hc-review-pair[data-id="' + id + '"]');
+      pair?.querySelectorAll(".hw-hc-memo__remark--review-auto").forEach(autosizeReviewMemoInput);
+      if (config?.teacherReview) {
+        pair?.querySelector(".hw-hc-memo__remark")?.focus();
+      }
+      resolveToolLayout(pair || null);
+    });
+  }
+
+  function minimizeTeacherReviewReply(id) {
     teacherReplyOpenIds.delete(id);
     renderAll();
   }
 
-  function attachMemoCloseBtn(body, onClose, extraClass) {
+  function attachMemoCloseBtn(body, onClose, extraClass, ariaLabel) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "hw-hc-memo__close" + (extraClass ? " " + extraClass : "");
-    btn.setAttribute("aria-label", "Close");
+    btn.setAttribute("aria-label", ariaLabel || "Minimize");
     btn.textContent = "\u00d7";
     btn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     btn.addEventListener("click", (ev) => {
@@ -165,15 +254,7 @@
   }
 
   function openTeacherReply(id) {
-    teacherReplyOpenIds.add(id);
-    renderAll();
-    requestAnimationFrame(() => {
-      const pair = layersEl?.querySelector('.hw-hc-review-pair[data-id="' + id + '"]');
-      const focusEl = pair?.querySelector(".hw-hc-memo__remark");
-      pair?.querySelectorAll(".hw-hc-memo__remark--review-auto").forEach(autosizeReviewMemoInput);
-      focusEl?.focus();
-      resolveToolLayout(pair || null);
-    });
+    expandReviewPair(id);
   }
 
   function seedTeacherReplyOpen() {
@@ -224,9 +305,58 @@
     return svg;
   }
 
+  function buildStudentTeacherReplyBody(comment) {
+    /* Student view: same green JD memo, playback + text only (no record/erase). */
+    const body = document.createElement("div");
+    body.className =
+      "hw-hc-memo__body hw-hc-memo__body--teacher-reply hw-hc-memo__body--student-reviewed";
+
+    if (comment.teacherRemarkMedia?.id) {
+      const mediaMount = document.createElement("div");
+      mediaMount.className =
+        "hw-hc-memo__remark-media-mount hw-hc-memo__remark-media-mount--compact";
+      body.appendChild(mediaMount);
+      global.HwReviewMedia?.renderPlayback?.(mediaMount, comment.teacherRemarkMedia);
+    }
+
+    const remark = document.createElement("textarea");
+    remark.className = "hw-hc-memo__remark hw-hc-memo__remark--review-auto";
+    remark.rows = 1;
+    remark.readOnly = true;
+    remark.value = comment.teacherRemark || "";
+    remark.placeholder = comment.teacherRemarkMedia?.id
+      ? "JD left an audio/video reply above."
+      : "JD’s note";
+    remark.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    remark.addEventListener("click", (ev) => ev.stopPropagation());
+    body.appendChild(remark);
+    autosizeReviewMemoInput(remark);
+
+    const actions = document.createElement("div");
+    actions.className =
+      "hw-hc-memo__actions hw-hc-memo__actions--review hw-hc-memo__actions--teacher-reply";
+    actions.appendChild(
+      attachMemoCloseBtn(
+        body,
+        () => minimizeTeacherReviewReply(comment.id),
+        "hw-hc-memo__close--inline",
+        "Close JD memo"
+      )
+    );
+    body.appendChild(actions);
+    return body;
+  }
+
   function buildTeacherReplyBody(comment) {
+    if (config?.studentReviewed) return buildStudentTeacherReplyBody(comment);
+
+    /* Media above text in JD memo */
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body hw-hc-memo__body--teacher-reply";
+
+    const mediaMount = document.createElement("div");
+    mediaMount.className = "hw-hc-memo__remark-media-mount hw-hc-memo__remark-media-mount--compact";
+    body.appendChild(mediaMount);
 
     const remark = document.createElement("textarea");
     remark.className = "hw-hc-memo__remark hw-hc-memo__remark--review-auto";
@@ -243,19 +373,26 @@
     body.appendChild(remark);
     autosizeReviewMemoInput(remark);
 
-    const mediaMount = document.createElement("div");
-    mediaMount.className = "hw-hc-memo__remark-media-mount hw-hc-memo__remark-media-mount--compact";
-    body.appendChild(mediaMount);
-
     const actions = document.createElement("div");
     actions.className = "hw-hc-memo__actions hw-hc-memo__actions--review hw-hc-memo__actions--teacher-reply";
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "hw-hc-memo__close hw-hc-memo__close--inline";
-    deleteBtn.setAttribute("aria-label", "Delete JD memo");
-    deleteBtn.textContent = "\u00d7";
-    deleteBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "hw-hc-memo__close hw-hc-memo__close--inline";
+    closeBtn.setAttribute("aria-label", "Close JD memo");
+    closeBtn.textContent = "\u00d7";
+    closeBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    closeBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      minimizeTeacherReviewReply(comment.id);
+    });
+
+    const trashBtn = document.createElement("button");
+    trashBtn.type = "button";
+    trashBtn.className = "hw-hc-review-media-btn hw-hc-review-media-btn--trash";
+    trashBtn.setAttribute("aria-label", "Erase recording");
+    trashBtn.textContent = "\uD83D\uDDD1\uFE0F";
+    trashBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
 
     const audioBtn = document.createElement("button");
     audioBtn.type = "button";
@@ -273,33 +410,49 @@
     videoBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     videoBtn.addEventListener("click", (ev) => ev.stopPropagation());
 
-    actions.appendChild(deleteBtn);
+    actions.appendChild(closeBtn);
+    actions.appendChild(trashBtn);
     actions.appendChild(audioBtn);
     actions.appendChild(videoBtn);
     body.appendChild(actions);
 
-    let resetMedia = null;
+    let mediaApi = null;
+    function syncTrashState() {
+      const has = !!mediaApi?.hasRecording?.();
+      trashBtn.disabled = !has;
+      trashBtn.classList.toggle("is-disabled", !has);
+    }
+
     global.HwReviewMedia?.mountRemarkRecorder?.(mediaMount, {
       teacherUsername: config?.teacherUsername || "",
       existing: comment.teacherRemarkMedia,
-      onChange: (media) => updateTeacherRemarkMedia(comment.id, media),
+      onChange: (media) => {
+        updateTeacherRemarkMedia(comment.id, media);
+        syncTrashState();
+      },
       compactToolbar: true,
       audioBtn,
       videoBtn,
+      confirmErase: openRecordingEraseConfirm,
       onReady: (api) => {
-        resetMedia = api.resetAll;
+        mediaApi = api;
+        syncTrashState();
       },
     });
 
-    deleteBtn.addEventListener("click", (ev) => {
+    trashBtn.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      openDeleteConfirmPopover(deleteBtn, () => {
-        resetMedia?.();
-        updateTeacherRemark(comment.id, "");
-        updateTeacherRemarkMedia(comment.id, null);
-        closeTeacherReply(comment.id);
+      if (!mediaApi?.hasRecording?.()) return;
+      openRecordingEraseConfirm(trashBtn, () => {
+        mediaApi.resetAll?.();
+        if (comment.teacherRemarkMedia?.id) updateTeacherRemarkMedia(comment.id, null);
+        syncTrashState();
       });
     });
+
+    const trashObserver = new MutationObserver(() => syncTrashState());
+    trashObserver.observe(mediaMount, { childList: true, subtree: true, attributes: true });
+    requestAnimationFrame(syncTrashState);
 
     return body;
   }
@@ -328,14 +481,19 @@
     actions.className = "hw-hc-memo__actions hw-hc-memo__actions--review";
 
     actions.appendChild(
-      attachMemoCloseBtn(body, () => dismissStudentReviewMemo(comment.id), "hw-hc-memo__close--inline")
+      attachMemoCloseBtn(
+        body,
+        () => minimizeStudentReviewMemo(comment.id),
+        "hw-hc-memo__close--inline",
+        "Minimize student memo"
+      )
     );
 
-    if (!isTeacherReplyOpen(comment)) {
+    if (!isTeacherReplyOpen(comment) && (config?.teacherReview || hasTeacherReply(comment))) {
       const openBtn = document.createElement("button");
       openBtn.type = "button";
       openBtn.className = "hw-hc-review-comment-btn hw-hc-review-comment-btn--arrow";
-      openBtn.setAttribute("aria-label", "Teacher comment");
+      openBtn.setAttribute("aria-label", "Open JD note");
       openBtn.innerHTML = rightArrowIconSvg();
       openBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
       openBtn.addEventListener("click", (ev) => {
@@ -347,7 +505,8 @@
 
     body.appendChild(actions);
 
-    attachMemoDragHandles(body, comment.id, pair);
+    /* Memo boxes are draggable; position is saved. Mini clouds are not. */
+    if (pair) attachMemoDragHandles(body, comment.id, pair);
 
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
@@ -357,7 +516,7 @@
 
   function renderReviewPair(comment) {
     if (!comment.anchorRect) return null;
-    if (dismissedStudentReviewIds.has(comment.id)) return null;
+    if (reviewStudentMinimizedIds.has(comment.id)) return null;
 
     const pair = document.createElement("div");
     pair.className = "hw-hc-review-pair";
@@ -397,8 +556,8 @@
   }
 
   function renderReviewAnchorHighlight(comment) {
-    if (!config?.teacherReview || comment.author === "teacher" || !comment.anchorRect) return null;
-    if (dismissedStudentReviewIds.has(comment.id)) return null;
+    if (!isPairReviewMode() || comment.author === "teacher" || !comment.anchorRect) return null;
+    if (reviewStudentMinimizedIds.has(comment.id)) return null;
     const anchorRect = resolveHighlightAnchorRect(comment);
     if (!anchorRect) return null;
     const el = document.createElement("div");
@@ -680,10 +839,10 @@
     return hostRectToPct(rect, { exact: true });
   }
 
-  /** Memo / bubble layout — teacher review keeps student-saved pct rect. */
+  /** Memo / bubble layout — pair review keeps student-saved pct rect. */
   function resolveCommentAnchorRect(comment) {
     if (!comment) return null;
-    if (config?.teacherReview && comment.anchorRect) {
+    if (isPairReviewMode() && comment.anchorRect) {
       return comment.anchorRect;
     }
     const live = comment.anchor ? findAnchorRectInHost(comment.anchor) : null;
@@ -709,12 +868,12 @@
     return typeof comment.x === "number" && typeof comment.y === "number";
   }
 
-  /** Anchor-derived pos in teacher review; stored x/y when the memo was dragged. */
+  /** Anchor-derived pos in pair review; stored x/y when the memo was dragged. */
   function resolveCloudPos(comment, mode) {
     if (hasCustomCloudPos(comment)) {
       return { x: comment.x, y: comment.y };
     }
-    if (config?.teacherReview && comment.author !== "teacher") {
+    if (isPairReviewMode() && comment.author !== "teacher") {
       return reviewCloudPos(comment);
     }
     return getCloudPos(comment, mode);
@@ -759,7 +918,9 @@
     comments = comments.map((c) =>
       c.id === id ? { ...c, x: pctClamp(x), y: pctClamp(y), updatedAt: now } : c
     );
-    if (persist && !config?.teacherReview) {
+    if (persist && config?.studentReviewed) {
+      /* Session-only positions while viewing JD notes — do not write drafts. */
+    } else if (persist && !config?.teacherReview) {
       saveLocal();
       queueDraftSave();
     } else if (persist && config?.teacherReview) {
@@ -1075,6 +1236,19 @@
     });
   }
 
+  /** Deep-link helper for flashcard → full sheet (memo pair or teacher note). */
+  function focusComment(id) {
+    if (!id) return false;
+    const comment = comments.find((c) => c.id === id);
+    if (!comment) return false;
+    if (isPairReviewMode() && comment.author !== "teacher") {
+      expandReviewPair(id);
+      return true;
+    }
+    expandComment(id);
+    return true;
+  }
+
   function fitExpandedMemo(id) {
     const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"]');
     if (!memo || !hostEl) return;
@@ -1260,6 +1434,7 @@
       teacherUsername: config?.teacherUsername || "",
       existing: comment.teacherRemarkMedia,
       onChange: (media) => updateTeacherRemarkMedia(comment.id, media),
+      confirmErase: openRecordingEraseConfirm,
     });
   }
 
@@ -1816,9 +1991,10 @@
     if (dragState?.moved) return;
     if (ev.target.closest(".hw-hc-sel-menu")) return;
     if (!ev.target.closest(".hw-hc-sel-menu")) hideSelectionMenu();
-    if (config?.teacherReview) {
+    if (isPairReviewMode()) {
       if (
         ev.target.closest(".hw-hc-review-pair") ||
+        ev.target.closest(".hw-hc-review-mini-pair") ||
         ev.target.closest(".hw-hc-teacher-bar")
       ) {
         return;
@@ -1839,9 +2015,35 @@
     minimizeActive();
   }
 
+  function isMemoDragExcludedTarget(target) {
+    if (!target || !target.closest) return true;
+    const textField = target.closest("textarea, input, select");
+    if (textField) {
+      /* Readonly memo text can still start a drag; editable fields cannot. */
+      if (textField.tagName === "TEXTAREA" && textField.readOnly) return false;
+      if (textField.tagName === "INPUT" && textField.readOnly) return false;
+      return true;
+    }
+    return !!(
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest("label") ||
+      target.closest(".hw-hc-review-comment-btn") ||
+      target.closest(".hw-hc-memo__close") ||
+      target.closest(".hw-hc-review-media-btn") ||
+      target.closest(".hw-hc-memo__remove") ||
+      target.closest(".hw-delete-confirm-popover") ||
+      target.closest(".hw-audio-chrome") ||
+      target.closest(".hw-video-chrome") ||
+      target.closest(".hw-listen-card") ||
+      target.closest("video") ||
+      target.closest("audio")
+    );
+  }
+
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
-    if ((config?.readOnly && !config?.teacherReview) || ev.button !== 0) return;
-    if (ev.target.closest(".hw-hc-memo__input") || ev.target.closest(".hw-hc-memo__remark") || ev.target.closest(".hw-hc-review-comment-btn") || ev.target.closest(".hw-hc-memo__close") || ev.target.closest(".hw-hc-review-media-btn") || ev.target.closest(".hw-review-media") || ev.target.closest(".hw-hc-memo__remove") || ev.target.closest(".hw-delete-confirm-popover") || ev.target.closest(".hw-audio-chrome") || ev.target.closest(".hw-listen-card") || ev.target.closest("button") || ev.target.closest("textarea")) return;
+    if ((config?.readOnly && !isPairReviewMode()) || ev.button !== 0) return;
+    if (isMemoDragExcludedTarget(ev.target)) return;
 
     ev.stopPropagation();
 
@@ -1914,24 +2116,17 @@
     } catch (_) {}
   }
 
-  const MEMO_EDGE_SIDES = ["top", "right", "bottom", "left"];
-
   function attachMemoDragHandles(bodyEl, commentId, moveEl) {
+    bodyEl.classList.add("hw-hc-memo__body--draggable");
+    bodyEl.title = bodyEl.title || "Drag to move";
+    /* Whole memo surface is the grab area; interactive controls are excluded in onCloudDragStart. */
+    bindCloudDrag(bodyEl, commentId, "memo", moveEl);
+
     const dragHandle = document.createElement("div");
     dragHandle.className = "hw-hc-memo__drag";
     dragHandle.title = "Drag to move";
     dragHandle.setAttribute("aria-hidden", "true");
     bodyEl.insertBefore(dragHandle, bodyEl.firstChild);
-    bindCloudDrag(dragHandle, commentId, "memo", moveEl);
-
-    MEMO_EDGE_SIDES.forEach((side) => {
-      const edge = document.createElement("div");
-      edge.className = "hw-hc-memo__edge hw-hc-memo__edge--" + side;
-      edge.title = "Drag to move";
-      edge.setAttribute("aria-hidden", "true");
-      bodyEl.appendChild(edge);
-      bindCloudDrag(edge, commentId, "memo", moveEl);
-    });
   }
 
   function bindCloudDrag(handleEl, commentId, mode, moveEl) {
@@ -2246,8 +2441,86 @@
     );
   }
 
+  function renderReviewStudentMini(comment) {
+    if (!reviewStudentMinimizedIds.has(comment.id) || !comment.anchorRect) return null;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hw-hc-mini hw-hc-mini--review-student";
+    btn.dataset.id = comment.id;
+    btn.dataset.reviewMini = "student";
+    btn.setAttribute(
+      "aria-label",
+      comment.text.trim()
+        ? "Expand memos on “" + (comment.anchor || "worksheet") + "”"
+        : "Expand student memo"
+    );
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = cloudIconSvg("hw-hc-mini__icon");
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (Date.now() < suppressMiniClickUntil) return;
+      expandReviewPair(comment.id);
+    });
+    return btn;
+  }
+
+  function renderReviewTeacherMini(comment) {
+    if (!hasTeacherReply(comment) || isTeacherReplyOpen(comment)) return null;
+    if (reviewStudentMinimizedIds.has(comment.id)) return null;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className =
+      "hw-hc-mini hw-hc-mini--teacher hw-hc-mini--has-remark hw-hc-mini--jd-reply hw-hc-mini--jd-attached";
+    btn.dataset.id = comment.id;
+    btn.dataset.reviewMini = "teacher";
+    btn.setAttribute("aria-label", "Expand JD reply on “" + (comment.anchor || "worksheet") + "”");
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = cloudIconSvg("hw-hc-mini__icon");
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (Date.now() < suppressMiniClickUntil) return;
+      expandReviewPair(comment.id);
+    });
+    return btn;
+  }
+
+  /** Blue + green minis as one unit at the student's saved position. */
+  function renderReviewMiniPair(comment) {
+    if (!reviewStudentMinimizedIds.has(comment.id) || !comment.anchorRect) return null;
+    const wrap = document.createElement("div");
+    wrap.className = "hw-hc-review-mini-pair";
+    wrap.dataset.id = comment.id;
+    applyCloudPos(wrap, comment, "mini");
+
+    const studentMini = renderReviewStudentMini(comment);
+    if (studentMini) {
+      studentMini.classList.add("hw-hc-mini--in-pair");
+      wrap.appendChild(studentMini);
+    }
+
+    if (hasTeacherReply(comment) && !isTeacherReplyOpen(comment)) {
+      const jdMini = document.createElement("button");
+      jdMini.type = "button";
+      jdMini.className =
+        "hw-hc-mini hw-hc-mini--teacher hw-hc-mini--has-remark hw-hc-mini--jd-reply hw-hc-mini--in-pair hw-hc-mini--jd-pair-offset";
+      jdMini.dataset.id = comment.id;
+      jdMini.dataset.reviewMini = "teacher";
+      jdMini.setAttribute("aria-label", "Expand JD reply on “" + (comment.anchor || "worksheet") + "”");
+      jdMini.setAttribute("aria-expanded", "false");
+      jdMini.innerHTML = cloudIconSvg("hw-hc-mini__icon");
+      jdMini.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (Date.now() < suppressMiniClickUntil) return;
+        expandReviewPair(comment.id);
+      });
+      wrap.appendChild(jdMini);
+    }
+
+    return wrap;
+  }
+
   function renderMini(comment) {
-    if (config?.teacherReview && comment.author !== "teacher") return null;
+    if (isPairReviewMode() && comment.author !== "teacher") return null;
     if (activeCommentId === comment.id) return null;
     if (!comment.anchorRect && comment.author !== "teacher") return null;
     const btn = document.createElement("button");
@@ -2276,7 +2549,7 @@
       if (Date.now() < suppressMiniClickUntil) return;
       expandComment(comment.id);
     });
-    if (!config?.readOnly || config?.teacherReview) bindCloudDrag(btn, comment.id, "mini");
+    if (!config?.readOnly || isPairReviewMode()) bindCloudDrag(btn, comment.id, "mini");
     return btn;
   }
 
@@ -2293,7 +2566,7 @@
   }
 
   function renderMemo(comment) {
-    if (config?.teacherReview && comment.author !== "teacher") return null;
+    if (isPairReviewMode() && comment.author !== "teacher") return null;
     if (activeCommentId !== comment.id) return null;
     /* Student memos need an anchor rect; teacher-only notes use free placement. */
     if (!comment.anchorRect && comment.author !== "teacher") return null;
@@ -2302,7 +2575,7 @@
     wrap.className =
       "hw-hc-memo hw-hc-memo--expanded" +
       (comment.author === "teacher" ? " hw-hc-memo--teacher" : "") +
-      (config?.teacherReview ? " hw-hc-memo--review" : "");
+      (isPairReviewMode() ? " hw-hc-memo--review" : "");
     wrap.dataset.id = comment.id;
     applyCloudPos(wrap, comment, "memo");
     wrap.setAttribute("role", "dialog");
@@ -2315,12 +2588,14 @@
 
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body";
-    if (!config?.readOnly || config?.teacherReview) body.title = "Drag to move";
+    if (!config?.readOnly || isPairReviewMode()) body.title = "Drag to move";
 
     const isTeacherNote = comment.author === "teacher";
     const studentReadonlyView = !!config?.readOnly && !config?.teacherReview;
 
     if (config?.teacherReview && isTeacherNote) {
+      attachMemoCloseBtn(body, () => minimizeActive(), "hw-hc-memo__close--teacher");
+    } else if (config?.studentReviewed && isTeacherNote) {
       attachMemoCloseBtn(body, () => minimizeActive(), "hw-hc-memo__close--teacher");
     }
 
@@ -2347,7 +2622,9 @@
         appendTeacherRemarkRecorder(body, comment);
       }
 
-      if (studentReadonlyView && comment.teacherRemark) {
+      if (studentReadonlyView) appendStudentRemarkMedia(body, comment);
+
+      if (studentReadonlyView && !config?.studentReviewed && comment.teacherRemark) {
         const remarkBlock = document.createElement("div");
         remarkBlock.className = "hw-hc-memo__jd-block";
         const remarkHead = document.createElement("p");
@@ -2359,8 +2636,6 @@
         remarkBlock.append(remarkHead, remarkText);
         body.appendChild(remarkBlock);
       }
-
-      if (studentReadonlyView) appendStudentRemarkMedia(body, comment);
     }
 
     if (config?.teacherReview && isTeacherNote) {
@@ -2397,7 +2672,7 @@
     wrap.append(body);
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
-    if (!config?.readOnly || config?.teacherReview) {
+    if (!config?.readOnly || isPairReviewMode()) {
       attachMemoDragHandles(body, comment.id, wrap);
     }
     return wrap;
@@ -2415,12 +2690,30 @@
     if (!layersEl) return;
     layersEl.replaceChildren();
     commentsForCurrentSlide().forEach((comment) => {
-      if (config?.teacherReview && comment.author !== "teacher") {
-        if (dismissedStudentReviewIds.has(comment.id)) return;
+      if (isPairReviewMode() && comment.author !== "teacher") {
+        if (reviewStudentMinimizedIds.has(comment.id)) {
+          const miniPair = renderReviewMiniPair(comment);
+          if (miniPair) layersEl.appendChild(miniPair);
+          return;
+        }
         const highlight = renderReviewAnchorHighlight(comment);
         const pair = renderReviewPair(comment);
+        const jdMini = renderReviewTeacherMini(comment);
         if (highlight) layersEl.appendChild(highlight);
         if (pair) layersEl.appendChild(pair);
+        if (jdMini) {
+          /* Attach green mini to the open blue memo's top-right. */
+          const teacherSlot = pair?.querySelector(".hw-hc-review-pair__teacher");
+          if (teacherSlot) {
+            teacherSlot.appendChild(jdMini);
+          } else {
+            const slot = document.createElement("div");
+            slot.className = "hw-hc-review-pair__teacher hw-hc-review-pair__teacher--mini-only";
+            slot.appendChild(jdMini);
+            pair?.querySelector(".hw-hc-review-pair__anchor")?.appendChild(slot);
+            if (!pair) layersEl.appendChild(jdMini);
+          }
+        }
         return;
       }
       const highlight = renderAnchorHighlight(comment);
@@ -2448,7 +2741,7 @@
 
   function bindReviewResize() {
     reviewResizeObserver?.disconnect();
-    if (!config?.teacherReview || !hostEl) return;
+    if (!isPairReviewMode() || !hostEl) return;
     reviewResizeObserver = new ResizeObserver(() => {
       renderAll();
     });
@@ -2468,7 +2761,7 @@
 
     shellEl.append(layersEl);
 
-    if (!config?.teacherReview) {
+    if (!isPairReviewMode()) {
       launcherEl = document.createElement("button");
       launcherEl.type = "button";
       launcherEl.className = "hw-hc-launcher";
@@ -2529,10 +2822,12 @@
         "hw-hc-onboarding",
         "hw-hc-coarse",
         "hw-hc-touch-selecting",
-        "hw-hc-teacher-review"
+        "hw-hc-teacher-review",
+        "hw-hc-student-reviewed"
       );
       hostEl.querySelector(":scope > .hw-hc-shell")?.remove();
       hostEl.querySelector(":scope > .hw-hc-teacher-bar")?.remove();
+      hostEl.querySelector(":scope > .hw-hc-student-ack-bar")?.remove();
     }
     if (worksheetFormEl && slideChangeBound) {
       worksheetFormEl.removeEventListener("hw-worksheet-slide", slideChangeBound);
@@ -2550,7 +2845,7 @@
     armed = false;
     activeCommentId = null;
     teacherReplyOpenIds = new Set();
-    dismissedStudentReviewIds = new Set();
+    reviewStudentMinimizedIds = new Set();
   }
 
   function attachTo(formEl, options) {
@@ -2560,11 +2855,14 @@
     config = {
       username: options.username || "",
       assignmentId: options.assignmentId || formEl?.getAttribute("data-assignment-id") || "",
-      readOnly: !!options.readOnly || !!options.teacherReview,
+      readOnly: !!options.readOnly || !!options.teacherReview || !!options.studentReviewed,
       teacherReview: !!options.teacherReview,
+      studentReviewed: !!options.studentReviewed && !options.teacherReview,
       submissionId: options.submissionId || "",
       teacherUsername: options.teacherUsername || "",
-      skipOnboarding: !!options.skipOnboarding || !!options.teacherReview,
+      onStudentAckNotes: typeof options.onStudentAckNotes === "function" ? options.onStudentAckNotes : null,
+      skipOnboarding:
+        !!options.skipOnboarding || !!options.teacherReview || !!options.studentReviewed,
     };
 
     if (options.initialComments?.length) {
@@ -2598,6 +2896,15 @@
       return true;
     }
 
+    if (config.studentReviewed) {
+      seedTeacherReplyOpen();
+      hostEl.classList.add("hw-hc-student-reviewed");
+      ensureStudentReviewedChrome();
+      bindReviewResize();
+      renderAll();
+      return true;
+    }
+
     if (config.readOnly) {
       renderAll();
       return true;
@@ -2619,10 +2926,8 @@
     bar = document.createElement("div");
     bar.className = "hw-hc-teacher-bar";
     bar.innerHTML =
-      '<p class="hw-hc-teacher-bar__hint">Student memos stay open on each highlight. Click the <strong>→</strong> on a memo to reply, or add a note on any question.</p>' +
-      '<div class="hw-hc-teacher-bar__actions">' +
-      '<button type="button" class="btn btn--ghost btn--sm" id="hw-hc-add-question-note">Add note on this question</button>' +
-      "</div>";
+      '<button type="button" class="btn btn--ghost btn--sm" id="hw-hc-add-question-note">Add Note</button>' +
+      '<button type="button" class="btn btn--primary btn--sm" id="hw-hc-submit-notes">Submit notes</button>';
     bar
       .querySelector("#hw-hc-add-question-note")
       ?.addEventListener("click", (ev) => {
@@ -2631,6 +2936,41 @@
         const id = createTeacherQuestionNote();
         expandComment(id);
       });
+    bar.querySelector("#hw-hc-submit-notes")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      document.getElementById("hw-teacher-review-submit")?.click();
+    });
+    hostEl.insertBefore(bar, shellEl);
+  }
+
+  function ensureStudentReviewedChrome() {
+    if (!hostEl || !shellEl) return;
+    hostEl.querySelector(":scope > .hw-hc-student-ack-bar")?.remove();
+    if (!config?.onStudentAckNotes) return;
+
+    const bar = document.createElement("div");
+    bar.className = "hw-hc-student-ack-bar";
+    bar.innerHTML =
+      '<p class="hw-hc-student-ack-bar__hint">When you\u2019re finished with JD\u2019s notes:</p>' +
+      '<button type="button" class="btn btn--primary" id="hw-hc-ack-notes">' +
+      "Done reviewing \u2014 ready for new homework</button>";
+    const btn = bar.querySelector("#hw-hc-ack-notes");
+    btn?.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      const prev = btn.textContent;
+      btn.textContent = "Saving\u2026";
+      try {
+        await config.onStudentAckNotes();
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = prev;
+        throw err;
+      }
+    });
     hostEl.insertBefore(bar, shellEl);
   }
 
@@ -2752,6 +3092,7 @@
     disarm,
     getCommentsForSubmit,
     getCommentsForReview,
+    focusComment,
     clearDraft,
     clearDraftStorage,
     freezeAfterSubmit,

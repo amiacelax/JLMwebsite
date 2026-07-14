@@ -53,6 +53,7 @@ import {
   listHomeworkSubmissions,
   getHomeworkSubmission,
   saveHomeworkReview,
+  saveHomeworkReviewAck,
   loadHomeworkSubmissionPhoto,
   loadHomeworkSubmissionVideo,
   saveHomeworkReviewMedia,
@@ -75,6 +76,7 @@ import {
   type HomeworkPhotoSubmitInput,
   type HomeworkVideoSubmitInput,
   type HomeworkReviewSaveInput,
+  type HomeworkReviewAckInput,
   listStudentMistakes,
   saveStudentMistake,
   deleteStudentMistake,
@@ -2998,6 +3000,84 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
   }
 }
 
+async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let body: HomeworkReviewAckInput;
+  try {
+    body = (await request.json()) as HomeworkReviewAckInput;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  try {
+    const existingBefore = await getHomeworkSubmission(env, String(body.submissionId || "").trim());
+    const wasAlreadyAcked = existingBefore?.reviewStatus === "acknowledged";
+    const submission = await saveHomeworkReviewAck(body, env);
+    const webhook = resolveHomeworkWebhook(env);
+    if (webhook && !wasAlreadyAcked) {
+      const name = submission.displayName || submission.username;
+      const lesson =
+        submission.lessonName || submission.title || submission.assignmentId || "Homework";
+      const result = await notifyDiscord(webhook.url, {
+        title: "Student finished reviewing notes",
+        color: 0x2d6a4f,
+        fields: [
+          { name: "Student", value: name, inline: true },
+          { name: "Username", value: submission.username, inline: true },
+          { name: "Assignment", value: lesson, inline: false },
+          {
+            name: "Next",
+            value: "Ready for new homework (notes acknowledged).",
+            inline: false,
+          },
+        ],
+      });
+      if (!result.ok) {
+        console.error("homework-review-ack Discord error", result.status, result.detail);
+      }
+    } else if (!webhook) {
+      console.error("homework-review-ack: no Discord webhook configured");
+    }
+
+    return jsonResponse(
+      { ok: true, submission },
+      200,
+      { "Cache-Control": "private, no-store" }
+    );
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    if (code === "SUBMISSION_REQUIRED" || code === "USERNAME_REQUIRED") {
+      return jsonResponse({ error: "Student username and submission id are required." }, 400);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "FORBIDDEN") {
+      return jsonResponse({ error: "Not allowed for this submission." }, 403);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Submission not found." }, 404);
+    }
+    if (code === "NOT_ONLINE") {
+      return jsonResponse({ error: "Only online worksheet reviews can be acknowledged." }, 400);
+    }
+    if (code === "NOT_REVIEWED") {
+      return jsonResponse({ error: "JD’s notes are not ready yet." }, 400);
+    }
+    console.error("homework-review-ack failed:", err);
+    return jsonResponse({ error: "Could not acknowledge review notes." }, 500);
+  }
+}
+
 async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3598,6 +3678,10 @@ export default {
 
     if (url.pathname === "/api/homework-review") {
       return handleHomeworkReview(request, env);
+    }
+
+    if (url.pathname === "/api/homework-review-ack") {
+      return handleHomeworkReviewAck(request, env);
     }
 
     if (url.pathname === "/api/homework-draft") {

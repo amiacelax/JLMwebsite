@@ -19,23 +19,40 @@
     if (global.HwAudioPlayer?.formatTime) {
       return global.HwAudioPlayer.formatTime(seconds);
     }
-    if (!Number.isFinite(seconds) || seconds < 0) return "00:00:00";
+    if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
     const totalCs = Math.min(Math.max(0, Math.floor(seconds * 100)), 35999999);
     const min = Math.floor(totalCs / 6000);
     const sec = Math.floor((totalCs % 6000) / 100);
     const cs = totalCs % 100;
-    return (
-      String(min).padStart(2, "0") +
-      ":" +
-      String(sec).padStart(2, "0") +
-      ":" +
-      String(cs).padStart(2, "0")
-    );
+    const secPart = String(sec).padStart(2, "0") + ":" + String(cs).padStart(2, "0");
+    return min > 0
+      ? String(min).padStart(2, "0") + ":" + secPart
+      : secPart;
   }
 
   function hasKnownDuration(video) {
     const dur = Number(video.duration);
     return Number.isFinite(dur) && dur > 0;
+  }
+
+  function bufferedEndSeconds(video) {
+    try {
+      const ranges = video.buffered;
+      if (!ranges || !ranges.length) return 0;
+      const end = ranges.end(ranges.length - 1);
+      return Number.isFinite(end) && end > 0 ? end : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Metadata duration, else buffered / playback estimate (WebM blobs often lack duration). */
+  function effectiveDurationSeconds(video, estimate) {
+    if (hasKnownDuration(video)) return video.duration;
+    const buffered = bufferedEndSeconds(video);
+    const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    const est = Math.max(estimate || 0, buffered, cur > 0 ? cur + 2 : 0);
+    return est > 0 ? est : 0;
   }
 
   function pipDocumentSupported() {
@@ -100,7 +117,7 @@
 
     const timeEl = document.createElement("span");
     timeEl.className = "hw-video-chrome__time";
-    timeEl.textContent = "00:00:00 / 00:00:00";
+    timeEl.textContent = "00:00 / 00:00";
 
     const volumeBtn = document.createElement("button");
     volumeBtn.type = "button";
@@ -120,16 +137,17 @@
     seekWrap.appendChild(seek);
     bar.append(playBtn, seekWrap, timeEl, volumeBtn, volume);
 
-    let pipBtn = null;
-    if (pipDocumentSupported()) {
-      pipBtn = document.createElement("button");
-      pipBtn.type = "button";
-      pipBtn.className = "hw-video-chrome__pip";
-      pipBtn.setAttribute("aria-label", "Picture in picture");
-      pipBtn.setAttribute("aria-pressed", "false");
-      pipBtn.innerHTML = ICON_PIP;
-      bar.appendChild(pipBtn);
+    const pipBtn = document.createElement("button");
+    pipBtn.type = "button";
+    pipBtn.className = "hw-video-chrome__pip";
+    pipBtn.setAttribute("aria-label", "Picture in picture");
+    pipBtn.setAttribute("aria-pressed", "false");
+    pipBtn.innerHTML = ICON_PIP;
+    if (!pipDocumentSupported()) {
+      pipBtn.disabled = true;
+      pipBtn.title = "Picture-in-picture is not available in this browser";
     }
+    bar.appendChild(pipBtn);
 
     chrome.append(viewport, bar);
 
@@ -146,6 +164,7 @@
     let pipRestore = null;
     let pipArrowDoc = null;
     let lastVolume = 1;
+    let durationEstimate = 0;
 
     function syncPlayIcon() {
       const playing = !video.paused && !video.ended;
@@ -153,22 +172,43 @@
       playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
     }
 
+    function refreshDurationEstimate() {
+      const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+      const buffered = bufferedEndSeconds(video);
+      durationEstimate = Math.max(durationEstimate, buffered, cur > 0 ? cur + 2 : 0);
+      if (hasKnownDuration(video)) {
+        durationEstimate = Math.max(durationEstimate, video.duration);
+      }
+    }
+
+    function getEffectiveDuration() {
+      refreshDurationEstimate();
+      return effectiveDurationSeconds(video, durationEstimate);
+    }
+
     function syncSeekRange() {
-      const dur = hasKnownDuration(video) ? video.duration : 0;
+      const dur = getEffectiveDuration();
       if (dur <= 0) {
         seek.disabled = true;
+        seek.max = "1000";
         if (!scrubbing) seek.value = "0";
         return;
       }
       seek.disabled = false;
-      seek.max = String(Math.max(1, Math.floor(dur * 1000)));
-      if (!scrubbing) {
-        seek.value = String(Math.min(Math.floor(video.currentTime * 1000), Number(seek.max)));
-      }
+      const maxMs = Math.max(1, Math.floor(dur * 1000));
+      const curMs = Math.min(
+        Math.max(0, Math.floor((Number.isFinite(video.currentTime) ? video.currentTime : 0) * 1000)),
+        maxMs
+      );
+      /* Set max before value so the thumb ratio stays correct when duration grows. */
+      if (seek.max !== String(maxMs)) seek.max = String(maxMs);
+      if (!scrubbing && seek.value !== String(curMs)) seek.value = String(curMs);
     }
 
     function durationLabel() {
-      return hasKnownDuration(video) ? formatTime(video.duration) : "--:--:--";
+      if (hasKnownDuration(video)) return formatTime(video.duration);
+      const dur = getEffectiveDuration();
+      return dur > 0 ? formatTime(dur) : "--:--";
     }
 
     function syncTimeDisplay() {
@@ -204,10 +244,11 @@
     }
 
     function applySeekMs(ms) {
-      const dur = hasKnownDuration(video) ? video.duration : 0;
+      const dur = getEffectiveDuration();
       if (dur <= 0) return;
       const maxMs = Math.floor(dur * 1000);
       const clamped = Math.min(Math.max(ms, 0), maxMs);
+      if (seek.max !== String(maxMs)) seek.max = String(maxMs);
       seek.value = String(clamped);
       video.currentTime = clamped / 1000;
       syncTimeDisplay();
@@ -222,7 +263,7 @@
     }
 
     function seekByArrowSeconds(deltaSeconds) {
-      const dur = hasKnownDuration(video) ? video.duration : 0;
+      const dur = getEffectiveDuration();
       if (dur <= 0) return;
       const cur = Number.isFinite(video.currentTime) ? video.currentTime : 0;
       const next = Math.min(Math.max(0, cur + deltaSeconds), dur);
@@ -296,6 +337,7 @@
     }
 
     async function togglePip() {
+      if (pipBtn.disabled) return;
       if (pipRestore) {
         pipRestore.pipWindow?.close?.();
         restoreFromPip();
@@ -324,7 +366,7 @@
     );
     bindArrowSeek(document);
 
-    pipBtn?.addEventListener("click", () => {
+    pipBtn.addEventListener("click", () => {
       void togglePip();
     });
 
@@ -340,6 +382,8 @@
 
     video.addEventListener("play", () => {
       syncPlayIcon();
+      refreshDurationEstimate();
+      syncTime();
       startTimeLoop();
     });
     video.addEventListener("pause", () => {
@@ -353,7 +397,10 @@
       syncTime();
     });
     video.addEventListener("loadedmetadata", syncTime);
+    video.addEventListener("loadeddata", syncTime);
     video.addEventListener("durationchange", syncTime);
+    video.addEventListener("canplay", syncTime);
+    video.addEventListener("progress", syncTime);
     video.addEventListener("timeupdate", () => {
       if (video.paused || video.ended) syncTime();
     });

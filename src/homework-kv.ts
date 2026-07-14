@@ -1449,7 +1449,7 @@ export interface HomeworkComment {
   updatedAt?: string;
 }
 
-export type HomeworkReviewStatus = "submitted" | "reviewed";
+export type HomeworkReviewStatus = "submitted" | "reviewed" | "acknowledged";
 
 export interface HomeworkSubmission {
   id: string;
@@ -1472,10 +1472,12 @@ export interface HomeworkSubmission {
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
-  /** After student submit; becomes reviewed when teacher submits notes. */
+  /** After student submit; becomes reviewed when teacher submits notes; acknowledged when student finishes reading. */
   reviewStatus?: HomeworkReviewStatus;
   reviewedAt?: string;
   teacherNotesSubmittedAt?: string;
+  /** When the student marks JD’s notes as done / ready for new HW. */
+  studentNotesAckedAt?: string;
 }
 
 export interface HomeworkReviewSaveInput {
@@ -1483,6 +1485,11 @@ export interface HomeworkReviewSaveInput {
   submissionId?: string;
   comments?: HomeworkComment[];
   markReviewed?: boolean;
+}
+
+export interface HomeworkReviewAckInput {
+  username?: string;
+  submissionId?: string;
 }
 
 export interface HomeworkOnlineSubmitInput {
@@ -1861,6 +1868,42 @@ export async function saveHomeworkReview(
     teacherNotesSubmittedAt: now,
   };
 
+  await writeSubmission(kv, updated);
+  return updated;
+}
+
+/** Student finished reading JD’s notes and is ready for new homework. */
+export async function saveHomeworkReviewAck(
+  data: HomeworkReviewAckInput,
+  env: KvEnv
+): Promise<HomeworkSubmission> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const submissionId = String(data.submissionId || "").trim();
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!submissionId) throw new Error("SUBMISSION_REQUIRED");
+  if (!username) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const existing = await getHomeworkSubmission(env, submissionId);
+  if (!existing) throw new Error("NOT_FOUND");
+  if (existing.username !== username) throw new Error("FORBIDDEN");
+  if (existing.type !== "online") throw new Error("NOT_ONLINE");
+
+  const status = existing.reviewStatus || "submitted";
+  if (status !== "reviewed" && status !== "acknowledged") {
+    throw new Error("NOT_REVIEWED");
+  }
+
+  const now = new Date().toISOString();
+  const updated: HomeworkSubmission = {
+    ...existing,
+    reviewStatus: "acknowledged",
+    studentNotesAckedAt: existing.studentNotesAckedAt || now,
+  };
   await writeSubmission(kv, updated);
   return updated;
 }

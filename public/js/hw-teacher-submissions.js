@@ -527,6 +527,11 @@
         reviewed.className = "hw-submissions-item__type hw-submissions-item__type--reviewed";
         reviewed.textContent = "Reviewed";
         top.appendChild(reviewed);
+      } else if (entry.reviewStatus === "acknowledged") {
+        const acked = document.createElement("span");
+        acked.className = "hw-submissions-item__type hw-submissions-item__type--acked";
+        acked.textContent = "Needs new HW";
+        top.appendChild(acked);
       }
 
       const title = document.createElement("h3");
@@ -565,13 +570,12 @@
       const viewBtn = document.createElement("button");
       viewBtn.type = "button";
       viewBtn.className = "btn btn--primary btn--sm";
-      viewBtn.textContent =
-        entry.type === "online"
-          ? entry.reviewStatus === "reviewed"
-            ? "Open review"
-            : "Review worksheet"
-          : "Review";
+      viewBtn.textContent = "Review";
       viewBtn.addEventListener("click", () => {
+        if (entry.type === "online" && options?.openFlashcardReview) {
+          options.openFlashcardReview(entry);
+          return;
+        }
         if (entry.type === "online" && options?.openWorksheetReview) {
           options.openWorksheetReview(entry);
           return;
@@ -581,6 +585,17 @@
       });
 
       actions.appendChild(viewBtn);
+
+      if (entry.type === "online" && options?.openWorksheetReview) {
+        const sheetBtn = document.createElement("button");
+        sheetBtn.type = "button";
+        sheetBtn.className = "btn btn--ghost btn--sm";
+        sheetBtn.textContent = "Full sheet";
+        sheetBtn.addEventListener("click", () => {
+          options.openWorksheetReview(entry);
+        });
+        actions.appendChild(sheetBtn);
+      }
       li.append(main, actions);
       list.appendChild(li);
     });

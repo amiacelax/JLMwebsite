@@ -6243,6 +6243,13 @@ body.hw-video-chrome--pip-root .hw-video-chrome--pip .hw-video-chrome__seek-wrap
   background: transparent;
 }
 
+.hw-listen-card .hw-audio-player--inline .hw-audio-chrome__bar {
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-day) 18%, var(--hw-hourglass-stroke));
+  background: color-mix(in srgb, var(--hw-hourglass-night) 55%, #0b162a);
+  padding: 0.35rem 0.55rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hw-hourglass-snow) 8%, transparent);
+}
+
 .hw-listen-card .hw-audio-chrome {
   max-width: 100%;
 }
@@ -8868,6 +8875,11 @@ body.hw-role-teacher #hw-teacher-hub {
 .hw-submissions-item__type--reviewed {
   color: #0f766e;
   background: rgba(15, 118, 110, 0.12);
+}
+
+.hw-submissions-item__type--acked {
+  color: #a16207;
+  background: rgba(161, 98, 7, 0.14);
 }
 
 .hw-submission-comments__tag {

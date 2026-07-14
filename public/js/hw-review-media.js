@@ -57,17 +57,22 @@
       if (global.HwWorksheet?.renderListenSlideAudio) {
         const player = global.HwWorksheet.renderListenSlideAudio(url, {
           ariaLabel: "JD audio remark",
-          compact: true,
+          compact: false,
         });
         player.classList.add("hw-review-media__playback");
         container.appendChild(player);
-      } else if (global.HwWorksheet?.renderAudioPlayer) {
-        const player = global.HwWorksheet.renderAudioPlayer(url, {
-          inline: true,
-          listenCard: true,
-        });
-        player.classList.add("hw-review-media__playback");
-        container.appendChild(player);
+      } else if (global.HwCompat?.enhanceAudioElement) {
+        const wrap = document.createElement("div");
+        wrap.className = "hw-listen-card hw-review-media__playback";
+        const audio = document.createElement("audio");
+        const chrome = global.HwCompat.enhanceAudioElement(audio, url, {});
+        if (chrome) wrap.appendChild(chrome);
+        else {
+          audio.controls = true;
+          audio.src = url;
+          wrap.appendChild(audio);
+        }
+        container.appendChild(wrap);
       } else {
         const audio = document.createElement("audio");
         audio.className = "hw-review-media__playback";
@@ -105,7 +110,13 @@
    *   onBusy?: (busy: boolean) => void,
    *   compactToolbar?: boolean,
    *   audioBtn?: HTMLButtonElement,
-   *   videoBtn?: HTMLButtonElement
+   *   videoBtn?: HTMLButtonElement,
+   *   confirmErase?: (anchor: HTMLElement | null, onConfirm: () => void) => void,
+   *   onReady?: (api: {
+   *     resetAll: () => void,
+   *     resetClip: () => void,
+   *     hasRecording: () => boolean
+   *   }) => void
    * }} options
    */
   function mountRemarkRecorder(mount, options) {
@@ -255,6 +266,29 @@
       });
     }
 
+    function hasRecording() {
+      return (
+        state === "live" ||
+        state === "preview" ||
+        !!recordedBlob ||
+        !!currentMedia?.id
+      );
+    }
+
+    function confirmEraseIfNeeded(anchor, onConfirm) {
+      if (!hasRecording()) {
+        onConfirm();
+        return;
+      }
+      if (typeof options.confirmErase === "function") {
+        options.confirmErase(anchor, onConfirm);
+        return;
+      }
+      if (global.confirm("Are you sure? This will erase your current recording.")) {
+        onConfirm();
+      }
+    }
+
     function resetSavedClip() {
       currentMedia = null;
       clearRecording();
@@ -327,16 +361,21 @@
           previewEl.appendChild(
             global.HwWorksheet.renderListenSlideAudio(previewUrl, {
               ariaLabel: "Recorded remark preview",
-              compact: true,
+              compact: false,
             })
           );
-        } else if (global.HwWorksheet?.renderAudioPlayer) {
-          previewEl.appendChild(
-            global.HwWorksheet.renderAudioPlayer(previewUrl, {
-              inline: true,
-              listenCard: true,
-            })
-          );
+        } else if (global.HwCompat?.enhanceAudioElement) {
+          const wrap = document.createElement("div");
+          wrap.className = "hw-listen-card";
+          const audio = document.createElement("audio");
+          const chrome = global.HwCompat.enhanceAudioElement(audio, previewUrl, {});
+          if (chrome) wrap.appendChild(chrome);
+          else {
+            audio.controls = true;
+            audio.src = previewUrl;
+            wrap.appendChild(audio);
+          }
+          previewEl.appendChild(wrap);
         } else {
           const audio = document.createElement("audio");
           audio.className = "hw-review-media__playback";
@@ -414,50 +453,63 @@
       }
     }
 
-    async function startRecording() {
+    async function startRecording(opts) {
+      opts = opts || {};
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
         setStatus("Recording not supported in this browser.");
         return;
       }
       if (state === "live") return;
 
-      if (state === "preview") dismissPreview();
-      else clearRecording();
-      setStatus("");
+      const begin = async () => {
+        if (state === "preview") dismissPreview();
+        else clearRecording();
+        setStatus("");
 
-      const constraints =
-        mode === "audio" ? { audio: true } : { audio: true, video: { facingMode: "user" } };
+        const constraints =
+          mode === "audio" ? { audio: true } : { audio: true, video: { facingMode: "user" } };
 
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        recordedMimeType = mode === "audio" ? pickAudioMime() || "audio/webm" : pickVideoMime() || "video/webm";
         try {
-          mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          recordedMimeType = mode === "audio" ? pickAudioMime() || "audio/webm" : pickVideoMime() || "video/webm";
+          try {
+            mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordedMimeType });
+          } catch {
+            mediaRecorder = new MediaRecorder(mediaStream);
+          }
+          recordedMimeType = mediaRecorder.mimeType || recordedMimeType;
+          recordedChunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data?.size) recordedChunks.push(e.data);
+          };
+          mediaRecorder.onstop = finishRecording;
+          mediaRecorder.onerror = () => {
+            setStatus("Recording error — try again.");
+            showIdle();
+          };
+          mediaRecorder.start(1000);
+          recordStartedAt = Date.now();
+          showLive();
+          recordTimerId = setInterval(() => {
+            const elapsed = Date.now() - recordStartedAt;
+            if (timerEl) timerEl.textContent = formatTimer(elapsed);
+            if (elapsed >= MAX_RECORD_MS) stopRecording();
+          }, 500);
         } catch {
-          mediaRecorder = new MediaRecorder(mediaStream);
-        }
-        recordedMimeType = mediaRecorder.mimeType || recordedMimeType;
-        recordedChunks = [];
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data?.size) recordedChunks.push(e.data);
-        };
-        mediaRecorder.onstop = finishRecording;
-        mediaRecorder.onerror = () => {
-          setStatus("Recording error — try again.");
+          setStatus(mode === "video" ? "Camera/mic access denied." : "Microphone access denied.");
           showIdle();
-        };
-        mediaRecorder.start(1000);
-        recordStartedAt = Date.now();
-        showLive();
-        recordTimerId = setInterval(() => {
-          const elapsed = Date.now() - recordStartedAt;
-          if (timerEl) timerEl.textContent = formatTimer(elapsed);
-          if (elapsed >= MAX_RECORD_MS) stopRecording();
-        }, 500);
-      } catch {
-        setStatus(mode === "video" ? "Camera/mic access denied." : "Microphone access denied.");
-        showIdle();
+        }
+      };
+
+      if (!opts.skipConfirm && hasRecording()) {
+        confirmEraseIfNeeded(mount.querySelector(".hw-review-media__record"), () => {
+          resetSavedClip();
+          void begin();
+        });
+        return;
       }
+
+      void begin();
     }
 
     function stopRecording() {
@@ -480,12 +532,18 @@
     function bindToolbarRecord(btn, nextMode) {
       btn?.addEventListener("click", () => {
         if (state === "live") return;
-        setMode(nextMode);
-        if (state === "saved") {
-          dismissPreview();
-          showIdle();
+        const run = () => {
+          setMode(nextMode);
+          void startRecording({ skipConfirm: true });
+        };
+        if (hasRecording()) {
+          confirmEraseIfNeeded(btn, () => {
+            resetSavedClip();
+            run();
+          });
+          return;
         }
-        void startRecording();
+        run();
       });
     }
 
@@ -494,7 +552,11 @@
       bindToolbarRecord(options.videoBtn, "video");
     }
 
-    options.onReady?.({ resetAll, resetClip: resetSavedClip });
+    options.onReady?.({
+      resetAll,
+      resetClip: resetSavedClip,
+      hasRecording,
+    });
 
     if (currentMedia?.id) renderSaved();
     else showIdle();

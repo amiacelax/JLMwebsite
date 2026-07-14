@@ -9,12 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260772">
+  <link rel="stylesheet" href="/css/styles.css?v=20260789">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=29">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=68">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260776" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=34">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=70">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260789" data-hw-comments-css="1">
   <script src="/js/hw-auth.js?v=20260708b"></script>
   <script src="/js/hw-feature-flags.js?v=7"></script>
   <script>
@@ -353,7 +353,7 @@
                   <h2 class="hw-teacher-review-overlay__title" id="hw-teacher-review-title">Review submission</h2>
                   <p class="hw-teacher-review-overlay__sub" id="hw-teacher-review-sub"></p>
                 </div>
-                <button type="button" class="btn btn--primary btn--sm" id="hw-teacher-review-submit">Send to student</button>
+                <button type="button" id="hw-teacher-review-submit" hidden>Submit notes</button>
               </div>
               <p class="hw-teacher-review-overlay__status" id="hw-teacher-review-status" role="status" aria-live="polite"></p>
             </div>
@@ -617,9 +617,9 @@
               <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
             </section>
 
-            <details class="hw-hub-v2-fold hw-student-past-fold" id="hw-student-past-fold">
-              <summary class="hw-hub-v2-fold__summary">Past homework</summary>
-              <p class="hw-hub-v2-fold__intro">Submitted work — open to review your answers (read-only).</p>
+            <details class="hw-platform-card hw-hub-v5-past-box" id="hw-student-past-fold" open>
+              <summary class="hw-hub-v5-past-box__summary" id="hw-student-past-title">Past homework</summary>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Submitted work — open to review answers and JD’s notes (read-only).</p>
               <p class="hw-library-meta" id="hw-student-past-meta" aria-live="polite"></p>
               <ul class="hw-hub-v2-past-list" id="hw-student-past-list"></ul>
             </details>
@@ -904,28 +904,28 @@
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-loading.js?v=3" defer></script>
-  <script src="/js/hw-audio-player.js?v=20260772" defer></script>
-  <script src="/js/hw-video-player.js?v=20260772" defer></script>
+  <script src="/js/hw-audio-player.js?v=20260784" defer></script>
+  <script src="/js/hw-video-player.js?v=20260784" defer></script>
   <script src="/js/hw-compat.js?v=20260771" defer></script>
   <script src="/js/hw-video-inline.js?v=20260771" defer></script>
   <script src="/js/hw-audio-inline.js?v=20260753" defer></script>
   <script src="/js/hw-submit-format.js?v=20260619" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260771" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260786" defer></script>
   <script src="/js/hw-star-block.js?v=20260709b" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=18" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
   <script src="/js/hw-worksheet-tools-layout.js?v=18" defer></script>
   <script src="/js/hw-magnifying-glass.js?v=70" defer></script>
-  <script src="/js/hw-review-media.js?v=20260770" defer></script>
-  <script src="/js/hw-homework-comments.js?v=64" defer></script>
+  <script src="/js/hw-review-media.js?v=20260780" defer></script>
+  <script src="/js/hw-homework-comments.js?v=77" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260714" defer></script>
   <script src="/js/hw-teacher-editor.js?v=20260716" defer></script>
   <script src="/js/hw-encoding.js?v=2" defer></script>
   <script src="/js/hw-student-list.js?v=20260725" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
   <script src="/js/hw-mistake-feed.js?v=20260674" defer></script>
-  <script src="/js/hw-teacher-submissions.js?v=20260770" defer></script>
+  <script src="/js/hw-teacher-submissions.js?v=20260789" defer></script>
   <script src="/js/hw-teacher-mistakes.js?v=20260675" defer></script>
   <script src="/js/hw-student-mistakes.js?v=20260728" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
@@ -937,7 +937,7 @@
   <script src="/js/hw-teacher-lookup-lexicon.js?v=24" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260770" defer></script>
-  <script src="/js/hw-hub-v5-live.js?v=34" defer></script>
+  <script src="/js/hw-platform.js?v=20260793" defer></script>
+  <script src="/js/hw-hub-v5-live.js?v=43" defer></script>
 </body>
 </html>
