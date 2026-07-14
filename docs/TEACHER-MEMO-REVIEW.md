@@ -45,11 +45,11 @@ Like the Lookup Lexicon tab (one card, submit, next), but for homework review:
 - Phase 3 notification inbox → opens flashcard deck for that submission (later)
 
 **Files:** `public/js/hw-review-flashcards.js`, `public/css/hw-review-flashcards.css` — wired from `hw-platform.js` / `hw-teacher-submissions.js`.
-## Phase 2 — Notebook + pending next assignment
+## Phase 2 — Notebook (MVP)
 
-- On submit: stage student memos for Notebook under the HW section
-- After reviewed: **Save to Notebook** persists student + JD notes
-- New assignment while an unsaved reviewed pack exists → **New Assignment Pending** + green dot
+- When teacher **Submit notes** marks a submission `reviewed`, Worker auto-saves a **notebook pack** on that submission (`notebook` field) — no student “Save to Notebook” step.
+- Student hub: **Notebook** section under Homework lists note pairs (student question/highlight · JD comment) + link to reopen the reviewed worksheet.
+- **New Assignment Pending** / green-dot: skipped for MVP (auto-save removes the main need).
 
 ## Phase 3 — Teacher notification inbox
 

@@ -1164,8 +1164,19 @@
     }
   }
 
+  /** Hub diary owns the top status/HW slot — don't steal it with archive chrome. */
+  function isHubNotebookOpen() {
+    return (
+      global.HwHubV5Live?.isNotebookOpen?.() === true ||
+      document.body.classList.contains("hw-hub-v5-notebook-open")
+    );
+  }
+
   function notifySubmissionArchiveView(submission) {
     if (!submission?.id) return;
+    /* Opening View notebook clears archive, then a racing load would re-enter
+       submission view and wipe the diary — refuse while notebook is open. */
+    if (isHubNotebookOpen()) return;
     const wantHash = "hw-submission-" + submission.id;
     const currentHash = String(window.location.hash || "").replace(/^#/, "");
     if (currentHash !== wantHash) {
@@ -1189,11 +1200,60 @@
     );
   }
 
+  /** Deep-link from Notebook rows: slide + memo focus after opening a reviewed sheet. */
+  function applyNotebookOpenFocus(form, submissionId) {
+    if (!form || !submissionId) return;
+    let focus = null;
+    try {
+      const raw = sessionStorage.getItem("hw-notebook-focus");
+      if (!raw) return;
+      focus = JSON.parse(raw);
+      sessionStorage.removeItem("hw-notebook-focus");
+    } catch {
+      return;
+    }
+    if (!focus || String(focus.submissionId) !== String(submissionId)) return;
+
+    if (typeof focus.slideIndex === "number") {
+      HwWorksheet.setSlideIndex?.(form, focus.slideIndex);
+    }
+    const commentId = String(focus.commentId || "").trim();
+    if (commentId && global.HwHomeworkComments?.focusComment) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          global.HwHomeworkComments.focusComment(commentId);
+        });
+      });
+    }
+  }
+
+  function abortSubmissionViewForNotebook(mount) {
+    if (!isHubNotebookOpen()) return false;
+    setSubmissionViewChrome(null, false);
+    if (mount) mount.innerHTML = "";
+    /* Drop archive hash so diary isn't fighting archive-mode chrome. */
+    const hash = String(window.location.hash || "").replace(/^#/, "");
+    if (/^hw-submission-/i.test(hash)) {
+      try {
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+    return true;
+  }
+
   async function loadSubmissionView(submissionId, loadGen, isStale) {
     const mount = getWorksheetMount();
     const intro = document.getElementById("hw-worksheet-intro");
     const v4Intro = document.getElementById("hw-v4-worksheet-intro");
     const v2Title = document.getElementById("hw-v2-title");
+
+    if (abortSubmissionViewForNotebook(mount)) return false;
 
     let submission;
     try {
@@ -1213,6 +1273,7 @@
       return false;
     }
     if (isStale()) return false;
+    if (abortSubmissionViewForNotebook(mount)) return false;
 
     if (submission.type === "video" && submission.video?.id) {
       if (v2Title) {
@@ -1255,6 +1316,7 @@
       return true;
     }
     if (isStale()) return false;
+    if (abortSubmissionViewForNotebook(mount)) return false;
 
     const view = studentViewMeta(
       { id: submission.assignmentId, title: submission.title, lessonName: submission.lessonName },
@@ -1308,6 +1370,8 @@
           : null,
       });
     }
+
+    applyNotebookOpenFocus(form, submission.id);
 
     /* Keep hub archive ping + collapse in sync (replaceState alone does not fire hashchange). */
     notifySubmissionArchiveView(submission);
@@ -3449,6 +3513,15 @@
     scheduleStudentSubmissionsLoad(options);
 
     if (hashParts.kind === "submission") {
+      /* Diary owns the slot — don't remount archive under/over it. */
+      if (isHubNotebookOpen()) {
+        scheduleStudentMistakesLoad({
+          background: Boolean(options.background),
+          bypassCache: Boolean(options.bypassCache),
+        });
+        abortStudentWorksheetBoot();
+        return;
+      }
       bindPhotoUpload(null);
       bindVideoUpload(null);
       global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
@@ -3506,6 +3579,23 @@
           submissionId: latestSub.id,
           assignmentId: active.id,
         });
+        /*
+         * View notebook exits archive then triggers loadStudentHub. Don't auto
+         * re-open the reviewed sheet while the diary owns the status slot.
+         */
+        if (isHubNotebookOpen()) {
+          if (mount) mount.innerHTML = "";
+          studentMountedAssignmentId = null;
+          hubV4WorksheetForm = null;
+          setOfflineToolsVisible(false);
+          setSubmissionViewChrome(null, false);
+          scheduleStudentMistakesLoad({
+            background: Boolean(options.background),
+            bypassCache: Boolean(options.bypassCache),
+          });
+          abortStudentWorksheetBoot();
+          return;
+        }
         /* Same surface as teacher review: full HW slides + blue/green notes. */
         const subHash = "hw-submission-" + latestSub.id;
         if ((window.location.hash || "").replace(/^#/, "") !== subHash) {

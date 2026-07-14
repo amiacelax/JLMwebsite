@@ -15,6 +15,7 @@
     status: "jlm-hw-v5-live-demo-status",
     account: "jlm-hw-v5-live-demo-account",
     archiveReturnHash: "hw-v5-archive-return-hash",
+    notebookFocus: "hw-notebook-focus",
   };
 
   const TIER_PLANS = {
@@ -1037,6 +1038,7 @@
       const completeCard = ensureCompleteCard();
       const noHwEmpty = ensureNoHwEmpty();
       const noPlanWelcome = ensureNoPlanWelcome();
+      const notebookDiary = ensureNotebookDiary();
 
       const orphanFeedback = document.getElementById("hw-v2-feedback");
       if (orphanFeedback && completeCard && !completeCard.contains(orphanFeedback)) {
@@ -1049,10 +1051,12 @@
         v4Homework.insertBefore(completeCard, worksheetSection);
         v4Homework.insertBefore(noPlanWelcome, worksheetSection);
         v4Homework.insertBefore(noHwEmpty, worksheetSection);
+        v4Homework.insertBefore(notebookDiary, worksheetSection);
       } else {
         v4Homework.prepend(noHwEmpty);
         v4Homework.prepend(noPlanWelcome);
         v4Homework.prepend(completeCard);
+        v4Homework.prepend(notebookDiary);
       }
 
       const assignCard = document.getElementById("hw-current-assignment-card");
@@ -1263,7 +1267,8 @@
     bubble.dataset.statusBubbleBound = "1";
     bubble.addEventListener("click", (ev) => {
       ev.preventDefault();
-      /* Hub ping is a status signal; only exit archive when browsing past HW. */
+      /* Status ping always restores hub status view (closes notebook / archive). */
+      if (notebookOpen) closeNotebook();
       if (isArchiveMode()) exitArchiveMode();
     });
     bubble.addEventListener("mouseenter", (ev) => {
@@ -1902,6 +1907,528 @@
     document.body.classList.toggle("hw-hub-v5-no-hw-view", show);
   }
 
+  let notebookRefreshQueued = false;
+  let notebookCacheKey = "";
+  let notebookCachePacks = null;
+  let notebookOpen = false;
+  let notebookPageIndex = 0;
+  let notebookUiBound = false;
+
+  function formatNotebookWhen(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  function packDisplayTitle(pack) {
+    return (
+      String(pack?.lessonName || "").trim() ||
+      String(pack?.title || "").trim() ||
+      "Homework"
+    );
+  }
+
+  /** Student name for Notebook column headers (CSS uppercases the label). */
+  function notebookStudentName(pack) {
+    return (
+      String(pack?.displayName || "").trim() ||
+      getStudentDisplayName() ||
+      "Student"
+    );
+  }
+
+  /** Empty-note placeholder: "Ben test note" from display name "Ben M". */
+  function notebookEmptyNotePlaceholder(displayName) {
+    const first =
+      String(displayName || "Student")
+        .trim()
+        .split(/\s+/)[0] || "Student";
+    return first + " test note";
+  }
+
+  function usableNotebookPacks(packs) {
+    return (Array.isArray(packs) ? packs : []).filter(
+      (pack) => Array.isArray(pack?.rows) && pack.rows.length
+    );
+  }
+
+  function openNotebookRow(pack, row) {
+    const submissionId = String(pack?.submissionId || "").trim();
+    if (!submissionId) return;
+    try {
+      sessionStorage.setItem(
+        STORAGE.notebookFocus,
+        JSON.stringify({
+          submissionId,
+          slideIndex:
+            typeof row?.slideIndex === "number" ? row.slideIndex : undefined,
+          commentId: String(row?.commentId || "").trim() || undefined,
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+    window.location.hash = "hw-submission-" + submissionId;
+  }
+
+  let notebookMediaOverlay = null;
+  let notebookMediaKeyHandler = null;
+
+  function closeNotebookMediaOverlay() {
+    if (notebookMediaKeyHandler) {
+      document.removeEventListener("keydown", notebookMediaKeyHandler);
+      notebookMediaKeyHandler = null;
+    }
+    if (!notebookMediaOverlay) return;
+    notebookMediaOverlay.remove();
+    notebookMediaOverlay = null;
+    document.body.classList.remove("hw-modal-open", "is-modal-open");
+  }
+
+  function openNotebookMediaOverlay(media) {
+    if (!media?.id) return;
+    closeNotebookMediaOverlay();
+
+    const overlay = document.createElement("div");
+    overlay.className = "hw-hub-v5-notebook-media";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute(
+      "aria-label",
+      media.kind === "video" ? "JD video reply" : "JD audio reply"
+    );
+
+    const backdrop = document.createElement("button");
+    backdrop.type = "button";
+    backdrop.className = "hw-hub-v5-notebook-media__backdrop";
+    backdrop.setAttribute("aria-label", "Close media");
+    backdrop.addEventListener("click", closeNotebookMediaOverlay);
+
+    const dialog = document.createElement("div");
+    dialog.className = "hw-hub-v5-notebook-media__dialog";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "hw-hub-v5-notebook-media__close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", closeNotebookMediaOverlay);
+
+    const title = document.createElement("p");
+    title.className = "hw-hub-v5-notebook-media__title";
+    title.textContent = media.kind === "video" ? "JD’s video" : "JD’s audio";
+
+    const mount = document.createElement("div");
+    mount.className = "hw-hub-v5-notebook-media__player";
+
+    dialog.appendChild(closeBtn);
+    dialog.appendChild(title);
+    dialog.appendChild(mount);
+    overlay.appendChild(backdrop);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    document.body.classList.add("hw-modal-open", "is-modal-open");
+    notebookMediaOverlay = overlay;
+
+    if (global.HwReviewMedia?.renderPlayback) {
+      global.HwReviewMedia.renderPlayback(mount, media);
+    } else {
+      const url =
+        global.HwReviewMedia?.mediaUrl?.(media.id) ||
+        "/api/hw-m/" + encodeURIComponent(media.id);
+      if (media.kind === "audio") {
+        const audio = document.createElement("audio");
+        audio.controls = true;
+        audio.src = url;
+        mount.appendChild(audio);
+      } else {
+        const video = document.createElement("video");
+        video.controls = true;
+        video.playsInline = true;
+        video.src = url;
+        mount.appendChild(video);
+      }
+    }
+
+    notebookMediaKeyHandler = (ev) => {
+      if (ev.key === "Escape") closeNotebookMediaOverlay();
+    };
+    document.addEventListener("keydown", notebookMediaKeyHandler);
+    closeBtn.focus();
+  }
+
+  function notebookRowMedia(row) {
+    const id = String(row?.jdMedia?.id || "").trim();
+    if (!id) return null;
+    return {
+      id,
+      kind: row.jdMedia.kind === "video" ? "video" : "audio",
+      mimeType: row.jdMedia.mimeType,
+    };
+  }
+
+  function renderNotebookRow(pack, row) {
+    const el = document.createElement("article");
+    el.className = "hw-hub-v5-notebook__row";
+    el.dataset.commentId = row.commentId || "";
+
+    const studentName = notebookStudentName(pack);
+    const studentText = String(row.studentText || "").trim();
+    const studentAnchor = String(row.studentAnchor || "").trim();
+
+    const zone1 = document.createElement("div");
+    zone1.className = "hw-hub-v5-notebook__zone1";
+    const leftLabel = document.createElement("p");
+    leftLabel.className = "hw-hub-v5-notebook__label";
+    leftLabel.textContent = studentName;
+    zone1.appendChild(leftLabel);
+
+    if (studentAnchor) {
+      const anchor = document.createElement("p");
+      anchor.className = "hw-hub-v5-notebook__anchor";
+      anchor.textContent = "“" + studentAnchor + "”";
+      zone1.appendChild(anchor);
+    }
+
+    const leftText = document.createElement("p");
+    leftText.className = "hw-hub-v5-notebook__text";
+    if (studentText) {
+      leftText.textContent = studentText;
+      zone1.appendChild(leftText);
+    } else if (!studentAnchor) {
+      leftText.textContent = notebookEmptyNotePlaceholder(studentName);
+      zone1.appendChild(leftText);
+    }
+
+    const bodyId =
+      "hw-nb-jd-" +
+      String(pack?.submissionId || "x") +
+      "-" +
+      String(row.commentId || row.slideIndex || Math.random().toString(36).slice(2, 8));
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "hw-hub-v5-notebook__jd-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", bodyId);
+
+    const rightLabel = document.createElement("span");
+    rightLabel.className = "hw-hub-v5-notebook__label hw-hub-v5-notebook__label--jd";
+    rightLabel.textContent = "JD’s comment";
+
+    const chevron = document.createElement("span");
+    chevron.className = "hw-hub-v5-notebook__jd-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "▸";
+
+    toggle.appendChild(rightLabel);
+    toggle.appendChild(chevron);
+    zone1.appendChild(toggle);
+
+    const zone2 = document.createElement("div");
+    zone2.className = "hw-hub-v5-notebook__zone2";
+
+    const body = document.createElement("div");
+    body.id = bodyId;
+    body.className = "hw-hub-v5-notebook__jd-body";
+    body.setAttribute("aria-hidden", "true");
+
+    const media = notebookRowMedia(row);
+    if (row.jdText) {
+      const rightText = document.createElement("p");
+      rightText.className = "hw-hub-v5-notebook__text";
+      rightText.textContent = row.jdText;
+      body.appendChild(rightText);
+    } else if (!media) {
+      const rightText = document.createElement("p");
+      rightText.className = "hw-hub-v5-notebook__text";
+      rightText.textContent = "(No comment yet)";
+      body.appendChild(rightText);
+    }
+
+    if (media) {
+      const links = document.createElement("div");
+      links.className = "hw-hub-v5-notebook__media-links";
+      const mediaBtn = document.createElement("button");
+      mediaBtn.type = "button";
+      mediaBtn.className = "hw-hub-v5-notebook__media-link";
+      mediaBtn.tabIndex = -1;
+      mediaBtn.textContent = media.kind === "video" ? "Video" : "Audio";
+      mediaBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        openNotebookMediaOverlay(media);
+      });
+      links.appendChild(mediaBtn);
+      body.appendChild(links);
+    }
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "hw-hub-v5-notebook__open";
+    openBtn.tabIndex = -1;
+    openBtn.textContent =
+      typeof row.slideIndex === "number"
+        ? "Open HW · Q" + (row.slideIndex + 1)
+        : "Open this homework page";
+    openBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      openNotebookRow(pack, row);
+    });
+    body.appendChild(openBtn);
+    zone2.appendChild(body);
+
+    toggle.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      const next = !open;
+      toggle.setAttribute("aria-expanded", next ? "true" : "false");
+      body.setAttribute("aria-hidden", next ? "false" : "true");
+      el.classList.toggle("is-expanded", next);
+      openBtn.tabIndex = next ? 0 : -1;
+      const mediaBtn = body.querySelector(".hw-hub-v5-notebook__media-link");
+      if (mediaBtn) mediaBtn.tabIndex = next ? 0 : -1;
+    });
+
+    el.appendChild(zone1);
+    el.appendChild(zone2);
+    return el;
+  }
+
+  function ensureNotebookDiary() {
+    let diary = document.getElementById("hw-notebook-diary");
+    if (diary) return diary;
+
+    diary = document.createElement("section");
+    diary.className = "hw-hub-v5-notebook-diary";
+    diary.id = "hw-notebook-diary";
+    diary.hidden = true;
+    diary.setAttribute("aria-labelledby", "hw-notebook-diary-date");
+    diary.innerHTML =
+      '<div class="hw-hub-v5-notebook-diary__chrome">' +
+      '<header class="hw-hub-v5-notebook-diary__header">' +
+      '<p class="hw-hub-v5-notebook-diary__date" id="hw-notebook-diary-date">Notebook</p>' +
+      '<p class="hw-hub-v5-notebook-diary__lesson" id="hw-notebook-diary-lesson" hidden></p>' +
+      "</header>" +
+      '<div class="hw-hub-v5-notebook-diary__page" id="hw-notebook-diary-page" tabindex="0" aria-label="Notebook page"></div>' +
+      '<nav class="hw-hub-v5-notebook-diary__pager" id="hw-notebook-diary-pager" aria-label="Notebook pages">' +
+      '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-prev" aria-label="Previous assignment page">\u2190</button>' +
+      '<p class="hw-hub-v5-notebook-diary__counter" id="hw-notebook-counter" aria-live="polite">1 of 1</p>' +
+      '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-next" aria-label="Next assignment page">\u2192</button>' +
+      "</nav>" +
+      "</div>";
+    return diary;
+  }
+
+  function clampNotebookPageIndex(usable) {
+    const max = Math.max(0, usable.length - 1);
+    if (notebookPageIndex < 0) notebookPageIndex = 0;
+    if (notebookPageIndex > max) notebookPageIndex = max;
+  }
+
+  function updateNotebookEntryHint(usable) {
+    const hint = document.getElementById("hw-notebook-entry-hint");
+    const btn = document.getElementById("hw-notebook-open-btn");
+    if (hint) {
+      hint.textContent = usable.length
+        ? usable.length === 1
+          ? "1 assignment with notes"
+          : usable.length + " assignments with notes"
+        : "No notes yet — JD’s comments appear after review";
+    }
+    if (btn) {
+      btn.setAttribute("aria-expanded", notebookOpen ? "true" : "false");
+      btn.classList.toggle("is-open", notebookOpen);
+    }
+  }
+
+  function renderNotebookDiaryPage(packs) {
+    const diary = ensureNotebookDiary();
+    const page = document.getElementById("hw-notebook-diary-page");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    const counter = document.getElementById("hw-notebook-counter");
+    const prevBtn = document.getElementById("hw-notebook-prev");
+    const nextBtn = document.getElementById("hw-notebook-next");
+    if (!page || !dateEl) return;
+
+    const usable = usableNotebookPacks(packs);
+    clampNotebookPageIndex(usable);
+    updateNotebookEntryHint(usable);
+
+    page.replaceChildren();
+
+    if (!usable.length) {
+      dateEl.textContent = "Notebook";
+      if (lessonEl) {
+        lessonEl.hidden = true;
+        lessonEl.textContent = "";
+      }
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v5-notebook__empty";
+      empty.textContent =
+        "No notebook pages yet. Notes from JD will appear here after he reviews your homework.";
+      page.appendChild(empty);
+      if (counter) counter.textContent = "0 of 0";
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    const pack = usable[notebookPageIndex];
+    const when = formatNotebookWhen(pack.reviewedAt || pack.savedAt);
+    dateEl.textContent = when || "Reviewed homework";
+    if (lessonEl) {
+      const lesson = packDisplayTitle(pack);
+      lessonEl.textContent = lesson;
+      lessonEl.hidden = !lesson;
+    }
+
+    const rows = document.createElement("div");
+    rows.className = "hw-hub-v5-notebook__rows";
+    pack.rows.forEach((row) => {
+      rows.appendChild(renderNotebookRow(pack, row));
+    });
+    page.appendChild(rows);
+    page.scrollTop = 0;
+
+    if (counter) {
+      counter.textContent =
+        notebookPageIndex + 1 + " of " + usable.length;
+    }
+    if (prevBtn) prevBtn.disabled = notebookPageIndex <= 0;
+    if (nextBtn) nextBtn.disabled = notebookPageIndex >= usable.length - 1;
+  }
+
+  function applyNotebookOpenUi() {
+    const diary = ensureNotebookDiary();
+    document.body.classList.toggle("hw-hub-v5-notebook-open", notebookOpen);
+    diary.hidden = !notebookOpen;
+    if (notebookOpen) {
+      renderNotebookDiaryPage(notebookCachePacks || []);
+    }
+  }
+
+  function openNotebook() {
+    notebookOpen = true;
+    /* Leave archive sheet so diary can occupy the top status/HW slot. */
+    if (isArchiveMode()) exitArchiveMode();
+    applyNotebookOpenUi();
+    renderHomeworkZone(getHubStatus());
+    const page = document.getElementById("hw-notebook-diary-page");
+    try {
+      page?.focus?.({ preventScroll: true });
+    } catch {
+      page?.focus?.();
+    }
+  }
+
+  function closeNotebook() {
+    if (!notebookOpen) return;
+    notebookOpen = false;
+    applyNotebookOpenUi();
+    renderHomeworkZone(getHubStatus());
+  }
+
+  function stepNotebookPage(delta) {
+    const usable = usableNotebookPacks(notebookCachePacks || []);
+    if (!usable.length) return;
+    const next = notebookPageIndex + delta;
+    if (next < 0 || next >= usable.length) return;
+    notebookPageIndex = next;
+    renderNotebookDiaryPage(usable);
+  }
+
+  function bindNotebookUi() {
+    if (notebookUiBound) return;
+    notebookUiBound = true;
+
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("#hw-notebook-open-btn")) {
+        e.preventDefault();
+        if (notebookOpen) closeNotebook();
+        else openNotebook();
+        return;
+      }
+      if (e.target.closest("#hw-notebook-prev")) {
+        e.preventDefault();
+        stepNotebookPage(-1);
+        return;
+      }
+      if (e.target.closest("#hw-notebook-next")) {
+        e.preventDefault();
+        stepNotebookPage(1);
+      }
+    });
+  }
+
+  function renderNotebookPacks(packs) {
+    notebookCachePacks = Array.isArray(packs) ? packs : [];
+    const usable = usableNotebookPacks(notebookCachePacks);
+    clampNotebookPageIndex(usable);
+    updateNotebookEntryHint(usable);
+    if (notebookOpen) renderNotebookDiaryPage(usable);
+  }
+
+  async function fetchNotebookPacks() {
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    if (!username) return [];
+
+    const res = await fetch(
+      "/api/homework-notebook?username=" + encodeURIComponent(username),
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => ({}));
+    return Array.isArray(data.packs) ? data.packs : [];
+  }
+
+  function queueNotebookRefresh() {
+    if (notebookRefreshQueued) return;
+    notebookRefreshQueued = true;
+    const run = async () => {
+      notebookRefreshQueued = false;
+      const section = document.getElementById("hw-student-notebook");
+      if (!section || section.hidden) return;
+      const session = getActiveSession();
+      const username = String(session?.username || "").trim().toLowerCase();
+      if (!username) {
+        renderNotebookPacks([]);
+        return;
+      }
+      try {
+        const packs = await fetchNotebookPacks();
+        notebookCacheKey = username;
+        renderNotebookPacks(packs);
+      } catch {
+        if (notebookCacheKey === username && notebookCachePacks) {
+          renderNotebookPacks(notebookCachePacks);
+        } else {
+          renderNotebookPacks([]);
+        }
+      }
+    };
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(() => {
+        void run();
+      }, { timeout: 2000 });
+    } else {
+      setTimeout(() => {
+        void run();
+      }, 120);
+    }
+  }
+
   function ensureWorksheetLoadingPlaceholder() {
     const mount =
       document.getElementById("hw-v2-worksheet-mount") ||
@@ -2006,20 +2533,30 @@
     document.body.classList.toggle("hw-hub-v5-complete-view", showComplete);
 
     if (worksheetSection) {
-      worksheetSection.hidden = archive
-        ? false
-        : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
+      worksheetSection.hidden = notebookOpen
+        ? true
+        : archive
+          ? false
+          : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
     }
-    if (completeCard) completeCard.hidden = !showComplete;
+    if (completeCard) completeCard.hidden = notebookOpen || !showComplete;
     if (pastFold) {
       pastFold.hidden = archive || !showComplete || showNoHw || showNoPlan;
     }
-    if (offlineCard) offlineCard.hidden = archive || showComplete || showNoHw || showNoPlan;
+    const notebook = document.getElementById("hw-student-notebook");
+    if (notebook) {
+      notebook.hidden = !ready || showNoHw || showNoPlan;
+      if (!notebook.hidden) queueNotebookRefresh();
+    }
+    applyNotebookOpenUi();
+    if (offlineCard) {
+      offlineCard.hidden = notebookOpen || archive || showComplete || showNoHw || showNoPlan;
+    }
 
     renderStatusBubble(status);
 
-    renderNoPlanWelcome(showNoPlan);
-    renderNoHwEmpty(showNoHw);
+    renderNoPlanWelcome(notebookOpen ? false : showNoPlan);
+    renderNoHwEmpty(notebookOpen ? false : showNoHw);
 
     const worksheetMounted = isWorksheetMounted();
     document.body.classList.toggle("hw-hub-v5-worksheet-ready", worksheetMounted);
@@ -2030,6 +2567,7 @@
       !showNoPlan &&
       !showNoHw &&
       !archive &&
+      !notebookOpen &&
       !worksheetMounted;
     renderAssignmentLanding(showLanding);
     if (ready && hasAssignment && !worksheetMounted && !showComplete && !showNoPlan && !showNoHw) {
@@ -2101,6 +2639,16 @@
     } else {
       applyTabPanels(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
     }
+    /* Re-assert diary after every paint so async hub refreshes can't flash status. */
+    applyNotebookOpenUi();
+    if (notebookOpen) {
+      const completeCard = document.getElementById("hw-v5-complete-card");
+      if (completeCard) completeCard.hidden = true;
+      const worksheetSection = document.querySelector(
+        "#hw-hub-v4-homework .hw-hub-v2-worksheet"
+      );
+      if (worksheetSection) worksheetSection.hidden = true;
+    }
     queueLiveReviewRefresh();
     ensureReviewPoll(status);
   }
@@ -2108,6 +2656,7 @@
   function bindUi() {
     if (uiBound) return;
     uiBound = true;
+    bindNotebookUi();
 
     document.querySelectorAll("[data-v5-demo-status]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2206,10 +2755,20 @@
     });
 
     window.addEventListener("hashchange", () => {
+      /* Entering a past sheet while diary is open = intentional row/open-past. */
+      if (notebookOpen && isArchiveMode()) {
+        notebookOpen = false;
+        applyNotebookOpenUi();
+      }
       renderAll();
     });
     document.addEventListener("hw-platform-submission-view", () => {
       hubReady = true;
+      /* Archive sheet owns the top slot — diary yields for explicit past views. */
+      if (notebookOpen) {
+        notebookOpen = false;
+        applyNotebookOpenUi();
+      }
       renderAll();
     });
   }
@@ -2240,6 +2799,15 @@
     initMobileTabs();
     renderAll();
   }
+
+  /** Durable notebook open state for platform refresh paths. */
+  global.HwHubV5Live = {
+    isNotebookOpen() {
+      return notebookOpen;
+    },
+    openNotebook,
+    closeNotebook,
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);

@@ -54,6 +54,7 @@ import {
   getHomeworkSubmission,
   saveHomeworkReview,
   saveHomeworkReviewAck,
+  listHomeworkNotebook,
   loadHomeworkSubmissionPhoto,
   loadHomeworkSubmissionVideo,
   saveHomeworkReviewMedia,
@@ -3000,6 +3001,41 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
   }
 }
 
+async function handleHomeworkNotebook(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const username = String(url.searchParams.get("username") || "")
+    .trim()
+    .toLowerCase();
+  if (!username) {
+    return jsonResponse({ error: "Student login required." }, 403);
+  }
+
+  try {
+    const packs = await listHomeworkNotebook(env, { username });
+    return jsonResponse({ packs }, 200, { "Cache-Control": "private, no-store" });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Notebook storage is not configured on this server." }, 503);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "USERNAME_REQUIRED") {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    console.error("homework-notebook failed:", err);
+    return jsonResponse({ error: "Could not load notebook." }, 500);
+  }
+}
+
 async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3678,6 +3714,10 @@ export default {
 
     if (url.pathname === "/api/homework-review") {
       return handleHomeworkReview(request, env);
+    }
+
+    if (url.pathname === "/api/homework-notebook") {
+      return handleHomeworkNotebook(request, env);
     }
 
     if (url.pathname === "/api/homework-review-ack") {

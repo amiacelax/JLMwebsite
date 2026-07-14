@@ -1451,6 +1451,37 @@ export interface HomeworkComment {
 
 export type HomeworkReviewStatus = "submitted" | "reviewed" | "acknowledged";
 
+/** One Notebook list row: student memo + JD reply, or a standalone JD question note. */
+export interface HomeworkNotebookRow {
+  id: string;
+  kind: "pair" | "jd";
+  studentText?: string;
+  studentAnchor?: string;
+  jdText?: string;
+  /** True when JD left A/V without (or in addition to) text — text-first MVP. */
+  hasJdMedia?: boolean;
+  /** Media refs so the hub can play Video/Audio without opening the worksheet. */
+  jdMedia?: HomeworkReviewMedia;
+  slideIndex?: number;
+  commentId: string;
+}
+
+/**
+ * Snapshot of review note-pairs saved when teacher submits notes.
+ * Stored on the submission so student hub can list without re-deriving every time.
+ */
+export interface HomeworkNotebookPack {
+  savedAt: string;
+  submissionId: string;
+  assignmentId: string;
+  title?: string;
+  lessonName?: string;
+  /** Student display name for Notebook column headers. */
+  displayName?: string;
+  reviewedAt: string;
+  rows: HomeworkNotebookRow[];
+}
+
 export interface HomeworkSubmission {
   id: string;
   type: "online" | "photo" | "video";
@@ -1469,6 +1500,8 @@ export interface HomeworkSubmission {
   answers?: HomeworkAnswerRow[];
   /** Student notes / questions on the worksheet at submit time (+ teacher remarks after review). */
   comments?: HomeworkComment[];
+  /** Auto-saved when teacher Submit notes marks the submission reviewed. */
+  notebook?: HomeworkNotebookPack;
   photo?: HomeworkSubmissionPhoto;
   video?: HomeworkSubmissionVideo;
   submittedAt: string;
@@ -1868,8 +1901,165 @@ export async function saveHomeworkReview(
     teacherNotesSubmittedAt: now,
   };
 
+  if (markReviewed) {
+    updated.notebook = buildNotebookPack(updated, now);
+  }
+
   await writeSubmission(kv, updated);
   return updated;
+}
+
+function notebookMediaRef(
+  media: HomeworkReviewMedia | undefined | null
+): HomeworkReviewMedia | undefined {
+  const id = String(media?.id || "").trim();
+  if (!id) return undefined;
+  return {
+    id,
+    kind: media?.kind === "video" ? "video" : "audio",
+    mimeType: String(media?.mimeType || "").trim() || undefined,
+  };
+}
+
+/** Build Notebook rows from reviewed comments (note pairs + standalone JD notes). */
+export function buildNotebookRows(comments: HomeworkComment[] | undefined): HomeworkNotebookRow[] {
+  const list = Array.isArray(comments) ? comments : [];
+  const rows: HomeworkNotebookRow[] = [];
+
+  for (const c of list) {
+    const author = c.author === "teacher" ? "teacher" : "student";
+    const slideIndex = typeof c.slideIndex === "number" ? c.slideIndex : undefined;
+    const jdMedia = notebookMediaRef(c.teacherRemarkMedia);
+    const hasJdMedia = Boolean(jdMedia);
+    const jdText = String(c.teacherRemark || "").trim();
+    const studentText = String(c.text || "").trim();
+    const studentAnchor = String(c.anchor || "").trim() || undefined;
+
+    if (author === "teacher") {
+      const noteText = studentText;
+      if (!noteText && !hasJdMedia) continue;
+      rows.push({
+        id: c.id,
+        kind: "jd",
+        jdText: noteText || undefined,
+        hasJdMedia,
+        jdMedia,
+        studentAnchor,
+        slideIndex,
+        commentId: c.id,
+      });
+      continue;
+    }
+
+    /* Student memo: only include once JD has replied (text and/or media). */
+    if (!jdText && !hasJdMedia) continue;
+    rows.push({
+      id: c.id,
+      kind: "pair",
+      studentText: studentText || undefined,
+      studentAnchor,
+      jdText: jdText || undefined,
+      hasJdMedia,
+      jdMedia,
+      slideIndex,
+      commentId: c.id,
+    });
+  }
+
+  return rows;
+}
+
+/** Fill missing jdMedia on older packs from live submission comments. */
+function enrichNotebookRowsMedia(
+  rows: HomeworkNotebookRow[],
+  comments: HomeworkComment[] | undefined
+): HomeworkNotebookRow[] {
+  if (!rows.length) return rows;
+  if (!rows.some((row) => row.hasJdMedia && !row.jdMedia?.id)) return rows;
+  const list = Array.isArray(comments) ? comments : [];
+  if (!list.length) return rows;
+  const byId = new Map(list.map((c) => [c.id, c]));
+  return rows.map((row) => {
+    if (row.jdMedia?.id) return row;
+    const media = notebookMediaRef(byId.get(row.commentId)?.teacherRemarkMedia);
+    if (!media) return row;
+    return { ...row, hasJdMedia: true, jdMedia: media };
+  });
+}
+
+function buildNotebookPack(
+  submission: HomeworkSubmission,
+  savedAt: string
+): HomeworkNotebookPack {
+  return {
+    savedAt,
+    submissionId: submission.id,
+    assignmentId: submission.assignmentId,
+    title: submission.title,
+    lessonName: submission.lessonName,
+    displayName: submission.displayName,
+    reviewedAt: submission.reviewedAt || savedAt,
+    rows: buildNotebookRows(submission.comments),
+  };
+}
+
+/**
+ * Student Notebook list: reviewed/acknowledged online submissions with a pack
+ * (or rebuild from comments for older submissions that predate packs).
+ */
+export async function listHomeworkNotebook(
+  env: KvEnv,
+  opts: { username?: string }
+): Promise<HomeworkNotebookPack[]> {
+  const username = String(opts.username || "")
+    .trim()
+    .toLowerCase();
+  if (!username) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudent(username, env))) throw new Error("UNKNOWN_STUDENT");
+
+  const submissions = await listHomeworkSubmissions(env, { student: username });
+  const packs: HomeworkNotebookPack[] = [];
+
+  for (const sub of submissions) {
+    if (sub.type !== "online") continue;
+    const status = sub.reviewStatus || "submitted";
+    if (status !== "reviewed" && status !== "acknowledged") continue;
+
+    if (sub.notebook?.rows) {
+      packs.push({
+        ...sub.notebook,
+        submissionId: sub.id,
+        assignmentId: sub.assignmentId,
+        title: sub.notebook.title || sub.title,
+        lessonName: sub.notebook.lessonName || sub.lessonName,
+        displayName: sub.notebook.displayName || sub.displayName,
+        reviewedAt: sub.notebook.reviewedAt || sub.reviewedAt || sub.submittedAt,
+        rows: enrichNotebookRowsMedia(sub.notebook.rows, sub.comments),
+      });
+      continue;
+    }
+
+    /* Backfill for reviews saved before Phase 2 notebook packs existed. */
+    const rows = buildNotebookRows(sub.comments);
+    if (!rows.length) continue;
+    packs.push({
+      savedAt: sub.reviewedAt || sub.teacherNotesSubmittedAt || sub.submittedAt,
+      submissionId: sub.id,
+      assignmentId: sub.assignmentId,
+      title: sub.title,
+      lessonName: sub.lessonName,
+      displayName: sub.displayName,
+      reviewedAt: sub.reviewedAt || sub.submittedAt,
+      rows,
+    });
+  }
+
+  packs.sort(
+    (a, b) =>
+      new Date(b.reviewedAt || b.savedAt || 0).getTime() -
+      new Date(a.reviewedAt || a.savedAt || 0).getTime()
+  );
+  return packs;
 }
 
 /** Student finished reading JD’s notes and is ready for new homework. */
