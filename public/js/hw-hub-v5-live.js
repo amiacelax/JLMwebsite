@@ -401,10 +401,19 @@
     }
   }
 
+  function normalizeSubmissionReviewStatus(sub) {
+    if (!sub) return null;
+    const raw = String(sub.reviewStatus || "").trim().toLowerCase();
+    if (raw === "reviewed" || raw === "acknowledged" || raw === "submitted") return raw;
+    if (sub.studentNotesAckedAt) return "acknowledged";
+    if (sub.reviewedAt || sub.teacherNotesSubmittedAt) return "reviewed";
+    return "submitted";
+  }
+
   async function refreshLiveReviewStatus() {
     const session = getActiveSession();
     const username = String(session?.username || "").trim().toLowerCase();
-    const assignmentId = getActiveAssignmentId();
+    const assignmentId = String(getActiveAssignmentId() || "").trim();
     if (!username || !assignmentId || demoModeEnabled()) return null;
 
     const gen = ++liveReviewStatusGen;
@@ -417,7 +426,9 @@
       if (gen !== liveReviewStatusGen) return null;
       const subs = (Array.isArray(data.submissions) ? data.submissions : [])
         .filter(
-          (entry) => entry.type === "online" && entry.assignmentId === assignmentId
+          (entry) =>
+            entry.type === "online" &&
+            String(entry.assignmentId || "").trim() === assignmentId
         )
         .sort(
           (a, b) =>
@@ -425,13 +436,14 @@
             new Date(a.submittedAt || 0).getTime()
         );
       const latest = subs[0] || null;
+      const status = normalizeSubmissionReviewStatus(latest);
       liveReviewStatusAssignmentId = assignmentId;
       liveReviewStatusReady = true;
-      if (latest?.reviewStatus === "reviewed") {
+      if (status === "reviewed") {
         liveReviewStatus = "reviewed";
         lastReviewedSubmissionId = String(latest.id || "");
         writeReviewedFlag(username, assignmentId);
-      } else if (latest?.reviewStatus === "acknowledged") {
+      } else if (status === "acknowledged") {
         liveReviewStatus = "acknowledged";
         lastReviewedSubmissionId = "";
         writeReviewedFlag(username, assignmentId);
@@ -1177,7 +1189,8 @@
       "hw-hub-v5-status-bubble--dock",
       "hw-hub-v5-status-bubble--in-card",
       "hw-hub-v5-status-bubble--in-hub",
-      "hw-hub-v5-status-bubble--hub-signal"
+      "hw-hub-v5-status-bubble--hub-signal",
+      "hw-hub-v5-status-bubble--in-diary"
     );
 
     const archive = isArchiveMode();
@@ -1186,6 +1199,23 @@
     );
     const stickyHead = worksheetCard?.querySelector(".hw-worksheet__slide-sticky-head");
     const navRow = stickyHead?.querySelector(".hw-worksheet__slide-nav-row");
+
+    /* Diary replaces the status slot — keep home ping on the notebook chrome. */
+    if (notebookOpen) {
+      ensureNotebookDiary();
+      const diaryHost = document.getElementById("hw-v5-diary-ping-host");
+      if (diaryHost) {
+        bubble.classList.add(
+          "hw-hub-v5-status-bubble--in-hub",
+          "hw-hub-v5-status-bubble--hub-signal",
+          "hw-hub-v5-status-bubble--in-diary"
+        );
+        if (bubble.parentElement !== diaryHost) diaryHost.appendChild(bubble);
+        if (hint.parentElement !== document.body) document.body.appendChild(hint);
+        if (bubble.matches(":hover")) scheduleBubbleHint();
+        return;
+      }
+    }
 
     if (archive) {
       const host = navRow || stickyHead || worksheetCard;
@@ -1270,6 +1300,8 @@
       /* Status ping always restores hub status view (closes notebook / archive). */
       if (notebookOpen) closeNotebook();
       if (isArchiveMode()) exitArchiveMode();
+      /* Full paint after exit so Past HW / complete card remount reliably. */
+      renderAll();
     });
     bubble.addEventListener("mouseenter", (ev) => {
       trackBubblePointer(ev);
@@ -1352,8 +1384,8 @@
   function renderStatusBubble(status) {
     const archive = isArchiveMode();
     const complete = isCompleteView(status);
-    /* Archive past-sheet view OR hub complete states (submitted/reviewed/acked). */
-    if (!archive && !complete) {
+    /* Archive, hub complete states, or notebook (home ping on diary chrome). */
+    if (!archive && !complete && !notebookOpen) {
       teardownStatusBubble();
       const completeHost = document.getElementById("hw-v5-complete-ping-host");
       if (completeHost) completeHost.hidden = true;
@@ -1365,7 +1397,7 @@
     mountStatusBubble(status);
     window.requestAnimationFrame(() => mountStatusBubble(status));
     setTimeout(() => mountStatusBubble(status), 250);
-    if (archive) {
+    if (archive && !notebookOpen) {
       /* Worksheet chrome mounts after the past sheet loads — remount onto it. */
       setTimeout(() => mountStatusBubble(status), 900);
       setTimeout(() => mountStatusBubble(status), 1800);
@@ -1381,43 +1413,50 @@
       "hw-hub-v5-status-bubble--acked"
     );
 
+    const homeExit = archive || notebookOpen;
+
     if (status === "reviewed") {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewed");
       bubble.setAttribute(
         "aria-label",
-        archive
-          ? "JD’s notes are ready. Click to return to mainpage"
+        homeExit
+          ? "JD’s notes are ready. Click to return to home"
           : "Homework reviewed — JD’s notes are ready"
       );
       if (hint) {
-        hint.textContent = archive
-          ? "JD’s notes are ready. Click to return to mainpage"
+        hint.textContent = homeExit
+          ? "JD’s notes are ready. Click to return to home"
           : "Homework done — JD’s notes are ready";
       }
     } else if (status === "acknowledged") {
       bubble.classList.add("hw-hub-v5-status-bubble--acked");
       bubble.setAttribute(
         "aria-label",
-        archive
-          ? "Waiting for new homework. Click to return to mainpage"
+        homeExit
+          ? "Waiting for new homework. Click to return to home"
           : "Waiting for your next homework"
       );
       if (hint) {
-        hint.textContent = archive
-          ? "Waiting for JD to send new homework. Click to return to mainpage"
+        hint.textContent = homeExit
+          ? "Waiting for JD to send new homework. Click to return to home"
           : "Waiting for JD to send new homework";
       }
-    } else {
+    } else if (status === "submitted" || complete) {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
       bubble.setAttribute(
         "aria-label",
-        archive ? "HW under review. Click to return to mainpage" : "Homework under review"
+        homeExit ? "HW under review. Click to return to home" : "Homework under review"
       );
       if (hint) {
-        hint.textContent = archive
-          ? "HW under review. Click to return to mainpage"
+        hint.textContent = homeExit
+          ? "HW under review. Click to return to home"
           : "JD is reviewing your homework";
       }
+    } else {
+      /* Notebook open during active HW — ping still exits diary to status. */
+      bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
+      bubble.setAttribute("aria-label", "Click to return to home");
+      if (hint) hint.textContent = "Click to return to home";
     }
   }
 
@@ -1978,6 +2017,11 @@
     } catch {
       /* ignore */
     }
+    /* Close diary before archive hash so platform doesn't skip/abort the sheet. */
+    if (notebookOpen) {
+      notebookOpen = false;
+      applyNotebookOpenUi();
+    }
     window.location.hash = "hw-submission-" + submissionId;
   }
 
@@ -2206,26 +2250,56 @@
 
   function ensureNotebookDiary() {
     let diary = document.getElementById("hw-notebook-diary");
-    if (diary) return diary;
+    if (!diary) {
+      diary = document.createElement("section");
+      diary.className = "hw-hub-v5-notebook-diary";
+      diary.id = "hw-notebook-diary";
+      diary.hidden = true;
+      diary.setAttribute("aria-labelledby", "hw-notebook-diary-date");
+      diary.innerHTML =
+        '<div class="hw-hub-v5-notebook-diary__chrome">' +
+        '<header class="hw-hub-v5-notebook-diary__header">' +
+        '<div class="hw-hub-v5-notebook-diary__mast">' +
+        '<p class="hw-hub-v5-notebook-diary__date" id="hw-notebook-diary-date">Notebook</p>' +
+        '<p class="hw-hub-v5-notebook-diary__lesson" id="hw-notebook-diary-lesson" hidden></p>' +
+        "</div>" +
+        '<div class="hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary" id="hw-v5-diary-ping-host" aria-hidden="false"></div>' +
+        "</header>" +
+        '<div class="hw-hub-v5-notebook-diary__page" id="hw-notebook-diary-page" tabindex="0" aria-label="Notebook page"></div>' +
+        '<div class="hw-hub-v5-notebook-diary__pager-row">' +
+        '<nav class="hw-hub-v5-notebook-diary__pager" id="hw-notebook-diary-pager" aria-label="Notebook pages">' +
+        '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-prev" aria-label="Previous assignment page">\u2190</button>' +
+        '<p class="hw-hub-v5-notebook-diary__counter" id="hw-notebook-counter" aria-live="polite">1 of 1</p>' +
+        '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-next" aria-label="Next assignment page">\u2192</button>' +
+        "</nav>" +
+        "</div>" +
+        "</div>";
+    }
 
-    diary = document.createElement("section");
-    diary.className = "hw-hub-v5-notebook-diary";
-    diary.id = "hw-notebook-diary";
-    diary.hidden = true;
-    diary.setAttribute("aria-labelledby", "hw-notebook-diary-date");
-    diary.innerHTML =
-      '<div class="hw-hub-v5-notebook-diary__chrome">' +
-      '<header class="hw-hub-v5-notebook-diary__header">' +
-      '<p class="hw-hub-v5-notebook-diary__date" id="hw-notebook-diary-date">Notebook</p>' +
-      '<p class="hw-hub-v5-notebook-diary__lesson" id="hw-notebook-diary-lesson" hidden></p>' +
-      "</header>" +
-      '<div class="hw-hub-v5-notebook-diary__page" id="hw-notebook-diary-page" tabindex="0" aria-label="Notebook page"></div>' +
-      '<nav class="hw-hub-v5-notebook-diary__pager" id="hw-notebook-diary-pager" aria-label="Notebook pages">' +
-      '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-prev" aria-label="Previous assignment page">\u2190</button>' +
-      '<p class="hw-hub-v5-notebook-diary__counter" id="hw-notebook-counter" aria-live="polite">1 of 1</p>' +
-      '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-next" aria-label="Next assignment page">\u2192</button>' +
-      "</nav>" +
-      "</div>";
+    /* Keep status ping top-right of the notebook chrome (not beside the pager). */
+    const header = diary.querySelector(".hw-hub-v5-notebook-diary__header");
+    let mast = diary.querySelector(".hw-hub-v5-notebook-diary__mast");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    if (header && !mast && dateEl) {
+      mast = document.createElement("div");
+      mast.className = "hw-hub-v5-notebook-diary__mast";
+      header.insertBefore(mast, header.firstChild);
+      mast.appendChild(dateEl);
+      if (lessonEl) mast.appendChild(lessonEl);
+    }
+    let host = document.getElementById("hw-v5-diary-ping-host");
+    if (!host && header) {
+      host = document.createElement("div");
+      host.className =
+        "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary";
+      host.id = "hw-v5-diary-ping-host";
+      host.setAttribute("aria-hidden", "false");
+    }
+    if (header && host && host.parentElement !== header) {
+      header.appendChild(host);
+    }
+
     return diary;
   }
 
@@ -2316,6 +2390,8 @@
     if (notebookOpen) {
       renderNotebookDiaryPage(notebookCachePacks || []);
     }
+    /* Remount status ping onto diary chrome (or back to hub) when slot changes. */
+    renderStatusBubble(getHubStatus());
   }
 
   function openNotebook() {
@@ -2336,7 +2412,41 @@
     if (!notebookOpen) return;
     notebookOpen = false;
     applyNotebookOpenUi();
-    renderHomeworkZone(getHubStatus());
+    /* Full paint restores complete card + Past HW entry (not just zone flags). */
+    renderAll();
+  }
+
+  /**
+   * Leave diary / empty archive chrome, then open the Past HW list.
+   * Opening Past HW while the diary owns the status slot left archive hash +
+   * empty mount with Past HW permanently hidden.
+   */
+  function openPastHomeworkFromHub() {
+    if (notebookOpen) {
+      notebookOpen = false;
+      applyNotebookOpenUi();
+    }
+    if (isArchiveMode()) {
+      exitArchiveMode();
+    }
+    renderAll();
+
+    const fold = document.getElementById("hw-student-past-fold");
+    if (!fold) return;
+    fold.hidden = false;
+    const entryRow = document.getElementById("hw-hub-v5-entry-row");
+    if (entryRow) entryRow.hidden = false;
+    fold.open = true;
+    if (global.HwStudentPast?.reload) {
+      void global.HwStudentPast.reload({ bypassCache: true });
+    } else {
+      document.dispatchEvent(new CustomEvent("hw-platform-reload-past"));
+    }
+    try {
+      fold.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch {
+      /* ignore */
+    }
   }
 
   function stepNotebookPage(delta) {
@@ -2548,6 +2658,12 @@
       notebook.hidden = !ready || showNoHw || showNoPlan;
       if (!notebook.hidden) queueNotebookRefresh();
     }
+    const entryRow = document.getElementById("hw-hub-v5-entry-row");
+    if (entryRow) {
+      const pastVisible = pastFold && !pastFold.hidden;
+      const noteVisible = notebook && !notebook.hidden;
+      entryRow.hidden = !pastVisible && !noteVisible;
+    }
     applyNotebookOpenUi();
     if (offlineCard) {
       offlineCard.hidden = notebookOpen || archive || showComplete || showNoHw || showNoPlan;
@@ -2570,8 +2686,28 @@
       !notebookOpen &&
       !worksheetMounted;
     renderAssignmentLanding(showLanding);
-    if (ready && hasAssignment && !worksheetMounted && !showComplete && !showNoPlan && !showNoHw) {
-      ensureWorksheetLoadingPlaceholder();
+    /*
+     * Ready means loadStudentHub finished (mounted, aborted into complete/empty, or
+     * failed). Never re-paint the hourglass after that — it stuck forever when
+     * hasAssignment was true but no form was mounted (e.g. status gate missed,
+     * !active abort, fetch error) while Past HW stayed hidden (!showComplete).
+     * In-flight loads stay covered by the !ready branch above.
+     */
+    if (ready) {
+      const mount =
+        document.getElementById("hw-v2-worksheet-mount") ||
+        document.getElementById("hw-worksheet-mount");
+      if (
+        mount &&
+        mount.querySelector(".hw-list-wait, .hw-hub-v5-loading-list") &&
+        (showComplete || showNoHw || showNoPlan || !hasAssignment || worksheetMounted)
+      ) {
+        mount.querySelector(".hw-hub-v5-loading-list")?.remove();
+        mount.querySelectorAll(".hw-list-wait").forEach((node) => node.remove());
+        if (!mount.querySelector(".hw-worksheet, form.hw-worksheet, #hw-worksheet-form")) {
+          mount.replaceChildren();
+        }
+      }
     }
   }
 
@@ -2653,10 +2789,73 @@
     ensureReviewPoll(status);
   }
 
+  function bindPastHomeworkFold() {
+    const fold = document.getElementById("hw-student-past-fold");
+    if (!fold || fold.dataset.v5PastBound === "1") return;
+    fold.dataset.v5PastBound = "1";
+
+    const surfacePastUnavailable = (message) => {
+      const meta = document.getElementById("hw-student-past-meta");
+      const list = document.getElementById("hw-student-past-list");
+      const msg = message || "Past homework is unavailable. Hard-refresh the page.";
+      if (meta) meta.textContent = msg;
+      if (!list) return;
+      list.replaceChildren();
+      const li = document.createElement("li");
+      li.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
+      li.textContent = msg;
+      list.appendChild(li);
+    };
+
+    const ensurePastList = () => {
+      if (!fold.open || fold.hidden) return;
+
+      /* Wait a frame so open details content is in layout before paint/fetch. */
+      requestAnimationFrame(() => {
+        if (!fold.open || fold.hidden) return;
+        const list = document.getElementById("hw-student-past-list");
+        if (!list) {
+          surfacePastUnavailable("Past homework list is missing from the page.");
+          return;
+        }
+        if (global.HwStudentPast?.reload) {
+          void global.HwStudentPast.reload({ bypassCache: true });
+          return;
+        }
+        /* Stale platform without HwStudentPast.reload — event listener still loads. */
+        document.dispatchEvent(new CustomEvent("hw-platform-reload-past"));
+      });
+    };
+
+    fold.addEventListener("toggle", () => {
+      if (!fold.open) return;
+      /* Diary + Past HW together corrupts the status slot — leave diary first. */
+      if (notebookOpen) {
+        openPastHomeworkFromHub();
+        return;
+      }
+      ensurePastList();
+    });
+
+    /* Flex-row sibling boxes: clicks in padding/dead space should still open. */
+    fold.addEventListener("click", (ev) => {
+      if (fold.open && !notebookOpen) return;
+      if (ev.target.closest("summary, a, button, input, label")) return;
+      ev.preventDefault();
+      if (notebookOpen) {
+        openPastHomeworkFromHub();
+        return;
+      }
+      fold.open = true;
+      ensurePastList();
+    });
+  }
+
   function bindUi() {
     if (uiBound) return;
     uiBound = true;
     bindNotebookUi();
+    bindPastHomeworkFold();
 
     document.querySelectorAll("[data-v5-demo-status]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2688,19 +2887,10 @@
       }
       if (e.target.closest("#hw-v5-past-btn")) {
         e.preventDefault();
-        if (global.HwStudentPast?.openPicker) {
-          void global.HwStudentPast.openPicker();
-          return;
-        }
         if (isMobileTabs()) {
           setActiveTab("homework", { scrollTop: true });
         }
-        const fold = document.getElementById("hw-student-past-fold");
-        if (fold) {
-          fold.hidden = false;
-          if ("open" in fold) fold.open = true;
-          fold.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+        openPastHomeworkFromHub();
       }
     });
 
@@ -2807,6 +2997,7 @@
     },
     openNotebook,
     closeNotebook,
+    openPastHomework: openPastHomeworkFromHub,
   };
 
   if (document.readyState === "loading") {

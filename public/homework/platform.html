@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/styles.css?v=20260790">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=47">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=53">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=74">
   <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260796" data-hw-comments-css="1">
   <script src="/js/hw-auth.js?v=20260708b"></script>
@@ -617,20 +617,22 @@
               <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
             </section>
 
-            <details class="hw-platform-card hw-hub-v5-past-box" id="hw-student-past-fold" open>
-              <summary class="hw-hub-v5-past-box__summary" id="hw-student-past-title">Past homework</summary>
-              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Submitted work — open to review answers and JD’s notes (read-only).</p>
-              <p class="hw-library-meta" id="hw-student-past-meta" aria-live="polite"></p>
-              <ul class="hw-hub-v2-past-list" id="hw-student-past-list"></ul>
-            </details>
+            <div class="hw-hub-v5-entry-row" id="hw-hub-v5-entry-row">
+              <details class="hw-platform-card hw-hub-v5-past-box" id="hw-student-past-fold">
+                <summary class="hw-hub-v5-past-box__summary" id="hw-student-past-title">Past homework</summary>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight">Submitted work — open to review answers and JD’s notes (read-only).</p>
+                <p class="hw-library-meta" id="hw-student-past-meta" aria-live="polite"></p>
+                <ul class="hw-hub-v2-past-list" id="hw-student-past-list"></ul>
+              </details>
 
-            <section class="hw-platform-card hw-hub-v5-notebook-entry" id="hw-student-notebook" aria-labelledby="hw-student-notebook-title" hidden>
-              <h2 class="visually-hidden" id="hw-student-notebook-title">Notebook</h2>
-              <button type="button" class="hw-hub-v5-notebook-entry__btn" id="hw-notebook-open-btn" aria-controls="hw-notebook-diary">
-                <span class="hw-hub-v5-notebook-entry__label">View notebook</span>
-                <span class="hw-hub-v5-notebook-entry__hint" id="hw-notebook-entry-hint">Notes from reviewed homework</span>
-              </button>
-            </section>
+              <section class="hw-platform-card hw-hub-v5-notebook-entry" id="hw-student-notebook" aria-labelledby="hw-student-notebook-title" hidden>
+                <h2 class="visually-hidden" id="hw-student-notebook-title">Notebook</h2>
+                <button type="button" class="hw-hub-v5-notebook-entry__btn" id="hw-notebook-open-btn" aria-controls="hw-notebook-diary">
+                  <span class="hw-hub-v5-notebook-entry__label">View notebook</span>
+                  <span class="hw-hub-v5-notebook-entry__hint" id="hw-notebook-entry-hint">Notes from reviewed homework</span>
+                </button>
+              </section>
+            </div>
           </div>
 
           <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
@@ -945,7 +947,7 @@
   <script src="/js/hw-teacher-lookup-lexicon.js?v=24" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260796" defer></script>
-  <script src="/js/hw-hub-v5-live.js?v=58" defer></script>
+  <script src="/js/hw-platform.js?v=20260799" defer></script>
+  <script src="/js/hw-hub-v5-live.js?v=64" defer></script>
 </body>
 </html>

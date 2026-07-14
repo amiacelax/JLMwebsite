@@ -505,7 +505,7 @@ export async function publishToStudentHub(
 
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
   await kv.put(catalogKey(id), JSON.stringify(catalogEntry));
-  await kv.put(studentCurrentHomeworkKey(student), id);
+  await kv.put(studentCurrentHomeworkKey(student), String(id || "").trim());
 
   const index = await readIndex(kv);
   const updated = index.includes(id);
@@ -816,7 +816,9 @@ export async function mergeCatalog(
     const media = await applyKvStudentMedia(kvNs, studentKey, base);
     if (media) merged.studentProfiles[studentKey] = media;
 
-    const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(studentKey));
+    const currentHomeworkId = String(
+      (await kvNs.get(studentCurrentHomeworkKey(studentKey))) || ""
+    ).trim();
     if (currentHomeworkId) {
       merged.studentProfiles[studentKey] = {
         ...(merged.studentProfiles[studentKey] || {}),
@@ -872,7 +874,9 @@ export async function mergeCatalog(
 
   await Promise.all(
     allStudents.map(async ({ username: student }) => {
-      const currentHomeworkId = await kvNs.get(studentCurrentHomeworkKey(student));
+      const currentHomeworkId = String(
+        (await kvNs.get(studentCurrentHomeworkKey(student))) || ""
+      ).trim();
       if (!currentHomeworkId) return;
       merged.studentProfiles![student] = {
         ...(merged.studentProfiles![student] || {}),

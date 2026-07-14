@@ -993,6 +993,9 @@
   }
 
   function openPastAssignment(entry) {
+    /* Leave diary first so loadStudentHub doesn't skip the archive sheet and
+       leave a stuck #hw-submission- hash with an empty mount. */
+    global.HwHubV5Live?.closeNotebook?.();
     if (global.__JLM_HUB_V5) {
       const parts = parseStudentHash();
       let returnHash = "";
@@ -1108,6 +1111,7 @@
   }
 
   async function openPastAssignmentsModal() {
+    global.HwHubV5Live?.closeNotebook?.();
     const modal = document.getElementById("hw-past-assignments-modal");
     if (!modal) return;
 
@@ -1115,13 +1119,10 @@
     modal.hidden = false;
     document.body.classList.add("is-modal-open");
 
-    const meta = document.getElementById("hw-past-assignments-modal-meta");
-    if (meta) meta.textContent = "Loading past homework…";
-
     try {
-      await loadStudentPastHomework();
+      await loadStudentPastHomework({ bypassCache: true });
     } catch {
-      /* loadStudentPastHomework updates meta on error */
+      /* loadStudentPastHomework clears loading + surfaces errors */
     }
 
     modal.querySelector(".hw-breakdown-modal__close")?.focus();
@@ -1146,21 +1147,92 @@
     }
   }
 
+  document.addEventListener("hw-platform-reload-past", () => {
+    void loadStudentPastHomework({ bypassCache: true });
+  });
+
+  let pastHomeworkLoadGen = 0;
+
+  function pastHomeworkTargets() {
+    return {
+      fold: document.getElementById("hw-student-past-fold"),
+      foldList: document.getElementById("hw-student-past-list"),
+      foldMeta: document.getElementById("hw-student-past-meta"),
+      modal: document.getElementById("hw-past-assignments-modal"),
+      modalList: document.getElementById("hw-past-assignments-modal-list"),
+      modalMeta: document.getElementById("hw-past-assignments-modal-meta"),
+    };
+  }
+
+  function pastHomeworkListsVisible(targets) {
+    const foldOpen =
+      targets.fold && !targets.fold.hidden && Boolean(targets.fold.open);
+    const modalOpen = targets.modal && !targets.modal.hidden;
+    return { foldOpen, modalOpen, any: foldOpen || modalOpen };
+  }
+
+  function setPastHomeworkError(message, targets) {
+    const msg = message || "Could not load past homework.";
+    if (targets.foldMeta) targets.foldMeta.textContent = msg;
+    if (targets.modalMeta) targets.modalMeta.textContent = msg;
+    [targets.foldList, targets.modalList].forEach((list) => {
+      if (!list) return;
+      list.replaceChildren();
+      const empty = document.createElement("li");
+      empty.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
+      empty.textContent = msg;
+      list.appendChild(empty);
+    });
+  }
+
+  function showPastHomeworkWait(targets, visible) {
+    const message = "Loading past homework…";
+    if (targets.foldMeta) targets.foldMeta.textContent = message;
+    if (targets.modalMeta) targets.modalMeta.textContent = message;
+    const lists = [];
+    if (visible.foldOpen && targets.foldList) lists.push(targets.foldList);
+    if (visible.modalOpen && targets.modalList) lists.push(targets.modalList);
+    /* Idle preload: don't flash hourglass into a closed fold. */
+    if (!lists.length) return;
+    lists.forEach((list) => {
+      if (global.HwLoading?.showListWait) {
+        global.HwLoading.showListWait(list, {
+          message,
+          extraClass: "hw-hub-v2-past-list__item",
+        });
+      }
+    });
+  }
+
   async function loadStudentPastHomework(options) {
-    const list =
-      document.getElementById("hw-student-past-list") ||
-      document.getElementById("hw-past-assignments-modal-list");
-    if (!list) return;
+    options = options || {};
+    const gen = ++pastHomeworkLoadGen;
+    const targets = pastHomeworkTargets();
+    const lists = [targets.foldList, targets.modalList].filter(Boolean);
+    if (!lists.length) return;
+
+    const username = String(session?.username || "").trim();
+    if (!username) {
+      setPastHomeworkError("Sign in to view past homework.", targets);
+      return;
+    }
+
+    const visible = pastHomeworkListsVisible(targets);
+    if (visible.any) showPastHomeworkWait(targets, visible);
 
     const hash = window.location.hash.replace(/^#/, "");
     const activeSubmissionId = hash.match(/^hw-submission-(.+)$/)?.[1] || "";
 
     try {
       const submissions = await fetchStudentSubmissions(options);
+      if (gen !== pastHomeworkLoadGen) return;
       renderStudentPastList(submissions, activeSubmissionId);
     } catch (err) {
-      const meta = document.getElementById("hw-student-past-meta");
-      if (meta) meta.textContent = (err && err.message) || "Could not load past homework.";
+      if (gen !== pastHomeworkLoadGen) return;
+      setPastHomeworkError(
+        (err && err.message) || "Could not load past homework.",
+        targets
+      );
     }
   }
 
@@ -3352,15 +3424,15 @@
 
   function guessedAssignmentId() {
     const hashParts = parseStudentHash();
-    if (hashParts.kind === "assignment") return hashParts.id;
+    if (hashParts.kind === "assignment") return String(hashParts.id || "").trim() || null;
     if (hashParts.kind === "submission") return null;
     const cached = readSessionJson(CATALOG_SESSION_KEY);
     const user = session?.username;
     if (user && cached?.data?.studentProfiles?.[user]?.currentHomeworkId) {
-      return cached.data.studentProfiles[user].currentHomeworkId;
+      return String(cached.data.studentProfiles[user].currentHomeworkId).trim() || null;
     }
     const mem = catalogCache?.studentProfiles?.[user]?.currentHomeworkId;
-    return mem || null;
+    return String(mem || "").trim() || null;
   }
 
   function scheduleStudentMistakesLoad(options) {
@@ -3410,8 +3482,19 @@
     }
   }
 
+  function normalizeSubmissionReviewStatus(sub) {
+    if (!sub) return null;
+    const raw = String(sub.reviewStatus || "").trim().toLowerCase();
+    if (raw === "reviewed" || raw === "acknowledged" || raw === "submitted") return raw;
+    if (sub.studentNotesAckedAt) return "acknowledged";
+    if (sub.reviewedAt || sub.teacherNotesSubmittedAt) return "reviewed";
+    return "submitted";
+  }
+
   async function fetchLatestOnlineSubmission(assignmentId) {
     if (!session.username || !assignmentId) return null;
+    const wantId = String(assignmentId || "").trim();
+    if (!wantId) return null;
     try {
       const res = await fetch(
         "/api/homework-submissions?username=" + encodeURIComponent(session.username),
@@ -3422,14 +3505,20 @@
       const subs = (Array.isArray(data.submissions) ? data.submissions : [])
         .filter(
           (entry) =>
-            entry.type === "online" && entry.assignmentId === assignmentId
+            entry.type === "online" &&
+            String(entry.assignmentId || "").trim() === wantId
         )
         .sort(
           (a, b) =>
             new Date(b.submittedAt || 0).getTime() -
             new Date(a.submittedAt || 0).getTime()
         );
-      return subs[0] || null;
+      const latest = subs[0] || null;
+      if (!latest) return null;
+      return {
+        ...latest,
+        reviewStatus: normalizeSubmissionReviewStatus(latest),
+      };
     } catch {
       return null;
     }
@@ -3452,7 +3541,14 @@
     options = options || {};
     const loadGen = ++studentHubLoadGen;
     const isStale = () => loadGen !== studentHubLoadGen;
+    let settled = false;
+    const settleHub = (fn) => {
+      if (settled || isStale()) return;
+      settled = true;
+      fn();
+    };
 
+    try {
     document.body.classList.add("hw-role-student");
 
     const teacherHub = document.getElementById("hw-teacher-hub");
@@ -3474,7 +3570,7 @@
     }
 
     const hashParts = parseStudentHash();
-    const hashId = hashParts.kind === "assignment" ? hashParts.id : "";
+    const hashId = hashParts.kind === "assignment" ? String(hashParts.id || "").trim() : "";
     const guessId = options.skipWorksheet ? null : guessedAssignmentId();
     const catalogPromise = fetchCatalog(
       options.bypassCache ? { bypassCache: true } : undefined
@@ -3491,21 +3587,27 @@
       catalog = await catalogPromise;
     } catch {
       if (intro) intro.textContent = "Could not load homework catalog.";
-      abortStudentWorksheetBoot();
+      settleHub(abortStudentWorksheetBoot);
       return;
     }
     if (isStale()) return;
 
-    const user = session.username;
-    const mine = (catalog.assignments || []).filter((a) => (a.students || []).includes(user));
+    const user = String(session.username || "").trim().toLowerCase();
+    const mine = (catalog.assignments || []).filter((a) =>
+      (a.students || []).map((s) => String(s || "").toLowerCase()).includes(user)
+    );
     mine.sort((a, b) => assignmentRecencyKey(b).localeCompare(assignmentRecencyKey(a)));
 
-    const currentId = catalog.studentProfiles?.[user]?.currentHomeworkId;
+    const currentId = String(
+      catalog.studentProfiles?.[user]?.currentHomeworkId ||
+        catalog.studentProfiles?.[session.username]?.currentHomeworkId ||
+        ""
+    ).trim();
     const active =
       (hashParts.kind === "assignment" && hashId && mine.find((a) => a.id === hashId)) ||
       (currentId && mine.find((a) => a.id === currentId)) ||
       mine[0] ||
-      null;
+      (currentId ? { id: currentId, title: currentId, students: [user] } : null);
 
     renderCurrentAssignmentCard(mine, active?.id);
     setLessonLinks(active, catalog);
@@ -3513,21 +3615,19 @@
     scheduleStudentSubmissionsLoad(options);
 
     if (hashParts.kind === "submission") {
-      /* Diary owns the slot — don't remount archive under/over it. */
+      /* Intentional past sheet — leave diary, then load. Never return early while
+         keeping #hw-submission- (that leaves empty ～title + Past HW gone). */
       if (isHubNotebookOpen()) {
-        scheduleStudentMistakesLoad({
-          background: Boolean(options.background),
-          bypassCache: Boolean(options.bypassCache),
-        });
-        abortStudentWorksheetBoot();
-        return;
+        global.HwHubV5Live?.closeNotebook?.();
       }
       bindPhotoUpload(null);
       bindVideoUpload(null);
       global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
       const submissionOk = await loadSubmissionView(hashParts.id, loadGen, isStale);
       if (submissionOk) {
-        finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"));
+        settleHub(() =>
+          finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"))
+        );
         return;
       }
       clearStaleSubmissionHash();
@@ -3553,7 +3653,7 @@
         v4Intro.textContent = "No assignment is linked to your account yet.";
         v4Intro.hidden = false;
       }
-      mount.innerHTML = "";
+      if (mount) mount.innerHTML = "";
       studentMountedAssignmentId = null;
       hubV4WorksheetForm = null;
       setOfflineToolsVisible(false);
@@ -3561,7 +3661,7 @@
         background: Boolean(options.background),
         bypassCache: Boolean(options.bypassCache),
       });
-      abortStudentWorksheetBoot();
+      settleHub(abortStudentWorksheetBoot);
       return;
     }
 
@@ -3593,7 +3693,7 @@
             background: Boolean(options.background),
             bypassCache: Boolean(options.bypassCache),
           });
-          abortStudentWorksheetBoot();
+          settleHub(abortStudentWorksheetBoot);
           return;
         }
         /* Same surface as teacher review: full HW slides + blue/green notes. */
@@ -3607,7 +3707,9 @@
         }
         const submissionOk = await loadSubmissionView(latestSub.id, loadGen, isStale);
         if (submissionOk) {
-          finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"));
+          settleHub(() =>
+            finishStudentWorksheetMount(document.getElementById("hw-worksheet-form"))
+          );
           return;
         }
         mount.innerHTML = "";
@@ -3618,7 +3720,7 @@
           background: Boolean(options.background),
           bypassCache: Boolean(options.bypassCache),
         });
-        abortStudentWorksheetBoot();
+        settleHub(abortStudentWorksheetBoot);
         return;
       } else if (latestSub?.reviewStatus === "acknowledged") {
         markLocalSubmissionFlags(active.id, "acknowledged");
@@ -3636,7 +3738,7 @@
             background: Boolean(options.background),
             bypassCache: Boolean(options.bypassCache),
           });
-          abortStudentWorksheetBoot();
+          settleHub(abortStudentWorksheetBoot);
           return;
         }
       } else if (latestSub) {
@@ -3656,7 +3758,7 @@
             background: Boolean(options.background),
             bypassCache: Boolean(options.bypassCache),
           });
-          abortStudentWorksheetBoot();
+          settleHub(abortStudentWorksheetBoot);
           return;
         }
       }
@@ -3671,7 +3773,9 @@
         background: true,
         bypassCache: Boolean(options.bypassCache),
       });
-      finishStudentWorksheetMount(mount.querySelector("#hw-worksheet-form"));
+      settleHub(() =>
+        finishStudentWorksheetMount(mount.querySelector("#hw-worksheet-form"))
+      );
       return;
     }
 
@@ -3685,11 +3789,16 @@
         assignment = await fetchAssignmentJson(active.id, assignmentFetchOpts);
       } catch {
         if (intro) intro.textContent = "Could not load this worksheet.";
+        if (v4Intro) {
+          v4Intro.textContent = "Could not load this worksheet.";
+          v4Intro.hidden = false;
+        }
+        if (mount) mount.innerHTML = "";
         scheduleStudentMistakesLoad({
           background: Boolean(options.background),
           bypassCache: Boolean(options.bypassCache),
         });
-        abortStudentWorksheetBoot();
+        settleHub(abortStudentWorksheetBoot);
         return;
       }
       if (isStale()) return;
@@ -3743,7 +3852,24 @@
     }
 
     global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
-    const form = mountWorksheet(assignment);
+    let form;
+    try {
+      form = mountWorksheet(assignment);
+    } catch (err) {
+      console.error("[hw-platform] worksheet mount failed", err);
+      if (intro) intro.textContent = "Could not load this worksheet.";
+      if (v4Intro) {
+        v4Intro.textContent = "Could not load this worksheet.";
+        v4Intro.hidden = false;
+      }
+      if (mount) mount.innerHTML = "";
+      scheduleStudentMistakesLoad({
+        background: Boolean(options.background),
+        bypassCache: Boolean(options.bypassCache),
+      });
+      settleHub(abortStudentWorksheetBoot);
+      return;
+    }
     if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
@@ -3753,7 +3879,11 @@
       background: Boolean(options.background),
       bypassCache: Boolean(options.bypassCache),
     });
-    finishStudentWorksheetMount(form);
+    settleHub(() => finishStudentWorksheetMount(form));
+    } catch (err) {
+      console.error("[hw-platform] loadStudentHub failed", err);
+      settleHub(abortStudentWorksheetBoot);
+    }
   }
 
   function ensureTeacherEditorMounted() {
@@ -3990,5 +4120,6 @@
   global.HwStudentPast = {
     openPicker: openPastAssignmentsModal,
     closePicker: closePastAssignmentsModal,
+    reload: loadStudentPastHomework,
   };
 })();
