@@ -51,9 +51,17 @@ Like the Lookup Lexicon tab (one card, submit, next), but for homework review:
 - Student hub: **Notebook** section under Homework lists note pairs (student question/highlight · JD comment) + link to reopen the reviewed worksheet.
 - **New Assignment Pending** / green-dot: skipped for MVP (auto-save removes the main need).
 
-## Phase 3 — Teacher notification inbox
+## Phase 3 — Teacher Hub v6 (notifications-first) — WIP local
 
-- "Faye submitted …" in teacher hub → deep-link into flashcard deck (Discord ping stays as today)
+**Hub v6** teacher tab (`HwFeatureFlags.hubV6()`, local-only): same “main stage up top” pattern as the student hub.
+
+- **Main focus:** notifications feed — submitted HW, email list signups, student finished your notes / ready for new HW (online + photo/video).
+- **Open** pulls that item into the top stage; online HW can open the full review sheet (flashcards aside for now).
+- **✕** dismisses into a recycle list (localStorage) that auto-purges after 2 weeks.
+- **Birthdays:** cake chips for upcoming (≤14 days) pinned above the main stage (not duplicate feed rows).
+- Q5 badge count: skipped for now until clarified.
+- Existing teacher tabs stay; consolidate later bit by bit.
+- Discord pings stay as today.
 
 ## Discord submit format (worksheet items)
 

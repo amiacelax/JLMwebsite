@@ -915,7 +915,7 @@
 
     showToast("Got it — JD will assign new homework when ready.");
 
-    /* Leave the reviewed sheet and open past homework. */
+    /* Leave the reviewed sheet and suggest upgrade / games (not past HW). */
     try {
       const url = window.location.pathname + window.location.search;
       history.replaceState(null, "", url);
@@ -924,14 +924,8 @@
     }
     document.dispatchEvent(new HashChangeEvent("hashchange"));
 
-    if (global.HwStudentPast?.openPicker) {
-      void global.HwStudentPast.openPicker();
-    } else {
-      const fold = document.getElementById("hw-student-past-fold");
-      if (fold) {
-        fold.hidden = false;
-        fold.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+    if (global.HwHubV5Live?.openPostSubmitNext) {
+      global.HwHubV5Live.openPostSubmitNext({ reason: "acknowledged" });
     }
 
     scheduleStudentSubmissionsLoad({ bypassCache: true });
@@ -2756,7 +2750,17 @@
     const buttons = document.querySelectorAll("[data-hub-version]");
     const iframe = document.getElementById("hw-hub-version-iframe");
     const openLink = document.getElementById("hw-hub-version-open");
+    const studentActions = document.getElementById("hw-hub-version-student-actions");
+    const embed = document.getElementById("hw-teacher-hubv2-embed");
+    const v6Panel = document.getElementById("hw-hub-v6-panel");
+    const v6Btn = document.getElementById("hw-hub-version-tab-v6");
+    const titleEl = document.getElementById("hw-hub-preview-title");
+    const descEl = document.getElementById("hw-hub-preview-desc");
     if (!buttons.length || !iframe) return;
+
+    const hubV6On = global.HwFeatureFlags?.hubV6?.() === true;
+    if (v6Btn) v6Btn.hidden = !hubV6On;
+    if (hubV6On) document.body.classList.add("hw-hub-v6-enabled");
 
     const paths = {
       "2": "/homework/hub-v2-preview.html",
@@ -2765,11 +2769,48 @@
       "5": "/homework/hub-v5-preview.html",
     };
 
+    const resetBtn = document.getElementById("hw-hubv2-reset-onboard");
+    const v6FullPath = "/homework/platform.html?tab=hubv6&hubv6=1&v6full=1";
+
     function setVersion(version) {
-      const path = paths[version] || paths["3"];
-      iframe.src = path;
-      iframe.title = "Homework Hub v" + version + " prototype";
-      if (openLink) openLink.href = path;
+      const isV6 = version === "6" && hubV6On;
+      if (embed) embed.hidden = isV6;
+      if (v6Panel) v6Panel.hidden = !isV6;
+      if (resetBtn) resetBtn.hidden = isV6;
+      if (studentActions) studentActions.hidden = false;
+      if (titleEl) {
+        titleEl.textContent = isV6 ? "Hub v6 · Teacher hub playtest" : "Hub prototypes";
+      }
+      if (descEl) {
+        descEl.textContent = isV6
+          ? "Local WIP — new teacher hub tab layout (mounts live panels). Main Teacher Hub tabs stay unchanged."
+          : "Student hub mock previews (v2–v5). Local only: Hub v6 is the teacher hub playtest shell.";
+      }
+
+      if (!isV6) {
+        global.HwHubV6?.releaseMounts?.();
+        const path = paths[version] || paths["3"];
+        iframe.src = path;
+        iframe.title = "Homework Hub v" + version + " prototype";
+        if (openLink) {
+          openLink.href = path;
+          openLink.textContent = "Open full page";
+          openLink.target = "_blank";
+          openLink.rel = "noopener noreferrer";
+        }
+      } else {
+        if (openLink) {
+          openLink.href = v6FullPath;
+          openLink.textContent = "Open full page";
+          openLink.target = "_blank";
+          openLink.rel = "noopener noreferrer";
+        }
+        if (global.HwHubV6?.refresh || global.HwHubV6?.init) {
+          global.HwHubV6.init?.({ session: getTeacherSessionForApi() });
+          global.HwHubV6.onTabActivated?.();
+        }
+      }
+
       buttons.forEach((btn) => {
         const on = btn.getAttribute("data-hub-version") === version;
         btn.classList.toggle("btn--primary", on);
@@ -2789,7 +2830,8 @@
     } catch {
       /* ignore */
     }
-    if (!paths[saved]) saved = "3";
+    if (saved === "6" && !hubV6On) saved = "3";
+    if (saved !== "6" && !paths[saved]) saved = "3";
     setVersion(saved);
 
     buttons.forEach((btn) => {
@@ -2857,6 +2899,25 @@
       if (name === "account" && global.HwTeacherEditor?.syncPublishPicker) {
         global.HwTeacherEditor.syncPublishPicker();
       }
+      if (name === "hubv2") {
+        const ver = (() => {
+          try {
+            return localStorage.getItem("jlm-hw-teacher-hub-version") || "3";
+          } catch {
+            return "3";
+          }
+        })();
+        if (ver === "6" && global.HwHubV6?.onTabActivated) {
+          global.HwHubV6.onTabActivated();
+        }
+      }
+      try {
+        document.dispatchEvent(
+          new CustomEvent("hw-teacher-tab-change", { detail: { tab: name } })
+        );
+      } catch {
+        /* ignore */
+      }
     }
 
     tabs.forEach((tab) => {
@@ -2869,12 +2930,36 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2") {
-        initial = tabParam;
+      const v6Full =
+        params.get("v6full") === "1" || params.get("v6full") === "true";
+      if (v6Full && global.HwFeatureFlags?.hubV6?.() === true) {
+        document.body.classList.add("hw-hub-v6-fullpage", "hw-hub-v6-enabled");
+        try {
+          localStorage.setItem("jlm-hw-teacher-hub-version", "6");
+        } catch {
+          /* ignore */
+        }
+      }
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2" || tabParam === "hubv6") {
+        initial = tabParam === "hubv6" ? "hubv2" : tabParam;
+        if (tabParam === "hubv6" || v6Full) {
+          try {
+            localStorage.setItem("jlm-hw-teacher-hub-version", "6");
+          } catch {
+            /* ignore */
+          }
+        }
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
       if (saved === "homework") {
         initial = "account";
+      } else if (saved === "hubv6") {
+        initial = "hubv2";
+        try {
+          localStorage.setItem("jlm-hw-teacher-hub-version", "6");
+        } catch {
+          /* ignore */
+        }
       } else if (
         saved === "maker" ||
         saved === "account" ||
@@ -3268,6 +3353,9 @@
     if (studentOnly) studentOnly.hidden = true;
 
     const teacherTabs = initTeacherTabs();
+    if (global.HwHubV6?.init) {
+      global.HwHubV6.init({ session: getTeacherSessionForApi() });
+    }
     if (teacherTabs?.activate && teacherTabs.initial) {
       teacherTabs.activate(teacherTabs.initial);
     }
@@ -4121,5 +4209,9 @@
     openPicker: openPastAssignmentsModal,
     closePicker: closePastAssignmentsModal,
     reload: loadStudentPastHomework,
+  };
+
+  global.HwTeacherReview = {
+    openOnlineSubmission: openTeacherWorksheetReview,
   };
 })();

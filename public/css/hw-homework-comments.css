@@ -1715,8 +1715,14 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   box-sizing: border-box;
 }
 
+/* Audio/video remark titles on dark JD chips — solid cream (not translucent teal-gray) */
+.hw-hc-memo--teacher .hw-hc-memo__remark-label,
+.hw-hc-memo__body--teacher-reply .hw-hc-memo__remark-label,
+.hw-hc-memo__body--student-reviewed .hw-hc-memo__remark-label {
+  color: #f4f7fb;
+}
+
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__remark-label {
-  color: color-mix(in srgb, #f4f7fb 72%, transparent);
   margin-top: 0.45rem;
 }
 

@@ -4,6 +4,7 @@
 (function (global) {
   let birthdaysCache = [];
   let loading = false;
+  let loadPromise = null;
   let bound = false;
   let options = null;
 
@@ -33,6 +34,25 @@
     if (entry.daysUntil === 0) return "Today";
     if (entry.daysUntil === 1) return "Tomorrow";
     return "In " + entry.daysUntil + " days";
+  }
+
+  /** Match seed birthday row to a student id / display name (exact, case-insensitive). */
+  function lookup(studentKey) {
+    const key = String(studentKey || "")
+      .trim()
+      .toLowerCase();
+    if (!key) return null;
+    return (
+      birthdaysCache.find((entry) => {
+        const id = String(entry.id || "")
+          .trim()
+          .toLowerCase();
+        const name = String(entry.name || "")
+          .trim()
+          .toLowerCase();
+        return id === key || name === key;
+      }) || null
+    );
   }
 
   async function fetchBirthdays(session) {
@@ -140,20 +160,25 @@
 
   async function reloadBirthdays() {
     const session = options?.getTeacherSession?.();
-    if (!session || session.role !== "teacher") return;
-    if (loading) return;
+    if (!session || session.role !== "teacher") return birthdaysCache;
+    if (loadPromise) return loadPromise;
 
     loading = true;
     renderList();
-    try {
-      birthdaysCache = await fetchBirthdays(session);
-    } catch (err) {
-      const meta = document.getElementById("hw-birthdays-meta");
-      if (meta) meta.textContent = err.message || "Could not load birthdays.";
-    } finally {
-      loading = false;
-      renderList();
-    }
+    loadPromise = (async () => {
+      try {
+        birthdaysCache = await fetchBirthdays(session);
+      } catch (err) {
+        const meta = document.getElementById("hw-birthdays-meta");
+        if (meta) meta.textContent = err.message || "Could not load birthdays.";
+      } finally {
+        loading = false;
+        loadPromise = null;
+        renderList();
+      }
+      return birthdaysCache;
+    })();
+    return loadPromise;
   }
 
   function bindOnce() {
@@ -173,5 +198,22 @@
     void reloadBirthdays();
   }
 
-  global.HwTeacherBirthdays = { init, reload: reloadBirthdays };
+  /** Next N birthdays by daysUntil (known dates only). */
+  function upcoming(limit) {
+    const n = Math.max(0, Number(limit) || 0);
+    return birthdaysCache
+      .filter((entry) => entry && entry.daysUntil != null)
+      .slice()
+      .sort((a, b) => Number(a.daysUntil) - Number(b.daysUntil))
+      .slice(0, n);
+  }
+
+  global.HwTeacherBirthdays = {
+    init,
+    reload: reloadBirthdays,
+    lookup,
+    formatLabel,
+    countdownLabel,
+    upcoming,
+  };
 })(window);

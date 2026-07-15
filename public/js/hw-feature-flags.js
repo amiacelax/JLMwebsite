@@ -54,6 +54,26 @@
     return true;
   }
 
+  /**
+   * Teacher Hub v6 (teacher hub playtest shell). Local-only while testing.
+   * Prod override: localStorage.setItem('hw-hubv6-dev','1')
+   */
+  function hubV6() {
+    try {
+      if (localStorage.getItem("hw-hubv6-dev") === "0") return false;
+      if (localStorage.getItem("hw-hubv6-dev") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (new URLSearchParams(location.search).get("hubv6") === "0") return false;
+      if (new URLSearchParams(location.search).get("hubv6") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return isLocalDev();
+  }
+
   /** Hub v5 simulate/account bar — explicit opt-in only (never auto on localhost). */
   function hubV5Demo() {
     try {
@@ -88,5 +108,6 @@
     homeworkComments,
     hubV5,
     hubV5Demo,
+    hubV6,
   };
 })(window);

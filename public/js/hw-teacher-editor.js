@@ -1547,6 +1547,66 @@
     );
   }
 
+  /** Same JSON file download as Worksheet library (plus live canvas export if unsaved). */
+  function downloadJsonFile(filename, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2) + "\n"], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadCurrent() {
+    const toast = editorOptions?.showToast || function () {};
+    const id = String(
+      editingAssignmentId ||
+        document.getElementById("hw-teacher-maker-edit-select")?.value ||
+        worksheetBuilder?.getCanvasAssignmentId?.() ||
+        ""
+    ).trim();
+
+    /* Library-style: saved catalog sheet → /homework/assignments/{id}.json */
+    if (id && getCatalogEntry(id)) {
+      const a = document.createElement("a");
+      a.href = new URL(
+        "/homework/assignments/" + encodeURIComponent(id) + ".json",
+        global.location.origin
+      ).href;
+      a.download = id + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast("Downloaded " + id + ".json");
+      return true;
+    }
+
+    if (!worksheetBuilder?.toAssignment) {
+      toast("Open Worksheet Maker first");
+      return false;
+    }
+
+    const title =
+      String(document.getElementById("hw-teacher-maker-grammar")?.value || "").trim() ||
+      id ||
+      "worksheet";
+    const sheetId = id || makeWorksheetId(title) || "worksheet";
+    if (!(worksheetBuilder.getBlockCount?.() > 0) && !id) {
+      toast("Add content before downloading");
+      return false;
+    }
+
+    const assignment = worksheetBuilder.toAssignment({ id: sheetId, title });
+    assignment.id = sheetId;
+    assignment.title = title;
+    downloadJsonFile(sheetId + ".json", assignment);
+    toast("Downloaded " + sheetId + ".json");
+    return true;
+  }
+
   global.HwTeacherEditor = {
     init,
     refreshCatalog,
@@ -1554,5 +1614,6 @@
     loadAssignment,
     syncPublishPicker,
     buildEmptyAssignment,
+    downloadCurrent,
   };
 })(window);

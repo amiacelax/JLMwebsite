@@ -642,6 +642,89 @@
   border-top: none;
 }
 
+.hw-post-submit-next-modal__dialog {
+  width: min(100%, 28rem);
+  max-height: min(78vh, 36rem);
+}
+
+.hw-post-submit-next-modal__intro {
+  margin: 0 0 1rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-post-submit-next-modal__recs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.hw-post-submit-next-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-surface) 88%, #1a2744);
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.hw-post-submit-next-card:hover,
+.hw-post-submit-next-card:focus-visible {
+  border-color: color-mix(in srgb, var(--color-accent, #e85545) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-surface) 70%, #243556);
+  outline: none;
+}
+
+.hw-post-submit-next-card__label {
+  font-family: Josefin Sans, Inter, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-text);
+}
+
+.hw-post-submit-next-card__desc {
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-post-submit-next-modal__past {
+  margin: 1rem 0 0;
+  text-align: center;
+}
+
+.hw-post-submit-next-modal__past-btn {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.hw-post-submit-next-modal__past-btn:hover,
+.hw-post-submit-next-modal__past-btn:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
 /* Past homework list — hidden only while viewing an archived submission */
 body.hw-hub-v5-archive-mode #hw-v5-complete-card,
 body.hw-hub-v5-archive-mode #hw-v5-sellup-frame,
@@ -1101,49 +1184,49 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewing
   .hw-hub-v5-status-bubble__dot {
   background: #ffb426;
-  width: 0.95rem;
-  height: 0.95rem;
-  box-shadow: 0 0 10px color-mix(in srgb, #ffb426 70%, transparent);
+  width: 0.55rem;
+  height: 0.55rem;
+  box-shadow: 0 0 8px color-mix(in srgb, #ffb426 75%, transparent);
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewing
   .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  border: 2px solid color-mix(in srgb, #ffb426 90%, #fff);
+  border: 1.5px solid color-mix(in srgb, #ffb426 90%, #fff);
   box-shadow: 0 0 0 0 color-mix(in srgb, #ffb426 65%, transparent);
-  animation: hw-hub-v5-bubble-ring 1.4s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring 1.6s ease-out infinite;
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewed
   .hw-hub-v5-status-bubble__dot {
   background: #5dcf8a;
-  width: 0.95rem;
-  height: 0.95rem;
-  box-shadow: 0 0 10px color-mix(in srgb, #5dcf8a 70%, transparent);
+  width: 0.48rem;
+  height: 0.48rem;
+  box-shadow: 0 0 8px color-mix(in srgb, #5dcf8a 80%, transparent);
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewed
   .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  border: 2px solid color-mix(in srgb, #5dcf8a 90%, #fff);
+  border: 1.5px solid color-mix(in srgb, #5dcf8a 90%, #fff);
   box-shadow: 0 0 0 0 color-mix(in srgb, #5dcf8a 65%, transparent);
-  animation: hw-hub-v5-bubble-ring-reviewed 1.4s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring-reviewed 1.6s ease-out infinite;
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--acked
   .hw-hub-v5-status-bubble__dot {
   background: #e6c04a;
-  width: 0.9rem;
-  height: 0.9rem;
-  box-shadow: 0 0 8px color-mix(in srgb, #e6c04a 55%, transparent);
+  width: 0.5rem;
+  height: 0.5rem;
+  box-shadow: 0 0 7px color-mix(in srgb, #e6c04a 60%, transparent);
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--acked
   .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  border: 2px solid color-mix(in srgb, #e6c04a 85%, #fff);
+  border: 1.5px solid color-mix(in srgb, #e6c04a 85%, #fff);
   box-shadow: 0 0 0 0 color-mix(in srgb, #e6c04a 55%, transparent);
-  animation: hw-hub-v5-bubble-ring-acked 1.8s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring-acked 1.9s ease-out infinite;
 }
 
 /* Diary note rows: ink on paper */
@@ -1693,8 +1776,8 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
 }
 
 .hw-hub-v5-status-bubble__dot {
-  width: 0.72rem;
-  height: 0.72rem;
+  width: 0.5rem;
+  height: 0.5rem;
   background: var(--color-green);
 }
 
@@ -1706,69 +1789,98 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
 
 .hw-hub-v5-status-bubble--reviewing .hw-hub-v5-status-bubble__dot {
   background: #e8a838;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  box-shadow: 0 0 8px color-mix(in srgb, #e8a838 65%, transparent);
 }
 
 .hw-hub-v5-status-bubble--reviewing .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  animation: hw-hub-v5-bubble-ring 1.4s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring 1.6s ease-out infinite;
   box-shadow: 0 0 0 0 color-mix(in srgb, #e8a838 55%, transparent);
-  border: 2px solid color-mix(in srgb, #e8a838 70%, transparent);
+  border: 1.5px solid color-mix(in srgb, #e8a838 70%, transparent);
 }
 
 .hw-hub-v5-status-bubble--reviewed .hw-hub-v5-status-bubble__dot {
   background: var(--color-green);
-  width: 0.9rem;
-  height: 0.9rem;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--color-green) 55%, transparent);
+  width: 0.48rem;
+  height: 0.48rem;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-green) 70%, transparent);
 }
 
 .hw-hub-v5-status-bubble--reviewed .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  animation: hw-hub-v5-bubble-ring-reviewed 1.4s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring-reviewed 1.6s ease-out infinite;
   box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 55%, transparent);
-  border: 2px solid color-mix(in srgb, var(--color-green) 70%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--color-green) 70%, transparent);
 }
 
 .hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__dot {
   background: #c9a227;
+  width: 0.5rem;
+  height: 0.5rem;
+  box-shadow: 0 0 7px color-mix(in srgb, #c9a227 55%, transparent);
 }
 
 .hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  animation: hw-hub-v5-bubble-ring-acked 1.8s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring-acked 1.9s ease-out infinite;
   box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 42%, transparent);
+  border: 1.5px solid color-mix(in srgb, #c9a227 65%, transparent);
 }
 
+/* Beacon: expand outward + fade (no retract). */
 @keyframes hw-hub-v5-bubble-ring {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, #e8a838 38%, transparent);
+  0% {
+    transform: scale(0.55);
+    opacity: 0.95;
+    box-shadow: 0 0 0 0 color-mix(in srgb, #e8a838 45%, transparent);
   }
-  50% {
-    box-shadow: 0 0 0 0.55rem transparent;
+  70% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
   }
 }
 
-/* Same motion / expansion as yellow reviewing ping — green signal only. */
 @keyframes hw-hub-v5-bubble-ring-reviewed {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, #4ade80 38%, transparent);
+  0% {
+    transform: scale(0.55);
+    opacity: 0.95;
+    box-shadow: 0 0 0 0 color-mix(in srgb, #4ade80 50%, transparent);
   }
-  50% {
-    box-shadow: 0 0 0 0.55rem transparent;
+  70% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
   }
 }
 
 @keyframes hw-hub-v5-bubble-ring-acked {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 40%, transparent);
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+    box-shadow: 0 0 0 0 color-mix(in srgb, #c9a227 45%, transparent);
   }
-  50% {
-    box-shadow: 0 0 0 0.55rem transparent;
+  70% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+    box-shadow: 0 0 0 0.35rem transparent;
   }
 }
 

@@ -12,11 +12,12 @@
   <link rel="stylesheet" href="/css/styles.css?v=20260790">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=55">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=57">
+  <link rel="stylesheet" href="/css/hw-hub-v6.css?v=13">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=74">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260805" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260806" data-hw-comments-css="1">
   <script src="/js/hw-auth.js?v=20260708b"></script>
-  <script src="/js/hw-feature-flags.js?v=7"></script>
+  <script src="/js/hw-feature-flags.js?v=9"></script>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -27,10 +28,26 @@
       if (s && s.role === 'teacher') {
         document.documentElement.classList.add('hw-is-teacher');
       }
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get('v6full') === '1' || q.get('v6full') === 'true') {
+          document.documentElement.classList.add('hw-hub-v6-fullpage-root');
+        }
+      } catch (e) { /* ignore */ }
     })();
   </script>
 </head>
 <body class="subpage subpage--homework subpage--platform">
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get('v6full') === '1' || q.get('v6full') === 'true') {
+          document.body.classList.add('hw-hub-v6-fullpage', 'hw-hub-v6-enabled');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <a class="skip-link" href="#main">Skip to content</a>
 
   <div class="hw-hub-v2-banner" id="hw-v5-live-banner" hidden role="status">
@@ -183,7 +200,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-lookup-lexicon" aria-selected="false" aria-controls="hw-teacher-lookup-lexicon" data-teacher-tab="lookup-lexicon">Lookup Lexicon</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
-            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2">Hub v2 preview</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2">Hub preview</button>
           </div>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
@@ -201,7 +218,7 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
             <h2 class="hw-platform-card__title">Student info</h2>
-            <p class="hw-platform-card__desc">Lesson links, account type, and current homework for each student’s hub.</p>
+            <p class="hw-platform-card__desc" id="hw-teacher-account-desc" data-default-desc="Lesson links, account type, and current homework for each student’s hub.">Lesson links, account type, and current homework for each student’s hub.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-account-form">
               <div class="hw-teacher-meta__grid">
@@ -516,9 +533,50 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-gamelab" id="hw-teacher-gamelab" role="tabpanel" aria-labelledby="hw-teacher-tab-gamelab" hidden>
             <h2 class="hw-platform-card__title">Game lab</h2>
-            <p class="hw-platform-card__desc">Hidden prototypes and Lantern Word Hunt word lists.</p>
+            <p class="hw-platform-card__desc">Hidden prototypes and game links.</p>
 
-            <div class="hw-lantern-words-editor" id="hw-lantern-words-editor">
+            <ul class="hw-gamelab-list">
+              <li class="hw-gamelab-item">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Lantern Word Hunt</h3>
+                  <p class="hw-gamelab-item__desc">Public game — open Word list to edit study sets.</p>
+                </div>
+                <div class="hw-gamelab-item__actions">
+                  <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Open game</a>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-toggle" aria-expanded="false" aria-controls="hw-lantern-words-editor">Word list</button>
+                </div>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">はじめてのおつかい</h3>
+                  <p class="hw-gamelab-item__desc">Mom gives shopping instructions; child picks the right item. Storybook UI — teacher-only.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/otsukai/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">おばあちゃん Counter Toss</h3>
+                  <p class="hw-gamelab-item__desc">Shelved — counter practice throw game. Teacher-only link.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/obachan-counters/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Yūgen Gatherer — 幽玄の採集者</h3>
+                  <p class="hw-gamelab-item__desc">3D gathering adventure in the Japanese countryside. Locked on the student games hub — preview here only.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Kanji World</h3>
+                  <p class="hw-gamelab-item__desc">First-person kanji rooms — four season rooms (winter, summer, fall, spring). Teacher-only preview.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/kanji-ray-test-v2.html" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+            </ul>
+
+            <div class="hw-lantern-words-editor" id="hw-lantern-words-editor" hidden>
               <h3 class="hw-teacher-panel-subtitle">Lantern Word Hunt — word lists</h3>
               <p class="hw-platform-card__desc hw-platform-card__desc--tight">One word per line: <code>word TAB reading TAB meaning</code>. Saved lists go live in the game immediately.</p>
 
@@ -547,57 +605,104 @@
               <label class="hw-lantern-words-text-label" for="hw-lantern-words-text">Words</label>
               <textarea class="hw-lantern-words-text" id="hw-lantern-words-text" rows="14" spellcheck="false" placeholder="食べる	たべる	to eat&#10;飲む	のむ	to drink"></textarea>
             </div>
-
-            <ul class="hw-gamelab-list">
-              <li class="hw-gamelab-item">
-                <div class="hw-gamelab-item__main">
-                  <h3 class="hw-gamelab-item__title">Lantern Word Hunt</h3>
-                  <p class="hw-gamelab-item__desc">Public game — word lists edited above.</p>
-                </div>
-                <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Open game</a>
-              </li>
-              <li class="hw-gamelab-item hw-gamelab-item--hidden">
-                <div class="hw-gamelab-item__main">
-                  <h3 class="hw-gamelab-item__title">はじめてのおつかい</h3>
-                  <p class="hw-gamelab-item__desc">Mom gives shopping instructions; child picks the right item. Storybook UI — teacher-only.</p>
-                </div>
-                <a class="btn btn--ghost btn--sm" href="/game/otsukai/" target="_blank" rel="noopener noreferrer">Open hidden</a>
-              </li>
-              <li class="hw-gamelab-item hw-gamelab-item--hidden">
-                <div class="hw-gamelab-item__main">
-                  <h3 class="hw-gamelab-item__title">おばあちゃん Counter Toss</h3>
-                  <p class="hw-gamelab-item__desc">Shelved — counter practice throw game. Teacher-only link.</p>
-                </div>
-                <a class="btn btn--ghost btn--sm" href="/game/obachan-counters/" target="_blank" rel="noopener noreferrer">Open hidden</a>
-              </li>
-              <li class="hw-gamelab-item hw-gamelab-item--hidden">
-                <div class="hw-gamelab-item__main">
-                  <h3 class="hw-gamelab-item__title">Yūgen Gatherer — 幽玄の採集者</h3>
-                  <p class="hw-gamelab-item__desc">3D gathering adventure in the Japanese countryside. Locked on the student games hub — preview here only.</p>
-                </div>
-                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/" target="_blank" rel="noopener noreferrer">Open hidden</a>
-              </li>
-            </ul>
           </section>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-hubv2" id="hw-teacher-hubv2" role="tabpanel" aria-labelledby="hw-teacher-tab-hubv2" hidden>
-            <h2 class="hw-platform-card__title">Student hub prototypes</h2>
-            <p class="hw-platform-card__desc">Mock previews only — the live student hub is unchanged. Pick a version to preview in the embed or open full page.</p>
+            <h2 class="hw-platform-card__title" id="hw-hub-preview-title">Hub prototypes</h2>
+            <p class="hw-platform-card__desc" id="hw-hub-preview-desc">Student hub mock previews (v2–v5). Local only: Hub v6 is the teacher hub playtest shell.</p>
 
             <div class="hw-teacher-hub-versions" role="tablist" aria-label="Hub prototype version">
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v2" data-hub-version="2" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v2</button>
               <button type="button" class="btn btn--primary hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v3" data-hub-version="3" aria-selected="true" aria-controls="hw-teacher-hubv2-embed">Hub v3</button>
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v4" data-hub-version="4" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v4</button>
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v5" data-hub-version="5" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v5</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn hw-hub-v6-version-btn" role="tab" id="hw-hub-version-tab-v6" data-hub-version="6" aria-selected="false" aria-controls="hw-hub-v6-panel" hidden>Hub v6</button>
             </div>
 
-            <div class="hw-teacher-meta__actions">
+            <div class="hw-teacher-meta__actions" id="hw-hub-version-student-actions">
               <a class="btn btn--primary" id="hw-hub-version-open" href="/homework/hub-v3-preview.html" target="_blank" rel="noopener noreferrer">Open full page</a>
               <button type="button" class="btn btn--ghost" id="hw-hubv2-reset-onboard">Reset onboarding demo</button>
             </div>
 
             <div class="hw-teacher-hubv2-embed" id="hw-teacher-hubv2-embed">
               <iframe id="hw-hub-version-iframe" src="/homework/hub-v3-preview.html" title="Homework Hub v3 prototype" loading="lazy"></iframe>
+            </div>
+
+            <div class="hw-hub-v6" id="hw-hub-v6-panel" hidden>
+              <div class="hw-hub-v6__banner">
+                <div>
+                  <h2>Hub v6 · Teacher hub playtest</h2>
+                  <p>Local WIP — reorganized tabs mount live panels here. Main Teacher Hub tabs stay unchanged.</p>
+                  <p><a class="btn btn--ghost btn--sm hw-hub-v6-exit-full" href="/homework/platform.html?tab=hubv6&amp;hubv6=1">← Hub preview</a></p>
+                </div>
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-refresh">Refresh</button>
+              </div>
+
+              <div class="hw-hub-v6-tabs" role="tablist" aria-label="Hub v6 sections">
+                <button type="button" class="hw-hub-v6-tabs__btn is-active" role="tab" id="hw-hub-v6-tab-preview" data-hub-v6-tab="preview" aria-selected="true" aria-controls="hw-hub-v6-pane-preview">Home</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-maker" data-hub-v6-tab="maker" aria-selected="false" aria-controls="hw-hub-v6-pane-maker">Worksheet Maker</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-students" data-hub-v6-tab="students" aria-selected="false" aria-controls="hw-hub-v6-pane-students">Student/Email List</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-websites" data-hub-v6-tab="websites" aria-selected="false" aria-controls="hw-hub-v6-pane-websites">Websites</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-gamelab" data-hub-v6-tab="gamelab" aria-selected="false" aria-controls="hw-hub-v6-pane-gamelab">Game Lab</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-ideas" data-hub-v6-tab="ideas" aria-selected="false" aria-controls="hw-hub-v6-pane-ideas">Ideas &amp; Memos</button>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-preview" role="tabpanel" data-hub-v6-pane="preview" aria-labelledby="hw-hub-v6-tab-preview">
+                <div class="hw-hub-v6-bday-ticker" id="hw-hub-v6-bday-ticker" aria-label="Upcoming birthdays">
+                  <div class="hw-hub-v6-bday-ticker__track" id="hw-hub-v6-bday-ticker-track"></div>
+                </div>
+                <div class="hw-hub-v6__main" id="hw-hub-v6-main" aria-live="polite">
+                  <div class="hw-hub-v6__stage-feed" id="hw-hub-v6-stage-feed">
+                    <div class="hw-hub-v6__feed-head">
+                      <h3>Notifications</h3>
+                      <p class="hw-hub-v6__feed-meta" id="hw-hub-v6-feed-meta"></p>
+                    </div>
+                    <ul class="hw-hub-v6__list" id="hw-hub-v6-list"></ul>
+                  </div>
+                  <div class="hw-hub-v6__stage-detail" id="hw-hub-v6-stage-detail" hidden></div>
+                </div>
+                <p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-maker" role="tabpanel" data-hub-v6-pane="maker" aria-labelledby="hw-hub-v6-tab-maker" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="maker"></div>
+                <div class="hw-hub-v6-maker-footer">
+                  <button type="button" class="btn btn--primary" id="hw-hub-v6-maker-download">Download</button>
+                </div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-students" role="tabpanel" data-hub-v6-pane="students" aria-labelledby="hw-hub-v6-tab-students" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="account"></div>
+                <section class="hw-hub-v6-section">
+                  <h3 class="hw-hub-v6-section__title">Birthdays</h3>
+                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
+                </section>
+                <section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">
+                  <h3 class="hw-hub-v6-section__title">Email list</h3>
+                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
+                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
+                </section>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">
+                  <summary>Submissions</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>
+                </details>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">
+                  <summary>Mistakes</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>
+                </details>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-websites" role="tabpanel" data-hub-v6-pane="websites" aria-labelledby="hw-hub-v6-tab-websites" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="websites"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-gamelab" role="tabpanel" data-hub-v6-pane="gamelab" aria-labelledby="hw-hub-v6-tab-gamelab" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="gamelab"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-ideas" role="tabpanel" data-hub-v6-pane="ideas" aria-labelledby="hw-hub-v6-tab-ideas" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>
+              </div>
             </div>
           </section>
         </div>
@@ -903,6 +1008,29 @@
     </div>
   </div>
 
+  <div class="hw-breakdown-modal hw-post-submit-next-modal" id="hw-post-submit-next-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-next-modal-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-post-submit-next-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-post-submit-next-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-next-modal-close aria-label="Close">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-post-submit-next-title">Sent to JD — nice work!</h2>
+      <p class="hw-post-submit-next-modal__intro">While you wait for review, keep the momentum going:</p>
+      <div class="hw-post-submit-next-modal__recs">
+        <a class="hw-post-submit-next-card" href="/homework.html">
+          <span class="hw-post-submit-next-card__label">Upgrade your plan</span>
+          <span class="hw-post-submit-next-card__desc">More assignments, deeper feedback, and full game access — see Basic, Premium, and Ultra.</span>
+        </a>
+        <button type="button" class="hw-post-submit-next-card" data-hw-next-games>
+          <span class="hw-post-submit-next-card__label">Play Japanese games</span>
+          <span class="hw-post-submit-next-card__desc">Practice between lessons — open the Games tab or the full games hub.</span>
+        </button>
+      </div>
+      <p class="hw-post-submit-next-modal__past">
+        <button type="button" class="hw-post-submit-next-modal__past-btn" data-hw-next-past>Browse past homework</button>
+      </p>
+    </div>
+  </div>
+
   <div id="hw-platform-toast" class="hw-platform-toast" role="status" aria-live="polite"></div>
 
   <footer class="site-footer">
@@ -928,9 +1056,9 @@
   <script src="/js/hw-worksheet-tools-layout.js?v=23" defer></script>
   <script src="/js/hw-magnifying-glass.js?v=74" defer></script>
   <script src="/js/hw-review-media.js?v=20260781" defer></script>
-  <script src="/js/hw-homework-comments.js?v=92" defer></script>
+  <script src="/js/hw-homework-comments.js?v=93" defer></script>
   <script src="/js/hw-worksheet-builder.js?v=20260714" defer></script>
-  <script src="/js/hw-teacher-editor.js?v=20260716" defer></script>
+  <script src="/js/hw-teacher-editor.js?v=20260716b" defer></script>
   <script src="/js/hw-encoding.js?v=2" defer></script>
   <script src="/js/hw-student-list.js?v=20260725" defer></script>
   <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
@@ -939,7 +1067,7 @@
   <script src="/js/hw-teacher-mistakes.js?v=20260675" defer></script>
   <script src="/js/hw-student-mistakes.js?v=20260728" defer></script>
   <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
-  <script src="/js/hw-teacher-birthdays.js?v=20260609" defer></script>
+  <script src="/js/hw-teacher-birthdays.js?v=20260716" defer></script>
   <script src="/game/lantern-hunt/lantern-words-demo.js?v=20260650" defer></script>
   <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
   <script src="/js/lantern-word-format.js?v=20260650" defer></script>
@@ -947,7 +1075,8 @@
   <script src="/js/hw-teacher-lookup-lexicon.js?v=24" defer></script>
   <script src="/js/hw-checkout.js?v=20260611" defer></script>
   <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260799" defer></script>
-  <script src="/js/hw-hub-v5-live.js?v=64" defer></script>
+  <script src="/js/hw-platform.js?v=20260804" defer></script>
+  <script src="/js/hw-hub-v5-live.js?v=67" defer></script>
+  <script src="/js/hw-hub-v6.js?v=14" defer></script>
 </body>
 </html>

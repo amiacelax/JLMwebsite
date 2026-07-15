@@ -924,7 +924,7 @@
       '<div class="hw-hub-v5-complete__actions">' +
       '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn" hidden>' +
       "Open reviewed worksheet</button>" +
-      '<button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">View past assignments</button>' +
+      '<button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">Browse past homework</button>' +
       "</div>";
     return card;
   }
@@ -1502,9 +1502,7 @@
       }
     }
     if (pastBtn) {
-      pastBtn.textContent = acknowledged
-        ? "Browse past homework"
-        : "View past assignments";
+      pastBtn.textContent = "Browse past homework";
     }
     let ultraNote = document.getElementById("hw-v5-ultra-practice-note");
     if (ultra && !reviewed && !acknowledged) {
@@ -1926,7 +1924,7 @@
     if (body && show) {
       body.textContent =
         jdReviewGreeting(getStudentDisplayName()) +
-        " Open your worksheet to see the same slides as me — every question, with my notes on yours.";
+        " Open your worksheet to see the same slides as me on every question, with my notes on yours."; /* lined-note wrap */
     }
 
     reviewCommentsGen += 1;
@@ -2449,6 +2447,83 @@
     }
   }
 
+  let postSubmitNextModalBound = false;
+
+  function closePostSubmitNextModal() {
+    const modal = document.getElementById("hw-post-submit-next-modal");
+    if (!modal || modal.hidden) return;
+    modal.hidden = true;
+    document.body.classList.remove("is-modal-open");
+  }
+
+  function bindPostSubmitNextModal() {
+    if (postSubmitNextModalBound) return;
+    postSubmitNextModalBound = true;
+    const modal = document.getElementById("hw-post-submit-next-modal");
+    if (!modal) return;
+
+    modal.querySelectorAll("[data-hw-next-modal-close]").forEach((el) => {
+      el.addEventListener("click", () => closePostSubmitNextModal());
+    });
+    modal.querySelector("[data-hw-next-games]")?.addEventListener("click", () => {
+      closePostSubmitNextModal();
+      if (isMobileTabs()) {
+        setActiveTab("games", { scrollTop: true });
+        return;
+      }
+      const gamesCard = document.getElementById("hw-games-hub-card");
+      if (gamesCard) {
+        try {
+          gamesCard.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+      global.location.href = "/games.html";
+    });
+    modal.querySelector("[data-hw-next-past]")?.addEventListener("click", () => {
+      closePostSubmitNextModal();
+      if (global.HwStudentPast?.openPicker) {
+        void global.HwStudentPast.openPicker();
+        return;
+      }
+      openPastHomeworkFromHub();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (modal.hidden) return;
+      closePostSubmitNextModal();
+    });
+  }
+
+  function openPostSubmitNextModal(options) {
+    const modal = document.getElementById("hw-post-submit-next-modal");
+    if (!modal) return;
+    bindPostSubmitNextModal();
+
+    const title = document.getElementById("hw-post-submit-next-title");
+    const intro = modal.querySelector(".hw-post-submit-next-modal__intro");
+    const reason = options?.reason || "submit";
+    if (title) {
+      title.textContent =
+        reason === "acknowledged"
+          ? "All caught up — what\u2019s next?"
+          : "Sent to JD \u2014 nice work!";
+    }
+    if (intro) {
+      intro.textContent =
+        reason === "acknowledged"
+          ? "New homework will show up when JD sends it. Until then:"
+          : "While you wait for review, keep the momentum going:";
+    }
+
+    global.HwStudentPast?.closePicker?.();
+    modal.hidden = false;
+    document.body.classList.add("is-modal-open");
+    modal.querySelector("[data-hw-next-modal-close]")?.focus();
+  }
+
   function stepNotebookPage(delta) {
     const usable = usableNotebookPacks(notebookCachePacks || []);
     if (!usable.length) return;
@@ -2918,6 +2993,7 @@
       liveReviewRefreshQueued = false;
       liveReviewStatusReady = false;
       renderAll();
+      openPostSubmitNextModal({ reason: "submit" });
     });
     document.addEventListener("hw-platform-student-review-gate", (ev) => {
       const detail = ev.detail || {};
@@ -2998,6 +3074,8 @@
     openNotebook,
     closeNotebook,
     openPastHomework: openPastHomeworkFromHub,
+    openPostSubmitNext: openPostSubmitNextModal,
+    closePostSubmitNext: closePostSubmitNextModal,
   };
 
   if (document.readyState === "loading") {

@@ -7152,12 +7152,23 @@ body.hw-role-teacher #hw-teacher-hub {
   line-height: 1.45;
 }
 
+.hw-gamelab-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .hw-lantern-words-editor {
-  margin: 0 0 1.25rem;
+  margin: 1.25rem 0 0;
   padding: 1rem;
   border-radius: 12px;
   background: rgba(12, 18, 32, 0.55);
   border: 1px solid var(--color-border);
+}
+
+.hw-lantern-words-editor[hidden] {
+  display: none !important;
 }
 
 .hw-lantern-words-toolbar {

@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260805";
+    link.href = "/css/hw-homework-comments.css?v=20260806";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();

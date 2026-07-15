@@ -335,6 +335,22 @@
       const url = "/game/lantern-hunt/?set=" + encodeURIComponent(currentSetId);
       window.open(url, "_blank", "noopener,noreferrer");
     });
+
+    document.getElementById("hw-lantern-words-toggle")?.addEventListener("click", () => {
+      const editor = document.getElementById("hw-lantern-words-editor");
+      const toggle = document.getElementById("hw-lantern-words-toggle");
+      if (!editor || !toggle) return;
+      const open = editor.hasAttribute("hidden");
+      if (open) {
+        editor.removeAttribute("hidden");
+        toggle.setAttribute("aria-expanded", "true");
+        reloadIfNeeded();
+        editor.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } else {
+        editor.setAttribute("hidden", "");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
   }
 
   function init(opts) {
