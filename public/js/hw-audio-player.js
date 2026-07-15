@@ -49,6 +49,8 @@
 
   /**
    * WebM/MediaRecorder blobs often lack duration until we force a seek to the end.
+   * Probe on a detached element so the live player's currentTime is never touched
+   * (the old in-place seek + `currentTime = 0` stole user seeks and rewound to start).
    * @returns {Promise<number>}
    */
   function probeMediaDuration(media) {
@@ -57,32 +59,76 @@
         resolve(Number(media.duration));
         return;
       }
+
+      const src = media.currentSrc || media.getAttribute("src") || "";
+      if (!src) {
+        resolve(bufferedEndSeconds(media));
+        return;
+      }
+
       let settled = false;
+      const probe = document.createElement(media.tagName === "VIDEO" ? "video" : "audio");
+      probe.preload = "auto";
+      probe.muted = true;
+      probe.playsInline = true;
+
       const finish = (value) => {
         if (settled) return;
         settled = true;
-        media.removeEventListener("seeked", onSeeked);
-        media.removeEventListener("error", onFail);
-        resolve(Number.isFinite(value) && value > 0 ? value : 0);
-      };
-      const onFail = () => finish(0);
-      const onSeeked = () => {
-        const probed = Number(media.currentTime);
+        probe.removeEventListener("loadedmetadata", onMeta);
+        probe.removeEventListener("seeked", onSeeked);
+        probe.removeEventListener("error", onFail);
         try {
-          media.currentTime = 0;
+          probe.removeAttribute("src");
+          probe.load();
         } catch {
           /* ignore */
         }
-        finish(probed);
+        resolve(Number.isFinite(value) && value > 0 ? value : 0);
       };
-      media.addEventListener("seeked", onSeeked);
-      media.addEventListener("error", onFail);
-      try {
-        media.currentTime = 1e101;
-      } catch {
-        onFail();
-      }
-      setTimeout(() => finish(bufferedEndSeconds(media)), 1200);
+
+      const onFail = () => finish(bufferedEndSeconds(media));
+
+      const onSeeked = () => {
+        const probed = Number(probe.currentTime);
+        const known = hasKnownDuration(probe) ? Number(probe.duration) : 0;
+        finish(Math.max(probed, known, bufferedEndSeconds(probe)));
+      };
+
+      const beginInfinitySeek = () => {
+        if (settled) return;
+        if (hasKnownDuration(probe)) {
+          finish(Number(probe.duration));
+          return;
+        }
+        probe.addEventListener("seeked", onSeeked);
+        try {
+          probe.currentTime = 1e101;
+        } catch {
+          finish(Math.max(bufferedEndSeconds(probe), bufferedEndSeconds(media)));
+        }
+      };
+
+      const onMeta = () => beginInfinitySeek();
+
+      probe.addEventListener("loadedmetadata", onMeta);
+      probe.addEventListener("error", onFail);
+      probe.src = src;
+
+      setTimeout(() => {
+        if (settled) return;
+        if (hasKnownDuration(probe)) {
+          finish(Number(probe.duration));
+          return;
+        }
+        finish(
+          Math.max(
+            bufferedEndSeconds(probe),
+            bufferedEndSeconds(media),
+            Number.isFinite(probe.currentTime) ? probe.currentTime : 0
+          )
+        );
+      }, 1500);
     });
   }
 
@@ -585,6 +631,8 @@
     });
 
     seek.addEventListener("input", () => {
+      /* Pointer scrub owns seeks; ignore native range jumps (often briefly 0). */
+      if (scrubbing && seekPointerId != null) return;
       applySeekCentiseconds(Number(seek.value));
     });
 

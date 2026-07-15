@@ -150,7 +150,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   animation: hw-hc-pulse-armed 1.5s ease-out infinite;
 }
 
-/* Minimized tiny cloud — centered above anchored text */
+/* Minimized cloud — round tip + mglass-style thin pulse ring (no fat halo) */
 .hw-hc-mini {
   position: absolute;
   z-index: 61;
@@ -168,20 +168,41 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   color: var(--hw-hc-blue);
   background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue));
   border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue) 35%, transparent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   cursor: pointer;
   touch-action: none;
+  overflow: visible;
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 
+.hw-hc-mini::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--hw-hc-blue) 45%, transparent);
+  opacity: 0;
+  animation: hw-hc-pulse 2.8s ease-out infinite;
+  pointer-events: none;
+}
+
 .hw-hc-mini:hover {
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
 .hw-hc-mini.is-dragging {
   cursor: grabbing;
   transform: translate(-50%, calc(-100% - 0.35rem)) scale(1.05);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+.hw-hc-mini.is-dragging::before {
+  animation: none;
+  opacity: 0;
 }
 
 .hw-hc-mini--draggable {
@@ -498,6 +519,19 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   }
 }
 
+/* Rounded-rect chip pulse — equal outward offset (not scale; wide chips skew) */
+@keyframes hw-hc-chip-pulse {
+  0% {
+    inset: -4px;
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    inset: -10px;
+    opacity: 0;
+  }
+}
+
 @media (max-width: 767px) {
   .hw-hc-launcher {
     width: 3.6rem;
@@ -544,6 +578,11 @@ body.hw-hc-onboarding-active .hw-hc-launcher {
   box-shadow:
     0 0 0 3px color-mix(in srgb, var(--color-bg-elevated, #fff) 55%, transparent),
     0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+body.hw-hc-onboarding-active .hw-hc-mini,
+body.hw-hc-onboarding-active .hw-hc-review-mini-pair {
+  z-index: 9992;
 }
 
 body.hw-hc-onboarding-active .hw-hc-onboard {
@@ -600,6 +639,59 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
 
 .hw-hc-onboard__btn {
   width: 100%;
+}
+
+.hw-hc-onboard--mini-legend .hw-hc-onboard__card {
+  border-color: color-mix(in srgb, var(--hw-hc-green, #2d6a4f) 28%, var(--hw-hc-blue, #67c4eb) 45%);
+}
+
+.hw-hc-onboard--mini-legend .hw-hc-onboard__title {
+  margin-bottom: 0.55rem;
+}
+
+.hw-hc-onboard__legend {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.hw-hc-onboard__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Legend uses the same round mini cloud icons as the worksheet */
+.hw-hc-onboard__cloud-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 35%, transparent);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue, #67c4eb));
+  color: var(--hw-hc-blue, #67c4eb);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  flex-shrink: 0;
+}
+
+.hw-hc-onboard__cloud-key--teacher {
+  color: var(--color-green, #2d6a4f);
+  border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
+}
+
+.hw-hc-onboard__cloud-key .hw-hc-mini__icon {
+  width: 1.05rem;
+  height: 0.64rem;
 }
 
 /* Mobile / touch text selection action menu */
@@ -737,23 +829,32 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0 0 0.85rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: var(--radius-md, 10px);
+  gap: 0.28rem;
+  width: fit-content;
+  max-width: min(100%, 22rem);
+  margin: 0 auto 0.55rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-sm, 8px);
   background: color-mix(in srgb, var(--color-green, #2d6a4f) 14%, #0f1728);
   border: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 40%, transparent);
+  box-sizing: border-box;
 }
 
 .hw-hc-student-ack-bar__hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  line-height: 1.25;
   color: color-mix(in srgb, #fff 78%, transparent);
   text-align: center;
 }
 
 .hw-hc-student-ack-bar .btn {
-  min-width: min(100%, 22rem);
+  min-width: 0;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  min-height: 2.25rem;
 }
 
 .hw-hc-mini--jd-offset {
@@ -815,39 +916,131 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue) 35%, transparent);
 }
 
-.hw-hc-mini--jd-reply {
-  color: var(--hw-hc-green, #2d6a4f);
-  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-green, #2d6a4f));
-  border: 1.5px solid color-mix(in srgb, var(--hw-hc-green, #2d6a4f) 35%, transparent);
+.hw-hc-mini--review-student::before {
+  border-color: color-mix(in srgb, var(--hw-hc-blue) 45%, transparent);
 }
 
-.hw-hc-mini--teacher {
+.hw-hc-mini--jd-reply,
+.hw-hc-mini--teacher,
+.hw-hc-mini--has-remark {
   color: var(--color-green, #2d6a4f);
   background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
   border: 1.5px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
-.hw-hc-mini--has-remark {
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-green, #2d6a4f) 70%, transparent));
+.hw-hc-mini--jd-reply::before,
+.hw-hc-mini--teacher::before,
+.hw-hc-mini--has-remark::before {
+  border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 45%, transparent);
 }
 
-.hw-hc-memo--teacher .hw-hc-memo__body,
-.hw-hc-memo--teacher .hw-hc-memo__body::after {
-  background: var(--color-green, #2d6a4f);
-  border-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #2d6a4f));
+.hw-hc-mini--jd-reply:hover,
+.hw-hc-mini--teacher:hover,
+.hw-hc-mini--has-remark:hover {
+  box-shadow:
+    0 3px 12px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
-.hw-hc-memo--teacher .hw-hc-memo__body::after {
-  border-right-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #2d6a4f));
-  border-bottom-color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 18%, var(--color-green, #2d6a4f));
+/* JD / review open comment boxes: starQ chip (see star-block に) —
+   thick colored border, dark color-tinted fill, white text on the chip. */
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body,
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body,
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply,
+.hw-hc-memo--review-student .hw-hc-memo__body,
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply {
+  /* Extra right pad so absolute X never sits on text */
+  padding: 0.55rem 2rem 0.5rem 0.7rem;
+  color: #fff;
+  border-width: 2.5px;
+  border-style: solid;
+  border-radius: var(--radius-md, 0.75rem);
+  box-shadow: none;
+  filter: none;
 }
 
-.hw-hc-memo--teacher .hw-hc-memo__input {
-  border: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 45%, #c5d5e8);
-  background: #fff;
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body,
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply,
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply {
+  position: relative;
+  overflow: visible;
+  border-color: #36b87a;
+  background: color-mix(in srgb, #36b87a 22%, #1a2744);
 }
 
-/* Teacher / review textareas: white pill hugging text — dark readable ink */
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body,
+.hw-hc-memo--review-student .hw-hc-memo__body {
+  position: relative;
+  overflow: visible;
+  border-color: var(--hw-hc-blue, #3d7ea6);
+  background: color-mix(in srgb, var(--hw-hc-blue, #3d7ea6) 22%, #1a2744);
+}
+
+/* Rounded-rect pulse ring — thin mglass-like; inset anim (equal margin all sides) */
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body::before,
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply::before,
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: calc(var(--radius-md, 0.75rem) + 4px);
+  border: 1.5px solid color-mix(in srgb, #36b87a 45%, transparent);
+  opacity: 0;
+  animation: hw-hc-chip-pulse 2.8s ease-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body::before,
+.hw-hc-memo--review-student .hw-hc-memo__body::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: calc(var(--radius-md, 0.75rem) + 4px);
+  border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue, #3d7ea6) 45%, transparent);
+  opacity: 0;
+  animation: hw-hc-chip-pulse 2.8s ease-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Pulse ring is z:0; content above it — never force close into flow (that pinned X top-left). */
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body > *:not(.hw-hc-memo__close),
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close),
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close),
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close),
+.hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close) {
+  position: relative;
+  z-index: 1;
+}
+
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body::after,
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body::after,
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply::after,
+.hw-hc-memo--review-student .hw-hc-memo__body::after,
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply::after {
+  display: none;
+}
+
+/* Author cue on open JD green chips — top-left, clear of the X */
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__jd-label,
+.hw-hc-memo__body--teacher-reply .hw-hc-memo__jd-label {
+  display: block;
+  margin: 0 1.6rem 0.12rem 0;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  color: #f4f7fb;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Text sits on the chip like starQ に — white, no nested white field */
 .hw-hc-memo--teacher .hw-hc-memo__input--review-auto,
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__remark,
 .hw-hc-memo__body--student-reviewed .hw-hc-memo__remark,
@@ -858,29 +1051,47 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   overflow: hidden !important;
   resize: none !important;
   field-sizing: content;
-  width: auto;
+  width: 100%;
   max-width: 100%;
   min-width: 4.5rem;
   box-sizing: border-box;
   margin: 0;
-  padding: 0.28rem 0.45rem !important;
+  padding: 0.1rem 0.05rem !important;
   line-height: 1.35 !important;
-  font-size: 0.875rem !important;
-  border: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 28%, #c5d5e8) !important;
-  border-radius: 0.4rem;
-  background: #fff !important;
-  color: var(--hw-hc-ink, #1a2744) !important;
+  font-size: 0.95rem !important;
+  font-weight: 400;
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  color: #fff !important;
   box-shadow: none !important;
+  text-align: left;
 }
 
 .hw-hc-memo--teacher .hw-hc-memo__input--review-auto:focus,
 .hw-hc-memo__remark--review-auto:focus,
 .hw-hc-memo__input--review-auto:focus {
-  background: #fff !important;
-  color: var(--hw-hc-ink, #1a2744) !important;
-  outline: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 45%, transparent);
-  outline-offset: 1px;
-  border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 48%, #c5d5e8) !important;
+  background: transparent !important;
+  color: #fff !important;
+  outline: none;
+  border: none !important;
+}
+
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__close--teacher,
+.hw-hc-memo--review-teacher .hw-hc-memo__close--teacher,
+.hw-hc-review-pair .hw-hc-memo__close--inline {
+  background: color-mix(in srgb, #fff 14%, transparent);
+  color: #fff;
+}
+
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__close--teacher:hover,
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__close--teacher:focus-visible,
+.hw-hc-memo--review-teacher .hw-hc-memo__close--teacher:hover,
+.hw-hc-memo--review-teacher .hw-hc-memo__close--teacher:focus-visible,
+.hw-hc-review-pair .hw-hc-memo__close--inline:hover,
+.hw-hc-review-pair .hw-hc-memo__close--inline:focus-visible {
+  background: color-mix(in srgb, #fff 24%, transparent);
+  color: #fff;
 }
 
   /* Override min-width so short notes don't force a huge green shell */
@@ -1303,31 +1514,7 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   flex-shrink: 0;
 }
 
-/* Starq chip — teacher review memos (student blue + JD green) */
-.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body,
-.hw-hc-review-pair .hw-hc-memo__body--teacher-reply {
-  padding: 0.38rem 0.5rem 0.34rem;
-  color: #f4f7fb;
-  border-width: 2.5px;
-  border-style: solid;
-  border-radius: var(--radius-md, 0.75rem);
-  box-shadow: none;
-}
-
-.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body {
-  border-color: var(--hw-hc-blue);
-  background: color-mix(in srgb, var(--hw-hc-blue) 22%, var(--hw-hc-ink, #1a2744));
-}
-
-.hw-hc-review-pair .hw-hc-memo__body--teacher-reply {
-  border-color: var(--color-green, #2d6a4f);
-  background: color-mix(in srgb, var(--color-green, #2d6a4f) 22%, var(--hw-hc-ink, #1a2744));
-}
-
-.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body::after,
-.hw-hc-review-pair .hw-hc-memo__body--teacher-reply::after {
-  display: none;
-}
+/* (Starq open-panel styles live with the teacher-body block above.) */
 
 .hw-hc-review-pair .hw-hc-memo--review-teacher {
   position: relative;
@@ -1349,10 +1536,12 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   max-width: var(--hw-jd-memo-width);
 }
 
+/* Close X must stay top-right — do not flip with JD: label */
 .hw-hc-memo__close {
   position: absolute;
   top: 0.28rem;
   right: 0.28rem;
+  left: auto;
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -1371,6 +1560,19 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   line-height: 1;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+/* JD open chips: keep absolute top-right even if --inline / pulse z-index rules conflict */
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__close--teacher,
+.hw-hc-memo--review-teacher .hw-hc-memo__close--teacher,
+.hw-hc-memo__body--teacher-reply > .hw-hc-memo__close,
+.hw-hc-memo__body--teacher-reply > .hw-hc-memo__close--inline,
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > .hw-hc-memo__close {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  left: auto;
+  z-index: 3;
 }
 
 .hw-hc-memo__close:hover,
@@ -1397,11 +1599,11 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
 .hw-hc-review-pair .hw-hc-memo__remark--review-auto::placeholder,
 .hw-hc-memo__input--review-auto::placeholder,
 .hw-hc-memo__remark--review-auto::placeholder {
-  color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 42%, transparent);
+  color: color-mix(in srgb, #f4f7fb 48%, transparent);
 }
 
 .hw-hc-review-pair .hw-hc-memo__remark--review-auto:focus {
-  outline: 1px solid color-mix(in srgb, var(--color-green, #2d6a4f) 55%, transparent);
+  outline: 1px solid color-mix(in srgb, #f4f7fb 35%, transparent);
   outline-offset: 1px;
 }
 

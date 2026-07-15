@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260796";
+    link.href = "/css/hw-homework-comments.css?v=20260805";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -18,6 +18,9 @@
   const LAUNCHER_SNAP_IDS = ["tl", "tc", "tr", "ml", "mr", "bl", "bc", "br"];
   const ONBOARD_KEY = "hw-hc-onboarding-v1";
   const MG_ONBOARD_KEY = "hw-mg-onboarding-v1";
+  const MINI_CLOUD_ONBOARD_PREFIX = "hw-mini-cloud-onboard:";
+  const MINI_CLOUD_ONBOARD_WINDOW_MS = 14 * 86400000;
+  const MINI_CLOUD_ONBOARD_MAX_SHOWS = 2;
   const DRAG_THRESHOLD = 5;
   const TOUCH_HOLD_MS = 420;
   const TOUCH_MOVE_CANCEL = 12;
@@ -162,6 +165,8 @@
   let teacherReplyOpenIds = new Set();
   /** Student memos minimized to blue mini cloud in teacher review. */
   let reviewStudentMinimizedIds = new Set();
+  /** Standalone JD notes the student collapsed (studentReviewed). Empty = all open. */
+  let reviewTeacherMinimizedIds = new Set();
   let reviewResizeObserver = null;
   let draftSaveTimer = null;
   let draftSaveInFlight = null;
@@ -191,6 +196,11 @@
   /** Teacher review sheet or student viewing JD notes on the worksheet. */
   function isPairReviewMode() {
     return !!(config?.teacherReview || config?.studentReviewed);
+  }
+
+  /** Student reviewed archive: JD notes open/close only — not movable. */
+  function teacherNotesDraggable() {
+    return !config?.studentReviewed;
   }
 
   function isTeacherReplyOpen(comment) {
@@ -266,6 +276,74 @@
     });
   }
 
+  /** Student reviewed: JD green notes start expanded (paired replies + standalone). */
+  function seedStudentReviewedOpen() {
+    seedTeacherReplyOpen();
+    reviewTeacherMinimizedIds = new Set();
+  }
+
+  function isTeacherStandaloneOpen(comment) {
+    if (!comment || comment.author !== "teacher") return false;
+    if (config?.studentReviewed) return !reviewTeacherMinimizedIds.has(comment.id);
+    return activeCommentId === comment.id;
+  }
+
+  function minimizeTeacherStandalone(id) {
+    if (config?.studentReviewed) {
+      reviewTeacherMinimizedIds.add(id);
+      if (activeCommentId === id) activeCommentId = null;
+      renderAll();
+      return;
+    }
+    minimizeActive();
+  }
+
+  function miniCloudOnboardKey() {
+    const user = String(config?.username || "").trim() || "anon";
+    return MINI_CLOUD_ONBOARD_PREFIX + user;
+  }
+
+  function readMiniCloudOnboardState() {
+    try {
+      const raw = localStorage.getItem(miniCloudOnboardKey());
+      if (!raw) return { shownCount: 0, firstAt: null };
+      const parsed = JSON.parse(raw);
+      const shownCount = Math.max(0, Number(parsed?.shownCount) || 0);
+      const firstAt = Number(parsed?.firstAt) || null;
+      return { shownCount, firstAt };
+    } catch (_) {
+      return { shownCount: 0, firstAt: null };
+    }
+  }
+
+  function writeMiniCloudOnboardState(state) {
+    try {
+      localStorage.setItem(
+        miniCloudOnboardKey(),
+        JSON.stringify({
+          shownCount: state.shownCount || 0,
+          firstAt: state.firstAt || null,
+        })
+      );
+    } catch (_) {}
+  }
+
+  function shouldShowMiniCloudOnboard() {
+    if (!config?.studentReviewed) return false;
+    const state = readMiniCloudOnboardState();
+    if (state.shownCount >= MINI_CLOUD_ONBOARD_MAX_SHOWS) return false;
+    if (!state.firstAt) return true;
+    return Date.now() - state.firstAt < MINI_CLOUD_ONBOARD_WINDOW_MS;
+  }
+
+  function recordMiniCloudOnboardShow() {
+    const state = readMiniCloudOnboardState();
+    writeMiniCloudOnboardState({
+      shownCount: (state.shownCount || 0) + 1,
+      firstAt: state.firstAt || Date.now(),
+    });
+  }
+
   function rightArrowIconSvg(className) {
     return (
       '<svg class="' +
@@ -310,11 +388,20 @@
     return svg;
   }
 
+  function createJdAuthorLabel() {
+    const el = document.createElement("div");
+    el.className = "hw-hc-memo__jd-label";
+    el.textContent = "JD:";
+    el.setAttribute("aria-hidden", "true");
+    return el;
+  }
+
   function buildStudentTeacherReplyBody(comment) {
     /* Student view: same green JD memo, playback + text only (no record/erase). */
     const body = document.createElement("div");
     body.className =
       "hw-hc-memo__body hw-hc-memo__body--teacher-reply hw-hc-memo__body--student-reviewed";
+    body.appendChild(createJdAuthorLabel());
 
     if (comment.teacherRemarkMedia?.id) {
       const mediaMount = document.createElement("div");
@@ -337,18 +424,13 @@
     body.appendChild(remark);
     autosizeReviewMemoInput(remark);
 
-    const actions = document.createElement("div");
-    actions.className =
-      "hw-hc-memo__actions hw-hc-memo__actions--review hw-hc-memo__actions--teacher-reply";
-    actions.appendChild(
-      attachMemoCloseBtn(
-        body,
-        () => minimizeTeacherReviewReply(comment.id),
-        "hw-hc-memo__close--inline",
-        "Close JD memo"
-      )
+    /* Absolute top-right on body — not in actions (avoids top-left / flow regressions) */
+    attachMemoCloseBtn(
+      body,
+      () => minimizeTeacherReviewReply(comment.id),
+      "hw-hc-memo__close--teacher",
+      "Close JD memo"
     );
-    body.appendChild(actions);
     return body;
   }
 
@@ -358,6 +440,7 @@
     /* Media above text in JD memo */
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body hw-hc-memo__body--teacher-reply";
+    body.appendChild(createJdAuthorLabel());
 
     const mediaMount = document.createElement("div");
     mediaMount.className = "hw-hc-memo__remark-media-mount hw-hc-memo__remark-media-mount--compact";
@@ -378,19 +461,15 @@
     body.appendChild(remark);
     autosizeReviewMemoInput(remark);
 
+    attachMemoCloseBtn(
+      body,
+      () => minimizeTeacherReviewReply(comment.id),
+      "hw-hc-memo__close--teacher",
+      "Close JD memo"
+    );
+
     const actions = document.createElement("div");
     actions.className = "hw-hc-memo__actions hw-hc-memo__actions--review hw-hc-memo__actions--teacher-reply";
-
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "hw-hc-memo__close hw-hc-memo__close--inline";
-    closeBtn.setAttribute("aria-label", "Close JD memo");
-    closeBtn.textContent = "\u00d7";
-    closeBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
-    closeBtn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      minimizeTeacherReviewReply(comment.id);
-    });
 
     const trashBtn = document.createElement("button");
     trashBtn.type = "button";
@@ -415,7 +494,6 @@
     videoBtn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     videoBtn.addEventListener("click", (ev) => ev.stopPropagation());
 
-    actions.appendChild(closeBtn);
     actions.appendChild(trashBtn);
     actions.appendChild(audioBtn);
     actions.appendChild(videoBtn);
@@ -549,7 +627,9 @@
       teacherMemo.className =
         "hw-hc-memo hw-hc-memo--expanded hw-hc-memo--teacher hw-hc-memo--review-teacher";
       const teacherBody = buildTeacherReplyBody(comment);
-      attachMemoDragHandles(teacherBody, comment.id, pair);
+      if (teacherNotesDraggable()) {
+        attachMemoDragHandles(teacherBody, comment.id, pair);
+      }
       teacherMemo.appendChild(teacherBody);
       teacherSlot.appendChild(teacherMemo);
       stack.appendChild(teacherSlot);
@@ -1211,10 +1291,14 @@
             return;
           }
           /* Keep empty student memos during review — only remarks matter. */
-        } else {
+        } else if (!config?.studentReviewed) {
           removeComment(id);
           return;
         }
+      }
+      if (config?.studentReviewed && comment?.author === "teacher") {
+        minimizeTeacherStandalone(id);
+        return;
       }
     }
     activeCommentId = null;
@@ -1223,6 +1307,7 @@
 
   function expandComment(id) {
     if (armed) setArmed(false);
+    if (config?.studentReviewed) reviewTeacherMinimizedIds.delete(id);
     activeCommentId = id;
     renderAll();
     requestAnimationFrame(() => {
@@ -2222,6 +2307,7 @@
   }
 
   function dismissOnboarding(options) {
+    const isMiniLegend = !!onboardEl?.classList.contains("hw-hc-onboard--mini-legend");
     if (onboardEl) {
       onboardEl.remove();
       onboardEl = null;
@@ -2233,7 +2319,7 @@
     unbindOnboardScrimResize();
     document.body.classList.remove("hw-hc-onboarding-active");
     hostEl?.classList.remove("hw-hc-onboarding");
-    if (options?.persist === false) return;
+    if (options?.persist === false || isMiniLegend) return;
     try {
       localStorage.setItem(ONBOARD_KEY, "1");
     } catch (_) {}
@@ -2345,6 +2431,166 @@
       initOnboarding();
     };
     onboardScheduleTimer = setTimeout(tryStart, 500);
+  }
+
+  function dismissMiniCloudOnboarding() {
+    dismissOnboarding({ persist: false });
+  }
+
+  function getMiniCloudSpotlightTargets() {
+    if (!shellEl) return [];
+    return Array.from(
+      shellEl.querySelectorAll(".hw-hc-review-mini-pair, .hw-hc-mini:not(.hw-hc-mini--in-pair)")
+    );
+  }
+
+  function updateMiniOnboardScrimSpotlight() {
+    if (!onboardScrimEl || !onboardEl) return;
+    syncOnboardScrimViewport();
+    const hole = onboardScrimEl.querySelector(".hw-hc-onboard-scrim__hole");
+    if (!hole) return;
+    const pad = 18;
+    let spot = spotlightRect(onboardEl, pad);
+    getMiniCloudSpotlightTargets().forEach((el) => {
+      spot = mergeSpotlightRects(spot, spotlightRect(el, pad + 6));
+    });
+    if (!spot) return;
+    const x = Math.max(0, spot.x);
+    const y = Math.max(0, spot.y);
+    const w = Math.min(window.innerWidth - x, spot.w);
+    const h = Math.min(window.innerHeight - y, spot.h);
+    hole.setAttribute("x", String(x));
+    hole.setAttribute("y", String(y));
+    hole.setAttribute("width", String(Math.max(0, w)));
+    hole.setAttribute("height", String(Math.max(0, h)));
+    hole.setAttribute("rx", "16");
+    hole.setAttribute("ry", "16");
+  }
+
+  function placeMiniCloudOnboard() {
+    if (!onboardEl || !hostEl) return;
+    const cardW = Math.min(280, hostEl.clientWidth - 24);
+    onboardEl.style.width = cardW + "px";
+    const cardH = onboardEl.offsetHeight || 160;
+    const hostRect = hostEl.getBoundingClientRect();
+    const maxLeft = hostEl.clientWidth - cardW - 12;
+    const maxTop = hostEl.clientHeight - cardH - 12;
+    const tip = getMiniCloudSpotlightTargets()[0];
+    let left;
+    let top;
+    if (tip) {
+      const tipRect = tip.getBoundingClientRect();
+      left = tipRect.left - hostRect.left + tipRect.width / 2 - cardW / 2;
+      top = tipRect.bottom - hostRect.top + 14;
+      if (top + cardH > hostEl.clientHeight - 12) {
+        top = tipRect.top - hostRect.top - cardH - 14;
+      }
+      if (top < 12) {
+        left = tipRect.right - hostRect.left + 12;
+        top = tipRect.top - hostRect.top;
+        if (left + cardW > hostEl.clientWidth - 12) {
+          left = tipRect.left - hostRect.left - cardW - 12;
+        }
+      }
+    } else {
+      left = Math.max(12, (hostEl.clientWidth - cardW) / 2);
+      top = Math.max(12, Math.min((hostEl.clientHeight - cardH) / 3, hostEl.clientHeight - cardH - 12));
+    }
+    left = Math.max(12, Math.min(left, maxLeft));
+    top = Math.max(12, Math.min(top, maxTop));
+    onboardEl.style.left = left + "px";
+    onboardEl.style.top = top + "px";
+    updateMiniOnboardScrimSpotlight();
+  }
+
+  function initMiniCloudOnboarding() {
+    if (!config?.studentReviewed || !shellEl || !hostEl) return;
+    if (!shouldShowMiniCloudOnboard()) return;
+    if (onboardEl) return;
+    if (!getMiniCloudSpotlightTargets().length) return;
+
+    recordMiniCloudOnboardShow();
+
+    onboardScrimEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    onboardScrimEl.classList.add("hw-hc-onboard-scrim");
+    onboardScrimEl.setAttribute("aria-hidden", "true");
+    const maskId = "hw-hc-mini-onboard-spotlight-" + Math.random().toString(36).slice(2, 9);
+    onboardScrimEl.innerHTML =
+      "<defs><mask id=\"" +
+      maskId +
+      "\"><rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"white\"/>" +
+      "<rect class=\"hw-hc-onboard-scrim__hole\" rx=\"16\" ry=\"16\" fill=\"black\"/></mask></defs>" +
+      "<rect class=\"hw-hc-onboard-scrim__fill\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" " +
+      "fill=\"rgba(0,0,0,0.78)\" mask=\"url(#" +
+      maskId +
+      ")\"/>";
+    onboardScrimEl.addEventListener("click", () => dismissMiniCloudOnboarding());
+    document.body.appendChild(onboardScrimEl);
+
+    const icon = cloudIconSvg("hw-hc-mini__icon");
+    onboardEl = document.createElement("div");
+    onboardEl.className = "hw-hc-onboard hw-hc-onboard--mini-legend";
+    onboardEl.setAttribute("role", "dialog");
+    onboardEl.setAttribute("aria-labelledby", "hw-hc-mini-onboard-title");
+    onboardEl.innerHTML =
+      '<div class="hw-hc-onboard__card">' +
+      '<p class="hw-hc-onboard__eyebrow">Reviewed homework</p>' +
+      '<h2 class="hw-hc-onboard__title" id="hw-hc-mini-onboard-title">Note clouds</h2>' +
+      '<ul class="hw-hc-onboard__legend">' +
+      '<li class="hw-hc-onboard__legend-item hw-hc-onboard__legend-item--student">' +
+      '<span class="hw-hc-onboard__cloud-key" aria-hidden="true">' +
+      icon +
+      "</span> Your notes</li>" +
+      '<li class="hw-hc-onboard__legend-item hw-hc-onboard__legend-item--teacher">' +
+      '<span class="hw-hc-onboard__cloud-key hw-hc-onboard__cloud-key--teacher" aria-hidden="true">' +
+      icon +
+      "</span> JD\u2019s notes</li>" +
+      "</ul>" +
+      '<button type="button" class="btn btn--primary btn--sm hw-hc-onboard__btn">Got it</button>' +
+      "</div>";
+
+    onboardEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    onboardEl.addEventListener("click", (ev) => ev.stopPropagation());
+    onboardEl.querySelector(".hw-hc-onboard__btn")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dismissMiniCloudOnboarding();
+    });
+
+    shellEl.appendChild(onboardEl);
+    hostEl.classList.add("hw-hc-onboarding");
+    document.body.classList.add("hw-hc-onboarding-active");
+    onboardScrimResizeBound = () => {
+      placeMiniCloudOnboard();
+      updateMiniOnboardScrimSpotlight();
+    };
+    window.addEventListener("resize", onboardScrimResizeBound);
+    requestAnimationFrame(() => {
+      placeMiniCloudOnboard();
+      onboardScrimEl?.classList.add("is-visible");
+      onboardEl?.classList.add("is-visible");
+      requestAnimationFrame(updateMiniOnboardScrimSpotlight);
+    });
+  }
+
+  function scheduleMiniCloudOnboarding() {
+    if (!config?.studentReviewed) return;
+    clearTimeout(onboardScheduleTimer);
+    let attempts = 0;
+    const tryStart = () => {
+      if (!shellEl || !hostIsVisible(hostEl)) return;
+      if (mgOnboardingBlocking()) {
+        onboardScheduleTimer = setTimeout(tryStart, 400);
+        return;
+      }
+      if (!getMiniCloudSpotlightTargets().length && attempts < 20) {
+        attempts += 1;
+        onboardScheduleTimer = setTimeout(tryStart, 300);
+        return;
+      }
+      initMiniCloudOnboarding();
+    };
+    onboardScheduleTimer = setTimeout(tryStart, 450);
   }
 
   function resetOnboarding() {
@@ -2534,6 +2780,7 @@
 
   function renderMini(comment) {
     if (isPairReviewMode() && comment.author !== "teacher") return null;
+    if (comment.author === "teacher" && isTeacherStandaloneOpen(comment)) return null;
     if (activeCommentId === comment.id) return null;
     if (!comment.anchorRect && comment.author !== "teacher") return null;
     const btn = document.createElement("button");
@@ -2560,10 +2807,21 @@
     btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (Date.now() < suppressMiniClickUntil) return;
+      if (config?.studentReviewed && comment.author === "teacher") {
+        reviewTeacherMinimizedIds.delete(comment.id);
+        activeCommentId = comment.id;
+        renderAll();
+        return;
+      }
       expandComment(comment.id);
     });
-    /* Standalone tips (incl. teacher/JD green) are free-draggable; paired review minis use renderReviewMiniPair. */
-    if (!config?.readOnly || isPairReviewMode()) {
+    /* Standalone tips (incl. teacher/JD green) are free-draggable; paired review minis use renderReviewMiniPair.
+       Student reviewed: JD green tips open only — no drag. */
+    const canDragMini =
+      comment.author === "teacher"
+        ? teacherNotesDraggable() && (!config?.readOnly || isPairReviewMode())
+        : !config?.readOnly || isPairReviewMode();
+    if (canDragMini) {
       btn.classList.add("hw-hc-mini--draggable");
       btn.title = "Drag to move";
       bindCloudDrag(btn, comment.id, "mini");
@@ -2585,37 +2843,47 @@
 
   function renderMemo(comment) {
     if (isPairReviewMode() && comment.author !== "teacher") return null;
-    if (activeCommentId !== comment.id) return null;
+    const isTeacherNote = comment.author === "teacher";
+    if (isTeacherNote) {
+      if (!isTeacherStandaloneOpen(comment)) return null;
+    } else if (activeCommentId !== comment.id) {
+      return null;
+    }
     /* Student memos need an anchor rect; teacher-only notes use free placement. */
-    if (!comment.anchorRect && comment.author !== "teacher") return null;
+    if (!comment.anchorRect && !isTeacherNote) return null;
 
     const wrap = document.createElement("div");
     wrap.className =
       "hw-hc-memo hw-hc-memo--expanded" +
-      (comment.author === "teacher" ? " hw-hc-memo--teacher" : "") +
+      (isTeacherNote ? " hw-hc-memo--teacher" : "") +
       (isPairReviewMode() ? " hw-hc-memo--review" : "");
     wrap.dataset.id = comment.id;
     applyCloudPos(wrap, comment, "memo");
     wrap.setAttribute("role", "dialog");
     wrap.setAttribute(
       "aria-label",
-      comment.author === "teacher"
+      isTeacherNote
         ? "JD note on this question"
         : "Note on “" + (comment.anchor || "worksheet") + "”"
     );
 
     const body = document.createElement("div");
     body.className = "hw-hc-memo__body";
-    if (!config?.readOnly || isPairReviewMode()) body.title = "Drag to move";
+    const canDragMemo =
+      isTeacherNote
+        ? teacherNotesDraggable() && (!config?.readOnly || isPairReviewMode())
+        : !config?.readOnly || isPairReviewMode();
+    if (canDragMemo) body.title = "Drag to move";
 
-    const isTeacherNote = comment.author === "teacher";
     const studentReadonlyView = !!config?.readOnly && !config?.teacherReview;
 
     if (config?.teacherReview && isTeacherNote) {
       attachMemoCloseBtn(body, () => minimizeActive(), "hw-hc-memo__close--teacher");
     } else if (config?.studentReviewed && isTeacherNote) {
-      attachMemoCloseBtn(body, () => minimizeActive(), "hw-hc-memo__close--teacher");
+      attachMemoCloseBtn(body, () => minimizeTeacherStandalone(comment.id), "hw-hc-memo__close--teacher");
     }
+
+    if (isTeacherNote) body.appendChild(createJdAuthorLabel());
 
     {
       const input = document.createElement("textarea");
@@ -2695,7 +2963,7 @@
     wrap.append(body);
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
-    if (!config?.readOnly || isPairReviewMode()) {
+    if (canDragMemo) {
       attachMemoDragHandles(body, comment.id, wrap);
     }
     return wrap;
@@ -2836,7 +3104,7 @@
     launcherResizeObserver = null;
     reviewResizeObserver?.disconnect();
     reviewResizeObserver = null;
-    dismissOnboarding();
+    dismissOnboarding({ persist: false });
     unbindTouchSelection();
     unbindDocPointer();
     unbindKeyDown();
@@ -2873,6 +3141,7 @@
     activeCommentId = null;
     teacherReplyOpenIds = new Set();
     reviewStudentMinimizedIds = new Set();
+    reviewTeacherMinimizedIds = new Set();
   }
 
   function attachTo(formEl, options) {
@@ -2924,11 +3193,12 @@
     }
 
     if (config.studentReviewed) {
-      seedTeacherReplyOpen();
+      seedStudentReviewedOpen();
       hostEl.classList.add("hw-hc-student-reviewed");
       ensureStudentReviewedChrome();
       bindReviewResize();
       renderAll();
+      scheduleMiniCloudOnboarding();
       return true;
     }
 

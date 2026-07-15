@@ -723,6 +723,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   border-radius: 50%;
   cursor: pointer;
   flex: 0 0 auto;
+  overflow: visible;
   background: var(--color-bg-card);
   box-shadow:
     0 4px 18px color-mix(in srgb, var(--color-text) 18%, transparent),
@@ -969,9 +970,14 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 
 .hw-hub-v5-notebook-diary__header .hw-hub-v5-status-ping-host--diary {
   flex: 0 0 auto;
-  width: 2.5rem;
-  height: 2.5rem;
-  margin-top: 0.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Room for the expanding hub ring pulse (same as status card ping). */
+  width: 3.35rem;
+  height: 3.35rem;
+  margin: -0.35rem -0.2rem 0 0;
+  overflow: visible;
   z-index: 4;
 }
 
@@ -1060,7 +1066,16 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   letter-spacing: 0.02em;
 }
 
-/* Status ping on cream paper: dark disc + punchy signal colors */
+/*
+ * Status ping on cream paper: dark disc + punchy signal colors.
+ * Ring pulse must match hub status (`hw-hub-v5-bubble-ring` / `-acked`) —
+ * do not swap to separate diary keyframes (layout/color pass lost the pulse).
+ */
+.hw-hub-v5-notebook-diary__chrome,
+.hw-hub-v5-notebook-diary__header {
+  overflow: visible;
+}
+
 .hw-hub-v5-status-bubble--in-diary {
   position: relative !important;
   inset: auto !important;
@@ -1071,6 +1086,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   width: 2.5rem !important;
   height: 2.5rem !important;
   transform: none;
+  overflow: visible;
   background: #1b2420;
   box-shadow:
     0 0 0 2px color-mix(in srgb, #f6ecda 88%, #1b2420),
@@ -1092,22 +1108,26 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewing
   .hw-hub-v5-status-bubble__ring {
-  border-color: color-mix(in srgb, #ffb426 90%, #fff);
+  opacity: 1;
+  border: 2px solid color-mix(in srgb, #ffb426 90%, #fff);
   box-shadow: 0 0 0 0 color-mix(in srgb, #ffb426 65%, transparent);
-  animation: hw-hub-v5-diary-bubble-ring 1.25s ease-in-out infinite;
+  animation: hw-hub-v5-bubble-ring 1.4s ease-in-out infinite;
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewed
   .hw-hub-v5-status-bubble__dot {
   background: #5dcf8a;
-  width: 0.9rem;
-  height: 0.9rem;
-  box-shadow: 0 0 8px color-mix(in srgb, #5dcf8a 55%, transparent);
+  width: 0.95rem;
+  height: 0.95rem;
+  box-shadow: 0 0 10px color-mix(in srgb, #5dcf8a 70%, transparent);
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewed
   .hw-hub-v5-status-bubble__ring {
-  box-shadow: 0 0 0 0.28rem color-mix(in srgb, #5dcf8a 42%, transparent);
+  opacity: 1;
+  border: 2px solid color-mix(in srgb, #5dcf8a 90%, #fff);
+  box-shadow: 0 0 0 0 color-mix(in srgb, #5dcf8a 65%, transparent);
+  animation: hw-hub-v5-bubble-ring-reviewed 1.4s ease-in-out infinite;
 }
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--acked
@@ -1120,28 +1140,10 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 
 .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--acked
   .hw-hub-v5-status-bubble__ring {
+  opacity: 1;
+  border: 2px solid color-mix(in srgb, #e6c04a 85%, #fff);
   box-shadow: 0 0 0 0 color-mix(in srgb, #e6c04a 55%, transparent);
-  animation: hw-hub-v5-diary-bubble-ring-acked 1.6s ease-in-out infinite;
-}
-
-@keyframes hw-hub-v5-diary-bubble-ring {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, #ffb426 55%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 0.62rem transparent;
-  }
-}
-
-@keyframes hw-hub-v5-diary-bubble-ring-acked {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, #e6c04a 50%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 0.58rem transparent;
-  }
+  animation: hw-hub-v5-bubble-ring-acked 1.8s ease-in-out infinite;
 }
 
 /* Diary note rows: ink on paper */
@@ -1717,11 +1719,16 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
 
 .hw-hub-v5-status-bubble--reviewed .hw-hub-v5-status-bubble__dot {
   background: var(--color-green);
+  width: 0.9rem;
+  height: 0.9rem;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-green) 55%, transparent);
 }
 
 .hw-hub-v5-status-bubble--reviewed .hw-hub-v5-status-bubble__ring {
   opacity: 1;
-  box-shadow: 0 0 0 0.22rem color-mix(in srgb, var(--color-green) 28%, transparent);
+  animation: hw-hub-v5-bubble-ring-reviewed 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-green) 55%, transparent);
+  border: 2px solid color-mix(in srgb, var(--color-green) 70%, transparent);
 }
 
 .hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__dot {
@@ -1738,6 +1745,17 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
   0%,
   100% {
     box-shadow: 0 0 0 0 color-mix(in srgb, #e8a838 38%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 0.55rem transparent;
+  }
+}
+
+/* Same motion / expansion as yellow reviewing ping — green signal only. */
+@keyframes hw-hub-v5-bubble-ring-reviewed {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, #4ade80 38%, transparent);
   }
   50% {
     box-shadow: 0 0 0 0.55rem transparent;
@@ -1797,11 +1815,8 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
 @media (prefers-reduced-motion: reduce) {
   .hw-hub-v5-pending__pulse,
   .hw-hub-v5-status-bubble--reviewing .hw-hub-v5-status-bubble__ring,
+  .hw-hub-v5-status-bubble--reviewed .hw-hub-v5-status-bubble__ring,
   .hw-hub-v5-status-bubble--acked .hw-hub-v5-status-bubble__ring,
-  .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--reviewing
-    .hw-hub-v5-status-bubble__ring,
-  .hw-hub-v5-status-bubble--in-diary.hw-hub-v5-status-bubble--acked
-    .hw-hub-v5-status-bubble__ring,
   .hw-hub-v5-sellup .hw-hub-tier-plan,
   .hw-hub-v5-sellup .hw-hub-v5-sellup-card--lessons,
   .hw-hub-v5-sellup .hw-hub-v5-sellup-card--weekly,
