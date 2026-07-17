@@ -991,26 +991,27 @@
     question.textContent = promptText;
     wrap.appendChild(question);
 
-    if (!renderOptions.preview && !renderOptions.readOnly) {
+    if (!renderOptions.readOnly) {
       const head = document.createElement("div");
       head.className = "hw-video-prompt__head";
-      head.appendChild(
-        renderRecordingTip(item.id || "vid-" + (index + 1), {
-          label: "IMPORTANT",
-          important: true,
-          lines: SUBMISSION_TIP_LINES,
-          ariaLabel: "Show important recording guidance",
-        })
-      );
-      wrap.appendChild(head);
-    }
 
-    if (!renderOptions.readOnly) {
       const instruction = document.createElement("p");
       instruction.className = "hw-video-prompt__instruction";
       instruction.textContent =
         "Choose video or audio-only, record your answer in Japanese, then save it.";
-      wrap.appendChild(instruction);
+      head.appendChild(instruction);
+
+      if (!renderOptions.preview) {
+        head.appendChild(
+          renderRecordingTip(item.id || "vid-" + (index + 1), {
+            label: "IMPORTANT",
+            important: true,
+            lines: SUBMISSION_TIP_LINES,
+            ariaLabel: "Show important recording guidance",
+          })
+        );
+      }
+      wrap.appendChild(head);
     }
 
     const recorderMount = document.createElement("div");
@@ -1221,7 +1222,161 @@
     return tokens.filter((t) => !t.fixed).map((t) => t.text);
   }
 
+  /** Trailing 。 / . /！ /？ etc. — shrunk first in hybrid sentence fit. */
+  function isStarPeriodText(text) {
+    return /^[。．.！!？?]+$/.test(String(text || "").trim());
+  }
+
+  /**
+   * Hybrid shrink-to-fit for star sentence rows (one line, no horizontal scroll).
+   * Size ladders are discrete rem steps on --star-main-size / --star-period-size.
+   * 1) Period-only: try up to 5 smaller period steps while main stays at base.
+   * 2) If still overflowing: keep period at max shrink, step main down until fit or floor.
+   */
+  const STAR_MAIN_SIZES = [1.2, 1.1, 1.0, 0.92, 0.84, 0.76];
+  const STAR_PERIOD_SIZES = [1.2, 1.05, 0.92, 0.8, 0.7, 0.6];
+  const STAR_PERIOD_MAX_STEP = 5;
+
+  function starSentenceOverflows(sentence) {
+    return sentence.scrollWidth > sentence.clientWidth + 1;
+  }
+
+  function applyStarSentenceSizes(sentence, mainStep, periodStep) {
+    const main = STAR_MAIN_SIZES[Math.min(Math.max(mainStep, 0), STAR_MAIN_SIZES.length - 1)];
+    const period =
+      STAR_PERIOD_SIZES[Math.min(Math.max(periodStep, 0), STAR_PERIOD_SIZES.length - 1)];
+    sentence.style.setProperty("--star-main-size", main + "rem");
+    sentence.style.setProperty("--star-period-size", period + "rem");
+  }
+
+  function fitStarSentence(sentence) {
+    if (!sentence || !sentence.isConnected) return;
+    if (sentence.clientWidth < 8) return;
+
+    applyStarSentenceSizes(sentence, 0, 0);
+    void sentence.offsetWidth;
+    if (!starSentenceOverflows(sentence)) return;
+
+    for (let p = 1; p <= STAR_PERIOD_MAX_STEP; p++) {
+      applyStarSentenceSizes(sentence, 0, p);
+      void sentence.offsetWidth;
+      if (!starSentenceOverflows(sentence)) return;
+    }
+
+    for (let m = 1; m < STAR_MAIN_SIZES.length; m++) {
+      applyStarSentenceSizes(sentence, m, STAR_PERIOD_MAX_STEP);
+      void sentence.offsetWidth;
+      if (!starSentenceOverflows(sentence)) return;
+    }
+  }
+
+  function fitStarLine(line) {
+    const sentence = line?.querySelector?.(".hw-star-block__sentence");
+    if (sentence) fitStarSentence(sentence);
+    const jp = line?.querySelector?.(".hw-translation-block__japanese");
+    if (jp) fitJpPrompt(jp);
+  }
+
+  /**
+   * Shrink-to-fit for translate card Japanese source lines (one line when possible).
+   * Desktop (min-width 900px): always keep nowrap; modest font shrink, then horizontal scroll.
+   * Mobile: same shrink ladder; if still overflowing at floor, allow wrap.
+   */
+  const JP_PROMPT_SIZES = [1.25, 1.15, 1.05, 0.95, 0.86, 0.78];
+  const JP_PROMPT_DESKTOP_MQ = "(min-width: 900px)";
+
+  function jpPromptOverflows(el) {
+    return el.scrollWidth > el.clientWidth + 1;
+  }
+
+  function applyJpPromptSize(el, step) {
+    const size = JP_PROMPT_SIZES[Math.min(Math.max(step, 0), JP_PROMPT_SIZES.length - 1)];
+    el.style.setProperty("--jp-prompt-size", size + "rem");
+  }
+
+  function isJpPromptDesktop() {
+    return typeof window.matchMedia === "function"
+      ? window.matchMedia(JP_PROMPT_DESKTOP_MQ).matches
+      : true;
+  }
+
+  function fitJpPrompt(el) {
+    if (!el || !el.isConnected) return;
+    if (el.classList.contains("hw-lookup-lexicon-playground__text")) return;
+    if (el.clientWidth < 8) return;
+
+    el.classList.remove("is-jp-prompt-wrap");
+    applyJpPromptSize(el, 0);
+    void el.offsetWidth;
+    if (!jpPromptOverflows(el)) return;
+
+    for (let s = 1; s < JP_PROMPT_SIZES.length; s++) {
+      applyJpPromptSize(el, s);
+      void el.offsetWidth;
+      if (!jpPromptOverflows(el)) return;
+    }
+
+    if (isJpPromptDesktop()) return;
+    el.classList.add("is-jp-prompt-wrap");
+  }
+
+  function scheduleFitStarLine(line) {
+    if (!line) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => fitStarLine(line));
+    });
+  }
+
+  function scheduleFitAllStarSentences(root) {
+    const scope = root || document;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scope.querySelectorAll(".hw-star-block__sentence").forEach(fitStarSentence);
+        scope.querySelectorAll(".hw-translation-block__japanese").forEach(fitJpPrompt);
+      });
+    });
+  }
+
+  function initStarSentenceFit(form) {
+    if (!form || form.dataset.starFitBound === "true") return;
+    form.dataset.starFitBound = "true";
+
+    let resizeTimer = 0;
+    let fitQueued = false;
+    const queueFit = () => {
+      if (fitQueued) return;
+      fitQueued = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          fitQueued = false;
+          form.querySelectorAll(".hw-star-block__sentence").forEach(fitStarSentence);
+          form.querySelectorAll(".hw-translation-block__japanese").forEach(fitJpPrompt);
+        });
+      });
+    };
+
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(queueFit, 120);
+    };
+    window.addEventListener("resize", onResize);
+    form.addEventListener("hw-worksheet-slide", queueFit);
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(queueFit);
+      form
+        .querySelectorAll(".hw-star-block__sentence, .hw-translation-block__japanese")
+        .forEach((el) => {
+          ro.observe(el);
+        });
+      form._starSentenceRo = ro;
+    }
+
+    queueFit();
+  }
+
   function renderStarLine(item, lineOptions) {
+    lineOptions = lineOptions || {};
     const line = document.createElement("div");
     line.className = "hw-worksheet__line hw-worksheet__line--star";
     line.dataset.itemId = item.id || "";
@@ -1237,6 +1392,14 @@
     const content = document.createElement("div");
     content.className = "hw-worksheet__content";
 
+    const starInstruction = String(lineOptions.starInstruction || "").trim();
+    if (starInstruction) {
+      const hint = document.createElement("p");
+      hint.className = "hw-star-block__hint";
+      hint.textContent = starInstruction;
+      content.appendChild(hint);
+    }
+
     const sentence = document.createElement("div");
     sentence.className = "hw-star-block__sentence";
     sentence.setAttribute("lang", "ja");
@@ -1245,7 +1408,9 @@
     tokens.forEach((token) => {
       if (token.fixed) {
         const fixed = document.createElement("span");
-        fixed.className = "hw-star-block__fixed";
+        fixed.className =
+          "hw-star-block__fixed" +
+          (isStarPeriodText(token.text) ? " hw-star-block__fixed--period" : "");
         fixed.textContent = token.text;
         sentence.appendChild(fixed);
         return;
@@ -1411,7 +1576,11 @@
           (section.mode === "audio-listening"
             ? "Listen to the clip and write down what you think it's saying in Japanese."
             : "");
-    if (sectionIntro && (authoring || section.mode !== "audio-listening")) {
+    /* Listen + star: instruction lives inside the question card (not above it). */
+    if (
+      sectionIntro &&
+      (authoring || (section.mode !== "audio-listening" && section.mode !== "star-order"))
+    ) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";
       intro.textContent = sectionIntro;
@@ -1422,6 +1591,8 @@
       section.mode === "audio-listening" ? String(section.audioUrl || "").trim() : "";
     const listenInstruction =
       !authoring && section.mode === "audio-listening" ? sectionIntro : "";
+    const starInstruction =
+      !authoring && section.mode === "star-order" ? sectionIntro : "";
 
     (section.items || []).forEach((item, i) => {
       const itemCounter = renderOptions.itemCounter;
@@ -1431,6 +1602,7 @@
         sectionAudioUrl,
         itemNum,
         listenInstruction,
+        starInstruction,
         authoring,
         preview: renderOptions.preview,
       };
@@ -1766,6 +1938,9 @@
     }
     if (!authoring && global.HwStarBlock?.initForm) {
       global.HwStarBlock.initForm(form);
+    }
+    if (!authoring) {
+      initStarSentenceFit(form);
     }
 
     if (options.readOnly) {
@@ -2114,6 +2289,44 @@
     return left === 1 ? "1 question left" : left + " questions left";
   }
 
+  /** Card shell inside a worksheet line (listen / video / audio / slide content). */
+  function questionCardHost(line) {
+    if (!line || !line.querySelector) return null;
+    return (
+      line.querySelector(".hw-listen-card") ||
+      line.querySelector(".hw-video-prompt") ||
+      line.querySelector(".hw-audio-prompt") ||
+      line.querySelector(".hw-worksheet__content") ||
+      null
+    );
+  }
+
+  /**
+   * Park the shared questions-left tracker near the top of the active question card
+   * (e.g. .hw-listen-card with the anime still), never in the sticky grammar head.
+   * @param {HTMLFormElement} form
+   * @param {Element|null} line
+   */
+  function placeSubmitTrackerInCard(form, line) {
+    const tracker = form?.querySelector("[data-hw-submit-tracker]");
+    if (!tracker) return;
+
+    const activeLine =
+      line ||
+      form.querySelector(".hw-worksheet--slide-mode .hw-worksheet__line:not([hidden])") ||
+      form.querySelector(".hw-worksheet__line:not([hidden])");
+
+    const host = questionCardHost(activeLine);
+    tracker.classList.add("hw-worksheet__submit-tracker--in-card");
+    tracker.classList.remove("hw-worksheet__submit-tracker--slide-head");
+
+    if (host) {
+      host.insertBefore(tracker, host.firstChild);
+      return;
+    }
+    if (activeLine) activeLine.insertBefore(tracker, activeLine.firstChild);
+  }
+
   function updateSubmitButtonState(form) {
     const submitBtn = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
     const tracker = form?.querySelector("[data-hw-submit-tracker]");
@@ -2223,6 +2436,7 @@
         lines.forEach((line) => {
           line.hidden = false;
         });
+        placeSubmitTrackerInCard(form, null);
         return;
       }
 
@@ -2242,6 +2456,7 @@
         });
         sec.hidden = !sectionVisible;
       });
+      placeSubmitTrackerInCard(form, lines[current]);
     }
 
     function notifySlideChange() {
@@ -2276,9 +2491,13 @@
     });
 
     form._hwGoToSlide = goTo;
+    form._hwPlaceSubmitTracker = () => placeSubmitTrackerInCard(form, lines[current]);
 
     applySlideView();
     notifySlideChange();
+    /* Re-place after later inits (star/focus) so tracker isn't left in the sticky head. */
+    queueMicrotask(() => placeSubmitTrackerInCard(form, lines[current]));
+    requestAnimationFrame(() => placeSubmitTrackerInCard(form, lines[current]));
   }
 
   function getSlideIndex(form) {
@@ -2298,7 +2517,9 @@
   function exitHomeworkFocusMode() {
     const section =
       document.getElementById("hw-worksheet-section") ||
-      document.getElementById("hw-hub-v4-homework");
+      document.getElementById("hw-hub-v4-homework") ||
+      document.getElementById("hw-v5-homework-zone") ||
+      document.querySelector(".hw-hub-v4-homework");
     document.body.classList.remove("hw-hw-focus-mode");
     section?.querySelector(".hw-focus-bar")?.setAttribute("hidden", "");
     section?.querySelector("[data-hw-focus]")?.removeAttribute("hidden");
@@ -2313,7 +2534,9 @@
    * @param {HTMLFormElement} form
    */
   function initFocusMode(form) {
-    const section = form.closest("#hw-worksheet-section, #hw-hub-v4-homework");
+    const section = form.closest(
+      "#hw-worksheet-section, #hw-hub-v4-homework, #hw-v5-homework-zone, .hw-hub-v4-homework"
+    );
     if (!section) return;
 
     const focusBtn = document.createElement("button");
@@ -2950,9 +3173,13 @@
     hideTeacherAnswers,
     toggleTeacherAnswers,
     hasListenTeacherAnswers,
+    exitFocusMode: exitHomeworkFocusMode,
     setFormReadOnly,
     applyAnswersMap,
     applySubmissionAnswers,
+    fitStarLine,
+    scheduleFitStarLine,
+    scheduleFitAllStarSentences,
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,

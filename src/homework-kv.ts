@@ -1369,6 +1369,10 @@ export async function deleteTeacherIdea(
 
 const SUBMISSIONS_INDEX = "submissions-index";
 const submissionKey = (id: string) => `submission:${id}`;
+const studentSubmissionsIndexKey = (username: string) =>
+  `submissions-by-student:${String(username || "")
+    .trim()
+    .toLowerCase()}`;
 const submissionPhotoKey = (id: string) => `submission-photo:${id}`;
 const submissionPhotoMetaKey = (id: string) => `submission-photo-meta:${id}`;
 const submissionVideoKey = (id: string) => `submission-video:${id}`;
@@ -1612,6 +1616,90 @@ async function writeSubmissionsIndex(kv: KVNamespace, ids: string[]): Promise<vo
   await kv.put(SUBMISSIONS_INDEX, JSON.stringify(unique));
 }
 
+/** null = index never built; [] = student has no submissions yet. */
+async function readStudentSubmissionsIndex(
+  kv: KVNamespace,
+  username: string
+): Promise<string[] | null> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) return [];
+  const raw = await kv.get(studentSubmissionsIndexKey(user));
+  if (raw == null) return null;
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeStudentSubmissionsIndex(
+  kv: KVNamespace,
+  username: string,
+  ids: string[]
+): Promise<void> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) return;
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(studentSubmissionsIndexKey(user), JSON.stringify(unique));
+}
+
+async function appendStudentSubmissionIndex(
+  kv: KVNamespace,
+  username: string,
+  submissionId: string
+): Promise<void> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(submissionId || "").trim();
+  if (!user || !id) return;
+  const existing = await readStudentSubmissionsIndex(kv, user);
+  const index = existing ? [...existing] : [];
+  if (!index.includes(id)) {
+    index.unshift(id);
+    await writeStudentSubmissionsIndex(kv, user, index);
+  } else if (existing === null) {
+    await writeStudentSubmissionsIndex(kv, user, index);
+  }
+}
+
+async function loadSubmissionsByIds(
+  kv: KVNamespace,
+  ids: string[]
+): Promise<HomeworkSubmission[]> {
+  if (!ids.length) return [];
+  const CHUNK = 40;
+  const submissions: HomeworkSubmission[] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const raws = await Promise.all(slice.map((id) => kv.get(submissionKey(id))));
+    for (const raw of raws) {
+      if (!raw) continue;
+      try {
+        submissions.push(JSON.parse(raw) as HomeworkSubmission);
+      } catch {
+        /* skip corrupt */
+      }
+    }
+  }
+  return submissions;
+}
+
+async function writeSubmission(kv: KVNamespace, submission: HomeworkSubmission): Promise<void> {
+  await kv.put(submissionKey(submission.id), JSON.stringify(submission));
+  const index = await readSubmissionsIndex(kv);
+  if (!index.includes(submission.id)) {
+    index.unshift(submission.id);
+    await writeSubmissionsIndex(kv, index);
+  }
+  await appendStudentSubmissionIndex(kv, submission.username, submission.id);
+}
+
 async function storeSubmissionPhoto(
   kv: KVNamespace,
   file: File
@@ -1699,15 +1787,6 @@ export async function saveHomeworkReviewMedia(
   const stored = await storeSubmissionVideo(kv, file);
   const kind = stored.mimeType.startsWith("audio/") ? "audio" : "video";
   return { id: stored.id, kind, mimeType: stored.mimeType };
-}
-
-async function writeSubmission(kv: KVNamespace, submission: HomeworkSubmission): Promise<void> {
-  await kv.put(submissionKey(submission.id), JSON.stringify(submission));
-  const index = await readSubmissionsIndex(kv);
-  if (!index.includes(submission.id)) {
-    index.unshift(submission.id);
-    await writeSubmissionsIndex(kv, index);
-  }
 }
 
 export async function saveHomeworkOnlineSubmission(
@@ -2172,22 +2251,32 @@ export async function listHomeworkSubmissions(
   const filterStudent = String(opts?.student || "")
     .trim()
     .toLowerCase();
-  const ids = await readSubmissionsIndex(kv);
-  const submissions: HomeworkSubmission[] = [];
 
-  for (const id of ids) {
-    const raw = await kv.get(submissionKey(id));
-    if (!raw) continue;
-    try {
-      const entry = JSON.parse(raw) as HomeworkSubmission;
-      if (filterStudent && entry.username !== filterStudent) continue;
-      submissions.push(entry);
-    } catch {
-      /* skip corrupt */
+  if (filterStudent) {
+    const studentIds = await readStudentSubmissionsIndex(kv, filterStudent);
+    if (studentIds !== null) {
+      const submissions = await loadSubmissionsByIds(kv, studentIds);
+      return submissions.filter(
+        (entry) => String(entry.username || "").toLowerCase() === filterStudent
+      );
     }
+
+    /* Cold path: one parallel scan, then backfill per-student index. */
+    const allIds = await readSubmissionsIndex(kv);
+    const all = await loadSubmissionsByIds(kv, allIds);
+    const mine = all.filter(
+      (entry) => String(entry.username || "").toLowerCase() === filterStudent
+    );
+    await writeStudentSubmissionsIndex(
+      kv,
+      filterStudent,
+      mine.map((entry) => entry.id)
+    );
+    return mine;
   }
 
-  return submissions;
+  const ids = await readSubmissionsIndex(kv);
+  return loadSubmissionsByIds(kv, ids);
 }
 
 export async function getHomeworkSubmission(

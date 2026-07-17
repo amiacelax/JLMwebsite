@@ -2690,6 +2690,11 @@
     if (!ready) {
       if (worksheetSection) worksheetSection.hidden = false;
       if (completeCard) completeCard.hidden = true;
+      if (pastFold) pastFold.hidden = true;
+      const notebookBoot = document.getElementById("hw-student-notebook");
+      if (notebookBoot) notebookBoot.hidden = true;
+      const entryBoot = document.getElementById("hw-hub-v5-entry-row");
+      if (entryBoot) entryBoot.hidden = true;
       renderNoPlanWelcome(false);
       renderNoHwEmpty(false);
       ensureWorksheetLoadingPlaceholder();

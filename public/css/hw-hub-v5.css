@@ -1,4 +1,4 @@
-/* Hub v5 — student hub layout + post-submission completion zone */
+/* Hub v5 ? student hub layout + post-submission completion zone */
 
 @font-face {
   font-family: "APJapanese";
@@ -416,7 +416,7 @@
   display: none !important;
 }
 
-/* Slow green border pulse — all sellup cards in sync until hover */
+/* Slow green border pulse ? all sellup cards in sync until hover */
 .hw-hub-v5-sellup .hw-hub-tier-plan,
 .hw-hub-v5-sellup .hw-hub-v5-sellup-card--lessons,
 .hw-hub-v5-sellup .hw-hub-v5-sellup-card--weekly,
@@ -454,7 +454,7 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-green) 38%, transparent);
 }
 
-/* Legacy flashy heading — kept for prototype fallback; live preview uses caption + frame */
+/* Legacy flashy heading ? kept for prototype fallback; live preview uses caption + frame */
 .hw-hub-v5-sellup-heading {
   position: relative;
   max-width: 30rem;
@@ -725,7 +725,7 @@
   outline: none;
 }
 
-/* Past homework list — hidden only while viewing an archived submission */
+/* Past homework list ? hidden only while viewing an archived submission */
 body.hw-hub-v5-archive-mode #hw-v5-complete-card,
 body.hw-hub-v5-archive-mode #hw-v5-sellup-frame,
 body.hw-hub-v5-archive-mode #hw-v5-noplan-sellup-frame,
@@ -823,7 +823,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   max-width: 36rem;
 }
 
-/* Past HW + View notebook — compact entry boxes (sellup-card scale) */
+/* Past HW + View notebook ? compact entry boxes (sellup-card scale) */
 .hw-hub-v5-entry-row {
   display: flex;
   flex-wrap: wrap;
@@ -911,7 +911,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 }
 
 .hw-hub-v5-past-box__summary::before {
-  content: "▸";
+  content: "?";
   display: inline-block;
   flex: 0 0 auto;
   color: var(--color-text-muted);
@@ -974,7 +974,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 }
 
 .hw-hub-v5-notebook-entry__btn.is-open .hw-hub-v5-notebook-entry__label::after {
-  content: " · open";
+  content: " ? open";
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: none;
@@ -1151,7 +1151,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 
 /*
  * Status ping on cream paper: dark disc + punchy signal colors.
- * Ring pulse must match hub status (`hw-hub-v5-bubble-ring` / `-acked`) —
+ * Ring pulse must match hub status (`hw-hub-v5-bubble-ring` / `-acked`) ?
  * do not swap to separate diary keyframes (layout/color pass lost the pulse).
  */
 .hw-hub-v5-notebook-diary__chrome,
@@ -1938,7 +1938,7 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
   }
 }
 
-/* JD feedback — handwritten memo on lined paper (Hub v5) */
+/* JD feedback ? handwritten memo on lined paper (Hub v5) */
 #hw-v5-homework-zone .hw-hub-jd-memo {
   max-width: 30rem;
   margin: 0 auto 1.35rem;
@@ -2045,22 +2045,35 @@ body.hw-hub-v5-page .hw-hub-v5-app {
     padding-top: 1.25rem;
   }
 
+  body.hw-hub-v5-page .section__header--platform {
+    margin-bottom: 0.55rem;
+  }
+
+  /*
+   * Student platform bar is hidden ? sticky offset is header only.
+   * Opaque sticky bg (no backdrop-filter) avoids white hairline artifacts
+   * that showed in the gaps between pills on mobile Safari/Chrome.
+   */
   .hw-hub-v5-tabs {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 0.4rem;
-    margin: 0 0 0.85rem;
-    padding: 0.15rem 0 0.35rem;
+    gap: 0.35rem;
+    margin: 0 0 0.55rem;
+    padding: 0.2rem 0.15rem 0.4rem;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
+    scroll-padding-inline: 0.35rem;
     position: sticky;
-    top: calc(var(--header-height) + env(safe-area-inset-top, 0) + 3.1rem);
+    top: calc(var(--header-height) + env(safe-area-inset-top, 0));
     z-index: 24;
-    background: color-mix(in srgb, var(--color-bg) 94%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: var(--color-bg);
+    isolation: isolate;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 
   .hw-hub-v5-tabs::-webkit-scrollbar {
@@ -2069,22 +2082,27 @@ body.hw-hub-v5-page .hw-hub-v5-app {
 
   .hw-hub-v5-tabs__btn {
     flex: 0 0 auto;
-    padding: 0.45rem 0.85rem;
+    padding: 0.4rem 0.75rem;
     border: 1.5px solid var(--color-border-strong);
     border-radius: 999px;
     background: var(--color-bg-card);
     color: var(--color-text);
     font-family: Inter, sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     line-height: 1.2;
     white-space: nowrap;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
     transition:
       background var(--transition),
       border-color var(--transition),
       color var(--transition),
       transform 0.15s ease;
+  }
+
+  .hw-hub-v5-tabs__btn:last-child {
+    margin-right: 0.25rem;
   }
 
   .hw-hub-v5-tabs__btn.is-active {
@@ -2096,6 +2114,27 @@ body.hw-hub-v5-page .hw-hub-v5-app {
 
   .hw-hub-v5-tabs__btn:active {
     transform: scale(0.97);
+  }
+
+  /* Clip card chrome cleanly ? overflow:hidden + 2px border caused light fringe */
+  body.hw-hub-v5-page .hw-hub-worksheet-card {
+    border-width: 1px;
+    background-clip: padding-box;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  body.hw-hub-v5-page .hw-hub-v4-homework {
+    margin-bottom: 0.65rem;
+  }
+
+  body.hw-hub-v5-page .hw-hub-v4-homework .hw-hub-v2-worksheet {
+    margin-bottom: 0.65rem;
+  }
+
+  body.hw-hub-v5-page .hw-hub-v5-entry-row {
+    margin-top: 0;
+    gap: 0.55rem;
   }
 
   .hw-hub-v5-panel--homework[hidden],
@@ -2161,13 +2200,13 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   }
 }
 
-/* Live platform preview (?hubv5=1) — hide pre-submit upgrade chrome */
+/* Live platform preview (?hubv5=1) ? hide pre-submit upgrade chrome */
 body.hw-hub-v5-page #hw-hub-tier-pick,
 body.hw-hub-v5-page #hw-weekly-upgrade-card {
   display: none !important;
 }
 
-/* HW landing card — shown while worksheet loads; hidden once form is mounted or after submit */
+/* HW landing card ? shown while worksheet loads; hidden once form is mounted or after submit */
 body.hw-hub-v5-page #hw-current-assignment-card {
   display: none !important;
 }
@@ -2364,4 +2403,153 @@ body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-review-zone {
 
 .hw-hub-v5-sellup-card--games .course-card__footer .btn {
   width: 100%;
+}
+
+/* Toolbar playtest embed ? strip outer chrome so worksheet + floating bar read clearly */
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-banner,
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-demo-bar,
+html.hw-hub-v5-toolbar-embed .site-header,
+html.hw-hub-v5-toolbar-embed .hw-platform-bar,
+html.hw-hub-v5-toolbar-embed .subpage-back,
+html.hw-hub-v5-toolbar-embed .section__header--platform {
+  display: none !important;
+}
+
+/* Footer action buttons live on the floating toolbar ? keep nodes for click() wiring.
+   Questions-left tracker stays visible on the worksheet. */
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-tools,
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-submit,
+html.hw-hub-v5-toolbar-embed .hw-worksheet__status {
+  display: none !important;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary {
+  border-bottom: none;
+  padding-bottom: 0.25rem;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary:not(:has([data-hw-submit-tracker])) {
+  display: none !important;
+}
+
+/*
+ * Clearance for fixed .hw-toolbar-bar (bottom offset + pill height + ~1rem gap).
+ * Rem-based so it scales with desktop root font-size (168.75% / 200%).
+ * Desktop: bar sits mid-gap under the worksheet card (raised from viewport bottom).
+ * Mobile keeps the default .hw-toolbar-bar bottom from styles.css.
+ */
+html.hw-hub-v5-toolbar-embed {
+  --hw-toolbar-clearance: 7.5rem;
+  scroll-padding-bottom: var(--hw-toolbar-clearance);
+}
+
+@media (min-width: 900px) {
+  html.hw-hub-v5-toolbar-embed {
+    /* bottom 5.5rem + ~5.8rem pill + ~1rem gap */
+    --hw-toolbar-clearance: 12.5rem;
+  }
+
+  html.hw-hub-v5-toolbar-embed .hw-toolbar-bar {
+    bottom: 5.5rem;
+  }
+}
+
+html.hw-hub-v5-toolbar-embed .subpage__main {
+  padding-top: 0.35rem;
+  padding-bottom: var(--hw-toolbar-clearance);
+}
+
+html.hw-hub-v5-toolbar-embed .section {
+  padding-top: 0.25rem;
+  padding-bottom: 0;
+}
+
+html.hw-hub-v5-toolbar-embed .container--wide {
+  max-width: 48rem;
+}
+
+/*
+ * Desktop theater size � scale the worksheet card only (not the floating toolbar).
+ * CSS zoom is required here: rem/font-size on the card does not enlarge rem-based
+ * children, which is why the HW box looked tiny after the menu/zoom swap.
+ * Custom audio/video chrome is loaded on preview, so native media menus stay gone.
+ * Mobile (<900px) unchanged.
+ */
+@media (min-width: 900px) {
+  html.hw-hub-v5-toolbar-embed .container--wide {
+    max-width: 48rem;
+  }
+
+  html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
+  html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card:not(.hw-hub-v5-complete) {
+    zoom: 1.35;
+  }
+
+  html.hw-hub-v5-toolbar-embed .hw-worksheet__topic-brief-summary {
+    flex-wrap: nowrap;
+  }
+
+  html.hw-hub-v5-toolbar-embed .hw-worksheet__topic-brief-title {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1400px) {
+  html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
+  html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card:not(.hw-hub-v5-complete) {
+    zoom: 1.5;
+  }
+}
+
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-top,
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-fold,
+html.hw-hub-v5-toolbar-embed #hw-v5-past-fold,
+html.hw-hub-v5-toolbar-embed #hw-v5-complete-card,
+html.hw-hub-v5-toolbar-embed #hw-v5-below,
+html.hw-hub-v5-toolbar-embed .hw-hub-v5-tabs {
+  display: none !important;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet__slide-sticky-head,
+html.hw-hub-v5-toolbar-embed .hw-worksheet__topic-brief--slide {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
+html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card {
+  margin: 0 auto;
+  padding: 1rem 1.1rem 1.25rem;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet {
+  margin-bottom: 0;
+  padding-bottom: 0.25rem;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet:has(.hw-worksheet__actions-tools) {
+  padding-bottom: 0.25rem;
+}
+
+html.hw-hub-v5-toolbar-embed #hw-v5-homework-zone,
+html.hw-hub-v5-toolbar-embed .hw-hub-v4-homework {
+  margin: 0;
+  max-width: none;
+}
+
+/*
+ * Focus theater uses position:fixed inset:0 on the homework zone ? .subpage__main
+ * padding does nothing there. Clear the scrollable mount instead.
+ */
+html.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-worksheet-mount,
+html.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v2-worksheet-mount,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-worksheet-mount,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v2-worksheet-mount,
+body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-worksheet-mount,
+body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-v2-worksheet-mount {
+  padding-bottom: var(--hw-toolbar-clearance, 7.5rem);
 }

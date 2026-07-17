@@ -1,7 +1,6 @@
 /**
- * Teacher Hub v6 — playtest shell with its own tab bar (local WIP).
- * Mounts existing teacher panels into v6 panes; does not alter main .hw-teacher-tabs.
- * Flag: HwFeatureFlags.hubV6()
+ * Teacher Hub v6 — primary teacher chrome when HwFeatureFlags.hubV6().
+ * Mounts live teacher panels into v6 panes. Classic layout is Hub Preview → Hub v1.
  */
 (function (global) {
   const RECYCLE_KEY = "hw-hubv6-recycle";
@@ -25,16 +24,18 @@
     { id: "websites", label: "Websites" },
     { id: "gamelab", label: "Game Lab" },
     { id: "ideas", label: "Ideas & Memos" },
+    { id: "hubpreview", label: "Hub Preview" },
   ];
 
   const TAB_MOUNTS = {
-    maker: ["maker"],
+    maker: ["maker", "library"],
     students: ["account", "birthdays", "promo", "submissions", "mistakes"],
     /* Simple link strips — do not mount heavy Harris/JEM/Game lab panels */
     websites: [],
     gamelab: [],
     preview: [],
-    ideas: ["ideas"],
+    ideas: ["ideas", "lookup-lexicon"],
+    hubpreview: ["hubv2"],
   };
 
   let simpleLinksBound = false;
@@ -573,6 +574,9 @@
     if ((TAB_MOUNTS[tabId] || []).includes("library")) {
       document.getElementById("hw-library-search")?.dispatchEvent(new Event("input", { bubbles: true }));
     }
+    if ((TAB_MOUNTS[tabId] || []).includes("lookup-lexicon")) {
+      global.HwTeacherLookupLexicon?.reloadIfNeeded?.();
+    }
   }
 
   function syncTabButtons(tabId) {
@@ -664,6 +668,10 @@
       /* ignore */
     }
 
+    if (tabId !== "hubpreview") {
+      document.body.classList.remove("hw-hub-v1-classic");
+    }
+
     releaseMounts();
     syncTabButtons(tabId);
 
@@ -689,6 +697,19 @@
     if (tabId === "preview") {
       void refreshNotifications();
       void refreshBirthdayTicker();
+    }
+    if (tabId === "hubpreview") {
+      const iframe = document.getElementById("hw-hub-version-iframe");
+      if (iframe?.dataset?.pendingSrc) {
+        iframe.src = iframe.dataset.pendingSrc;
+        delete iframe.dataset.pendingSrc;
+      }
+      try {
+        const ver = localStorage.getItem("jlm-hw-teacher-hub-version") || "3";
+        if (ver === "1") document.body.classList.add("hw-hub-v1-classic");
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -904,8 +925,8 @@
     const banner = document.createElement("div");
     banner.className = "hw-hub-v6__banner";
     banner.innerHTML =
-      "<div><h2>Hub v6 · Teacher hub playtest</h2>" +
-      "<p>Reorganized teacher hub — mounts live panels inside these tabs. Main Teacher Hub tabs unchanged.</p></div>";
+      "<div><h2>Teacher Hub</h2>" +
+      "<p>Home notifications, maker, students, and tools — classic layout is Hub Preview → Hub v1.</p></div>";
     if (existingRefresh) {
       existingRefresh.id = "hw-hub-v6-refresh";
       banner.appendChild(existingRefresh);
@@ -922,7 +943,7 @@
     const tablist = document.createElement("div");
     tablist.className = "hw-hub-v6-tabs";
     tablist.setAttribute("role", "tablist");
-    tablist.setAttribute("aria-label", "Hub v6 sections");
+    tablist.setAttribute("aria-label", "Teacher Hub sections");
     TAB_DEFS.forEach((t, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -957,7 +978,15 @@
       '<p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>';
     pane("preview", previewHtml);
 
-    pane("maker", '<div class="hw-hub-v6-mount" data-v6-mount="maker"></div>' + makerDownloadFooterHtml());
+    pane(
+      "maker",
+      '<div class="hw-hub-v6-mount" data-v6-mount="maker"></div>' +
+        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-library">' +
+        "<summary>Worksheet library</summary>" +
+        '<div class="hw-hub-v6-mount" data-v6-mount="library"></div>' +
+        "</details>" +
+        makerDownloadFooterHtml()
+    );
 
     pane(
       "students",
@@ -1008,7 +1037,16 @@
       }
     }
 
-    pane("ideas", '<div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>');
+    pane(
+      "ideas",
+      '<div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>' +
+        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-lookup">' +
+        "<summary>Lookup Lexicon</summary>" +
+        '<div class="hw-hub-v6-mount" data-v6-mount="lookup-lexicon"></div>' +
+        "</details>"
+    );
+
+    pane("hubpreview", '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>');
   }
 
   function bindTabs() {
@@ -1067,11 +1105,62 @@
   function mountUi() {
     document.body.classList.add("hw-hub-v6-enabled");
     const versionBtn = document.getElementById("hw-hub-version-tab-v6");
-    if (versionBtn) versionBtn.hidden = false;
+    if (versionBtn) versionBtn.hidden = true;
     ensureShellMarkup();
     ensureMakerFooter();
     ensureHomeTickerMarkup();
+    ensureHubPreviewTab();
     bindTabs();
+  }
+
+  function ensureHubPreviewTab() {
+    const panel = document.getElementById("hw-hub-v6-panel");
+    if (!panel) return;
+    const tablist = panel.querySelector(".hw-hub-v6-tabs");
+    if (tablist && !document.getElementById("hw-hub-v6-tab-hubpreview")) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v6-tabs__btn";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("data-hub-v6-tab", "hubpreview");
+      btn.setAttribute("aria-selected", "false");
+      btn.id = "hw-hub-v6-tab-hubpreview";
+      btn.setAttribute("aria-controls", "hw-hub-v6-pane-hubpreview");
+      btn.textContent = "Hub Preview";
+      tablist.appendChild(btn);
+    }
+    if (!document.getElementById("hw-hub-v6-pane-hubpreview")) {
+      const el = document.createElement("div");
+      el.className = "hw-hub-v6-pane";
+      el.id = "hw-hub-v6-pane-hubpreview";
+      el.setAttribute("role", "tabpanel");
+      el.setAttribute("data-hub-v6-pane", "hubpreview");
+      el.setAttribute("aria-labelledby", "hw-hub-v6-tab-hubpreview");
+      el.hidden = true;
+      el.innerHTML = '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>';
+      panel.appendChild(el);
+    }
+    const makerPane = document.getElementById("hw-hub-v6-pane-maker");
+    if (makerPane && !document.getElementById("hw-hub-v6-fold-library")) {
+      const footer = makerPane.querySelector(".hw-hub-v6-maker-footer");
+      const fold =
+        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-library">' +
+        "<summary>Worksheet library</summary>" +
+        '<div class="hw-hub-v6-mount" data-v6-mount="library"></div>' +
+        "</details>";
+      if (footer) footer.insertAdjacentHTML("beforebegin", fold);
+      else makerPane.insertAdjacentHTML("beforeend", fold);
+    }
+    const ideasPane = document.getElementById("hw-hub-v6-pane-ideas");
+    if (ideasPane && !document.getElementById("hw-hub-v6-fold-lookup")) {
+      ideasPane.insertAdjacentHTML(
+        "beforeend",
+        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-lookup">' +
+          "<summary>Lookup Lexicon</summary>" +
+          '<div class="hw-hub-v6-mount" data-v6-mount="lookup-lexicon"></div>' +
+          "</details>"
+      );
+    }
   }
 
   function init(options) {
@@ -1082,7 +1171,11 @@
     teacherSession = options?.session || getSession();
     mountUi();
     if (bound) {
-      if (isV6PanelVisible() || document.body.classList.contains("hw-hub-v6-page")) {
+      if (
+        isV6PanelVisible() ||
+        document.body.classList.contains("hw-hub-v6-page") ||
+        document.body.classList.contains("hw-hub-v6-primary")
+      ) {
         activateV6Tab(readSavedV6Tab());
       }
       return;
@@ -1095,6 +1188,8 @@
       } else afterMountHooks(activeV6Tab);
     });
     document.addEventListener("hw-teacher-tab-change", (ev) => {
+      /* Primary shell owns mounts; classic tabs only under Hub Preview → Hub v1. */
+      if (document.body.classList.contains("hw-hub-v6-primary")) return;
       const tab = ev.detail?.tab;
       if (tab === "hubv2" || tab === "hubv6") {
         try {
@@ -1113,13 +1208,13 @@
   function readSavedV6Tab() {
     let saved = "preview";
     try {
-      /* One-time: Home (notifications) is the new default landing tab */
+      /* One-time: Home (notifications) is the default landing tab */
       if (!localStorage.getItem(V6_TAB_KEY + "-home1")) {
         localStorage.setItem(V6_TAB_KEY, "preview");
         localStorage.setItem(V6_TAB_KEY + "-home1", "1");
       }
       saved = localStorage.getItem(V6_TAB_KEY) || "preview";
-      if (saved === "hubpreview") saved = "preview";
+      if (!TAB_DEFS.some((t) => t.id === saved)) saved = "preview";
     } catch {
       /* ignore */
     }
@@ -1150,14 +1245,19 @@
     if (!enabled()) return;
     const hub = document.getElementById("hw-teacher-hub");
     const page = document.body.classList.contains("hw-hub-v6-page");
-    if ((hub && !hub.hidden) || page) {
+    const primary = document.body.classList.contains("hw-hub-v6-primary");
+    if ((hub && !hub.hidden) || page || primary) {
       init();
       try {
-        if (page || localStorage.getItem("jlm-hw-teacher-hub-version") === "6") {
+        if (
+          page ||
+          primary ||
+          document.body.classList.contains("hw-hub-v6-primary")
+        ) {
           onTabActivated();
         }
       } catch {
-        if (page) onTabActivated();
+        if (page || primary) onTabActivated();
       }
     }
   }

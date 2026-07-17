@@ -9,10 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css?v=20260820">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=19">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=33">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=74">
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -123,6 +124,63 @@
             <summary class="hw-hub-v2-fold__summary">Past homework</summary>
             <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
           </details>
+
+          <!-- Inside homework zone so browser fullscreen (Focus Mode) keeps the bar visible -->
+          <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
+            <button type="button" class="hw-toolbar-bar__btn" disabled data-tb-tool="glass" title="Glass">
+              <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">
+                <svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">
+                  <g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M50 -11.5V-13.5"/>
+                    <path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>
+                    <path d="M11.85 60.11A39 39 0 1 1 50 91"/>
+                    <path d="M50 91V125"/>
+                    <path d="M36 103H64"/>
+                    <path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>
+                  </g>
+                </svg>
+              </span>
+            </button>
+            <button type="button" class="hw-toolbar-bar__btn" disabled data-tb-tool="cloud" title="Cloud">
+              <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--cloud" aria-hidden="true">
+                <svg class="hw-toolbar-bar__cloud" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48">
+                  <g fill="currentColor">
+                    <circle cx="22" cy="28" r="13"/>
+                    <circle cx="40" cy="21" r="16"/>
+                    <circle cx="58" cy="28" r="12"/>
+                    <rect x="12" y="26" width="56" height="15" rx="7.5"/>
+                  </g>
+                </svg>
+              </span>
+            </button>
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="focus" title="Focus Mode">
+              <span class="hw-toolbar-bar__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+            </button>
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="send" title="Send">
+              <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--send" aria-hidden="true">
+                <svg class="hw-toolbar-bar__send" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                  <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              </span>
+            </button>
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="answers" title="See Answers">
+              <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--answers" aria-hidden="true">
+                <svg class="hw-toolbar-bar__q" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22">
+                  <text x="12" y="18" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">?</text>
+                </svg>
+              </span>
+            </button>
+            <button type="button" class="hw-toolbar-bar__btn" aria-disabled="true" data-tb-tool="magnet" title="Magnet">
+              <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--magnet" aria-hidden="true">
+                <span class="hw-tools-cleanup__magnet">
+                  <img class="hw-tools-cleanup__body" src="/images/hw-tool-magnet-body.png?v=3" width="30" height="30" alt="" decoding="async" />
+                  <img class="hw-tools-cleanup__bolts" src="/images/hw-tool-magnet-sparks.png?v=3" width="30" height="30" alt="" decoding="async" />
+                </span>
+              </span>
+            </button>
+          </nav>
             </div>
           </div>
 
@@ -218,11 +276,13 @@
     </div>
   </div>
 
-  <script src="/js/subpage.js" defer></script>
+    <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-audio-player.js?v=20260786" defer></script>
+  <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260694" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260718" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260796" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-checkout.js" defer></script>
-  <script src="/js/hw-hub-v5.js?v=8" defer></script>
+  <script src="/js/hw-hub-v5.js?v=13" defer></script>
 </body>
 </html>

@@ -76,6 +76,12 @@
 
     }
 
+    if (global.HwWorksheet && typeof global.HwWorksheet.scheduleFitStarLine === "function") {
+
+      global.HwWorksheet.scheduleFitStarLine(line);
+
+    }
+
   }
 
 
@@ -878,6 +884,12 @@
 
     syncLine(line);
 
+    if (global.HwWorksheet && typeof global.HwWorksheet.scheduleFitStarLine === "function") {
+
+      global.HwWorksheet.scheduleFitStarLine(line);
+
+    }
+
   }
 
 
@@ -1303,6 +1315,12 @@
     if (resetBtn) resetBtn.hidden = true;
 
     line.classList.add("hw-star-block--replay");
+
+    if (global.HwWorksheet && typeof global.HwWorksheet.scheduleFitStarLine === "function") {
+
+      global.HwWorksheet.scheduleFitStarLine(line);
+
+    }
 
   }
 

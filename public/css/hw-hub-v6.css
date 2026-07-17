@@ -1,12 +1,55 @@
-/* Teacher Hub v6 — teacher hub playtest shell (local WIP) */
+/* Teacher Hub v6 — primary teacher chrome (+ Hub Preview → Hub v1 classic) */
 
-/* Full-page mode: same live Hub v6 as Hub preview, without outer chrome */
+/* Primary: show v6 shell; hide classic tabs unless Hub v1 fallback */
+body.hw-hub-v6-primary #hw-hub-v6-panel {
+  display: flex !important;
+}
+
+body.hw-hub-v6-primary:not(.hw-hub-v1-classic) .hw-teacher-tabs {
+  display: none !important;
+}
+
+body.hw-hub-v6-primary:not(.hw-hub-v1-classic)
+  #hw-teacher-classic
+  > .hw-teacher-panel:not(.hw-hub-v6-mounted-panel) {
+  display: none !important;
+}
+
+body.hw-hub-v6-primary.hw-hub-v1-classic .hw-teacher-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.hw-hub-v1-note {
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, #67c4eb 28%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, #121a2c 80%, #1a2744);
+  color: color-mix(in srgb, #e8eef8 88%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.hw-hub-v1-note p {
+  margin: 0;
+}
+
+.hw-hub-v1-note strong {
+  color: #e8eef8;
+}
+
+/* Full-page mode: same live Hub v6 without outer chrome */
 body.hw-hub-v6-fullpage .hw-teacher-tabs,
 body.hw-hub-v6-fullpage #hw-hub-preview-title,
 body.hw-hub-v6-fullpage #hw-hub-preview-desc,
 body.hw-hub-v6-fullpage .hw-teacher-hub-versions,
 body.hw-hub-v6-fullpage #hw-hub-version-student-actions,
-body.hw-hub-v6-fullpage #hw-teacher-hubv2-embed {
+body.hw-hub-v6-fullpage #hw-teacher-hubv2-embed,
+body.hw-hub-v6-fullpage #hw-hub-v1-classic-note,
+body.hw-hub-v6-fullpage #hw-toolbar-playtest-panel {
   display: none !important;
 }
 

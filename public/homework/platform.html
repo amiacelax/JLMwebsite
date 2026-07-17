@@ -9,15 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260790">
+  <link rel="stylesheet" href="/css/styles.css?v=20260820">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=57">
-  <link rel="stylesheet" href="/css/hw-hub-v6.css?v=13">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=74">
   <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260806" data-hw-comments-css="1">
   <script src="/js/hw-auth.js?v=20260708b"></script>
-  <script src="/js/hw-feature-flags.js?v=9"></script>
+  <script src="/js/hw-feature-flags.js?v=11"></script>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -25,6 +23,9 @@
       else document.documentElement.setAttribute('data-theme', 'dark');
       HwAuth.requireAuth('/homework.html');
       var s = HwAuth.getSession();
+      var teacher = HwAuth.getTeacherSession && HwAuth.getTeacherSession();
+      var viewAs = HwAuth.isViewingAsStudent && HwAuth.isViewingAsStudent();
+      var pureTeacher = Boolean(teacher) && !viewAs;
       if (s && s.role === 'teacher') {
         document.documentElement.classList.add('hw-is-teacher');
       }
@@ -34,6 +35,13 @@
           document.documentElement.classList.add('hw-hub-v6-fullpage-root');
         }
       } catch (e) { /* ignore */ }
+      /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
+      if (!pureTeacher) {
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=69">');
+      }
+      if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=14">');
+      }
     })();
   </script>
 </head>
@@ -120,7 +128,7 @@
     <section class="section">
       <div class="container container--wide">
         <div class="section__header section__header--platform">
-          <p class="section__eyebrow">Homework Hub</p>
+          <p class="section__eyebrow" id="hw-hub-eyebrow">Homework Hub</p>
           <div class="hw-viewas-banner" id="hw-viewas-banner" hidden>
             <label class="hw-viewas-banner__pick" for="hw-teacher-viewas-select">
               <span class="hw-viewas-banner__label">View as student</span>
@@ -185,9 +193,99 @@
           </div>
         </div>
 
-        <!-- Teacher hub: tabs + panels -->
+        <!-- Teacher hub: Hub v6 primary shell + classic panels (Hub v1 under Hub Preview) -->
         <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
-          <div class="hw-teacher-tabs" role="tablist" aria-label="Teacher hub sections">
+          <div class="hw-hub-v6" id="hw-hub-v6-panel" hidden>
+              <div class="hw-hub-v6__banner">
+                <div>
+                  <h2>Teacher Hub</h2>
+                  <p>Home notifications, maker, students, and tools — classic layout is Hub Preview → Hub v1.</p>
+                </div>
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-refresh">Refresh</button>
+              </div>
+
+              <div class="hw-hub-v6-tabs" role="tablist" aria-label="Teacher Hub sections">
+                <button type="button" class="hw-hub-v6-tabs__btn is-active" role="tab" id="hw-hub-v6-tab-preview" data-hub-v6-tab="preview" aria-selected="true" aria-controls="hw-hub-v6-pane-preview">Home</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-maker" data-hub-v6-tab="maker" aria-selected="false" aria-controls="hw-hub-v6-pane-maker">Worksheet Maker</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-students" data-hub-v6-tab="students" aria-selected="false" aria-controls="hw-hub-v6-pane-students">Student/Email List</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-websites" data-hub-v6-tab="websites" aria-selected="false" aria-controls="hw-hub-v6-pane-websites">Websites</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-gamelab" data-hub-v6-tab="gamelab" aria-selected="false" aria-controls="hw-hub-v6-pane-gamelab">Game Lab</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-ideas" data-hub-v6-tab="ideas" aria-selected="false" aria-controls="hw-hub-v6-pane-ideas">Ideas &amp; Memos</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-hubpreview" data-hub-v6-tab="hubpreview" aria-selected="false" aria-controls="hw-hub-v6-pane-hubpreview">Hub Preview</button>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-preview" role="tabpanel" data-hub-v6-pane="preview" aria-labelledby="hw-hub-v6-tab-preview">
+                <div class="hw-hub-v6-bday-ticker" id="hw-hub-v6-bday-ticker" aria-label="Upcoming birthdays">
+                  <div class="hw-hub-v6-bday-ticker__track" id="hw-hub-v6-bday-ticker-track"></div>
+                </div>
+                <div class="hw-hub-v6__main" id="hw-hub-v6-main" aria-live="polite">
+                  <div class="hw-hub-v6__stage-feed" id="hw-hub-v6-stage-feed">
+                    <div class="hw-hub-v6__feed-head">
+                      <h3>Notifications</h3>
+                      <p class="hw-hub-v6__feed-meta" id="hw-hub-v6-feed-meta"></p>
+                    </div>
+                    <ul class="hw-hub-v6__list" id="hw-hub-v6-list"></ul>
+                  </div>
+                  <div class="hw-hub-v6__stage-detail" id="hw-hub-v6-stage-detail" hidden></div>
+                </div>
+                <p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-maker" role="tabpanel" data-hub-v6-pane="maker" aria-labelledby="hw-hub-v6-tab-maker" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="maker"></div>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-library">
+                  <summary>Worksheet library</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="library"></div>
+                </details>
+                <div class="hw-hub-v6-maker-footer">
+                  <button type="button" class="btn btn--primary" id="hw-hub-v6-maker-download">Download</button>
+                </div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-students" role="tabpanel" data-hub-v6-pane="students" aria-labelledby="hw-hub-v6-tab-students" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="account"></div>
+                <section class="hw-hub-v6-section">
+                  <h3 class="hw-hub-v6-section__title">Birthdays</h3>
+                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
+                </section>
+                <section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">
+                  <h3 class="hw-hub-v6-section__title">Email list</h3>
+                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
+                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
+                </section>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">
+                  <summary>Submissions</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>
+                </details>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">
+                  <summary>Mistakes</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>
+                </details>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-websites" role="tabpanel" data-hub-v6-pane="websites" aria-labelledby="hw-hub-v6-tab-websites" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="websites"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-gamelab" role="tabpanel" data-hub-v6-pane="gamelab" aria-labelledby="hw-hub-v6-tab-gamelab" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="gamelab"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-ideas" role="tabpanel" data-hub-v6-pane="ideas" aria-labelledby="hw-hub-v6-tab-ideas" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-lookup">
+                  <summary>Lookup Lexicon</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="lookup-lexicon"></div>
+                </details>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-hubpreview" role="tabpanel" data-hub-v6-pane="hubpreview" aria-labelledby="hw-hub-v6-tab-hubpreview" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>
+              </div>
+          </div>
+
+          <div class="hw-teacher-classic" id="hw-teacher-classic">
+          <div class="hw-teacher-tabs" role="tablist" aria-label="Classic teacher hub sections">
             <button type="button" class="hw-teacher-tabs__btn is-active" role="tab" id="hw-teacher-tab-maker" aria-selected="true" aria-controls="hw-teacher-maker" data-teacher-tab="maker">Worksheet maker</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
@@ -200,7 +298,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-lookup-lexicon" aria-selected="false" aria-controls="hw-teacher-lookup-lexicon" data-teacher-tab="lookup-lexicon">Lookup Lexicon</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
-            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2">Hub preview</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2" hidden>Hub preview</button>
           </div>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
@@ -609,14 +707,19 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-hubv2" id="hw-teacher-hubv2" role="tabpanel" aria-labelledby="hw-teacher-tab-hubv2" hidden>
             <h2 class="hw-platform-card__title" id="hw-hub-preview-title">Hub prototypes</h2>
-            <p class="hw-platform-card__desc" id="hw-hub-preview-desc">Student hub mock previews (v2–v5). Local only: Hub v6 is the teacher hub playtest shell.</p>
+            <p class="hw-platform-card__desc" id="hw-hub-preview-desc">Hub v1 is the classic teacher layout. v2–v5 are student hub mocks. Toolbar is a tool-chrome sandbox.</p>
 
             <div class="hw-teacher-hub-versions" role="tablist" aria-label="Hub prototype version">
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v1" data-hub-version="1" aria-selected="false" aria-controls="hw-hub-v1-classic-note">Hub v1</button>
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v2" data-hub-version="2" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v2</button>
               <button type="button" class="btn btn--primary hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v3" data-hub-version="3" aria-selected="true" aria-controls="hw-teacher-hubv2-embed">Hub v3</button>
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v4" data-hub-version="4" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v4</button>
               <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v5" data-hub-version="5" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v5</button>
-              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn hw-hub-v6-version-btn" role="tab" id="hw-hub-version-tab-v6" data-hub-version="6" aria-selected="false" aria-controls="hw-hub-v6-panel" hidden>Hub v6</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-toolbar" data-hub-version="toolbar" aria-selected="false" aria-controls="hw-toolbar-playtest-panel">Toolbar</button>
+            </div>
+
+            <div class="hw-hub-v1-note" id="hw-hub-v1-classic-note" hidden>
+              <p><strong>Hub v1 — classic teacher layout.</strong> The old tab strip and panels are shown below. Switch to Hub v2–v5 or Toolbar here, or use Teacher Hub tabs above to leave.</p>
             </div>
 
             <div class="hw-teacher-meta__actions" id="hw-hub-version-student-actions">
@@ -625,86 +728,30 @@
             </div>
 
             <div class="hw-teacher-hubv2-embed" id="hw-teacher-hubv2-embed">
-              <iframe id="hw-hub-version-iframe" src="/homework/hub-v3-preview.html" title="Homework Hub v3 prototype" loading="lazy"></iframe>
+              <iframe id="hw-hub-version-iframe" src="" title="Homework Hub v3 prototype" loading="lazy"></iframe>
             </div>
 
-            <div class="hw-hub-v6" id="hw-hub-v6-panel" hidden>
-              <div class="hw-hub-v6__banner">
+            <div class="hw-toolbar-playtest" id="hw-toolbar-playtest-panel" hidden>
+              <div class="hw-toolbar-playtest__banner">
                 <div>
-                  <h2>Hub v6 · Teacher hub playtest</h2>
-                  <p>Local WIP — reorganized tabs mount live panels here. Main Teacher Hub tabs stay unchanged.</p>
-                  <p><a class="btn btn--ghost btn--sm hw-hub-v6-exit-full" href="/homework/platform.html?tab=hubv6&amp;hubv6=1">← Hub preview</a></p>
-                </div>
-                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-refresh">Refresh</button>
-              </div>
-
-              <div class="hw-hub-v6-tabs" role="tablist" aria-label="Hub v6 sections">
-                <button type="button" class="hw-hub-v6-tabs__btn is-active" role="tab" id="hw-hub-v6-tab-preview" data-hub-v6-tab="preview" aria-selected="true" aria-controls="hw-hub-v6-pane-preview">Home</button>
-                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-maker" data-hub-v6-tab="maker" aria-selected="false" aria-controls="hw-hub-v6-pane-maker">Worksheet Maker</button>
-                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-students" data-hub-v6-tab="students" aria-selected="false" aria-controls="hw-hub-v6-pane-students">Student/Email List</button>
-                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-websites" data-hub-v6-tab="websites" aria-selected="false" aria-controls="hw-hub-v6-pane-websites">Websites</button>
-                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-gamelab" data-hub-v6-tab="gamelab" aria-selected="false" aria-controls="hw-hub-v6-pane-gamelab">Game Lab</button>
-                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-ideas" data-hub-v6-tab="ideas" aria-selected="false" aria-controls="hw-hub-v6-pane-ideas">Ideas &amp; Memos</button>
-              </div>
-
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-preview" role="tabpanel" data-hub-v6-pane="preview" aria-labelledby="hw-hub-v6-tab-preview">
-                <div class="hw-hub-v6-bday-ticker" id="hw-hub-v6-bday-ticker" aria-label="Upcoming birthdays">
-                  <div class="hw-hub-v6-bday-ticker__track" id="hw-hub-v6-bday-ticker-track"></div>
-                </div>
-                <div class="hw-hub-v6__main" id="hw-hub-v6-main" aria-live="polite">
-                  <div class="hw-hub-v6__stage-feed" id="hw-hub-v6-stage-feed">
-                    <div class="hw-hub-v6__feed-head">
-                      <h3>Notifications</h3>
-                      <p class="hw-hub-v6__feed-meta" id="hw-hub-v6-feed-meta"></p>
-                    </div>
-                    <ul class="hw-hub-v6__list" id="hw-hub-v6-list"></ul>
-                  </div>
-                  <div class="hw-hub-v6__stage-detail" id="hw-hub-v6-stage-detail" hidden></div>
-                </div>
-                <p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>
-              </div>
-
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-maker" role="tabpanel" data-hub-v6-pane="maker" aria-labelledby="hw-hub-v6-tab-maker" hidden>
-                <div class="hw-hub-v6-mount" data-v6-mount="maker"></div>
-                <div class="hw-hub-v6-maker-footer">
-                  <button type="button" class="btn btn--primary" id="hw-hub-v6-maker-download">Download</button>
+                  <h2>Toolbar playtest</h2>
+                  <p>Visual tool chrome over a live student hub view (current HW · 〜時、〜の時). Buttons are not wired yet.</p>
                 </div>
               </div>
 
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-students" role="tabpanel" data-hub-v6-pane="students" aria-labelledby="hw-hub-v6-tab-students" hidden>
-                <div class="hw-hub-v6-mount" data-v6-mount="account"></div>
-                <section class="hw-hub-v6-section">
-                  <h3 class="hw-hub-v6-section__title">Birthdays</h3>
-                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
-                </section>
-                <section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">
-                  <h3 class="hw-hub-v6-section__title">Email list</h3>
-                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
-                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
-                </section>
-                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">
-                  <summary>Submissions</summary>
-                  <div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>
-                </details>
-                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">
-                  <summary>Mistakes</summary>
-                  <div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>
-                </details>
-              </div>
-
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-websites" role="tabpanel" data-hub-v6-pane="websites" aria-labelledby="hw-hub-v6-tab-websites" hidden>
-                <div class="hw-hub-v6-mount" data-v6-mount="websites"></div>
-              </div>
-
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-gamelab" role="tabpanel" data-hub-v6-pane="gamelab" aria-labelledby="hw-hub-v6-tab-gamelab" hidden>
-                <div class="hw-hub-v6-mount" data-v6-mount="gamelab"></div>
-              </div>
-
-              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-ideas" role="tabpanel" data-hub-v6-pane="ideas" aria-labelledby="hw-hub-v6-tab-ideas" hidden>
-                <div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>
+              <div class="hw-toolbar-playtest__viewport" id="hw-toolbar-playtest-stage">
+                <iframe
+                  id="hw-toolbar-playtest-iframe"
+                  class="hw-toolbar-playtest__iframe"
+                  title="Student Homework Hub — 〜時、〜の時 worksheet"
+                  loading="lazy"
+                  src=""
+                  data-src="/homework/hub-v5-preview.html?toolbar=1&amp;status=in_progress&amp;account=hw_basic&amp;assignment=sheet-u1vevjge"
+                ></iframe>
               </div>
             </div>
           </section>
+          </div><!-- /#hw-teacher-classic -->
         </div>
 
         <!-- Everything below here is student-only (hidden for teachers) -->
@@ -901,8 +948,9 @@
           </div>
         </div>
 
-        <p class="subpage-back">
-          <a class="btn btn--ghost" href="/homework.html">← Homework info &amp; plans</a>
+        <p class="subpage-back" id="hw-platform-footer-nav">
+          <a class="btn btn--ghost" id="hw-platform-footer-info" href="/homework.html">← Homework info &amp; plans</a>
+          <button type="button" class="btn btn--ghost" id="hw-platform-logout-footer" hidden>Log out</button>
         </p>
       </div>
     </section>
@@ -1039,6 +1087,7 @@
     </div>
   </footer>
 
+  <!-- Shared worksheet/media stack (both roles). Role-specific bundles load via hw-platform-boot.js. -->
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-loading.js?v=3" defer></script>
@@ -1048,8 +1097,8 @@
   <script src="/js/hw-video-inline.js?v=20260772" defer></script>
   <script src="/js/hw-audio-inline.js?v=20260753" defer></script>
   <script src="/js/hw-submit-format.js?v=20260619" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260787" defer></script>
-  <script src="/js/hw-star-block.js?v=20260709b" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260796" defer></script>
+  <script src="/js/hw-star-block.js?v=20260717fit" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=18" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
@@ -1057,26 +1106,7 @@
   <script src="/js/hw-magnifying-glass.js?v=74" defer></script>
   <script src="/js/hw-review-media.js?v=20260781" defer></script>
   <script src="/js/hw-homework-comments.js?v=93" defer></script>
-  <script src="/js/hw-worksheet-builder.js?v=20260714" defer></script>
-  <script src="/js/hw-teacher-editor.js?v=20260716b" defer></script>
   <script src="/js/hw-encoding.js?v=2" defer></script>
-  <script src="/js/hw-student-list.js?v=20260725" defer></script>
-  <script src="/js/hw-teacher-ideas.js?v=20260610" defer></script>
-  <script src="/js/hw-mistake-feed.js?v=20260674" defer></script>
-  <script src="/js/hw-teacher-submissions.js?v=20260789" defer></script>
-  <script src="/js/hw-teacher-mistakes.js?v=20260675" defer></script>
-  <script src="/js/hw-student-mistakes.js?v=20260728" defer></script>
-  <script src="/js/hw-teacher-promo.js?v=20260609" defer></script>
-  <script src="/js/hw-teacher-birthdays.js?v=20260716" defer></script>
-  <script src="/game/lantern-hunt/lantern-words-demo.js?v=20260650" defer></script>
-  <script src="/game/lantern-hunt/lantern-words-n5.js?v=20260650" defer></script>
-  <script src="/js/lantern-word-format.js?v=20260650" defer></script>
-  <script src="/js/hw-teacher-lantern-words.js?v=20260650" defer></script>
-  <script src="/js/hw-teacher-lookup-lexicon.js?v=24" defer></script>
-  <script src="/js/hw-checkout.js?v=20260611" defer></script>
-  <script src="/js/hw-sachiko.js?v=20260694" defer></script>
-  <script src="/js/hw-platform.js?v=20260804" defer></script>
-  <script src="/js/hw-hub-v5-live.js?v=67" defer></script>
-  <script src="/js/hw-hub-v6.js?v=14" defer></script>
+  <script src="/js/hw-platform-boot.js?v=7" defer></script>
 </body>
 </html>

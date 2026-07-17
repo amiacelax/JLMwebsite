@@ -106,7 +106,7 @@ img {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--green);
+  color: var(--green-dark);
   margin: 0 0 0.75rem;
 }
 
@@ -209,23 +209,6 @@ img {
   padding: 1rem 1.4rem;
 }
 
-.btn-call {
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.75rem 1.35rem;
-  line-height: 1.2;
-}
-
-.btn-call__label {
-  font-size: 0.9375rem;
-}
-
-.btn-call__number {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
 /* Hero — full-bleed photo + copy */
 .hero {
   display: grid;
@@ -276,10 +259,6 @@ img {
   font-size: 1.05rem;
   max-width: 38rem;
   color: var(--muted);
-}
-
-.hero-title {
-  line-height: 1.15;
 }
 
 .hook-cta {
@@ -334,6 +313,68 @@ img {
   max-width: 40rem;
 }
 
+.empathy-name {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pale);
+  font-size: 0.95rem;
+  color: var(--green-deep);
+}
+
+/* Relief — human touch cards */
+.relief {
+  padding: 2.75rem 0;
+  background: var(--fog);
+}
+
+.relief-list {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 560px) {
+  .relief-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.relief-list li {
+  background: var(--mist);
+  border: 1px solid var(--pale);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.15rem;
+}
+
+.relief-list strong {
+  display: block;
+  color: var(--green-deep);
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.relief-list span {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Softer v2 hero lead spacing */
+.v2 .hook-lead + .hook-lead {
+  margin-top: -0.35rem;
+}
+
+.v2 .trouble h2 {
+  max-width: 28ch;
+}
+
+.v2 .cred-badge {
+  background: var(--green-mid);
+}
+
 /* Trouble — the key insight */
 .trouble {
   padding: 2.75rem 0;
@@ -365,27 +406,6 @@ img {
 
 .trouble-punch strong {
   color: #fff;
-}
-
-.trouble-late {
-  margin-top: 1.25rem;
-  padding: 1rem 1.15rem;
-  border: 1px solid rgba(231, 245, 240, 0.25);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.trouble-late h3 {
-  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
-  color: var(--on-dark);
-  font-size: 1.15rem;
-  margin: 0 0 0.5rem;
-}
-
-.trouble-late p {
-  margin: 0;
-  color: rgba(231, 245, 240, 0.9);
-  font-size: 0.95rem;
 }
 
 /* Why */
@@ -599,4 +619,80 @@ img {
   .call-bar {
     display: none;
   }
+}
+
+/* v3 — quieter hybrid */
+.v3 .narrow {
+  max-width: 36rem;
+}
+
+.v3 .hero .hook-lead {
+  font-size: 1.05rem;
+}
+
+.v3 .empathy {
+  padding: 2rem 0 2.25rem;
+}
+
+.v3 .empathy p {
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.v3 .trouble {
+  padding: 2.5rem 0;
+}
+
+.v3 .trouble h2 {
+  max-width: none;
+  color: var(--on-dark);
+  margin-bottom: 1rem;
+}
+
+.v3 .trouble p {
+  color: rgba(231, 245, 240, 0.92);
+  max-width: 36rem;
+}
+
+.v3 .trouble-quiet {
+  font-weight: 600;
+  color: var(--on-dark) !important;
+  margin: 1.25rem 0 1.35rem;
+}
+
+.v3 .why {
+  padding: 2rem 0;
+}
+
+.v3 .why-grid--quiet {
+  margin-top: 0;
+}
+
+.v3 .pricing h2,
+.v3 .area h2,
+.v3 .contact h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.v3 .contact-lead {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.v3 .pricing,
+.v3 .area {
+  padding: 1.75rem 0;
+}
+
+.v3 .contact {
+  padding: 2.25rem 0 2.75rem;
+}
+
+.v3 .hook-cta {
+  margin-bottom: 0;
+}
+
+.v3 .cred-badge {
+  background: var(--green-deep);
 }

@@ -55,8 +55,9 @@
   }
 
   /**
-   * Teacher Hub v6 (teacher hub playtest shell). Local-only while testing.
-   * Prod override: localStorage.setItem('hw-hubv6-dev','1')
+   * Teacher Hub v6 — primary teacher chrome when on.
+   * Default on; force off with localStorage hw-hubv6-dev=0 or ?hubv6=0
+   * (restores classic teacher tab strip).
    */
   function hubV6() {
     try {
@@ -71,7 +72,7 @@
     } catch {
       /* ignore */
     }
-    return isLocalDev();
+    return true;
   }
 
   /** Hub v5 simulate/account bar — explicit opt-in only (never auto on localhost). */

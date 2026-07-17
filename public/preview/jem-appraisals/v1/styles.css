@@ -106,7 +106,7 @@ img {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--green);
+  color: var(--green-dark);
   margin: 0 0 0.75rem;
 }
 
@@ -209,23 +209,6 @@ img {
   padding: 1rem 1.4rem;
 }
 
-.btn-call {
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.75rem 1.35rem;
-  line-height: 1.2;
-}
-
-.btn-call__label {
-  font-size: 0.9375rem;
-}
-
-.btn-call__number {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
 /* Hero — full-bleed photo + copy */
 .hero {
   display: grid;
@@ -276,10 +259,6 @@ img {
   font-size: 1.05rem;
   max-width: 38rem;
   color: var(--muted);
-}
-
-.hero-title {
-  line-height: 1.15;
 }
 
 .hook-cta {
@@ -365,27 +344,6 @@ img {
 
 .trouble-punch strong {
   color: #fff;
-}
-
-.trouble-late {
-  margin-top: 1.25rem;
-  padding: 1rem 1.15rem;
-  border: 1px solid rgba(231, 245, 240, 0.25);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.trouble-late h3 {
-  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
-  color: var(--on-dark);
-  font-size: 1.15rem;
-  margin: 0 0 0.5rem;
-}
-
-.trouble-late p {
-  margin: 0;
-  color: rgba(231, 245, 240, 0.9);
-  font-size: 0.95rem;
 }
 
 /* Why */

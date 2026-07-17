@@ -11,7 +11,8 @@
     tab: "jlm-hw-v5-demo-tab",
   };
 
-  const DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-uxrsqyd.json";
+  const DEFAULT_DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-uxrsqyd.json";
+  let demoAssignmentUrl = DEFAULT_DEMO_ASSIGNMENT_URL;
 
   const TIER_PLANS = {
     basic: {
@@ -129,6 +130,39 @@
       localStorage.setItem(key, value);
     } catch {
       /* ignore */
+    }
+  }
+
+  function applyPreviewQuery() {
+    let q;
+    try {
+      q = new URLSearchParams(location.search);
+    } catch {
+      q = new URLSearchParams();
+    }
+    const status = q.get("status");
+    const account = q.get("account");
+    const assignment = String(q.get("assignment") || "").trim();
+    const toolbar = q.get("toolbar") === "1";
+
+    if (status === "in_progress" || status === "submitted" || status === "reviewed") {
+      writeStorage(STORAGE.status, status);
+    }
+    if (account && DEMO_ACCOUNTS[account]) {
+      writeStorage(STORAGE.account, account);
+    }
+    if (assignment) {
+      /* Prefer API so KV-only library sheets (e.g. 〜時、〜の時) load in preview. */
+      demoAssignmentUrl =
+        "/api/homework-assignment?id=" + encodeURIComponent(assignment);
+      demoAssignment = null;
+      worksheetForm = null;
+    }
+    if (toolbar) {
+      document.documentElement.classList.add("hw-hub-v5-toolbar-embed");
+      document.body.classList.add("hw-hub-v5-toolbar-embed");
+      const bar = document.getElementById("hw-toolbar-bar");
+      if (bar) bar.hidden = false;
     }
   }
 
@@ -478,7 +512,7 @@
 
   async function loadDemoAssignment() {
     if (demoAssignment) return demoAssignment;
-    const res = await fetch(DEMO_ASSIGNMENT_URL);
+    const res = await fetch(demoAssignmentUrl);
     if (!res.ok) throw new Error("Could not load demo worksheet.");
     let data = await res.json();
     if (global.HwWorksheet?.enrichAssignmentMedia) {
@@ -613,11 +647,97 @@
         writeStorage(STORAGE.answers, JSON.stringify(data));
         const statusEl = document.getElementById("hw-save-status");
         if (statusEl) statusEl.textContent = "Saved in your browser.";
+        syncToolbarActionState();
       });
+
+      worksheetForm.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        if (worksheetForm.querySelector('.hw-worksheet__actions-submit button[type="submit"]')?.disabled) {
+          return;
+        }
+        global.HwWorksheet?.enableSeeAnswers?.(worksheetForm);
+        setDemoStatus("submitted");
+      });
+
+      bindToolbarActions();
+      syncToolbarActionState();
     } catch {
       mount.innerHTML =
-        '<p class="hw-maker-status">Could not load the よく・あまり worksheet. Refresh and try again.</p>';
+        '<p class="hw-maker-status">Could not load the worksheet. Refresh and try again.</p>';
     }
+  }
+
+  function worksheetFormEl() {
+    return (
+      worksheetForm ||
+      document.querySelector("#hw-v2-worksheet-mount form.hw-worksheet") ||
+      document.getElementById("hw-worksheet-form")
+    );
+  }
+
+  function syncToolbarActionState() {
+    const form = worksheetFormEl();
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (!bar) return;
+    const sendBtn = bar.querySelector('[data-tb-tool="send"]');
+    const answersBtn = bar.querySelector('[data-tb-tool="answers"]');
+    const focusBtn = bar.querySelector('[data-tb-tool="focus"]');
+    const formSend = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
+    const formAnswers = form?.querySelector("[data-hw-see-answers]");
+    if (sendBtn) sendBtn.disabled = !formSend || formSend.disabled;
+    if (answersBtn) {
+      const locked = !formAnswers || formAnswers.hidden || formAnswers.disabled;
+      answersBtn.disabled = locked;
+      answersBtn.setAttribute(
+        "aria-pressed",
+        formAnswers?.getAttribute("aria-pressed") === "true" ? "true" : "false"
+      );
+      const label = answersBtn.querySelector(".hw-toolbar-bar__label");
+      if (label && formAnswers) {
+        label.textContent =
+          formAnswers.getAttribute("aria-pressed") === "true" ? "Hide Answers" : "See Answers";
+      }
+    }
+    if (focusBtn) {
+      focusBtn.setAttribute(
+        "aria-pressed",
+        document.body.classList.contains("hw-hw-focus-mode") ? "true" : "false"
+      );
+    }
+  }
+
+  function bindToolbarActions() {
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (!bar || bar.dataset.bound === "1") return;
+    bar.dataset.bound = "1";
+    bar.addEventListener("click", (ev) => {
+      const btn = ev.target.closest?.("[data-tb-tool]");
+      if (!btn || btn.disabled || btn.getAttribute("aria-disabled") === "true" || !bar.contains(btn)) return;
+      const tool = btn.getAttribute("data-tb-tool");
+      const form = worksheetFormEl();
+      if (tool === "focus") {
+        if (document.body.classList.contains("hw-hw-focus-mode")) {
+          global.HwWorksheet?.exitFocusMode?.();
+          document.querySelector(".hw-focus-bar__exit")?.click();
+        } else {
+          form?.querySelector("[data-hw-focus]")?.click();
+        }
+        syncToolbarActionState();
+        return;
+      }
+      if (tool === "send") {
+        form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]')?.click();
+        syncToolbarActionState();
+        return;
+      }
+      if (tool === "answers") {
+        const answers = form?.querySelector("[data-hw-see-answers]");
+        if (answers && !answers.disabled && !answers.hidden) answers.click();
+        else if (form) global.HwWorksheet?.toggleTeacherAnswers?.(form);
+        syncToolbarActionState();
+      }
+    });
+    document.addEventListener("fullscreenchange", () => syncToolbarActionState());
   }
 
   function bindUi() {
@@ -649,6 +769,7 @@
   }
 
   function init() {
+    applyPreviewQuery();
     bindUi();
     renderAll();
   }

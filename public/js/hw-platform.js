@@ -21,15 +21,31 @@
         (teacherSession?.displayName || "Teacher") +
         " · viewing as " +
         (session.displayName || session.username);
-    } else {
-      greet.textContent = session.displayName + (isTeacher ? " · Teacher" : "");
+    } else if (isTeacher) {
+      greet.textContent = session.displayName + " · Teacher";
     }
+  }
+
+  function studentHubHeading(name) {
+    const label = String(name || "").trim();
+    if (!label) return "YOUR HOMEWORK HUB";
+    return (label + "'s homework hub").toUpperCase();
   }
 
   if (!isTeacher) {
     const hubTitle = document.getElementById("hw-hub-title");
+    const eyebrow = document.getElementById("hw-hub-eyebrow");
     if (hubTitle) {
-      hubTitle.textContent = HwAuth.possessiveHubTitle(session.displayName || session.username);
+      hubTitle.textContent = studentHubHeading(session.displayName || session.username);
+    }
+    if (eyebrow) eyebrow.hidden = true;
+
+    const footerInfo = document.getElementById("hw-platform-footer-info");
+    const footerLogout = document.getElementById("hw-platform-logout-footer");
+    if (footerInfo) footerInfo.hidden = true;
+    if (footerLogout) {
+      footerLogout.hidden = false;
+      footerLogout.addEventListener("click", () => HwAuth.logout());
     }
   }
 
@@ -163,24 +179,11 @@
   }
 
   function renderAccountBar() {
+    /* Student hub: identity pills removed for a cleaner fullscreen header. */
     const badges = document.getElementById("hw-platform-badges");
     if (!badges || isTeacher) return;
-    badges.hidden = false;
+    badges.hidden = true;
     badges.replaceChildren();
-
-    const labelPill = document.createElement("span");
-    labelPill.className = "hw-account-badge hw-account-badge--label";
-    labelPill.textContent = session.accountLabelDisplay || "Homework Only";
-
-    const tierPill = document.createElement("span");
-    tierPill.className = "hw-account-badge hw-account-badge--tier";
-    tierPill.textContent =
-      HwAuth.TIERS[HUB_CURRENT_PLAN_TIER]?.name ||
-      session.tierDisplay ||
-      HwAuth.getTierMeta(session)?.name ||
-      "—";
-
-    badges.append(labelPill, tierPill);
   }
 
   const TIER_DETAIL_TITLES = {
@@ -557,6 +560,8 @@
   const CATALOG_SESSION_KEY = "jlm-hw-catalog-v1";
   const CATALOG_TTL_MS = 90_000;
   const assignmentMemoryCache = new Map();
+  /** Dedupe concurrent assignment fetches (early prefetch + loadStudentHub). */
+  const assignmentFetchInFlight = new Map();
   let catalogFetchInFlight = null;
   let studentHubLoadGen = 0;
   let studentHubHiddenAt = 0;
@@ -718,44 +723,59 @@
       return finalizeAssignment(assignmentMemoryCache.get(id));
     }
 
-    purgeLegacyAssignmentSessionKeys(id);
-    const sessionKey = assignmentSessionKey(id);
-    if (!options.bypassCache) {
-      const cached = readSessionJson(sessionKey);
-      if (cached?.data?.sections?.length) {
-        const assignment = finalizeAssignment(cached.data);
-        assignmentMemoryCache.set(id, assignment);
-        return assignment;
-      }
+    if (assignmentFetchInFlight.has(id)) {
+      return assignmentFetchInFlight.get(id);
     }
 
-    const fetchOpts = { cache: options.bypassCache ? "no-store" : "default" };
-    const apiUrl = "/api/homework-assignment?id=" + encodeURIComponent(id);
-
-    try {
-      const res = await fetch(apiUrl, fetchOpts);
-      if (res.ok) {
-        const assignment = finalizeAssignment(normalizeAssignmentPayload(await res.json()));
-        if (assignment?.sections?.length) {
+    const work = (async () => {
+      purgeLegacyAssignmentSessionKeys(id);
+      const sessionKey = assignmentSessionKey(id);
+      if (!options.bypassCache) {
+        const cached = readSessionJson(sessionKey);
+        if (cached?.data?.sections?.length) {
+          const assignment = finalizeAssignment(cached.data);
           assignmentMemoryCache.set(id, assignment);
-          writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
           return assignment;
         }
       }
-    } catch {
-      /* fall through to static file */
-    }
 
-    const staticRes = await fetch(
-      "/homework/assignments/" + encodeURIComponent(id) + ".json",
-      fetchOpts
-    );
-    if (!staticRes.ok) throw new Error("assignment");
-    const assignment = finalizeAssignment(normalizeAssignmentPayload(await staticRes.json()));
-    if (!assignment?.sections?.length) throw new Error("assignment");
-    assignmentMemoryCache.set(id, assignment);
-    writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
-    return assignment;
+      const fetchOpts = { cache: options.bypassCache ? "no-store" : "default" };
+      const apiUrl = "/api/homework-assignment?id=" + encodeURIComponent(id);
+
+      try {
+        const res = await fetch(apiUrl, fetchOpts);
+        if (res.ok) {
+          const assignment = finalizeAssignment(normalizeAssignmentPayload(await res.json()));
+          if (assignment?.sections?.length) {
+            assignmentMemoryCache.set(id, assignment);
+            writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
+            return assignment;
+          }
+        }
+      } catch {
+        /* fall through to static file */
+      }
+
+      const staticRes = await fetch(
+        "/homework/assignments/" + encodeURIComponent(id) + ".json",
+        fetchOpts
+      );
+      if (!staticRes.ok) throw new Error("assignment");
+      const assignment = finalizeAssignment(normalizeAssignmentPayload(await staticRes.json()));
+      if (!assignment?.sections?.length) throw new Error("assignment");
+      assignmentMemoryCache.set(id, assignment);
+      writeSessionJson(sessionKey, { savedAt: Date.now(), data: assignment });
+      return assignment;
+    })();
+
+    assignmentFetchInFlight.set(id, work);
+    try {
+      return await work;
+    } finally {
+      if (assignmentFetchInFlight.get(id) === work) {
+        assignmentFetchInFlight.delete(id);
+      }
+    }
   }
 
   let studentSubmissionsCache = null;
@@ -2734,7 +2754,14 @@
   }
 
   async function openInTeacherEditor(id) {
-    document.getElementById("hw-teacher-tab-maker")?.click();
+    if (
+      document.body.classList.contains("hw-hub-v6-primary") &&
+      global.HwHubV6?.activateTab
+    ) {
+      global.HwHubV6.activateTab("maker");
+    } else {
+      document.getElementById("hw-teacher-tab-maker")?.click();
+    }
     const makerPanel = document.getElementById("hw-teacher-maker");
     if (makerPanel) makerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     try {
@@ -2752,15 +2779,15 @@
     const openLink = document.getElementById("hw-hub-version-open");
     const studentActions = document.getElementById("hw-hub-version-student-actions");
     const embed = document.getElementById("hw-teacher-hubv2-embed");
-    const v6Panel = document.getElementById("hw-hub-v6-panel");
-    const v6Btn = document.getElementById("hw-hub-version-tab-v6");
+    const toolbarPanel = document.getElementById("hw-toolbar-playtest-panel");
+    const v1Note = document.getElementById("hw-hub-v1-classic-note");
     const titleEl = document.getElementById("hw-hub-preview-title");
     const descEl = document.getElementById("hw-hub-preview-desc");
     if (!buttons.length || !iframe) return;
 
     const hubV6On = global.HwFeatureFlags?.hubV6?.() === true;
-    if (v6Btn) v6Btn.hidden = !hubV6On;
     if (hubV6On) document.body.classList.add("hw-hub-v6-enabled");
+    document.getElementById("hw-hub-version-tab-v6")?.setAttribute("hidden", "");
 
     const paths = {
       "2": "/homework/hub-v2-preview.html",
@@ -2770,44 +2797,95 @@
     };
 
     const resetBtn = document.getElementById("hw-hubv2-reset-onboard");
-    const v6FullPath = "/homework/platform.html?tab=hubv6&hubv6=1&v6full=1";
 
     function setVersion(version) {
-      const isV6 = version === "6" && hubV6On;
-      if (embed) embed.hidden = isV6;
-      if (v6Panel) v6Panel.hidden = !isV6;
-      if (resetBtn) resetBtn.hidden = isV6;
-      if (studentActions) studentActions.hidden = false;
-      if (titleEl) {
-        titleEl.textContent = isV6 ? "Hub v6 · Teacher hub playtest" : "Hub prototypes";
-      }
-      if (descEl) {
-        descEl.textContent = isV6
-          ? "Local WIP — new teacher hub tab layout (mounts live panels). Main Teacher Hub tabs stay unchanged."
-          : "Student hub mock previews (v2–v5). Local only: Hub v6 is the teacher hub playtest shell.";
+      const isV1 = version === "1";
+      const isToolbar = version === "toolbar";
+      const toolbarFullPath =
+        document.getElementById("hw-toolbar-playtest-iframe")?.dataset?.src ||
+        "/homework/hub-v5-preview.html?toolbar=1&status=in_progress&account=hw_basic&assignment=sheet-u1vevjge";
+      const path = isToolbar
+        ? toolbarFullPath
+        : paths[version] || (isV1 ? "" : paths["3"]);
+
+      try {
+        localStorage.setItem("jlm-hw-teacher-hub-version", version);
+      } catch {
+        /* ignore */
       }
 
-      if (!isV6) {
-        global.HwHubV6?.releaseMounts?.();
-        const path = paths[version] || paths["3"];
-        iframe.src = path;
-        iframe.title = "Homework Hub v" + version + " prototype";
-        if (openLink) {
+      document.body.classList.toggle("hw-hub-v1-classic", isV1);
+
+      if (embed) embed.hidden = isV1 || isToolbar;
+      if (toolbarPanel) toolbarPanel.hidden = !isToolbar;
+      if (v1Note) v1Note.hidden = !isV1;
+      if (resetBtn) resetBtn.hidden = isV1 || isToolbar || version === "4" || version === "5";
+      /* Full-page link for student mocks + toolbar; classic v1 lives in this page. */
+      if (studentActions) studentActions.hidden = isV1;
+
+      if (titleEl) {
+        titleEl.textContent = isToolbar
+          ? "Toolbar playtest"
+          : isV1
+            ? "Hub v1 · Classic teacher layout"
+            : "Hub prototypes";
+      }
+      if (descEl) {
+        descEl.textContent = isToolbar
+          ? "Visual tool chrome over student hub (〜時、〜の時 current HW). Buttons not wired yet."
+          : isV1
+            ? "Classic teacher tab strip and panels (jic fallback). Switch to Hub v2–v5 or Toolbar for student mocks."
+            : "Hub v1 is the classic teacher layout. v2–v5 are student hub mocks. Toolbar is a tool-chrome sandbox.";
+      }
+
+      if (openLink) {
+        if (isV1) {
+          openLink.removeAttribute("href");
+          openLink.setAttribute("aria-disabled", "true");
+        } else {
           openLink.href = path;
           openLink.textContent = "Open full page";
           openLink.target = "_blank";
           openLink.rel = "noopener noreferrer";
+          openLink.removeAttribute("aria-disabled");
         }
+      }
+
+      if (isV1) {
+        if (document.body.classList.contains("hw-hub-v6-primary") && global.HwHubV6) {
+          global.HwHubV6.releaseMounts?.();
+          global.HwHubV6.activateTab?.("hubpreview");
+        }
+        if (teacherTabApi?.activate) teacherTabApi.activate("maker");
+        else document.getElementById("hw-teacher-tab-maker")?.click();
       } else {
-        if (openLink) {
-          openLink.href = v6FullPath;
-          openLink.textContent = "Open full page";
-          openLink.target = "_blank";
-          openLink.rel = "noopener noreferrer";
-        }
-        if (global.HwHubV6?.refresh || global.HwHubV6?.init) {
-          global.HwHubV6.init?.({ session: getTeacherSessionForApi() });
-          global.HwHubV6.onTabActivated?.();
+        document
+          .querySelectorAll(
+            "#hw-teacher-classic > .hw-teacher-panel:not(.hw-hub-v6-mounted-panel)"
+          )
+          .forEach((p) => {
+            p.hidden = true;
+          });
+        if (isToolbar) {
+          const tbIframe = document.getElementById("hw-toolbar-playtest-iframe");
+          if (tbIframe?.dataset?.src) {
+            /* Always sync src so assignment/query changes apply on revisit. */
+            tbIframe.src = tbIframe.dataset.src;
+          }
+        } else {
+          iframe.title = "Homework Hub v" + version + " prototype";
+          iframe.dataset.pendingSrc = path;
+          const hubv2Panel = document.getElementById("hw-teacher-hubv2");
+          const hubv2Visible =
+            hubv2Panel &&
+            (!hubv2Panel.hidden ||
+              hubv2Panel.classList.contains("hw-hub-v6-mounted-panel"));
+          if (hubv2Visible) {
+            iframe.src = path;
+            delete iframe.dataset.pendingSrc;
+          } else if (iframe.getAttribute("src")) {
+            iframe.removeAttribute("src");
+          }
         }
       }
 
@@ -2817,11 +2895,6 @@
         btn.classList.toggle("btn--ghost", !on);
         btn.setAttribute("aria-selected", on ? "true" : "false");
       });
-      try {
-        localStorage.setItem("jlm-hw-teacher-hub-version", version);
-      } catch {
-        /* ignore */
-      }
     }
 
     let saved = "3";
@@ -2830,8 +2903,9 @@
     } catch {
       /* ignore */
     }
-    if (saved === "6" && !hubV6On) saved = "3";
-    if (saved !== "6" && !paths[saved]) saved = "3";
+    /* Hub v6 moved to primary Teacher Hub — migrate old preview chip. */
+    if (saved === "6") saved = "3";
+    if (saved !== "1" && saved !== "toolbar" && !paths[saved]) saved = "3";
     setVersion(saved);
 
     buttons.forEach((btn) => {
@@ -2875,7 +2949,13 @@
       });
       Object.keys(panels).forEach((key) => {
         const panel = panels[key];
-        if (panel) panel.hidden = key !== name;
+        if (!panel) return;
+        /* Keep panels mounted into Hub v6 visible regardless of classic tab. */
+        if (panel.classList.contains("hw-hub-v6-mounted-panel")) {
+          panel.hidden = false;
+          return;
+        }
+        panel.hidden = key !== name;
       });
       try {
         localStorage.setItem("jlm-hw-teacher-tab", name);
@@ -2900,15 +2980,10 @@
         global.HwTeacherEditor.syncPublishPicker();
       }
       if (name === "hubv2") {
-        const ver = (() => {
-          try {
-            return localStorage.getItem("jlm-hw-teacher-hub-version") || "3";
-          } catch {
-            return "3";
-          }
-        })();
-        if (ver === "6" && global.HwHubV6?.onTabActivated) {
-          global.HwHubV6.onTabActivated();
+        const iframe = document.getElementById("hw-hub-version-iframe");
+        if (iframe?.dataset?.pendingSrc) {
+          iframe.src = iframe.dataset.pendingSrc;
+          delete iframe.dataset.pendingSrc;
         }
       }
       try {
@@ -2934,32 +3009,15 @@
         params.get("v6full") === "1" || params.get("v6full") === "true";
       if (v6Full && global.HwFeatureFlags?.hubV6?.() === true) {
         document.body.classList.add("hw-hub-v6-fullpage", "hw-hub-v6-enabled");
-        try {
-          localStorage.setItem("jlm-hw-teacher-hub-version", "6");
-        } catch {
-          /* ignore */
-        }
       }
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2" || tabParam === "hubv6") {
-        initial = tabParam === "hubv6" ? "hubv2" : tabParam;
-        if (tabParam === "hubv6" || v6Full) {
-          try {
-            localStorage.setItem("jlm-hw-teacher-hub-version", "6");
-          } catch {
-            /* ignore */
-          }
-        }
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2" || tabParam === "hubv6" || tabParam === "hubpreview") {
+        initial = tabParam === "hubv6" || tabParam === "hubpreview" ? "hubv2" : tabParam;
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
       if (saved === "homework") {
         initial = "account";
       } else if (saved === "hubv6") {
         initial = "hubv2";
-        try {
-          localStorage.setItem("jlm-hw-teacher-hub-version", "6");
-        } catch {
-          /* ignore */
-        }
       } else if (
         saved === "maker" ||
         saved === "account" ||
@@ -3338,6 +3396,47 @@
     }
   }
 
+  function mapClassicTabToV6(tab) {
+    const t = String(tab || "");
+    if (t === "maker" || t === "library") return "maker";
+    if (
+      t === "account" ||
+      t === "promo" ||
+      t === "birthdays" ||
+      t === "submissions" ||
+      t === "mistakes"
+    ) {
+      return "students";
+    }
+    if (t === "harris" || t === "jem") return "websites";
+    if (t === "gamelab") return "gamelab";
+    if (t === "ideas" || t === "lookup-lexicon") return "ideas";
+    if (t === "hubv2" || t === "hubpreview") return "hubpreview";
+    if (t === "hubv6") return "preview";
+    return "preview";
+  }
+
+  function activatePrimaryV6FromClassic(tab) {
+    const v6Tab = mapClassicTabToV6(tab);
+    global.HwHubV6?.activateTab?.(v6Tab);
+    if (tab === "library") {
+      const fold = document.getElementById("hw-hub-v6-fold-library");
+      if (fold) fold.open = true;
+    }
+    if (tab === "lookup-lexicon") {
+      const fold = document.getElementById("hw-hub-v6-fold-lookup");
+      if (fold) fold.open = true;
+    }
+    if (tab === "submissions") {
+      const fold = document.getElementById("hw-hub-v6-fold-submissions");
+      if (fold) fold.open = true;
+    }
+    if (tab === "mistakes") {
+      const fold = document.getElementById("hw-hub-v6-fold-mistakes");
+      if (fold) fold.open = true;
+    }
+  }
+
   function showTeacherHubAndBindTabs() {
     document.body.classList.add("hw-role-teacher");
     document.documentElement.classList.add("hw-is-teacher");
@@ -3352,12 +3451,34 @@
     if (teacherHub) teacherHub.hidden = false;
     if (studentOnly) studentOnly.hidden = true;
 
+    const hubV6Primary = global.HwFeatureFlags?.hubV6?.() === true;
     const teacherTabs = initTeacherTabs();
-    if (global.HwHubV6?.init) {
-      global.HwHubV6.init({ session: getTeacherSessionForApi() });
-    }
-    if (teacherTabs?.activate && teacherTabs.initial) {
-      teacherTabs.activate(teacherTabs.initial);
+
+    if (hubV6Primary) {
+      document.body.classList.add("hw-hub-v6-primary", "hw-hub-v6-enabled");
+      const v6Panel = document.getElementById("hw-hub-v6-panel");
+      if (v6Panel) v6Panel.hidden = false;
+      if (global.HwHubV6?.init) {
+        global.HwHubV6.init({ session: getTeacherSessionForApi() });
+      }
+      let tabParam = "";
+      try {
+        tabParam = new URLSearchParams(window.location.search).get("tab") || "";
+      } catch {
+        /* ignore */
+      }
+      if (tabParam) {
+        activatePrimaryV6FromClassic(tabParam);
+      } else {
+        global.HwHubV6?.onTabActivated?.();
+      }
+    } else {
+      document.body.classList.remove("hw-hub-v6-primary");
+      const v6Panel = document.getElementById("hw-hub-v6-panel");
+      if (v6Panel) v6Panel.hidden = true;
+      if (teacherTabs?.activate && teacherTabs.initial) {
+        teacherTabs.activate(teacherTabs.initial);
+      }
     }
     return teacherTabs;
   }
@@ -3584,13 +3705,9 @@
     const wantId = String(assignmentId || "").trim();
     if (!wantId) return null;
     try {
-      const res = await fetch(
-        "/api/homework-submissions?username=" + encodeURIComponent(session.username),
-        { cache: "no-store" }
-      );
-      if (!res.ok) return null;
-      const data = await res.json().catch(() => ({}));
-      const subs = (Array.isArray(data.submissions) ? data.submissions : [])
+      /* Reuse the shared submissions cache — never hit the N+1 list twice. */
+      const list = await fetchStudentSubmissions();
+      const subs = (Array.isArray(list) ? list : [])
         .filter(
           (entry) =>
             entry.type === "online" &&
@@ -3756,9 +3873,58 @@
     /*
      * If this homework was already submitted/reviewed, do not remount a fresh
      * editable “Send to JD” sheet. Open the reviewed archive, or show waiting UI.
+     * Overlap the submission-status check with assignment JSON fetch — review
+     * gates may discard the assignment result; that is cheaper than waiting serially.
+     *
+     * Fast path: when localStorage has no submit/review flag for this assignment,
+     * skip awaiting the submissions list (was the slow N+1 KV scan) and mount HW
+     * immediately. A background check still applies the gate if another device submitted.
      */
+    let parallelAssignmentPromise = null;
     if (hashParts.kind !== "submission" && !options.skipWorksheet) {
-      const latestSub = await fetchLatestOnlineSubmission(active.id);
+      if (speculativeAssignmentPromise && active.id === speculativeId) {
+        parallelAssignmentPromise = speculativeAssignmentPromise;
+      } else {
+        parallelAssignmentPromise = fetchAssignmentJson(
+          active.id,
+          assignmentFetchOpts
+        ).catch(() => null);
+      }
+    }
+
+    function localReviewGateStatus(assignmentId) {
+      if (!session.username || !assignmentId) return null;
+      try {
+        const base = session.username + "-" + assignmentId;
+        if (localStorage.getItem("jlm-hw-reviewed-acked-" + base)) return "acknowledged";
+        if (localStorage.getItem("jlm-hw-reviewed-" + base)) return "reviewed";
+        if (localStorage.getItem("jlm-hw-submitted-" + base)) return "submitted";
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }
+
+    if (hashParts.kind !== "submission" && !options.skipWorksheet) {
+      const localGate = localReviewGateStatus(active.id);
+      const latestSubPromise = fetchLatestOnlineSubmission(active.id);
+
+      if (!localGate) {
+        /* In-progress (or first visit): don't block first paint on submissions list. */
+        void latestSubPromise.then((latestSub) => {
+          if (isStale() || !latestSub) return;
+          markLocalSubmissionFlags(
+            active.id,
+            latestSub.reviewStatus || "submitted"
+          );
+          void loadStudentHub({
+            background: true,
+            bypassCache: false,
+            metadataOnly: false,
+          });
+        });
+      } else {
+      const latestSub = await latestSubPromise;
       if (isStale()) return;
       if (latestSub?.reviewStatus === "reviewed") {
         markLocalSubmissionFlags(active.id, "reviewed");
@@ -3850,6 +4016,7 @@
           return;
         }
       }
+      }
     }
 
     if (
@@ -3868,8 +4035,8 @@
     }
 
     let assignment = null;
-    if (speculativeAssignmentPromise && active.id === speculativeId) {
-      assignment = await speculativeAssignmentPromise;
+    if (parallelAssignmentPromise) {
+      assignment = await parallelAssignmentPromise;
       if (isStale()) return;
     }
     if (!assignment) {
@@ -4139,13 +4306,28 @@
       document.addEventListener("hw-v5-retry-student-hub", () => {
         void loadStudentHub({ bypassCache: true, metadataOnly: false });
       });
+      /* Paint chrome from session immediately; overlap catalog/assignment with profile. */
+      renderAccountBar();
+      renderStudentHubHeader();
+      renderGamesHubCard();
+      bindWeeklyUpgradeCard();
+      bindOfflineTools();
+      void fetchCatalog().catch(() => null);
+      const earlyGuess = guessedAssignmentId();
+      if (earlyGuess) {
+        void fetchAssignmentJson(earlyGuess, studentAssignmentFetchOptions({})).catch(
+          () => null
+        );
+      }
+      const viewAsTier = session.tier;
+      const viewAsLabel = session.accountLabel;
+      void loadStudentHub();
       void enrichViewAsSessionFromProfile().then(() => {
         renderAccountBar();
         renderStudentHubHeader();
-        renderGamesHubCard();
-        bindWeeklyUpgradeCard();
-        bindOfflineTools();
-        loadStudentHub();
+        if (session.tier !== viewAsTier || session.accountLabel !== viewAsLabel) {
+          void loadStudentHub({ background: true });
+        }
       });
       window.addEventListener("hashchange", () => {
         loadStudentHub();
@@ -4159,13 +4341,29 @@
       document.addEventListener("hw-v5-retry-student-hub", () => {
         void loadStudentHub({ bypassCache: true, metadataOnly: false });
       });
+      /* Paint chrome from session immediately; overlap catalog/assignment with profile. */
+      renderAccountBar();
+      renderStudentHubHeader();
+      renderGamesHubCard();
+      bindWeeklyUpgradeCard();
+      bindOfflineTools();
+      void fetchCatalog().catch(() => null);
+      const earlyGuess = guessedAssignmentId();
+      if (earlyGuess) {
+        void fetchAssignmentJson(earlyGuess, studentAssignmentFetchOptions({})).catch(
+          () => null
+        );
+      }
+      const bootTier = session.tier;
+      const bootLabel = session.accountLabel;
+      /* Don't wait on profile enrich — catalog + worksheet are the critical path. */
+      void loadStudentHub();
       void enrichStudentSessionFromProfile(session).then(() => {
         renderAccountBar();
         renderStudentHubHeader();
-        renderGamesHubCard();
-        bindWeeklyUpgradeCard();
-        bindOfflineTools();
-        loadStudentHub();
+        if (session.tier !== bootTier || session.accountLabel !== bootLabel) {
+          void loadStudentHub({ background: true });
+        }
       });
       window.addEventListener("hashchange", () => {
         loadStudentHub();
