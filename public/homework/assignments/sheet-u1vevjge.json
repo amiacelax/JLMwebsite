@@ -1,0 +1,166 @@
+{
+  "id": "sheet-u1vevjge",
+  "title": "〜時、〜の時",
+  "youtubeUrl": "",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "sections": [
+    {
+      "id": "sec-nb3brll",
+      "mode": "audio-listening",
+      "title": "",
+      "instructions": "Listen to the clip and write down what you think it's saying in Japanese.",
+      "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Is%20The%20Order%20a%20Rabbit/media/Is_The_Order_a_Rabbit_S03_-_05_0.19.29.150-0.19.32.120.mp3",
+      "items": [
+        {
+          "id": "blk-rimctz0",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-rimctz0",
+              "wide": true,
+              "answer": "カルーセルに 乗[の]るなんて 子供[こども]のとき 以来[いらい]"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Is%20The%20Order%20a%20Rabbit/media/Is_The_Order_a_Rabbit_S03_-_05_0.19.29.150-0.19.32.120.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Is%20The%20Order%20a%20Rabbit/media/Is_The_Order_a_Rabbit_S03_-_05_0.19.29.150-0.19.32.120.jpg",
+          "englishAnswer": "I haven't been (ridden) on a carousel since I was a kid."
+        },
+        {
+          "id": "blk-woqkj8c",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-woqkj8c",
+              "wide": true,
+              "answer": "これを使[つか]うときは..."
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Smoking/media/Smoking_Ep12_0.07.47.044-0.07.49.504.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Smoking/media/Smoking_Ep12_0.07.47.044-0.07.49.504.jpg",
+          "englishAnswer": "When I use this..."
+        }
+      ],
+      "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Is%20The%20Order%20a%20Rabbit/media/Is_The_Order_a_Rabbit_S03_-_05_0.19.29.150-0.19.32.120.jpg"
+    },
+    {
+      "id": "sec-hklymst",
+      "mode": "star-order",
+      "title": "",
+      "instructions": "Drag/drop the words to form the best answer!",
+      "items": [
+        {
+          "id": "blk-rmo022e",
+          "tokens": [
+            {
+              "text": "子ども",
+              "fixed": true
+            },
+            {
+              "text": "よく遊んだ",
+              "fixed": false
+            },
+            {
+              "text": "の時",
+              "fixed": false
+            },
+            {
+              "text": "の家で",
+              "fixed": false
+            },
+            {
+              "text": "友達",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "よく遊んだ",
+            "の時",
+            "の家で",
+            "友達"
+          ]
+        },
+        {
+          "id": "blk-np2obe6",
+          "tokens": [
+            {
+              "text": "悲しい",
+              "fixed": true
+            },
+            {
+              "text": "時に",
+              "fixed": false
+            },
+            {
+              "text": "海を見る",
+              "fixed": false
+            },
+            {
+              "text": "のが",
+              "fixed": false
+            },
+            {
+              "text": "好きです",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "時に",
+            "海を見る",
+            "のが",
+            "好きです"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sec-nnhnveh",
+      "mode": "translation",
+      "title": "",
+      "instructions": "",
+      "items": [
+        {
+          "id": "blk-lj7rs7i",
+          "japanese": "日本人は海外に行く時、お土産を買いますか？",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-lj7rs7i",
+              "wide": true,
+              "answer": "When Japanese people go abroad, do they buy souvenirs?\n(Do Japanese people buy souvenirs when they travel abroad?)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sec-rsjvp7d",
+      "mode": "video-response",
+      "title": "",
+      "instructions": "",
+      "items": [
+        {
+          "id": "blk-epslpwv",
+          "prompt": "子どもの時、何をするのが好きでしたか。詳しく教えてください。",
+          "recordLabel": "Record your answer"
+        }
+      ]
+    }
+  ],
+  "topicExplanation": "時 = とき\nverb/いending + 時 = when \nnoun/なadj + の時 = when\n\nDon't get this confused with the question word いつ. \"When is your birthday?\" does not use とき",
+  "register": "casual"
+}

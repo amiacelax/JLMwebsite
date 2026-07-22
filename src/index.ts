@@ -6,9 +6,7 @@ import {
   withHarrisPreviewHeaders,
 } from "./harris-preview-auth";
 import {
-  isJemPreviewAuthorized,
   isJemPreviewPath,
-  jemPreviewUnauthorized,
   withJemPreviewHeaders,
 } from "./jem-preview-auth";
 import {
@@ -851,9 +849,9 @@ async function loadAssignmentSections(
       if (published?.sections) return published.sections as AssignmentSectionShape[];
     }
     const assetRes = await env.ASSETS.fetch(
-      new Request(new URL(`/homework/assignments/${id}.json`, "https://internal.local"))
+      new URL(`/homework/assignments/${id}.json`, "https://assets.local").toString()
     );
-    if (assetRes.ok) {
+    if (isJsonAssetResponse(assetRes)) {
       const data = (await assetRes.json()) as { sections?: AssignmentSectionShape[] };
       return data.sections || null;
     }
@@ -1873,9 +1871,9 @@ async function handleHomeworkReviewMediaUpload(request: Request, env: Env): Prom
 
 async function loadStaticCatalog(env: Env): Promise<CatalogFile> {
   const res = await env.ASSETS.fetch(
-    new Request(new URL("/homework/catalog.json", "https://internal.local"))
+    new URL("/homework/catalog.json", "https://assets.local").toString()
   );
-  if (!res.ok) return { assignments: [] };
+  if (!isJsonAssetResponse(res)) return { assignments: [] };
   return (await res.json()) as CatalogFile;
 }
 
@@ -1944,9 +1942,9 @@ async function handleHomeworkAssignment(request: Request, env: Env): Promise<Res
       if (published) return jsonResponse(published);
     }
     const assetRes = await env.ASSETS.fetch(
-      new Request(new URL(`/homework/assignments/${id}.json`, "https://internal.local"))
+      new URL(`/homework/assignments/${id}.json`, "https://assets.local").toString()
     );
-    if (assetRes.ok) {
+    if (isJsonAssetResponse(assetRes)) {
       return new Response(assetRes.body, {
         status: 200,
         headers: {
@@ -3170,7 +3168,13 @@ async function handleHomeworkSubmissions(request: Request, env: Env): Promise<Re
     }
 
     const student = url.searchParams.get("student") || "";
-    const submissions = await listHomeworkSubmissions(env, { student });
+    const limitRaw = url.searchParams.get("limit");
+    const limitParsed = limitRaw ? Number.parseInt(limitRaw, 10) : NaN;
+    const limit =
+      Number.isFinite(limitParsed) && limitParsed > 0
+        ? Math.min(500, Math.floor(limitParsed))
+        : undefined;
+    const submissions = await listHomeworkSubmissions(env, { student, limit });
     return jsonResponse({ submissions });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -3658,9 +3662,39 @@ async function handleJaLookup(request: Request, env: Env): Promise<Response> {
   return jsonResponse({ error: "Dictionary lookup failed." }, 502);
 }
 
+/**
+ * Fetch a static asset via the ASSETS binding (assets.local host per CF docs).
+ */
+function fetchAsset(request: Request, env: Env, pathname?: string): Promise<Response> {
+  const incoming = new URL(request.url);
+  const path = pathname || incoming.pathname;
+  const assetUrl = new URL(path + incoming.search, "https://assets.local");
+  return env.ASSETS.fetch(assetUrl.toString());
+}
+
+/** True when ASSETS returned a real JSON body (not SPA index.html fallback). */
+function isJsonAssetResponse(res: Response): boolean {
+  if (!res.ok) return false;
+  const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+  return ct.includes("application/json") || ct.includes("text/json") || ct.includes("+json");
+}
+
+async function spaFallback(_request: Request, _env: Env, assetResponse: Response): Promise<Response> {
+  return assetResponse;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // Early API canaries / hot paths — keep ahead of any asset fallthrough.
+    if (url.pathname === "/api/__health") {
+      return new Response("worker-ok", { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+
+    if (url.pathname === "/api/homework-assignment") {
+      return handleHomeworkAssignment(request, env);
+    }
 
     const hwMediaMatch = url.pathname.match(/^\/api\/hw-m\/([^/]+)$/);
     if (hwMediaMatch) {
@@ -3796,10 +3830,6 @@ export default {
       return handleHomeworkStudents(request, env);
     }
 
-    if (url.pathname === "/api/homework-assignment") {
-      return handleHomeworkAssignment(request, env);
-    }
-
     if (url.pathname === "/api/homework-publish") {
       return handleHomeworkPublish(request, env);
     }
@@ -3880,23 +3910,27 @@ export default {
       return handleLanternWordSetDelete(request, env);
     }
 
+    // Never SPA-fallback /api/* to index.html (assets not_found_handling).
+    // Unmatched API routes must stay JSON so clients don't parse homepage HTML.
+    if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+      return jsonResponse({ error: "Not found." }, 404);
+    }
+
     if (isHarrisPreviewPath(url.pathname)) {
       if (!isHarrisPreviewAuthorized(request, env)) {
         return harrisPreviewUnauthorized();
       }
-      const assetResponse = await env.ASSETS.fetch(request);
-      return withHarrisPreviewHeaders(assetResponse);
+      const assetResponse = await fetchAsset(request, env);
+      return withHarrisPreviewHeaders(await spaFallback(request, env, assetResponse));
     }
 
     if (isJemPreviewPath(url.pathname)) {
-      if (!isJemPreviewAuthorized(request, env)) {
-        return jemPreviewUnauthorized();
-      }
-      const assetResponse = await env.ASSETS.fetch(request);
-      return withJemPreviewHeaders(assetResponse);
+      const assetResponse = await fetchAsset(request, env);
+      return withJemPreviewHeaders(await spaFallback(request, env, assetResponse));
     }
 
-    return env.ASSETS.fetch(request);
+    const assetResponse = await fetchAsset(request, env);
+    return spaFallback(request, env, assetResponse);
   },
 
   async scheduled(

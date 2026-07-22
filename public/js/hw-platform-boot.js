@@ -32,9 +32,9 @@
     lookup: "24",
     checkout: "20260611",
     sachiko: "20260694",
-    platform: "20260813",
+    platform: "20260814",
     hubV5: "69",
-    hubV6: "16",
+    hubV6: "17",
   };
 
   function injectOrdered(urls) {

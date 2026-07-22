@@ -94,7 +94,16 @@ interface KvEnv {
 const TEACHER_DEFAULT = "jlm";
 
 /** Legacy demo students + teacher publish list (public/js/hw-auth.js ACCOUNTS). */
-const STUDENT_ACCOUNTS = new Set(["benm", "joshs", "deme", "ivan", "benc", "noplan"]);
+const STUDENT_ACCOUNTS = new Set([
+  "benm",
+  "joshs",
+  "deme",
+  "ivan",
+  "benc",
+  "noplan",
+  /* Toolbar / hub-v5 playtest sandbox (not a real login student). */
+  "demo",
+]);
 
 const LEGACY_STUDENT_LABELS: Record<string, string> = {
   benm: "Ben M",
@@ -103,6 +112,7 @@ const LEGACY_STUDENT_LABELS: Record<string, string> = {
   ivan: "Ivan",
   benc: "benc",
   noplan: "No Plan",
+  demo: "Demo",
 };
 
 const USERS_INDEX = "user-accounts-index";
@@ -1673,7 +1683,7 @@ async function loadSubmissionsByIds(
   ids: string[]
 ): Promise<HomeworkSubmission[]> {
   if (!ids.length) return [];
-  const CHUNK = 40;
+  const CHUNK = 25;
   const submissions: HomeworkSubmission[] = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
     const slice = ids.slice(i, i + CHUNK);
@@ -2243,7 +2253,7 @@ export async function saveHomeworkVideoSubmission(
 
 export async function listHomeworkSubmissions(
   env: KvEnv,
-  opts?: { student?: string }
+  opts?: { student?: string; limit?: number }
 ): Promise<HomeworkSubmission[]> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
@@ -2251,11 +2261,20 @@ export async function listHomeworkSubmissions(
   const filterStudent = String(opts?.student || "")
     .trim()
     .toLowerCase();
+  const limit =
+    typeof opts?.limit === "number" && Number.isFinite(opts.limit) && opts.limit > 0
+      ? Math.floor(opts.limit)
+      : 0;
+
+  function takeIds(ids: string[]): string[] {
+    if (!limit) return ids;
+    return ids.slice(0, limit);
+  }
 
   if (filterStudent) {
     const studentIds = await readStudentSubmissionsIndex(kv, filterStudent);
     if (studentIds !== null) {
-      const submissions = await loadSubmissionsByIds(kv, studentIds);
+      const submissions = await loadSubmissionsByIds(kv, takeIds(studentIds));
       return submissions.filter(
         (entry) => String(entry.username || "").toLowerCase() === filterStudent
       );
@@ -2272,11 +2291,11 @@ export async function listHomeworkSubmissions(
       filterStudent,
       mine.map((entry) => entry.id)
     );
-    return mine;
+    return limit ? mine.slice(0, limit) : mine;
   }
 
   const ids = await readSubmissionsIndex(kv);
-  return loadSubmissionsByIds(kv, ids);
+  return loadSubmissionsByIds(kv, takeIds(ids));
 }
 
 export async function getHomeworkSubmission(

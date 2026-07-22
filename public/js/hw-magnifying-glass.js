@@ -687,10 +687,36 @@
     }
   }
 
+  /**
+   * Prefer HwMgLexicon (baseline skips + submitted KV overlay).
+   * If the lexicon script is missing (e.g. a playtest host forgot it),
+   * still block common particles so hover doesn't light them up alone.
+   */
+  const FALLBACK_SKIP_SURFACE = new Set([
+    "を",
+    "ん",
+    "だ",
+    "の",
+    "は",
+    "が",
+    "に",
+    "で",
+    "と",
+    "て",
+    "も",
+    "か",
+    "よ",
+    "ね",
+    "な",
+  ]);
+
   function lookupSurfaceBlocked(surface, token) {
     const word = String(surface || "").trim();
     if (!word) return true;
-    return global.HwMgLexicon?.isSkipped?.(word, token || null) === true;
+    if (typeof global.HwMgLexicon?.isSkipped === "function") {
+      return global.HwMgLexicon.isSkipped(word, token || null) === true;
+    }
+    return FALLBACK_SKIP_SURFACE.has(word);
   }
 
   function clearLookupCachesForSurface(surface) {
@@ -897,24 +923,32 @@
     const text = node.textContent || "";
     let start = range.startOffset;
     let end = range.endOffset;
-    while (start > 0 && JA_CHAR.test(text[start - 1])) start -= 1;
-    while (end < text.length && JA_CHAR.test(text[end])) end += 1;
+    if (start === end) {
+      if (end < text.length && JA_CHAR.test(text[end])) end += 1;
+      else if (start > 0 && JA_CHAR.test(text[start - 1])) start -= 1;
+    }
     if (start >= end || !JA_CHAR.test(text.slice(start, end))) return null;
 
     const root = container || node.parentElement;
     if (root?.contains?.(node)) {
-      const flat = flatContainerText(root);
       const flatStart = caretOffsetFromTextNodes(root, node, start);
-      const mid = flatStart + Math.floor((end - start) / 2);
-      const unit = global.HwMgLexicon?.pickQuickUnit?.(flat, mid);
-      if (unit?.surface) {
+      const caret = Math.max(flatStart, 0);
+      const forced = global.HwMgLexicon?.pickForceUnit?.(flatContainerText(root), caret);
+      if (forced?.surface && !lookupSurfaceBlocked(forced.surface, null)) {
+        const clipped = rangeFromOffsets(root, forced.start, forced.end);
+        if (clipped) return clipped;
+      }
+      const unit = global.HwMgLexicon?.pickQuickUnit?.(flatContainerText(root), caret);
+      if (unit?.surface && !lookupSurfaceBlocked(unit.surface, null)) {
         const clipped = rangeFromOffsets(root, unit.start, unit.end);
         if (clipped) return clipped;
       }
+      /* No lexicon unit at this caret — do not highlight a raw JA run that may include particles. */
+      return null;
     }
 
     const surface = text.slice(start, end);
-    if (global.HwMgLexicon?.isSkipped?.(surface, null)) return null;
+    if (lookupSurfaceBlocked(surface, null)) return null;
 
     const next = range.cloneRange();
     next.setStart(node, start);
@@ -993,7 +1027,7 @@
   }
 
   function isSkippableSpan(span) {
-    if (global.HwMgLexicon?.isSkipped?.(span.surface, span.token)) return true;
+    if (lookupSurfaceBlocked(span.surface, span.token)) return true;
     if (isPrefixO(span) || isIterationMark(span)) return true;
     return false;
   }
@@ -1231,7 +1265,7 @@
     const expanded = expandRangeToJapaneseWordRange(range, container);
     if (!expanded) return null;
     const surface = expanded.toString().trim();
-    if (surface && global.HwMgLexicon?.isSkipped?.(surface, null)) return null;
+    if (surface && lookupSurfaceBlocked(surface, null)) return null;
     return expanded;
   }
 
@@ -1298,7 +1332,7 @@
     return null;
   }
 
-  function refreshHoverHighlight(clientX, clientY) {
+  async function refreshHoverHighlight(clientX, clientY) {
     if (!armed || !supportsHoverHighlight() || lookupBusy || !hostEl) {
       clearHoverHighlight();
       return;
@@ -1312,7 +1346,8 @@
     }
 
     clearHoverHighlight();
-    void global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+    await global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+    if (seq !== hoverHighlightSeq) return;
     const quickRange = hoverRangeQuick(target, clientX, clientY);
     if (quickRange && seq === hoverHighlightSeq) renderHoverHighlight(quickRange);
   }

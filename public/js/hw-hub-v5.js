@@ -11,7 +11,7 @@
     tab: "jlm-hw-v5-demo-tab",
   };
 
-  const DEFAULT_DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-uxrsqyd.json";
+  const DEFAULT_DEMO_ASSIGNMENT_URL = "/homework/assignments/sheet-u1vevjge.json";
   let demoAssignmentUrl = DEFAULT_DEMO_ASSIGNMENT_URL;
 
   const TIER_PLANS = {
@@ -162,7 +162,10 @@
       document.documentElement.classList.add("hw-hub-v5-toolbar-embed");
       document.body.classList.add("hw-hub-v5-toolbar-embed");
       const bar = document.getElementById("hw-toolbar-bar");
-      if (bar) bar.hidden = false;
+      if (bar) {
+        bar.hidden = false;
+        global.HwToolbarQIcons?.applyToToolbar?.(bar);
+      }
     }
   }
 
@@ -512,14 +515,32 @@
 
   async function loadDemoAssignment() {
     if (demoAssignment) return demoAssignment;
-    const res = await fetch(demoAssignmentUrl);
-    if (!res.ok) throw new Error("Could not load demo worksheet.");
-    let data = await res.json();
-    if (global.HwWorksheet?.enrichAssignmentMedia) {
-      data = global.HwWorksheet.enrichAssignmentMedia(JSON.parse(JSON.stringify(data)));
+    const tryUrls = [demoAssignmentUrl];
+    if (demoAssignmentUrl !== DEFAULT_DEMO_ASSIGNMENT_URL) {
+      tryUrls.push(DEFAULT_DEMO_ASSIGNMENT_URL);
     }
-    demoAssignment = data;
-    return demoAssignment;
+    let lastErr = null;
+    for (const url of tryUrls) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Could not load demo worksheet.");
+        const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+        if (ct.includes("text/html")) throw new Error("Assignment API returned HTML.");
+        let data = await res.json();
+        if (!data || typeof data !== "object" || !data.sections) {
+          throw new Error("Assignment JSON missing sections.");
+        }
+        if (global.HwWorksheet?.enrichAssignmentMedia) {
+          data = global.HwWorksheet.enrichAssignmentMedia(JSON.parse(JSON.stringify(data)));
+        }
+        demoAssignment = data;
+        demoAssignmentUrl = url;
+        return demoAssignment;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("Could not load demo worksheet.");
   }
 
   function renderHistory() {
@@ -649,6 +670,8 @@
         if (statusEl) statusEl.textContent = "Saved in your browser.";
         syncToolbarActionState();
       });
+      worksheetForm.addEventListener("change", () => syncToolbarActionState());
+      worksheetForm.addEventListener("hw-worksheet-answer", () => syncToolbarActionState());
 
       worksheetForm.addEventListener("submit", (ev) => {
         ev.preventDefault();
@@ -656,6 +679,12 @@
           return;
         }
         global.HwWorksheet?.enableSeeAnswers?.(worksheetForm);
+        /* Toolbar playtest: stay on the sheet after submit (answers unlock). */
+        if (document.documentElement.classList.contains("hw-hub-v5-toolbar-embed")) {
+          writeStorage(STORAGE.status, "submitted");
+          syncToolbarActionState();
+          return;
+        }
         setDemoStatus("submitted");
       });
 
@@ -869,14 +898,24 @@
     const cloudBtn = bar.querySelector('[data-tb-tool="cloud"]');
     const formSend = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
     const formAnswers = form?.querySelector("[data-hw-see-answers]");
-    if (sendBtn) sendBtn.disabled = !formSend || formSend.disabled;
+    /* Same completion gate as Send (all blanks filled) — golds ? when answers are ready. */
+    const sendReady = Boolean(formSend && !formSend.disabled);
+    const answersGold = sendReady;
+    if (sendBtn) {
+      sendBtn.disabled = !formSend || formSend.disabled;
+      sendBtn.setAttribute("data-tb-tone", sendReady ? "ready" : "muted");
+    }
     if (answersBtn) {
       const locked = !formAnswers || formAnswers.hidden || formAnswers.disabled;
       answersBtn.disabled = locked;
+      answersBtn.classList.toggle("is-ready", answersGold);
+      answersBtn.classList.toggle("answers-ready", answersGold);
+      answersBtn.setAttribute("data-tb-tone", answersGold ? "gold" : "muted");
       answersBtn.setAttribute(
         "aria-pressed",
         formAnswers?.getAttribute("aria-pressed") === "true" ? "true" : "false"
       );
+
       const label = answersBtn.querySelector(".hw-toolbar-bar__label");
       if (label && formAnswers) {
         label.textContent =
@@ -901,6 +940,7 @@
       );
       cloudBtn.setAttribute("aria-pressed", isCloudPopped() ? "true" : "false");
     }
+    global.HwToolbarQIcons?.applyToToolbar?.(bar);
   }
 
   function bindToolbarActions() {
@@ -943,34 +983,6 @@
         /* Pop out / tuck the floating movable cloud launcher — do not arm from the toolbar. */
         toggleCloudFromToolbar(btn);
         return;
-      }
-      if (tool === "magnet") {
-        /* Fling popped Glass / Cloud toward toolbar icons, then tuck. */
-        const host = worksheetToolHostEl();
-        const glassOut = isGlassPopped();
-        const cloudOut = isCloudPopped();
-        if (!glassOut && !cloudOut) return;
-
-        const layout = global.HwWorksheetToolLayout;
-        if (host && layout?.flingToolsToToolbar) {
-          layout.flingToolsToToolbar({
-            hostEl: host,
-            glassBtn: bar.querySelector('[data-tb-tool="glass"]'),
-            cloudBtn: bar.querySelector('[data-tb-tool="cloud"]'),
-            glassOut,
-            cloudOut,
-            onTuck: () => {
-              setGlassPopped(false);
-              setCloudPopped(false);
-              syncToolbarActionState();
-            },
-          });
-          return;
-        }
-
-        setGlassPopped(false);
-        setCloudPopped(false);
-        syncToolbarActionState();
       }
     });
     document.addEventListener("fullscreenchange", () => syncToolbarActionState());

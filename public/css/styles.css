@@ -7544,6 +7544,71 @@ body.hw-role-teacher #hw-teacher-hub {
   color: var(--hw-tb-accent);
 }
 
+/* Focus: soft yellow on dark navy toolbar */
+.hw-toolbar-bar__btn[data-tb-tool="focus"],
+.hw-toolbar-bar__btn[data-tb-tool="focus"] .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="focus"]:disabled .hw-toolbar-bar__icon {
+  color: #e6d84a;
+}
+
+/* See Answers (?): grey until all blanks ready, then gold */
+.hw-toolbar-bar__btn[data-tb-tool="answers"],
+.hw-toolbar-bar__btn[data-tb-tool="answers"] .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="answers"] .hw-toolbar-bar__q,
+.hw-toolbar-bar__btn[data-tb-tool="answers"]:disabled .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][disabled] .hw-toolbar-bar__icon {
+  color: #9ca3af;
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"],
+.hw-toolbar-bar__btn[data-tb-tool="answers"].is-ready,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].answers-ready,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"] .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].is-ready .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].answers-ready .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"] .hw-toolbar-bar__q,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].is-ready .hw-toolbar-bar__q,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].answers-ready .hw-toolbar-bar__q,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"]:disabled .hw-toolbar-bar__icon {
+  color: var(--color-gold, #d4a853);
+}
+
+/* Option 6 dual glyph: ring (idle) ↔ solid disc (answers ready) */
+.hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready {
+  display: none;
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="answers"].is-ready .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-idle,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].answers-ready .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-idle,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"] .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-idle {
+  display: none;
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="answers"].is-ready .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready,
+.hw-toolbar-bar__btn[data-tb-tool="answers"].answers-ready .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready,
+.hw-toolbar-bar__btn[data-tb-tool="answers"][data-tb-tone="gold"] .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready {
+  display: block;
+}
+
+/* Send: grey until all blanks finished, then white on a dark chip */
+.hw-toolbar-bar__btn[data-tb-tool="send"],
+.hw-toolbar-bar__btn[data-tb-tool="send"] .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="send"]:disabled .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="send"][disabled] .hw-toolbar-bar__icon {
+  color: #9ca3af;
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="send"][data-tb-tone="ready"] {
+  background: color-mix(in srgb, #1a1f2a 82%, transparent);
+  border-color: color-mix(in srgb, #1a1f2a 35%, transparent);
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="send"][data-tb-tone="ready"],
+.hw-toolbar-bar__btn[data-tb-tool="send"][data-tb-tone="ready"] .hw-toolbar-bar__icon,
+.hw-toolbar-bar__btn[data-tb-tool="send"][data-tb-tone="ready"]:disabled .hw-toolbar-bar__icon {
+  color: #ffffff;
+}
+
 .hw-toolbar-bar__icon--glass {
   color: var(--hw-tb-accent);
 }
@@ -7576,19 +7641,11 @@ body.hw-role-teacher #hw-teacher-hub {
   fill: var(--hw-tb-accent);
 }
 
-.hw-toolbar-bar__icon--send {
-  color: var(--hw-tb-accent);
-}
-
 .hw-toolbar-bar__icon--send .hw-toolbar-bar__send {
   display: block;
   width: 2.8125rem;
   height: 2.8125rem;
   margin: 0;
-}
-
-.hw-toolbar-bar__icon--answers {
-  color: var(--hw-tb-accent);
 }
 
 .hw-toolbar-bar__icon--answers .hw-toolbar-bar__q {

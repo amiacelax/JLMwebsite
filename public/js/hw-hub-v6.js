@@ -199,14 +199,12 @@
     const items = [];
     const teacher = encodeURIComponent(session.username);
 
-    let submissions = [];
-    try {
-      const data = await fetchJson("/api/homework-submissions?teacherUsername=" + teacher);
-      submissions = Array.isArray(data.submissions) ? data.submissions : [];
-    } catch {
-      submissions = [];
-    }
+    const [subResult, promoResult] = await Promise.all([
+      fetchJson("/api/homework-submissions?teacherUsername=" + teacher + "&limit=40").catch(() => null),
+      fetchJson("/api/promo-signups").catch(() => null),
+    ]);
 
+    const submissions = Array.isArray(subResult?.submissions) ? subResult.submissions : [];
     submissions.forEach((entry) => {
       const status = reviewStatus(entry);
       const who = displayName(entry);
@@ -247,25 +245,21 @@
       }
     });
 
-    try {
-      const promo = await fetchJson("/api/promo-signups");
-      const signups = Array.isArray(promo.signups) ? promo.signups : [];
-      signups.slice(0, 20).forEach((row) => {
-        items.push({
-          id: "promo-" + (row.id || row.email),
-          type: "promo",
-          at: row.createdAt || row.signedUpAt || row.at,
-          title: "New email list subscriber",
-          body: (row.email || "Someone") + " joined the promotions list.",
-          promo: row,
-          openLabel: "View signup",
-        });
+    const signups = Array.isArray(promoResult?.signups) ? promoResult.signups : [];
+    signups.slice(0, 20).forEach((row) => {
+      items.push({
+        id: "promo-" + (row.id || row.email),
+        type: "promo",
+        at: row.createdAt || row.signedUpAt || row.at,
+        title: "New email list subscriber",
+        body: (row.email || "Someone") + " joined the promotions list.",
+        promo: row,
+        openLabel: "View signup",
       });
-    } catch {
-      /* ignore */
-    }
+    });
 
-    const local = global.HwFeatureFlags?.isLocalDev?.() === true || global.HwFeatureFlags?.hubV6?.() === true;
+    /* Demo cards only on local/dev — never mix into production feed. */
+    const local = global.HwFeatureFlags?.isLocalDev?.() === true;
     let list = items.filter((n) => !isRecycled(n.id));
     if (local) {
       let demos = demoNotifications().filter((n) => !isRecycled(n.id));
@@ -875,10 +869,23 @@
     };
     teacherSession = session;
     const list = document.getElementById("hw-hub-v6-list");
+    const local = global.HwFeatureFlags?.isLocalDev?.() === true;
+
+    /* Fast first paint: local demos immediately, or empty chrome — never a long Loading… stare. */
     if (list && !activeId) {
-      list.innerHTML = '<li class="hw-hub-v6__item hw-hub-v6__item--empty">Loading…</li>';
-      setStageMode("feed");
+      if (local) {
+        notifications = demoNotifications()
+          .filter((n) => !isRecycled(n.id))
+          .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
+          .slice(0, FEED_MAX);
+        renderList();
+        renderMain(null);
+      } else {
+        list.innerHTML = "";
+        setStageMode("feed");
+      }
     }
+
     try {
       const data = await buildNotifications(session);
       notifications = data.items;
@@ -891,7 +898,7 @@
         renderMain(null);
       }
     } catch (err) {
-      if (global.HwFeatureFlags?.hubV6?.()) {
+      if (local) {
         notifications = demoNotifications()
           .filter((n) => !isRecycled(n.id))
           .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))

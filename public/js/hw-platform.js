@@ -2803,7 +2803,7 @@
       const isToolbar = version === "toolbar";
       const toolbarFullPath =
         document.getElementById("hw-toolbar-playtest-iframe")?.dataset?.src ||
-        "/homework/hub-v5-preview.html?toolbar=1&status=in_progress&account=hw_basic&assignment=sheet-u1vevjge";
+        "/homework/hub-v5-preview.html?toolbar=1&status=in_progress&account=hw_basic&assignment=sheet-u1vevjge&av=20260773";
       const path = isToolbar
         ? toolbarFullPath
         : paths[version] || (isV1 ? "" : paths["3"]);

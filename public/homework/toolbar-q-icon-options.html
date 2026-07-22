@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Toolbar ? icon — 10 options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700&family=Noto+Serif+JP:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #10161f;
+      --card: #1a2230;
+      --border: #2d3a4f;
+      --muted: #8b9cb3;
+      --text: #e8edf5;
+      --gold: #d4a853;
+      --grey: #9ca3af;
+      --accent: #67c4eb;
+      --pick: #55efc4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.25rem;
+      font-family: system-ui, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .sub {
+      margin: 0 auto 1.1rem;
+      max-width: 40rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .status {
+      margin: 0 auto 1.35rem;
+      max-width: 40rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--pick);
+    }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .option {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .option.is-selected {
+      border-color: var(--pick);
+      box-shadow: 0 0 0 1px rgba(85, 239, 196, 0.28);
+    }
+    .option__tag {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      background: rgba(103, 196, 235, 0.15);
+      color: var(--accent);
+    }
+    .option.is-selected .option__tag {
+      background: rgba(85, 239, 196, 0.15);
+      color: var(--pick);
+    }
+    .option h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 650;
+    }
+    .option p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.35;
+      flex: 1;
+    }
+    .swatches {
+      display: flex;
+      gap: 0.55rem;
+    }
+    .swatch {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      min-height: 4.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, #fff 92%, #d48a38);
+    }
+    .swatch span {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .swatch__stack {
+      display: grid;
+      place-items: center;
+      gap: 0.25rem;
+      color: var(--grey);
+    }
+    .swatch--gold .swatch__stack { color: var(--gold); }
+    .swatch svg {
+      display: block;
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+    /* Option 6 dual: grey swatch = ring, gold swatch = solid disc */
+    .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready {
+      display: none;
+    }
+    .swatch--gold .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-idle {
+      display: none;
+    }
+    .swatch--gold .hw-toolbar-bar__q--dual .hw-toolbar-bar__q-ready {
+      display: block;
+    }
+    .option button {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      cursor: pointer;
+    }
+    .option button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .option.is-selected button {
+      background: rgba(85, 239, 196, 0.12);
+      border-color: var(--pick);
+      color: var(--pick);
+    }
+    .foot {
+      margin: 1.5rem auto 0;
+      max-width: 40rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .foot a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <h1>Toolbar question mark — 10 options</h1>
+  <p class="sub">
+    Pick one for the Homework Hub toolbar playtest. Selection is stored in
+    <code>localStorage</code> and applied on the next load of the toolbar preview.
+    Default playtest pick is <strong>Option 6</strong> (ring → solid disc).
+  </p>
+  <p class="status" id="status">Loading…</p>
+  <div class="grid" id="grid"></div>
+  <p class="foot">
+    Open toolbar playtest:
+    <a href="/homework/hub-v5-preview.html?toolbar=1&amp;status=in_progress">hub-v5-preview?toolbar=1&amp;status=in_progress</a>
+    · Option 6: grey ring until all blanks are filled, then gold solid disc (same ready gate as Send).
+  </p>
+
+  <script src="/js/hw-toolbar-q-icons.js"></script>
+  <script>
+    (function () {
+      var api = window.HwToolbarQIcons;
+      var grid = document.getElementById("grid");
+      var status = document.getElementById("status");
+
+      function refresh() {
+        var selected = api.getSelectedId();
+        status.textContent = "Playtest pick: Option " + selected + " — " + api.getOption(selected).label;
+        grid.querySelectorAll(".option").forEach(function (card) {
+          card.classList.toggle("is-selected", card.dataset.id === selected);
+          var btn = card.querySelector("button");
+          if (btn) btn.textContent = card.dataset.id === selected ? "Selected for playtest" : "Use for playtest";
+        });
+      }
+
+      api.listOptions().forEach(function (opt) {
+        var card = document.createElement("article");
+        card.className = "option";
+        card.dataset.id = opt.id;
+        card.innerHTML =
+          '<span class="option__tag">Option ' + opt.id + "</span>" +
+          "<h2>" + opt.label + "</h2>" +
+          "<p>" + opt.blurb + "</p>" +
+          '<div class="swatches">' +
+            '<div class="swatch"><div class="swatch__stack">' + opt.html + "<span>Grey</span></div></div>" +
+            '<div class="swatch swatch--gold"><div class="swatch__stack">' + opt.html + "<span>Gold</span></div></div>" +
+          "</div>" +
+          '<button type="button">Use for playtest</button>';
+        card.querySelector("button").addEventListener("click", function () {
+          api.setSelectedId(opt.id);
+          refresh();
+        });
+        grid.appendChild(card);
+      });
+
+      refresh();
+    })();
+  </script>
+</body>
+</html>

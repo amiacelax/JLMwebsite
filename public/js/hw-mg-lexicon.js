@@ -204,14 +204,15 @@
     }));
     FORCE_UNITS = [];
 
+    Object.assign(CUSTOM, overlay.custom || {});
+    Object.assign(LEMMA_QUERY, overlay.lemmaQuery || {});
+
+    /* Skip cards always win over custom glosses for the same surface. */
     (overlay.skipSurface || []).forEach((surface) => {
       if (!surface) return;
       SKIP_SURFACE.add(surface);
       delete CUSTOM[surface];
     });
-
-    Object.assign(CUSTOM, overlay.custom || {});
-    Object.assign(LEMMA_QUERY, overlay.lemmaQuery || {});
 
     (overlay.mergeSurfaceSequences || []).forEach((seq) => {
       if (!seq?.surfaces?.length || seq.surfaces.length < 2) return;
@@ -707,39 +708,20 @@
     const index = units.findIndex((unit) => offset >= unit.start && offset < unit.end);
     if (index < 0) return null;
 
-    const pickFromIndex = (i) => {
-      const unit = units[i];
-      if (!unit || unit.skip) return null;
-      return enrich({
-        surface: unit.surface,
-        start: unit.start,
-        end: unit.end,
-        lemma: null,
-        reading: null,
-      });
-    };
+    /*
+     * If the caret is on a skipped surface (particles, submitted skip cards, etc.),
+     * do not snap to a neighbor — that made に/の/が feel “highlightable”.
+     */
+    const under = units[index];
+    if (!under || under.skip) return null;
 
-    const direct = pickFromIndex(index);
-    if (direct) return direct;
-
-    let left = null;
-    for (let i = index - 1; i >= 0; i -= 1) {
-      left = pickFromIndex(i);
-      if (left) break;
-    }
-    let right = null;
-    for (let i = index + 1; i < units.length; i += 1) {
-      right = pickFromIndex(i);
-      if (right) break;
-    }
-    if (!left && !right) return null;
-    if (!left) return right;
-    if (!right) return left;
-
-    const distLeft = Math.min(Math.abs(offset - left.start), Math.abs(offset - left.end));
-    const distRight = Math.min(Math.abs(offset - right.start), Math.abs(offset - right.end));
-    if (Math.min(distLeft, distRight) > 2) return null;
-    return distLeft <= distRight ? left : right;
+    return enrich({
+      surface: under.surface,
+      start: under.start,
+      end: under.end,
+      lemma: null,
+      reading: null,
+    });
   }
 
   async function analyzeText(text) {

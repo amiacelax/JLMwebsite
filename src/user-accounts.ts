@@ -13,6 +13,7 @@ const RESERVED_USERNAMES = new Set([
   "ivan",
   "noplan",
   "benc",
+  "demo",
   "admin",
   "teacher",
   "support",
