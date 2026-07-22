@@ -159,31 +159,67 @@
     );
   }
 
+  /** Match cloud launcher: center + translate(-50%,-50%) keeps the full 4.5rem tool inside. */
+  const TOOL_HALF = 36;
+
+  function useWideHorizontalTravel() {
+    try {
+      return !(
+        window.matchMedia("(pointer: coarse)").matches ||
+        window.matchMedia("(max-width: 767px)").matches
+      );
+    } catch (_) {
+      return window.innerWidth >= 768;
+    }
+  }
+
+  /**
+   * Horizontal clamp in host-local coords. Desktop: widen to viewport L/R gutters
+   * (card host is too narrow — fixed EDGE_EXPAND still left tools over questions).
+   * Mobile/coarse: stay fully inside the host.
+   */
+  function horizontalClampRange(half, pad) {
+    const w = hostEl?.clientWidth || 0;
+    let minX = half + pad;
+    let maxX = w - half - pad;
+    if (useWideHorizontalTravel() && hostEl) {
+      const hostLeft = hostEl.getBoundingClientRect().left;
+      const viewMinX = half + pad - hostLeft;
+      const viewMaxX = window.innerWidth - half - pad - hostLeft;
+      minX = Math.min(minX, viewMinX);
+      maxX = Math.max(maxX, viewMaxX);
+      if (maxX < minX) maxX = minX;
+    }
+    return { minX, maxX };
+  }
+
   function snapPoints() {
     const box = hostEl;
     const pad = 12;
+    const half = TOOL_HALF;
     const w = box?.clientWidth || 320;
     const h = box?.clientHeight || 480;
     const midY = h * 0.5;
     return {
-      tl: { x: pad, y: pad },
-      tc: { x: w * 0.5, y: pad },
-      tr: { x: w - pad, y: pad },
-      ml: { x: pad, y: midY },
-      mr: { x: w - pad, y: midY },
-      bl: { x: pad, y: h - pad },
-      bc: { x: w * 0.5, y: h - pad },
-      br: { x: w - pad, y: h - pad },
+      tl: { x: half + pad, y: pad + half },
+      tc: { x: w * 0.5, y: pad + half },
+      tr: { x: w - pad - half, y: pad + half },
+      ml: { x: half + pad, y: midY },
+      mr: { x: w - pad - half, y: midY },
+      bl: { x: half + pad, y: h - pad - half },
+      bc: { x: w * 0.5, y: h - pad - half },
+      br: { x: w - pad - half, y: h - pad - half },
     };
   }
 
   function clampLocal(x, y) {
     const pad = 8;
-    const w = hostEl?.clientWidth || 0;
+    const half = TOOL_HALF;
     const h = hostEl?.clientHeight || 0;
+    const { minX, maxX } = horizontalClampRange(half, pad);
     return {
-      x: Math.max(pad, Math.min(x, w - pad)),
-      y: Math.max(pad, Math.min(y, h - pad)),
+      x: Math.max(minX, Math.min(x, maxX)),
+      y: Math.max(half + pad, Math.min(y, h - half - pad)),
     };
   }
 
@@ -308,7 +344,21 @@
       localStorage.removeItem(lensStorageKey());
     } catch (_) {}
     lensSnapId = null;
-    const pos = target || overrideOptions?.defaultLens || DEFAULT_LENS;
+    if (target?.snap && SNAP_IDS.includes(target.snap)) {
+      lensSnapId = target.snap;
+      applyLensPosition();
+      return;
+    }
+    if (target && typeof target.x === "number" && typeof target.y === "number") {
+      setLensPositionLocal(target.x, target.y, false);
+      return;
+    }
+    if (overrideOptions?.defaultSnap && SNAP_IDS.includes(overrideOptions.defaultSnap)) {
+      lensSnapId = overrideOptions.defaultSnap;
+      applyLensPosition();
+      return;
+    }
+    const pos = overrideOptions?.defaultLens || DEFAULT_LENS;
     setLensPositionLocal(pos.x, pos.y, false);
   }
 
@@ -1963,16 +2013,6 @@
     );
     setLensPosition(lensPosition.x, lensPosition.y);
     resolveToolLayout(widgetEl);
-
-    const snapId = nearestSnap(lensPosition.x, lensPosition.y);
-    if (snapHintEl && snapId) {
-      const p = snapPoints()[snapId];
-      snapHintEl.style.left = p.x + "px";
-      snapHintEl.style.top = p.y + "px";
-      snapHintEl.classList.add("is-visible", "is-target");
-    } else {
-      snapHintEl?.classList.remove("is-visible", "is-target");
-    }
   }
 
   function onPointerUp(e) {
@@ -1982,9 +2022,8 @@
     snapHintEl?.classList.remove("is-visible", "is-target");
 
     if (dragState.moved) {
-      const snapId = nearestSnap(lensPosition.x, lensPosition.y);
-      if (snapId) placeLens(snapId);
-      else saveLensPosition();
+      /* Free-drag stays free — same as cloud launcher (no magnetic snap on drop). */
+      saveLensPosition();
       resolveToolLayout(widgetEl);
     } else {
       setArmed(!armed);
@@ -2336,7 +2375,13 @@
 
     loadLensPosition();
     try {
-      if (!localStorage.getItem(lensStorageKey())) {
+      /* Live platform: unset → TR via computeNeutralPositions.
+         Explicit attach defaults (e.g. toolbar playtest ml) must win. */
+      if (
+        !localStorage.getItem(lensStorageKey()) &&
+        !overrideOptions?.defaultSnap &&
+        !overrideOptions?.defaultLens
+      ) {
         const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
         if (neutral?.lensSnap && SNAP_IDS.includes(neutral.lensSnap)) {
           lensSnapId = neutral.lensSnap;
@@ -2437,6 +2482,23 @@
     shellEl = null;
   }
 
+  function getStorageKey() {
+    return lensStorageKey();
+  }
+
+  /** Snap used when attach opts set defaultSnap and nothing is saved yet. */
+  function getAttachDefaultSnap() {
+    const s = overrideOptions?.defaultSnap;
+    return s && SNAP_IDS.includes(s) ? s : null;
+  }
+
+  /** Free host-local coords when attach opts set defaultLens (no snap). */
+  function getAttachDefaultLens() {
+    const p = overrideOptions?.defaultLens;
+    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
+    return null;
+  }
+
   global.HwMagnifyingGlass = {
     init,
     refresh,
@@ -2451,5 +2513,8 @@
     resetLensPosition,
     offsetLensBy,
     offsetPopupBy,
+    getStorageKey,
+    getAttachDefaultSnap,
+    getAttachDefaultLens,
   };
 })(window);

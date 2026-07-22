@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260806";
+    link.href = "/css/hw-homework-comments.css?v=20260807";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -714,13 +714,33 @@
     };
   }
 
+  /**
+   * Horizontal clamp in host-local coords. Desktop: widen to viewport L/R gutters
+   * so cloud can park clear of the question column (same as magnifying glass).
+   * Coarse/≤767px: stay fully inside the host.
+   */
+  function launcherHorizontalClampRange(half, pad) {
+    const w = hostEl?.clientWidth || 0;
+    let minX = half + pad;
+    let maxX = w - half - pad;
+    if (!isCoarsePointer() && hostEl) {
+      const hostLeft = hostEl.getBoundingClientRect().left;
+      const viewMinX = half + pad - hostLeft;
+      const viewMaxX = window.innerWidth - half - pad - hostLeft;
+      minX = Math.min(minX, viewMinX);
+      maxX = Math.max(maxX, viewMaxX);
+      if (maxX < minX) maxX = minX;
+    }
+    return { minX, maxX };
+  }
+
   function clampLauncherLocal(x, y) {
     const pad = 8;
     const half = 36;
-    const w = hostEl?.clientWidth || 0;
     const h = hostEl?.clientHeight || 0;
+    const { minX, maxX } = launcherHorizontalClampRange(half, pad);
     return {
-      x: Math.max(half + pad, Math.min(x, w - half - pad)),
+      x: Math.max(minX, Math.min(x, maxX)),
       y: Math.max(half + pad, Math.min(y, h - half - pad)),
     };
   }
@@ -737,13 +757,17 @@
     launcherEl.style.top = launcherPosition.y + "px";
   }
 
+  function launcherStorageKey() {
+    return config?.launcherStorageKey || LAUNCHER_POS_KEY;
+  }
+
   function saveLauncherPosition() {
     try {
       if (launcherSnapId) {
-        localStorage.setItem(LAUNCHER_POS_KEY, JSON.stringify({ snap: launcherSnapId }));
+        localStorage.setItem(launcherStorageKey(), JSON.stringify({ snap: launcherSnapId }));
       } else {
         localStorage.setItem(
-          LAUNCHER_POS_KEY,
+          launcherStorageKey(),
           JSON.stringify({ x: launcherPosition.x, y: launcherPosition.y })
         );
       }
@@ -751,10 +775,22 @@
   }
 
   function loadLauncherPosition() {
-    launcherSnapId = "tl";
-    launcherPosition = launcherSnapPoints().tl;
+    launcherSnapId = null;
+    if (config?.defaultSnap && LAUNCHER_SNAP_IDS.includes(config.defaultSnap)) {
+      launcherSnapId = config.defaultSnap;
+      launcherPosition = launcherSnapPoints()[config.defaultSnap] || launcherSnapPoints().tl;
+    } else if (
+      config?.defaultLauncher &&
+      typeof config.defaultLauncher.x === "number" &&
+      typeof config.defaultLauncher.y === "number"
+    ) {
+      launcherPosition = { x: config.defaultLauncher.x, y: config.defaultLauncher.y };
+    } else {
+      launcherSnapId = "tl";
+      launcherPosition = launcherSnapPoints().tl;
+    }
     try {
-      const raw = JSON.parse(localStorage.getItem(LAUNCHER_POS_KEY) || "null");
+      const raw = JSON.parse(localStorage.getItem(launcherStorageKey()) || "null");
       if (!raw) return;
       if (raw.snap && LAUNCHER_SNAP_IDS.includes(raw.snap)) {
         launcherSnapId = raw.snap;
@@ -1418,7 +1454,7 @@
 
   function resetLauncherPosition(target) {
     try {
-      localStorage.removeItem(LAUNCHER_POS_KEY);
+      localStorage.removeItem(launcherStorageKey());
     } catch (_) {}
     if (target?.snap && LAUNCHER_SNAP_IDS.includes(target.snap)) {
       setLauncherSnap(target.snap);
@@ -1426,6 +1462,19 @@
     }
     if (target && typeof target.x === "number" && typeof target.y === "number") {
       setLauncherPositionLocal(target.x, target.y, false);
+      return;
+    }
+    if (config?.defaultSnap && LAUNCHER_SNAP_IDS.includes(config.defaultSnap)) {
+      launcherSnapId = config.defaultSnap;
+      applyLauncherPosition();
+      return;
+    }
+    if (
+      config?.defaultLauncher &&
+      typeof config.defaultLauncher.x === "number" &&
+      typeof config.defaultLauncher.y === "number"
+    ) {
+      setLauncherPositionLocal(config.defaultLauncher.x, config.defaultLauncher.y, false);
       return;
     }
     setLauncherSnap("tl");
@@ -3062,7 +3111,13 @@
 
       loadLauncherPosition();
       try {
-        if (!localStorage.getItem(LAUNCHER_POS_KEY)) {
+        /* Live: unset → TL via computeNeutralPositions.
+           Explicit attach defaults (toolbar playtest) must win. */
+        if (
+          !localStorage.getItem(launcherStorageKey()) &&
+          !config?.defaultSnap &&
+          !config?.defaultLauncher
+        ) {
           const neutral = global.HwWorksheetToolLayout?.computeNeutralPositions?.(hostEl);
           if (neutral?.launcherSnap && LAUNCHER_SNAP_IDS.includes(neutral.launcherSnap)) {
             launcherSnapId = neutral.launcherSnap;
@@ -3159,6 +3214,20 @@
       onStudentAckNotes: typeof options.onStudentAckNotes === "function" ? options.onStudentAckNotes : null,
       skipOnboarding:
         !!options.skipOnboarding || !!options.teacherReview || !!options.studentReviewed,
+      launcherStorageKey:
+        typeof options.launcherStorageKey === "string" && options.launcherStorageKey
+          ? options.launcherStorageKey
+          : null,
+      defaultSnap:
+        options.defaultSnap && LAUNCHER_SNAP_IDS.includes(options.defaultSnap)
+          ? options.defaultSnap
+          : null,
+      defaultLauncher:
+        options.defaultLauncher &&
+        typeof options.defaultLauncher.x === "number" &&
+        typeof options.defaultLauncher.y === "number"
+          ? { x: options.defaultLauncher.x, y: options.defaultLauncher.y }
+          : null,
     };
 
     if (options.initialComments?.length) {
@@ -3380,6 +3449,23 @@
     comments = [];
   }
 
+  function getStorageKey() {
+    return launcherStorageKey();
+  }
+
+  /** Snap used when attach opts set defaultSnap and nothing is saved yet. */
+  function getAttachDefaultSnap() {
+    const s = config?.defaultSnap;
+    return s && LAUNCHER_SNAP_IDS.includes(s) ? s : null;
+  }
+
+  /** Free host-local coords when attach opts set defaultLauncher (no snap). */
+  function getAttachDefaultLauncher() {
+    const p = config?.defaultLauncher;
+    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
+    return null;
+  }
+
   global.HwHomeworkComments = {
     init,
     refresh,
@@ -3403,5 +3489,8 @@
     offsetLauncherBy,
     offsetActiveMemoBy,
     offsetCloudById,
+    getStorageKey,
+    getAttachDefaultSnap,
+    getAttachDefaultLauncher,
   };
 })(window);

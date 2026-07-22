@@ -93,6 +93,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  animation: hw-hc-float 3.6s ease-in-out infinite;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
@@ -102,12 +103,6 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   display: block;
   flex-shrink: 0;
   pointer-events: none;
-  animation: hw-hc-float 3.6s ease-in-out infinite;
-}
-
-.hw-hc-launcher.is-dragging .hw-hc-launcher__icon,
-.hw-hc-launcher.is-armed .hw-hc-launcher__icon {
-  animation: none;
 }
 
 .hw-hc-launcher::before {
@@ -126,6 +121,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   transform: translate(-50%, -50%) scale(1.08);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
   transition: none;
+  animation: none;
 }
 
 .hw-hc-launcher.is-dragging::before {
@@ -144,6 +140,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   border-color: var(--hw-hc-blue);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--hw-hc-blue) 28%, transparent),
     0 6px 22px rgba(0, 0, 0, 0.2);
+  animation: none;
 }
 
 .hw-hc-launcher.is-armed::before {
@@ -489,10 +486,10 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
 @keyframes hw-hc-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(-50%, -50%) translateY(0);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translate(-50%, -50%) translateY(-4px);
   }
 }
 

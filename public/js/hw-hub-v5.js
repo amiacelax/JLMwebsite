@@ -660,11 +660,194 @@
       });
 
       bindToolbarActions();
+      placeToolbarUnderHwBox();
+      attachWorksheetTools();
+      worksheetForm.addEventListener("hw-worksheet-slide", () => {
+        placeToolbarUnderHwBox();
+        syncToolbarActionState();
+      });
       syncToolbarActionState();
     } catch {
       mount.innerHTML =
         '<p class="hw-maker-status">Could not load the worksheet. Refresh and try again.</p>';
     }
+  }
+
+  /** Mount glass + cloud on the worksheet host (same tools as live hub). Start tucked away. */
+  function attachWorksheetTools() {
+    const form = worksheetFormEl();
+    if (!form) return;
+    const host =
+      form.closest(".hw-hub-v2-worksheet") ||
+      document.getElementById("hw-v5-worksheet-card") ||
+      form.parentElement;
+
+    global.HwWorksheetToolLayout?.beginWorksheetToolBoot?.();
+
+    if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
+      global.HwHomeworkComments.attachTo(form, {
+        username: "demo",
+        assignmentId: form.getAttribute("data-assignment-id") || "hub-v5-demo",
+        readOnly: false,
+        skipOnboarding: true,
+        launcherStorageKey: "hw-hc-toolbar-playtest-v2",
+        /* Host-local centers (translate -50%); left stack as placed in playtest. */
+        defaultLauncher: { x: 82.125, y: 455.0625 },
+      });
+    }
+
+    if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo && host) {
+      global.HwMagnifyingGlass.attachTo(host, {
+        skipOnboarding: true,
+        storageKey: "hw-mg-toolbar-playtest-v2",
+        /* Above cloud on the left gutter — current floating placement. */
+        defaultLens: { x: 80.125, y: 387.0625 },
+      });
+    } else if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
+      global.HwMagnifyingGlass.refresh();
+    }
+
+    /* Toolbar pops these out — keep the floating tools hidden until then. */
+    setGlassPopped(false);
+    setCloudPopped(false);
+
+    /*
+     * Match live hub: beginWorksheetToolBoot leaves tools with
+     * pointer-events:none / opacity:0 until revealWorksheetTools.
+     * Tuck CSS (display:none) still hides them until the toolbar pops out.
+     */
+    global.HwWorksheetToolLayout?.revealWorksheetTools?.(host || form);
+  }
+
+  function isGlassPopped() {
+    return document.documentElement.classList.contains("hw-tb-glass-out");
+  }
+
+  function isCloudPopped() {
+    return document.documentElement.classList.contains("hw-tb-cloud-out");
+  }
+
+  function worksheetToolHostEl() {
+    const form = worksheetFormEl();
+    return (
+      form?.closest(".hw-hub-v2-worksheet") ||
+      document.getElementById("hw-v5-worksheet-card") ||
+      form?.parentElement ||
+      null
+    );
+  }
+
+  function setGlassPopped(on) {
+    document.documentElement.classList.toggle("hw-tb-glass-out", !!on);
+    if (!on) {
+      global.HwMagnifyingGlass?.setArmed?.(false);
+      return;
+    }
+    global.HwMagnifyingGlass?.refresh?.();
+  }
+
+  function setCloudPopped(on) {
+    document.documentElement.classList.toggle("hw-tb-cloud-out", !!on);
+    if (!on) {
+      global.HwHomeworkComments?.disarm?.();
+      return;
+    }
+    global.HwHomeworkComments?.applyLauncherPosition?.();
+  }
+
+  function toggleGlassFromToolbar(glassBtn) {
+    const host = worksheetToolHostEl();
+    const layout = global.HwWorksheetToolLayout;
+    if (isGlassPopped()) {
+      if (host && layout?.flingToolsToToolbar) {
+        layout.flingToolsToToolbar({
+          hostEl: host,
+          glassBtn,
+          cloudBtn: null,
+          glassOut: true,
+          cloudOut: false,
+          onTuck: () => {
+            setGlassPopped(false);
+            syncToolbarActionState();
+          },
+        });
+        return;
+      }
+      setGlassPopped(false);
+      syncToolbarActionState();
+      return;
+    }
+    if (host && layout?.flingToolsFromToolbar) {
+      layout.flingToolsFromToolbar({
+        hostEl: host,
+        glassBtn,
+        glass: true,
+        onReveal: () => {
+          setGlassPopped(true);
+          syncToolbarActionState();
+        },
+      });
+      return;
+    }
+    setGlassPopped(true);
+    syncToolbarActionState();
+  }
+
+  function toggleCloudFromToolbar(cloudBtn) {
+    const host = worksheetToolHostEl();
+    const layout = global.HwWorksheetToolLayout;
+    if (isCloudPopped()) {
+      if (host && layout?.flingToolsToToolbar) {
+        layout.flingToolsToToolbar({
+          hostEl: host,
+          glassBtn: null,
+          cloudBtn,
+          glassOut: false,
+          cloudOut: true,
+          onTuck: () => {
+            setCloudPopped(false);
+            syncToolbarActionState();
+          },
+        });
+        return;
+      }
+      setCloudPopped(false);
+      syncToolbarActionState();
+      return;
+    }
+    if (host && layout?.flingToolsFromToolbar) {
+      layout.flingToolsFromToolbar({
+        hostEl: host,
+        cloudBtn,
+        cloud: true,
+        onReveal: () => {
+          setCloudPopped(true);
+          syncToolbarActionState();
+        },
+      });
+      return;
+    }
+    setCloudPopped(true);
+    syncToolbarActionState();
+  }
+
+  /** Sit the toolbar under the HW box, inside the section (above its bottom border). */
+  function placeToolbarUnderHwBox() {
+    if (!document.documentElement.classList.contains("hw-hub-v5-toolbar-embed")) return;
+    const bar = document.getElementById("hw-toolbar-bar");
+    const form = worksheetFormEl();
+    if (!bar || !form) return;
+
+    const activeLine =
+      form.querySelector(".hw-worksheet--slide-mode .hw-worksheet__line:not([hidden])") ||
+      form.querySelector(".hw-worksheet__line:not([hidden])");
+    const section =
+      activeLine?.closest(".hw-worksheet__section") ||
+      form.querySelector(".hw-worksheet__section:not([hidden])") ||
+      form.querySelector(".hw-worksheet__section");
+    if (!section) return;
+    if (bar.parentElement === section && section.lastElementChild === bar) return;
+    section.appendChild(bar);
   }
 
   function worksheetFormEl() {
@@ -682,6 +865,8 @@
     const sendBtn = bar.querySelector('[data-tb-tool="send"]');
     const answersBtn = bar.querySelector('[data-tb-tool="answers"]');
     const focusBtn = bar.querySelector('[data-tb-tool="focus"]');
+    const glassBtn = bar.querySelector('[data-tb-tool="glass"]');
+    const cloudBtn = bar.querySelector('[data-tb-tool="cloud"]');
     const formSend = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
     const formAnswers = form?.querySelector("[data-hw-see-answers]");
     if (sendBtn) sendBtn.disabled = !formSend || formSend.disabled;
@@ -703,6 +888,18 @@
         "aria-pressed",
         document.body.classList.contains("hw-hw-focus-mode") ? "true" : "false"
       );
+    }
+    if (glassBtn) {
+      glassBtn.disabled = !(
+        global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo
+      );
+      glassBtn.setAttribute("aria-pressed", isGlassPopped() ? "true" : "false");
+    }
+    if (cloudBtn) {
+      cloudBtn.disabled = !(
+        global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo
+      );
+      cloudBtn.setAttribute("aria-pressed", isCloudPopped() ? "true" : "false");
     }
   }
 
@@ -734,6 +931,45 @@
         const answers = form?.querySelector("[data-hw-see-answers]");
         if (answers && !answers.disabled && !answers.hidden) answers.click();
         else if (form) global.HwWorksheet?.toggleTeacherAnswers?.(form);
+        syncToolbarActionState();
+        return;
+      }
+      if (tool === "glass") {
+        /* Pop out / tuck the floating movable glass widget — do not arm from the toolbar. */
+        toggleGlassFromToolbar(btn);
+        return;
+      }
+      if (tool === "cloud") {
+        /* Pop out / tuck the floating movable cloud launcher — do not arm from the toolbar. */
+        toggleCloudFromToolbar(btn);
+        return;
+      }
+      if (tool === "magnet") {
+        /* Fling popped Glass / Cloud toward toolbar icons, then tuck. */
+        const host = worksheetToolHostEl();
+        const glassOut = isGlassPopped();
+        const cloudOut = isCloudPopped();
+        if (!glassOut && !cloudOut) return;
+
+        const layout = global.HwWorksheetToolLayout;
+        if (host && layout?.flingToolsToToolbar) {
+          layout.flingToolsToToolbar({
+            hostEl: host,
+            glassBtn: bar.querySelector('[data-tb-tool="glass"]'),
+            cloudBtn: bar.querySelector('[data-tb-tool="cloud"]'),
+            glassOut,
+            cloudOut,
+            onTuck: () => {
+              setGlassPopped(false);
+              setCloudPopped(false);
+              syncToolbarActionState();
+            },
+          });
+          return;
+        }
+
+        setGlassPopped(false);
+        setCloudPopped(false);
         syncToolbarActionState();
       }
     });

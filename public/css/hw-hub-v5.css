@@ -2415,7 +2415,7 @@ html.hw-hub-v5-toolbar-embed .section__header--platform {
   display: none !important;
 }
 
-/* Footer action buttons live on the floating toolbar ? keep nodes for click() wiring.
+/* Footer action buttons live on the floating toolbar � keep nodes for click() wiring.
    Questions-left tracker stays visible on the worksheet. */
 html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-tools,
 html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-submit,
@@ -2423,40 +2423,160 @@ html.hw-hub-v5-toolbar-embed .hw-worksheet__status {
   display: none !important;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary {
-  border-bottom: none;
-  padding-bottom: 0.25rem;
+/*
+ * Layout: HW box ? toolbar ? existing .hw-worksheet__section bottom border.
+ * Toolbar is appended inside the active section (see placeToolbarUnderHwBox).
+ * Do not invent new borders � only use the section rule from styles.css.
+ */
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary:not(:has([data-hw-submit-tracker])) {
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary {
   display: none !important;
+  border: none !important;
+}
+
+/* Keep the normal section bottom border even when the active section is last-of-type. */
+html.hw-hub-v5-toolbar-embed .hw-worksheet__section:last-of-type {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0;
+  padding-bottom: 1.25rem;
+}
+
+html.hw-hub-v5-toolbar-embed {
+  --hw-toolbar-clearance: 0;
+  scroll-padding-bottom: 0;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-toolbar-bar {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  /* Clear of the HW box � small gap, no overlap from prior upward nudges */
+  margin: 8px auto 0;
+  transform: none;
 }
 
 /*
- * Clearance for fixed .hw-toolbar-bar (bottom offset + pill height + ~1rem gap).
- * Rem-based so it scales with desktop root font-size (168.75% / 200%).
- * Desktop: bar sits mid-gap under the worksheet card (raised from viewport bottom).
- * Mobile keeps the default .hw-toolbar-bar bottom from styles.css.
+ * Glass / Cloud toolbar glyphs.
+ * Idle: brand green / blue. Pressed (popped): etched inset + muted icon —
+ * conventional toolbar selected, not floating-tool armed chip fills.
  */
-html.hw-hub-v5-toolbar-embed {
-  --hw-toolbar-clearance: 7.5rem;
-  scroll-padding-bottom: var(--hw-toolbar-clearance);
+.hw-toolbar-bar__btn[data-tb-tool="glass"]:not(:disabled),
+.hw-toolbar-bar__btn[data-tb-tool="cloud"]:not(:disabled) {
+  cursor: pointer;
 }
 
-@media (min-width: 900px) {
-  html.hw-hub-v5-toolbar-embed {
-    /* bottom 5.5rem + ~5.8rem pill + ~1rem gap */
-    --hw-toolbar-clearance: 12.5rem;
-  }
+.hw-toolbar-bar__btn[data-tb-tool="glass"] .hw-toolbar-bar__icon--glass,
+.hw-toolbar-bar__btn[data-tb-tool="glass"] .hw-toolbar-bar__glass,
+.hw-toolbar-bar__btn[data-tb-tool="glass"] .hw-toolbar-bar__glass g {
+  color: var(--color-green, #4ade80);
+  stroke: var(--color-green, #4ade80);
+}
 
-  html.hw-hub-v5-toolbar-embed .hw-toolbar-bar {
-    bottom: 5.5rem;
+.hw-toolbar-bar__btn[data-tb-tool="cloud"] .hw-toolbar-bar__icon--cloud,
+.hw-toolbar-bar__btn[data-tb-tool="cloud"] .hw-toolbar-bar__cloud,
+.hw-toolbar-bar__btn[data-tb-tool="cloud"] .hw-toolbar-bar__cloud g {
+  color: var(--color-brand-blue, #67c4eb);
+  fill: var(--color-brand-blue, #67c4eb);
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="glass"][aria-pressed="true"],
+.hw-toolbar-bar__btn[data-tb-tool="cloud"][aria-pressed="true"] {
+  background: color-mix(in srgb, var(--color-text, #1a1a1a) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-text, #1a1a1a) 16%, transparent);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="glass"][aria-pressed="true"] .hw-toolbar-bar__icon--glass,
+.hw-toolbar-bar__btn[data-tb-tool="glass"][aria-pressed="true"] .hw-toolbar-bar__glass,
+.hw-toolbar-bar__btn[data-tb-tool="glass"][aria-pressed="true"] .hw-toolbar-bar__glass g {
+  color: color-mix(in srgb, var(--color-green, #4ade80) 42%, #9ca3af);
+  stroke: color-mix(in srgb, var(--color-green, #4ade80) 42%, #9ca3af);
+  opacity: 0.72;
+}
+
+.hw-toolbar-bar__btn[data-tb-tool="cloud"][aria-pressed="true"] .hw-toolbar-bar__icon--cloud,
+.hw-toolbar-bar__btn[data-tb-tool="cloud"][aria-pressed="true"] .hw-toolbar-bar__cloud,
+.hw-toolbar-bar__btn[data-tb-tool="cloud"][aria-pressed="true"] .hw-toolbar-bar__cloud g {
+  color: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 42%, #9ca3af);
+  fill: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 42%, #9ca3af);
+  opacity: 0.72;
+}
+
+/*
+ * Floating glass / cloud stay tucked until the toolbar pops them out.
+ * Toolbar icons only reveal the movable live widgets — they do not arm the tools.
+ */
+/* Ghosts use .hw-tools-flyback only (no .hw-mg-widget / .hw-hc-launcher). */
+html.hw-hub-v5-toolbar-embed:not(.hw-tb-glass-out) .hw-mg-widget {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+html.hw-hub-v5-toolbar-embed:not(.hw-tb-cloud-out) .hw-hc-launcher {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/*
+ * When popped, force interactive. Beat worksheet-tools-booting rules in
+ * hw-magnifying-glass.css (loaded after this file) if boot ever sticks.
+ */
+html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Card overflow:hidden clips half of corner-snapped floating tools (and their hit targets). */
+html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card.hw-hub-worksheet-card,
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-worksheet.hw-hub-worksheet-card {
+  overflow: visible;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-tools-cleanup {
+  display: none !important;
+}
+
+/* Inside the zoomed mount the bar would scale � undo parent zoom so size stays put. */
+@media (min-width: 900px) {
+  html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount .hw-toolbar-bar,
+  html.hw-hub-v5-toolbar-embed #hw-worksheet-mount .hw-toolbar-bar {
+    zoom: calc(1 / 1.35);
   }
+}
+
+@media (min-width: 1400px) {
+  html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount .hw-toolbar-bar,
+  html.hw-hub-v5-toolbar-embed #hw-worksheet-mount .hw-toolbar-bar {
+    zoom: calc(1 / 1.5);
+  }
+}
+
+html.hw-hub-v5-toolbar-embed .hw-worksheet {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 html.hw-hub-v5-toolbar-embed .subpage__main {
   padding-top: 0.35rem;
-  padding-bottom: var(--hw-toolbar-clearance);
+  padding-bottom: 0.75rem;
 }
 
 html.hw-hub-v5-toolbar-embed .section {
@@ -2469,10 +2589,8 @@ html.hw-hub-v5-toolbar-embed .container--wide {
 }
 
 /*
- * Desktop theater size � scale the worksheet card only (not the floating toolbar).
- * CSS zoom is required here: rem/font-size on the card does not enlarge rem-based
- * children, which is why the HW box looked tiny after the menu/zoom swap.
- * Custom audio/video chrome is loaded on preview, so native media menus stay gone.
+ * Desktop theater size � zoom the worksheet mount only (not the toolbar).
+ * Toolbar is a sibling under the mount inside #hw-v5-worksheet-card.
  * Mobile (<900px) unchanged.
  */
 @media (min-width: 900px) {
@@ -2480,8 +2598,8 @@ html.hw-hub-v5-toolbar-embed .container--wide {
     max-width: 48rem;
   }
 
-  html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
-  html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card:not(.hw-hub-v5-complete) {
+  html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount,
+  html.hw-hub-v5-toolbar-embed #hw-worksheet-mount {
     zoom: 1.35;
   }
 
@@ -2495,8 +2613,8 @@ html.hw-hub-v5-toolbar-embed .container--wide {
 }
 
 @media (min-width: 1400px) {
-  html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
-  html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card:not(.hw-hub-v5-complete) {
+  html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount,
+  html.hw-hub-v5-toolbar-embed #hw-worksheet-mount {
     zoom: 1.5;
   }
 }
@@ -2520,19 +2638,19 @@ html.hw-hub-v5-toolbar-embed .hw-worksheet__topic-brief--slide {
 html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card,
 html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card {
   margin: 0 auto;
-  padding: 1rem 1.1rem 1.25rem;
+  padding: 1rem 1.1rem 0;
   border: none;
   background: transparent;
   box-shadow: none;
 }
 
 html.hw-hub-v5-toolbar-embed .hw-worksheet {
-  margin-bottom: 0;
-  padding-bottom: 0.25rem;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 html.hw-hub-v5-toolbar-embed .hw-worksheet:has(.hw-worksheet__actions-tools) {
-  padding-bottom: 0.25rem;
+  padding-bottom: 0 !important;
 }
 
 html.hw-hub-v5-toolbar-embed #hw-v5-homework-zone,

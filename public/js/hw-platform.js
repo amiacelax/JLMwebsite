@@ -3705,9 +3705,13 @@
     const wantId = String(assignmentId || "").trim();
     if (!wantId) return null;
     try {
-      /* Reuse the shared submissions cache — never hit the N+1 list twice. */
-      const list = await fetchStudentSubmissions();
-      const subs = (Array.isArray(list) ? list : [])
+      const res = await fetch(
+        "/api/homework-submissions?username=" + encodeURIComponent(session.username),
+        { cache: "no-store" }
+      );
+      if (!res.ok) return null;
+      const data = await res.json().catch(() => ({}));
+      const subs = (Array.isArray(data.submissions) ? data.submissions : [])
         .filter(
           (entry) =>
             entry.type === "online" &&
@@ -3875,10 +3879,6 @@
      * editable “Send to JD” sheet. Open the reviewed archive, or show waiting UI.
      * Overlap the submission-status check with assignment JSON fetch — review
      * gates may discard the assignment result; that is cheaper than waiting serially.
-     *
-     * Fast path: when localStorage has no submit/review flag for this assignment,
-     * skip awaiting the submissions list (was the slow N+1 KV scan) and mount HW
-     * immediately. A background check still applies the gate if another device submitted.
      */
     let parallelAssignmentPromise = null;
     if (hashParts.kind !== "submission" && !options.skipWorksheet) {
@@ -3892,39 +3892,8 @@
       }
     }
 
-    function localReviewGateStatus(assignmentId) {
-      if (!session.username || !assignmentId) return null;
-      try {
-        const base = session.username + "-" + assignmentId;
-        if (localStorage.getItem("jlm-hw-reviewed-acked-" + base)) return "acknowledged";
-        if (localStorage.getItem("jlm-hw-reviewed-" + base)) return "reviewed";
-        if (localStorage.getItem("jlm-hw-submitted-" + base)) return "submitted";
-      } catch {
-        /* ignore */
-      }
-      return null;
-    }
-
     if (hashParts.kind !== "submission" && !options.skipWorksheet) {
-      const localGate = localReviewGateStatus(active.id);
-      const latestSubPromise = fetchLatestOnlineSubmission(active.id);
-
-      if (!localGate) {
-        /* In-progress (or first visit): don't block first paint on submissions list. */
-        void latestSubPromise.then((latestSub) => {
-          if (isStale() || !latestSub) return;
-          markLocalSubmissionFlags(
-            active.id,
-            latestSub.reviewStatus || "submitted"
-          );
-          void loadStudentHub({
-            background: true,
-            bypassCache: false,
-            metadataOnly: false,
-          });
-        });
-      } else {
-      const latestSub = await latestSubPromise;
+      const latestSub = await fetchLatestOnlineSubmission(active.id);
       if (isStale()) return;
       if (latestSub?.reviewStatus === "reviewed") {
         markLocalSubmissionFlags(active.id, "reviewed");
@@ -4015,7 +3984,6 @@
           settleHub(abortStudentWorksheetBoot);
           return;
         }
-      }
       }
     }
 
@@ -4319,15 +4287,10 @@
           () => null
         );
       }
-      const viewAsTier = session.tier;
-      const viewAsLabel = session.accountLabel;
-      void loadStudentHub();
       void enrichViewAsSessionFromProfile().then(() => {
         renderAccountBar();
         renderStudentHubHeader();
-        if (session.tier !== viewAsTier || session.accountLabel !== viewAsLabel) {
-          void loadStudentHub({ background: true });
-        }
+        loadStudentHub();
       });
       window.addEventListener("hashchange", () => {
         loadStudentHub();
@@ -4354,16 +4317,10 @@
           () => null
         );
       }
-      const bootTier = session.tier;
-      const bootLabel = session.accountLabel;
-      /* Don't wait on profile enrich — catalog + worksheet are the critical path. */
-      void loadStudentHub();
       void enrichStudentSessionFromProfile(session).then(() => {
         renderAccountBar();
         renderStudentHubHeader();
-        if (session.tier !== bootTier || session.accountLabel !== bootLabel) {
-          void loadStudentHub({ background: true });
-        }
+        loadStudentHub();
       });
       window.addEventListener("hashchange", () => {
         loadStudentHub();

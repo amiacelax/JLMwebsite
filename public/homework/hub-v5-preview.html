@@ -12,8 +12,10 @@
   <link rel="stylesheet" href="/css/styles.css?v=20260820">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=33">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=74">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=88">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=90">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260807" data-hw-comments-css="1">
+  <script src="/js/hw-feature-flags.js?v=11"></script>
   <script src="/js/hw-auth.js"></script>
   <script>
     (function () {
@@ -118,16 +120,10 @@
             </header>
             <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
             <div id="hw-v2-worksheet-mount" lang="ja"></div>
-          </section>
 
-          <details class="hw-hub-v2-fold" id="hw-v5-past-fold">
-            <summary class="hw-hub-v2-fold__summary">Past homework</summary>
-            <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
-          </details>
-
-          <!-- Inside homework zone so browser fullscreen (Focus Mode) keeps the bar visible -->
+          <!-- Directly under the worksheet mount so the bar sits under the HW box (Focus Mode still covers it via the homework zone). -->
           <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
-            <button type="button" class="hw-toolbar-bar__btn" disabled data-tb-tool="glass" title="Glass">
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Glass" aria-pressed="false">
               <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">
                 <svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">
                   <g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
@@ -141,7 +137,7 @@
                 </svg>
               </span>
             </button>
-            <button type="button" class="hw-toolbar-bar__btn" disabled data-tb-tool="cloud" title="Cloud">
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Cloud" aria-pressed="false">
               <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--cloud" aria-hidden="true">
                 <svg class="hw-toolbar-bar__cloud" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48">
                   <g fill="currentColor">
@@ -172,7 +168,7 @@
                 </svg>
               </span>
             </button>
-            <button type="button" class="hw-toolbar-bar__btn" aria-disabled="true" data-tb-tool="magnet" title="Magnet">
+            <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="magnet" title="Put tools away" aria-label="Put Glass and Cloud away">
               <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--magnet" aria-hidden="true">
                 <span class="hw-tools-cleanup__magnet">
                   <img class="hw-tools-cleanup__body" src="/images/hw-tool-magnet-body.png?v=3" width="30" height="30" alt="" decoding="async" />
@@ -181,6 +177,13 @@
               </span>
             </button>
           </nav>
+          </section>
+
+          <details class="hw-hub-v2-fold" id="hw-v5-past-fold">
+            <summary class="hw-hub-v2-fold__summary">Past homework</summary>
+            <ul class="hw-hub-v2-past-list" id="hw-v5-history"></ul>
+          </details>
+
             </div>
           </div>
 
@@ -280,9 +283,12 @@
   <script src="/js/hw-audio-player.js?v=20260786" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260694" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=42" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=79" defer></script>
+  <script src="/js/hw-homework-comments.js?v=96" defer></script>
   <script src="/js/hw-worksheet.js?v=20260796" defer></script>
   <script src="/js/hw-star-block.js?v=20260713" defer></script>
   <script src="/js/hw-checkout.js" defer></script>
-  <script src="/js/hw-hub-v5.js?v=13" defer></script>
+  <script src="/js/hw-hub-v5.js?v=42" defer></script>
 </body>
 </html>

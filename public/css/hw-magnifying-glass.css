@@ -48,6 +48,7 @@
   align-items: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  animation: hw-mg-float 3.6s ease-in-out infinite;
 }
 
 /* Match magnet selector specificity so paint order cannot lose to .hw-tools-cleanup. */
@@ -68,6 +69,7 @@
 .hw-hc-launcher.is-dragging,
 .hw-hc-launcher.is-armed {
   z-index: 70 !important;
+  animation: none;
 }
 
 .hw-mg-widget > .hw-mg-lens {
@@ -141,14 +143,6 @@
   width: 2.35rem;
   height: 2.7rem;
   pointer-events: auto;
-  animation: hw-mg-float 3.6s ease-in-out infinite;
-}
-
-.hw-mg-widget.is-dragging .hw-mg-lens__icon,
-.hw-mg-widget.is-armed .hw-mg-lens__icon,
-.hw-mg-lens.is-dragging .hw-mg-lens__icon,
-.hw-mg-lens.is-armed .hw-mg-lens__icon {
-  animation: none;
 }
 
 .hw-mg-lens__label {
@@ -260,10 +254,10 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 @keyframes hw-mg-float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(-50%, calc(-50% - 2px));
   }
   50% {
-    transform: translateY(-4px);
+    transform: translate(-50%, calc(-50% + 3px));
   }
 }
 
@@ -347,7 +341,7 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hw-mg-lens__icon,
+  .hw-mg-widget,
   .hw-mg-lens,
   .hw-mg-lens::before {
     animation: none !important;
@@ -932,4 +926,63 @@ body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-mg-shell,
 .hw-mg-widget.hw-tools-returning {
   animation: none !important;
   cursor: default !important;
+}
+
+/* StarQ-style tool flyback ghost (magnet reset / toolbar put-away / pop-out).
+ * Dedicated root class only — never .hw-mg-widget / .hw-hc-launcher (tuck targets). */
+.hw-tools-flyback {
+  position: fixed !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 10050 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
+  box-sizing: border-box;
+  transform-origin: center center;
+  will-change: transform;
+  overflow: visible;
+}
+
+.hw-tools-flyback__clone {
+  position: relative !important;
+  inset: auto !important;
+  left: auto !important;
+  top: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  transform: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Cloud launcher look without .hw-hc-launcher (so tuck CSS cannot hide the ghost). */
+.hw-tools-flyback__clone--cloud {
+  border-radius: 999px;
+  color: var(--hw-hc-blue, #67c4eb);
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue, #67c4eb));
+  border: 2px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 35%, transparent);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+.hw-tools-flyback__clone--cloud .hw-hc-launcher__icon {
+  width: 2.5rem;
+  height: 1.5rem;
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-tools-flyback {
+    display: none !important;
+  }
 }
