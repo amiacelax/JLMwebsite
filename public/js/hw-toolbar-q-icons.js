@@ -60,7 +60,7 @@
     "6": {
       id: "6",
       label: "Ring → solid disc",
-      blurb: "Grey ring when blanks are open; gold solid disc when all answers are ready.",
+      blurb: "Hidden until answers are ready; then an orange solid disc with a white ?.",
       html:
         '<svg class="hw-toolbar-bar__q hw-toolbar-bar__q--dual" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">' +
         '<g class="hw-toolbar-bar__q-idle">' +

@@ -17,8 +17,8 @@
 
   /** Keep versions in sync with former platform.html cache-busts. */
   const V = {
-    builder: "20260714",
-    editor: "20260716b",
+    builder: "20260715",
+    editor: "20260716c",
     studentList: "20260725",
     ideas: "20260610",
     mistakeFeed: "20260674",
@@ -32,7 +32,7 @@
     lookup: "24",
     checkout: "20260611",
     sachiko: "20260694",
-    platform: "20260814",
+    platform: "20260818",
     hubV5: "69",
     hubV6: "17",
   };

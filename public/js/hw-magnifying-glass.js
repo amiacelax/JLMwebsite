@@ -255,8 +255,48 @@
     return overrideOptions?.storageKey || STORAGE_KEY;
   }
 
+  function usesModeNeutrals() {
+    return !!overrideOptions?.useModeNeutrals;
+  }
+
+  function positionModeKey() {
+    return document.body.classList.contains("hw-hw-focus-mode") ? "focus" : "normal";
+  }
+
+  function readLensStore() {
+    try {
+      const raw = localStorage.getItem(lensStorageKey());
+      if (!raw) return {};
+      if (SNAP_IDS.includes(raw)) return { legacySnap: raw };
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return {};
+      if (data.normal || data.focus) return data;
+      return { legacy: data };
+    } catch {
+      return {};
+    }
+  }
+
+  function slotFromLensStore(all, mode) {
+    if (all && all[mode]) return all[mode];
+    /* Old single-home coords were Focus-tuned — only reuse in Focus. */
+    if (all?.legacy && mode === "focus") return all.legacy;
+    if (all?.legacySnap && mode === "focus") return { snap: all.legacySnap };
+    return null;
+  }
+
   function saveLensPosition() {
     try {
+      if (usesModeNeutrals()) {
+        const mode = positionModeKey();
+        const all = readLensStore();
+        delete all.legacy;
+        delete all.legacySnap;
+        if (lensSnapId) all[mode] = { snap: lensSnapId };
+        else all[mode] = { x: lensPosition.x, y: lensPosition.y };
+        localStorage.setItem(lensStorageKey(), JSON.stringify(all));
+        return;
+      }
       if (lensSnapId) {
         localStorage.setItem(lensStorageKey(), JSON.stringify({ snap: lensSnapId }));
       } else {
@@ -267,15 +307,51 @@
     }
   }
 
+  function resolveAttachDefaultLens() {
+    if (overrideOptions?.useModeNeutrals) {
+      const n = global.HwWorksheetToolLayout?.getModeNeutrals?.(hostEl);
+      if (n?.lens && typeof n.lens.x === "number" && typeof n.lens.y === "number") {
+        return { x: n.lens.x, y: n.lens.y };
+      }
+    }
+    const p = overrideOptions?.defaultLens;
+    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
+    return null;
+  }
+
+  function applyLensSlot(slot) {
+    if (!slot) return false;
+    if (slot.snap && SNAP_IDS.includes(slot.snap)) {
+      lensSnapId = slot.snap;
+      return true;
+    }
+    if (typeof slot.x === "number" && typeof slot.y === "number") {
+      lensSnapId = null;
+      lensPosition = { x: slot.x, y: slot.y };
+      return true;
+    }
+    return false;
+  }
+
   function loadLensPosition() {
     lensSnapId = null;
-    lensPosition = { ...(overrideOptions?.defaultLens || DEFAULT_LENS) };
+    lensPosition = { ...(resolveAttachDefaultLens() || DEFAULT_LENS) };
     try {
+      if (usesModeNeutrals()) {
+        const slot = slotFromLensStore(readLensStore(), positionModeKey());
+        if (applyLensSlot(slot)) return;
+        if (overrideOptions?.defaultSnap && SNAP_IDS.includes(overrideOptions.defaultSnap)) {
+          lensSnapId = overrideOptions.defaultSnap;
+        } else if (!resolveAttachDefaultLens()) {
+          lensSnapId = "tr";
+        }
+        return;
+      }
       const raw = localStorage.getItem(lensStorageKey());
       if (!raw) {
         if (overrideOptions?.defaultSnap && SNAP_IDS.includes(overrideOptions.defaultSnap)) {
           lensSnapId = overrideOptions.defaultSnap;
-        } else if (!overrideOptions?.defaultLens) {
+        } else if (!resolveAttachDefaultLens()) {
           lensSnapId = "tr";
         }
         return;
@@ -293,6 +369,38 @@
     } catch {
       /* ignore */
     }
+  }
+
+  /** Saved-or-default for the current Focus / outside-Focus mode (no DOM write). */
+  function getModePositionTarget() {
+    const def = resolveAttachDefaultLens() || DEFAULT_LENS;
+    if (!usesModeNeutrals()) {
+      return lensSnapId ? null : { x: lensPosition.x, y: lensPosition.y };
+    }
+    const slot = slotFromLensStore(readLensStore(), positionModeKey());
+    if (slot && typeof slot.x === "number" && typeof slot.y === "number") {
+      return { x: slot.x, y: slot.y };
+    }
+    return { x: def.x, y: def.y };
+  }
+
+  function hasSavedModePosition() {
+    if (!usesModeNeutrals()) {
+      try {
+        return !!localStorage.getItem(lensStorageKey());
+      } catch {
+        return false;
+      }
+    }
+    return !!slotFromLensStore(readLensStore(), positionModeKey());
+  }
+
+  /** Load current mode’s saved-or-default and paint. */
+  function syncModePosition() {
+    if (!widgetEl || !hostEl) return null;
+    loadLensPosition();
+    applyLensPosition();
+    return { x: lensPosition.x, y: lensPosition.y, snap: lensSnapId };
   }
 
   function applyLensPosition() {
@@ -340,6 +448,24 @@
   }
 
   function resetLensPosition(target) {
+    if (usesModeNeutrals() && !target) {
+      try {
+        const mode = positionModeKey();
+        const all = readLensStore();
+        delete all[mode];
+        delete all.legacy;
+        delete all.legacySnap;
+        if (all.normal || all.focus) {
+          localStorage.setItem(lensStorageKey(), JSON.stringify(all));
+        } else {
+          localStorage.removeItem(lensStorageKey());
+        }
+      } catch (_) {}
+      lensSnapId = null;
+      const pos = resolveAttachDefaultLens() || DEFAULT_LENS;
+      setLensPositionLocal(pos.x, pos.y, false);
+      return;
+    }
     try {
       localStorage.removeItem(lensStorageKey());
     } catch (_) {}
@@ -358,7 +484,7 @@
       applyLensPosition();
       return;
     }
-    const pos = overrideOptions?.defaultLens || DEFAULT_LENS;
+    const pos = resolveAttachDefaultLens() || DEFAULT_LENS;
     setLensPositionLocal(pos.x, pos.y, false);
   }
 
@@ -2529,9 +2655,7 @@
 
   /** Free host-local coords when attach opts set defaultLens (no snap). */
   function getAttachDefaultLens() {
-    const p = overrideOptions?.defaultLens;
-    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
-    return null;
+    return resolveAttachDefaultLens();
   }
 
   global.HwMagnifyingGlass = {
@@ -2551,5 +2675,8 @@
     getStorageKey,
     getAttachDefaultSnap,
     getAttachDefaultLens,
+    getModePositionTarget,
+    hasSavedModePosition,
+    syncModePosition,
   };
 })(window);

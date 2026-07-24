@@ -169,6 +169,86 @@
     }
   }
 
+  /**
+   * Local toolbar playtest: pretend the sheet is fully filled + submitted so Send
+   * and See Answers appear (orange ?, soar) without completing blanks.
+   * Default ON for localhost/127.0.0.1 toolbar embeds; opt out with ?playtestReady=0.
+   * Never active on production hosts.
+   */
+  function isToolbarPlaytestReady() {
+    if (!document.documentElement.classList.contains("hw-hub-v5-toolbar-embed")) {
+      return false;
+    }
+    if (global.HwFeatureFlags?.isLocalDev?.() !== true) return false;
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get("playtestReady") === "0") return false;
+      /* Default on for local toolbar; ?playtestReady=1 is explicit/redundant. */
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  /** Fill blanks / media / star so HwWorksheet treats every line as answered. */
+  function fillPlaytestAnswers(form) {
+    if (!form) return;
+
+    form.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
+      if (String(el.value || "").trim()) return;
+      const wrap = el.closest("[data-teacher-answer]");
+      const teacher = String(wrap?.getAttribute("data-teacher-answer") || "").trim();
+      el.value = teacher || "playtest";
+    });
+
+    form.querySelectorAll(".hw-video-inline, .hw-audio-inline").forEach((inline) => {
+      if (!String(inline.dataset.mediaId || "").trim()) {
+        inline.dataset.mediaId = "playtest-media";
+      }
+      const card = inline.querySelector(".hw-video-inline__card");
+      if (card) card.dataset.state = "saved";
+      inline.dataset.hwAnswerSaved = "true";
+    });
+
+    form.querySelectorAll(".hw-worksheet__line--star").forEach((line) => {
+      const hidden = line.querySelector(".hw-star-block__answer");
+      const need = Number(line.dataset.pieceCount) || 0;
+      if (!hidden || need <= 0) return;
+      try {
+        const existing = JSON.parse(hidden.value || "null");
+        if (Array.isArray(existing) && existing.length === need && existing.every(Boolean)) {
+          return;
+        }
+      } catch {
+        /* fill below */
+      }
+      hidden.value = JSON.stringify(
+        Array.from({ length: need }, (_, i) => "playtest-" + (i + 1))
+      );
+    });
+  }
+
+  /**
+   * Force filled + submitted UI gates for local toolbar playtest.
+   * Keeps the worksheet visible (does not call setDemoStatus → complete card).
+   */
+  function applyToolbarPlaytestReady(form) {
+    if (!isToolbarPlaytestReady() || !form) return;
+    fillPlaytestAnswers(form);
+    global.HwWorksheet?.updateSubmitButtonState?.(form);
+    const submitBtn = form.querySelector(
+      '.hw-worksheet__actions-submit button[type="submit"]'
+    );
+    /* Belt-and-suspenders if a line type still fails the answered check. */
+    if (submitBtn) submitBtn.disabled = false;
+    global.HwWorksheet?.enableSeeAnswers?.(form);
+    writeStorage(STORAGE.status, "submitted");
+    const statusEl = document.getElementById("hw-save-status");
+    if (statusEl) {
+      statusEl.textContent = "Playtest: answers filled + submitted (local only).";
+    }
+  }
+
   function getDemoStatus() {
     return readStorage(STORAGE.status, "submitted");
   }
@@ -592,7 +672,11 @@
     const worksheetCard = document.getElementById("hw-v5-worksheet-card");
     const completeCard = document.getElementById("hw-v5-complete-card");
     const pastFold = document.getElementById("hw-v5-past-fold");
-    const showComplete = isCompleteView(status);
+    /* Toolbar iframe stays on the sheet (send / see-answers playtest). */
+    const toolbarEmbed = document.documentElement.classList.contains(
+      "hw-hub-v5-toolbar-embed"
+    );
+    const showComplete = isCompleteView(status) && !toolbarEmbed;
 
     if (worksheetCard) worksheetCard.hidden = showComplete;
     if (completeCard) completeCard.hidden = !showComplete;
@@ -660,6 +744,9 @@
         /* ignore */
       }
 
+      /* After restoring saved drafts — local toolbar playtest overrides to filled+submitted. */
+      applyToolbarPlaytestReady(worksheetForm);
+
       worksheetForm.addEventListener("input", () => {
         const data = {};
         worksheetForm.querySelectorAll(".hw-blank").forEach((el) => {
@@ -719,19 +806,23 @@
         assignmentId: form.getAttribute("data-assignment-id") || "hub-v5-demo",
         readOnly: false,
         skipOnboarding: true,
-        launcherStorageKey: "hw-hc-toolbar-playtest-v2",
-        /* Host-local centers (translate -50%); left stack as placed in playtest. */
-        defaultLauncher: { x: 82.125, y: 455.0625 },
+        useModeNeutrals: true,
+        /* v5: normal listen-mid stack; bump clears stale high/spread normals. */
+        launcherStorageKey: "hw-hc-toolbar-playtest-v5",
+        /* Fallback — Focus left-edge stack; live mode neutrals override. */
+        defaultLauncher: { x: 0, y: 579 },
       });
     }
 
     if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo && host) {
       global.HwMagnifyingGlass.attachTo(host, {
         skipOnboarding: true,
-        storageKey: "hw-mg-toolbar-playtest-v2",
-        /* Above cloud on the left gutter — current floating placement. */
-        defaultLens: { x: 80.125, y: 387.0625 },
+        useModeNeutrals: true,
+        /* v6: normal listen-mid stack; bump clears stale high/spread normals. */
+        storageKey: "hw-mg-toolbar-playtest-v6",
+        defaultLens: { x: 0, y: 497 },
       });
+      global.HwWorksheetToolLayout?.ensureFocusNeutralWatch?.();
     } else if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.refresh) {
       global.HwMagnifyingGlass.refresh();
     }
@@ -898,19 +989,29 @@
     const cloudBtn = bar.querySelector('[data-tb-tool="cloud"]');
     const formSend = form?.querySelector('.hw-worksheet__actions-submit button[type="submit"]');
     const formAnswers = form?.querySelector("[data-hw-see-answers]");
-    /* Same completion gate as Send (all blanks filled) — golds ? when answers are ready. */
-    const sendReady = Boolean(formSend && !formSend.disabled);
-    const answersGold = sendReady;
+    /* Same completion gate: all blanks filled → Send + See Answers appear together. */
+    const playtestReady = isToolbarPlaytestReady();
+    const sendReady = Boolean(formSend && !formSend.disabled) || playtestReady;
+    const answersReady = sendReady;
     if (sendBtn) {
-      sendBtn.disabled = !formSend || formSend.disabled;
+      sendBtn.disabled = playtestReady ? false : !formSend || formSend.disabled;
       sendBtn.setAttribute("data-tb-tone", sendReady ? "ready" : "muted");
+      sendBtn.classList.toggle("is-ready", sendReady);
+      sendBtn.setAttribute("aria-hidden", sendReady ? "false" : "true");
+      if (sendReady) sendBtn.removeAttribute("tabindex");
+      else sendBtn.setAttribute("tabindex", "-1");
     }
     if (answersBtn) {
-      const locked = !formAnswers || formAnswers.hidden || formAnswers.disabled;
+      const locked = playtestReady
+        ? !formAnswers
+        : !formAnswers || formAnswers.hidden || formAnswers.disabled;
       answersBtn.disabled = locked;
-      answersBtn.classList.toggle("is-ready", answersGold);
-      answersBtn.classList.toggle("answers-ready", answersGold);
-      answersBtn.setAttribute("data-tb-tone", answersGold ? "gold" : "muted");
+      answersBtn.classList.toggle("is-ready", answersReady);
+      answersBtn.classList.toggle("answers-ready", answersReady);
+      answersBtn.setAttribute("data-tb-tone", answersReady ? "gold" : "muted");
+      answersBtn.setAttribute("aria-hidden", answersReady ? "false" : "true");
+      if (answersReady) answersBtn.removeAttribute("tabindex");
+      else answersBtn.setAttribute("tabindex", "-1");
       answersBtn.setAttribute(
         "aria-pressed",
         formAnswers?.getAttribute("aria-pressed") === "true" ? "true" : "false"

@@ -761,8 +761,44 @@
     return config?.launcherStorageKey || LAUNCHER_POS_KEY;
   }
 
+  function usesModeNeutrals() {
+    return !!config?.useModeNeutrals;
+  }
+
+  function positionModeKey() {
+    return document.body.classList.contains("hw-hw-focus-mode") ? "focus" : "normal";
+  }
+
+  function readLauncherStore() {
+    try {
+      const raw = localStorage.getItem(launcherStorageKey());
+      if (!raw) return {};
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return {};
+      if (data.normal || data.focus) return data;
+      return { legacy: data };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function slotFromLauncherStore(all, mode) {
+    if (all && all[mode]) return all[mode];
+    if (all?.legacy && mode === "focus") return all.legacy;
+    return null;
+  }
+
   function saveLauncherPosition() {
     try {
+      if (usesModeNeutrals()) {
+        const mode = positionModeKey();
+        const all = readLauncherStore();
+        delete all.legacy;
+        if (launcherSnapId) all[mode] = { snap: launcherSnapId };
+        else all[mode] = { x: launcherPosition.x, y: launcherPosition.y };
+        localStorage.setItem(launcherStorageKey(), JSON.stringify(all));
+        return;
+      }
       if (launcherSnapId) {
         localStorage.setItem(launcherStorageKey(), JSON.stringify({ snap: launcherSnapId }));
       } else {
@@ -774,22 +810,56 @@
     } catch (_) {}
   }
 
+  function resolveAttachDefaultLauncher() {
+    if (config?.useModeNeutrals) {
+      const n = global.HwWorksheetToolLayout?.getModeNeutrals?.(hostEl);
+      if (
+        n?.launcher &&
+        typeof n.launcher.x === "number" &&
+        typeof n.launcher.y === "number"
+      ) {
+        return { x: n.launcher.x, y: n.launcher.y };
+      }
+    }
+    const p = config?.defaultLauncher;
+    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
+    return null;
+  }
+
+  function applyLauncherSlot(slot) {
+    if (!slot) return false;
+    if (slot.snap && LAUNCHER_SNAP_IDS.includes(slot.snap)) {
+      launcherSnapId = slot.snap;
+      return true;
+    }
+    if (typeof slot.x === "number" && typeof slot.y === "number") {
+      launcherSnapId = null;
+      launcherPosition = { x: slot.x, y: slot.y };
+      return true;
+    }
+    return false;
+  }
+
   function loadLauncherPosition() {
     launcherSnapId = null;
     if (config?.defaultSnap && LAUNCHER_SNAP_IDS.includes(config.defaultSnap)) {
       launcherSnapId = config.defaultSnap;
       launcherPosition = launcherSnapPoints()[config.defaultSnap] || launcherSnapPoints().tl;
-    } else if (
-      config?.defaultLauncher &&
-      typeof config.defaultLauncher.x === "number" &&
-      typeof config.defaultLauncher.y === "number"
-    ) {
-      launcherPosition = { x: config.defaultLauncher.x, y: config.defaultLauncher.y };
     } else {
-      launcherSnapId = "tl";
-      launcherPosition = launcherSnapPoints().tl;
+      const attach = resolveAttachDefaultLauncher();
+      if (attach) {
+        launcherPosition = { x: attach.x, y: attach.y };
+      } else {
+        launcherSnapId = "tl";
+        launcherPosition = launcherSnapPoints().tl;
+      }
     }
     try {
+      if (usesModeNeutrals()) {
+        const slot = slotFromLauncherStore(readLauncherStore(), positionModeKey());
+        applyLauncherSlot(slot);
+        return;
+      }
       const raw = JSON.parse(localStorage.getItem(launcherStorageKey()) || "null");
       if (!raw) return;
       if (raw.snap && LAUNCHER_SNAP_IDS.includes(raw.snap)) {
@@ -809,6 +879,36 @@
         }
       }
     } catch (_) {}
+  }
+
+  function getModePositionTarget() {
+    const def = resolveAttachDefaultLauncher();
+    if (!usesModeNeutrals()) {
+      return def || { x: launcherPosition.x, y: launcherPosition.y };
+    }
+    const slot = slotFromLauncherStore(readLauncherStore(), positionModeKey());
+    if (slot && typeof slot.x === "number" && typeof slot.y === "number") {
+      return { x: slot.x, y: slot.y };
+    }
+    return def || { x: 0, y: 579 };
+  }
+
+  function hasSavedModePosition() {
+    if (!usesModeNeutrals()) {
+      try {
+        return !!localStorage.getItem(launcherStorageKey());
+      } catch (_) {
+        return false;
+      }
+    }
+    return !!slotFromLauncherStore(readLauncherStore(), positionModeKey());
+  }
+
+  function syncModePosition() {
+    if (!launcherEl || !hostEl) return null;
+    loadLauncherPosition();
+    applyLauncherPosition();
+    return { x: launcherPosition.x, y: launcherPosition.y, snap: launcherSnapId };
   }
 
   function loadLauncherPos() {
@@ -1453,6 +1553,26 @@
   }
 
   function resetLauncherPosition(target) {
+    if (usesModeNeutrals() && !target) {
+      try {
+        const mode = positionModeKey();
+        const all = readLauncherStore();
+        delete all[mode];
+        delete all.legacy;
+        if (all.normal || all.focus) {
+          localStorage.setItem(launcherStorageKey(), JSON.stringify(all));
+        } else {
+          localStorage.removeItem(launcherStorageKey());
+        }
+      } catch (_) {}
+      const attach = resolveAttachDefaultLauncher();
+      if (attach) {
+        setLauncherPositionLocal(attach.x, attach.y, false);
+        return;
+      }
+      setLauncherSnap("tl");
+      return;
+    }
     try {
       localStorage.removeItem(launcherStorageKey());
     } catch (_) {}
@@ -1469,12 +1589,9 @@
       applyLauncherPosition();
       return;
     }
-    if (
-      config?.defaultLauncher &&
-      typeof config.defaultLauncher.x === "number" &&
-      typeof config.defaultLauncher.y === "number"
-    ) {
-      setLauncherPositionLocal(config.defaultLauncher.x, config.defaultLauncher.y, false);
+    const attach = resolveAttachDefaultLauncher();
+    if (attach) {
+      setLauncherPositionLocal(attach.x, attach.y, false);
       return;
     }
     setLauncherSnap("tl");
@@ -3228,6 +3345,7 @@
         typeof options.defaultLauncher.y === "number"
           ? { x: options.defaultLauncher.x, y: options.defaultLauncher.y }
           : null,
+      useModeNeutrals: !!options.useModeNeutrals,
     };
 
     if (options.initialComments?.length) {
@@ -3461,9 +3579,7 @@
 
   /** Free host-local coords when attach opts set defaultLauncher (no snap). */
   function getAttachDefaultLauncher() {
-    const p = config?.defaultLauncher;
-    if (p && typeof p.x === "number" && typeof p.y === "number") return { x: p.x, y: p.y };
-    return null;
+    return resolveAttachDefaultLauncher();
   }
 
   global.HwHomeworkComments = {
@@ -3492,5 +3608,8 @@
     getStorageKey,
     getAttachDefaultSnap,
     getAttachDefaultLauncher,
+    getModePositionTarget,
+    hasSavedModePosition,
+    syncModePosition,
   };
 })(window);

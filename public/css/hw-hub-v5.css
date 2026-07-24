@@ -2415,20 +2415,24 @@ html.hw-hub-v5-toolbar-embed .section__header--platform {
   display: none !important;
 }
 
-/* Footer action buttons live on the floating toolbar � keep nodes for click() wiring.
-   Questions-left tracker stays visible on the worksheet. */
+/* Footer action buttons live on the floating toolbar — keep nodes for click() wiring.
+   Live student path (html.hw-ws-toolbar): theater zoom is Focus-only (see below). */
 html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-tools,
 html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-submit,
-html.hw-hub-v5-toolbar-embed .hw-worksheet__status {
+html.hw-hub-v5-toolbar-embed .hw-worksheet__status,
+html.hw-ws-toolbar .hw-worksheet__actions-tools,
+html.hw-ws-toolbar .hw-worksheet__actions-submit,
+html.hw-ws-toolbar .hw-worksheet__status {
   display: none !important;
 }
 
 /*
- * Layout: HW box ? toolbar ? existing .hw-worksheet__section bottom border.
+ * Layout: HW box → toolbar → existing .hw-worksheet__section bottom border.
  * Toolbar is appended inside the active section (see placeToolbarUnderHwBox).
- * Do not invent new borders � only use the section rule from styles.css.
+ * Do not invent new borders — only use the section rule from styles.css.
  */
-html.hw-hub-v5-toolbar-embed .hw-worksheet__actions {
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions,
+html.hw-ws-toolbar .hw-worksheet__actions {
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
@@ -2437,30 +2441,34 @@ html.hw-hub-v5-toolbar-embed .hw-worksheet__actions {
   overflow: hidden !important;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary {
+html.hw-hub-v5-toolbar-embed .hw-worksheet__actions-primary,
+html.hw-ws-toolbar .hw-worksheet__actions-primary {
   display: none !important;
   border: none !important;
 }
 
 /* Keep the normal section bottom border even when the active section is last-of-type. */
-html.hw-hub-v5-toolbar-embed .hw-worksheet__section:last-of-type {
+html.hw-hub-v5-toolbar-embed .hw-worksheet__section:last-of-type,
+html.hw-ws-toolbar .hw-worksheet__section:last-of-type {
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 0;
   padding-bottom: 1.25rem;
 }
 
-html.hw-hub-v5-toolbar-embed {
+html.hw-hub-v5-toolbar-embed,
+html.hw-ws-toolbar {
   --hw-toolbar-clearance: 0;
   scroll-padding-bottom: 0;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-toolbar-bar {
+html.hw-hub-v5-toolbar-embed .hw-toolbar-bar,
+html.hw-ws-toolbar .hw-toolbar-bar {
   position: relative;
   left: auto;
   right: auto;
   bottom: auto;
-  /* Clear of the HW box � small gap, no overlap from prior upward nudges */
-  margin: 8px auto 0;
+  /* Clearance between HW box and toolbar — pad only, do not shrink icons */
+  margin: 1.35rem auto 1rem;
   transform: none;
 }
 
@@ -2516,13 +2524,15 @@ html.hw-hub-v5-toolbar-embed .hw-toolbar-bar {
  * Toolbar icons only reveal the movable live widgets — they do not arm the tools.
  */
 /* Ghosts use .hw-tools-flyback only (no .hw-mg-widget / .hw-hc-launcher). */
-html.hw-hub-v5-toolbar-embed:not(.hw-tb-glass-out) .hw-mg-widget {
+html.hw-hub-v5-toolbar-embed:not(.hw-tb-glass-out) .hw-mg-widget,
+html.hw-ws-toolbar:not(.hw-tb-glass-out) .hw-mg-widget {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-html.hw-hub-v5-toolbar-embed:not(.hw-tb-cloud-out) .hw-hc-launcher {
+html.hw-hub-v5-toolbar-embed:not(.hw-tb-cloud-out) .hw-hc-launcher,
+html.hw-ws-toolbar:not(.hw-tb-cloud-out) .hw-hc-launcher {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -2532,29 +2542,53 @@ html.hw-hub-v5-toolbar-embed:not(.hw-tb-cloud-out) .hw-hc-launcher {
  * When popped, force interactive. Beat worksheet-tools-booting rules in
  * hw-magnifying-glass.css (loaded after this file) if boot ever sticks.
  */
-html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget {
+html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-ws-toolbar.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget {
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher {
+html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-ws-toolbar.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher {
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+}
+
+/*
+ * Focus enter/exit: must beat the popped-out visible!important rules above,
+ * or Glass/Cloud stay on-screen and appear to slide while zoom/homes change.
+ */
+html.hw-ws-toolbar body.hw-focus-tools-switching.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-hub-v5-toolbar-embed body.hw-focus-tools-switching.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-ws-toolbar body.hw-focus-tools-switching .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-hub-v5-toolbar-embed body.hw-focus-tools-switching .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-ws-toolbar body.hw-focus-tools-switching.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-hub-v5-toolbar-embed body.hw-focus-tools-switching.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-ws-toolbar body.hw-focus-tools-switching .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-hub-v5-toolbar-embed body.hw-focus-tools-switching .hw-hub-v2-worksheet > .hw-hc-launcher {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
+  transition: none !important;
 }
 
 /* Card overflow:hidden clips half of corner-snapped floating tools (and their hit targets). */
 html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card.hw-hub-worksheet-card,
-html.hw-hub-v5-toolbar-embed .hw-hub-v2-worksheet.hw-hub-worksheet-card {
+html.hw-hub-v5-toolbar-embed .hw-hub-v2-worksheet.hw-hub-worksheet-card,
+html.hw-ws-toolbar #hw-v5-worksheet-card.hw-hub-worksheet-card,
+html.hw-ws-toolbar .hw-hub-v2-worksheet.hw-hub-worksheet-card {
   overflow: visible;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-tools-cleanup {
+html.hw-hub-v5-toolbar-embed .hw-tools-cleanup,
+html.hw-ws-toolbar .hw-tools-cleanup {
   display: none !important;
 }
 
-/* Inside the zoomed mount the bar would scale � undo parent zoom so size stays put. */
+/* Playtest-only: counter-zoom the bar inside the theater-zoomed mount. Not on live. */
 @media (min-width: 900px) {
   html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount .hw-toolbar-bar,
   html.hw-hub-v5-toolbar-embed #hw-worksheet-mount .hw-toolbar-bar {
@@ -2569,14 +2603,9 @@ html.hw-hub-v5-toolbar-embed .hw-tools-cleanup {
   }
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet {
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
 html.hw-hub-v5-toolbar-embed .subpage__main {
   padding-top: 0.35rem;
-  padding-bottom: 0.75rem;
+  padding-bottom: 1.25rem;
 }
 
 html.hw-hub-v5-toolbar-embed .section {
@@ -2644,12 +2673,14 @@ html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card {
   box-shadow: none;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet {
+html.hw-hub-v5-toolbar-embed .hw-worksheet,
+html.hw-ws-toolbar .hw-worksheet {
   margin-bottom: 0 !important;
   padding-bottom: 0 !important;
 }
 
-html.hw-hub-v5-toolbar-embed .hw-worksheet:has(.hw-worksheet__actions-tools) {
+html.hw-hub-v5-toolbar-embed .hw-worksheet:has(.hw-worksheet__actions-tools),
+html.hw-ws-toolbar .hw-worksheet:has(.hw-worksheet__actions-tools) {
   padding-bottom: 0 !important;
 }
 
@@ -2660,8 +2691,9 @@ html.hw-hub-v5-toolbar-embed .hw-hub-v4-homework {
 }
 
 /*
- * Focus theater uses position:fixed inset:0 on the homework zone ? .subpage__main
+ * Focus theater uses position:fixed inset:0 on the homework zone — .subpage__main
  * padding does nothing there. Clear the scrollable mount instead.
+ * Toolbar path: clearance stays 0 (bar is in-flow under the HW box).
  */
 html.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-worksheet-mount,
 html.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v2-worksheet-mount,
@@ -2670,4 +2702,337 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v2-worksheet-mount,
 body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-worksheet-mount,
 body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-v2-worksheet-mount {
   padding-bottom: var(--hw-toolbar-clearance, 7.5rem);
+}
+
+/*
+ * Toolbar focus: black page + fullscreen (JS). Keep HW / Glass / Cloud / toolbar
+ * in place — no theater stretch, no body::before overlay (it blanked the sheet).
+ * Live student (html.hw-ws-toolbar) matches local Toolbar playtest focus.
+ * Body #000 is the dark field; .section-kumo stays painted above it (never hide).
+ */
+html.hw-ws-toolbar body.hw-hw-focus-mode,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode,
+body.hw-ws-toolbar.hw-hw-focus-mode,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode {
+  background: #000 !important;
+}
+
+/* Decorative site clouds must remain visible in focus (never hide/remove kumo).
+ * Do not force display — prefer-reduced-motion in kumo.css may hide them. */
+html.hw-ws-toolbar body.hw-hw-focus-mode .section-kumo,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .section-kumo,
+body.hw-ws-toolbar.hw-hw-focus-mode .section-kumo,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .section-kumo,
+body.hw-hw-focus-mode .section-kumo {
+  visibility: visible !important;
+  pointer-events: none !important;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .site-header,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-platform-bar,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-student-grid,
+html.hw-ws-toolbar body.hw-hw-focus-mode .section__header,
+html.hw-ws-toolbar body.hw-hw-focus-mode .subpage-back,
+html.hw-ws-toolbar body.hw-hw-focus-mode .site-footer,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-worksheet-heading,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-worksheet-intro,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .site-header,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-platform-bar,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-student-grid,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .section__header,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .subpage-back,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .site-footer,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-worksheet-heading,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-worksheet-intro,
+body.hw-ws-toolbar.hw-hw-focus-mode .site-header,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-platform-bar,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-student-grid,
+body.hw-ws-toolbar.hw-hw-focus-mode .section__header,
+body.hw-ws-toolbar.hw-hw-focus-mode .subpage-back,
+body.hw-ws-toolbar.hw-hw-focus-mode .site-footer,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-worksheet-heading,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-worksheet-intro,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .site-header,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-platform-bar,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-student-grid,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .section__header,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .subpage-back,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .site-footer,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-worksheet-heading,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-worksheet-intro {
+  /* Match local playtest — fully remove chrome (not visibility:hidden leftovers). */
+  display: none !important;
+}
+
+/*
+ * Live hub chrome that local Toolbar playtest already strips (display:none).
+ * Hide only while focused so the student hub stays intact outside focus.
+ * Include live Past HW / View notebook entry row (ids differ from preview).
+ */
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-tabs,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-top,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-fold,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-past-fold,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-student-past-fold,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-complete-card,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-below,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-banner,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-demo-bar,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v4-intro,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-entry-row,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-hub-v5-entry-row,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-student-notebook,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-notebook-entry,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-past-box,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-submission-view-banner,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-tabs,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-top,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-fold,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-past-fold,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-student-past-fold,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-complete-card,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-below,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-banner,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-demo-bar,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v4-intro,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-entry-row,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-hub-v5-entry-row,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-student-notebook,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-notebook-entry,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-past-box,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-submission-view-banner {
+  display: none !important;
+}
+
+/*
+ * Outer blue/navy card shell (#hw-v5-worksheet-card / .hw-hub-worksheet-card).
+ * Local toolbar-embed strips this always; live kept it in focus → double frame.
+ */
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-worksheet-card,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-worksheet-card,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-v5-worksheet-card,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-hub-worksheet-card,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-worksheet-card,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-worksheet-card,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v5-worksheet-card,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-hub-worksheet-card,
+body.hw-hw-focus-mode #hw-v5-worksheet-card,
+body.hw-hw-focus-mode .hw-hub-worksheet-card,
+body.hw-hw-focus-mode .hw-teacher-review-worksheet {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .subpage__main .section .container--wide,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .subpage__main .section .container--wide,
+body.hw-ws-toolbar.hw-hw-focus-mode .subpage__main .section .container--wide,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .subpage__main .section .container--wide {
+  max-width: 48rem;
+  padding: revert;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-worksheet-section,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-hub-v4-homework,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-homework-zone,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v4-homework,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-worksheet-section,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-hub-v4-homework,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-v5-homework-zone,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-hub-v4-homework,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-worksheet-section,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-hub-v4-homework,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-homework-zone,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v4-homework,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-worksheet-section,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-hub-v4-homework,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v5-homework-zone,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-hub-v4-homework {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  display: block;
+  margin: revert;
+  padding: revert;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  max-width: none;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-worksheet-mount,
+html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v2-worksheet-mount,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-worksheet-mount,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode #hw-v2-worksheet-mount,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-worksheet-mount,
+body.hw-ws-toolbar.hw-hw-focus-mode #hw-v2-worksheet-mount,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-worksheet-mount,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode #hw-v2-worksheet-mount,
+body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-worksheet-mount,
+body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) #hw-v2-worksheet-mount {
+  flex: unset;
+  display: block;
+  align-items: unset;
+  justify-content: unset;
+  min-height: 0;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+/*
+ * Live Focus only — theater zoom: scale so worksheet fits fullscreen better.
+ * Same CSS zoom as Toolbar playtest (always-on there). Outside Focus = natural size.
+ * Live keeps #hw-toolbar-bar as a sibling of the mount, so the pill stays normal
+ * without counter-zoom. Counter-zoom only if the bar is nested inside the mount.
+ */
+@media (min-width: 900px) {
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v2-worksheet-mount,
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-worksheet-mount,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-v2-worksheet-mount,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-worksheet-mount {
+    zoom: 1.35;
+  }
+
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v2-worksheet-mount .hw-toolbar-bar,
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-worksheet-mount .hw-toolbar-bar,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-v2-worksheet-mount .hw-toolbar-bar,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-worksheet-mount .hw-toolbar-bar {
+    zoom: calc(1 / 1.35);
+  }
+}
+
+@media (min-width: 1400px) {
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v2-worksheet-mount,
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-worksheet-mount,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-v2-worksheet-mount,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-worksheet-mount {
+    zoom: 1.5;
+  }
+
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v2-worksheet-mount .hw-toolbar-bar,
+  html.hw-ws-toolbar body.hw-hw-focus-mode #hw-worksheet-mount .hw-toolbar-bar,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-v2-worksheet-mount .hw-toolbar-bar,
+  body.hw-ws-toolbar.hw-hw-focus-mode #hw-worksheet-mount .hw-toolbar-bar {
+    zoom: calc(1 / 1.5);
+  }
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-worksheet,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-worksheet,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-worksheet,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-worksheet,
+body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) .hw-worksheet {
+  /* Keep natural width — no theater stretch to width:100% / 44rem */
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-focus-bar,
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-focus-bar,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-focus-bar,
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-focus-bar {
+  /* Overlay exit chrome — do not push the HW card / tools down */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 460;
+  margin: 0;
+  border-bottom: none;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]),
+html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]),
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]),
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
+  position: relative;
+  z-index: 450;
+}
+
+/* Teacher / local: read + copy + save Glass/Cloud homes */
+.hw-tool-layout-tools {
+  position: fixed;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 5000;
+  min-width: 12.5rem;
+  max-width: 18rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(26, 39, 68, 0.94);
+  color: #f4f6fa;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  font: 500 0.75rem/1.35 var(--font-sans, system-ui, sans-serif);
+}
+
+.hw-tool-layout-tools__label {
+  margin: 0 0 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(244, 246, 250, 0.55);
+}
+
+.hw-tool-layout-tools__readout {
+  margin: 0 0 0.55rem;
+  font-variant-numeric: tabular-nums;
+  color: #f4f6fa;
+  word-break: break-word;
+}
+
+.hw-tool-layout-tools__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hw-tool-layout-tools__btn {
+  flex: 1 1 auto;
+  padding: 0.4rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.25);
+  color: #f4f6fa;
+  font: 600 0.7rem/1.2 var(--font-sans, system-ui, sans-serif);
+  cursor: pointer;
+}
+
+.hw-tool-layout-tools__btn:hover {
+  border-color: rgba(212, 138, 56, 0.7);
+}
+
+.hw-tool-layout-tools__btn--save {
+  border-color: rgba(212, 138, 56, 0.45);
+}
+
+.hw-tool-layout-tools__hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  color: rgba(244, 246, 250, 0.5);
+}
+
+.hw-tool-coord-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 5.5rem;
+  z-index: 5001;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(26, 39, 68, 0.95);
+  border: 1px solid rgba(212, 138, 56, 0.55);
+  color: #f4f6fa;
+  font: 600 0.8rem/1.2 var(--font-sans, system-ui, sans-serif);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }

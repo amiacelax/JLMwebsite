@@ -5,11 +5,10 @@
 (function (global) {
   const GAP = 10;
   const MAX_PASSES = 12;
+  /* Match StarQ flyback duration (~620ms); transform-only for smooth live compositing. */
   const RETURN_MS = 620;
   const RETURN_EASE = "cubic-bezier(0.25, 0.85, 0.35, 1)";
-  /* Match StarQ reset-answer flyback (hw-star-block animateFlyback). */
   const FLYBACK_TRAVEL_MS = 620;
-  const FLYBACK_BOING_MS = 32;
   const FLYBACK_STAGGER_MS = 110;
 
   /** Notes/minis/memor stay anchored; these tools get nudged aside. */
@@ -117,7 +116,7 @@
     ghost.style.setProperty("transform-origin", "center center", "important");
     ghost.style.setProperty("will-change", "transform");
     ghost.style.setProperty("animation", "none", "important");
-    ghost.style.setProperty("transform", "none", "important");
+    ghost.style.setProperty("transform", "translate3d(0, 0, 0)", "important");
     ghost.style.setProperty("display", "flex", "important");
     ghost.style.setProperty("visibility", "visible", "important");
     ghost.style.setProperty("opacity", "1", "important");
@@ -147,7 +146,7 @@
     return r;
   }
 
-  /** StarQ reset-answer flyback (boing → travel). Ghost must already be mounted. */
+  /** Transform-only flyback. Ghost must already be mounted. */
   function runFlybackMotion(ghost, startLeft, startTop, fromRect, toRect) {
     if (!ghost || !toRect || !fromRect) return Promise.resolve();
     const dx =
@@ -155,34 +154,29 @@
     const dy =
       toRect.top + toRect.height / 2 - (startTop + fromRect.height / 2);
 
-    function setXform(value, transition) {
-      ghost.style.setProperty("transition", transition || "none");
-      ghost.style.setProperty("transform", value, "important");
-    }
-
     return new Promise((resolve) => {
+      /* Double-rAF: paint at start pose, then one composite transform travel. */
       requestAnimationFrame(() => {
-        setXform(
-          "scale(1.04, 0.97)",
-          "transform " + FLYBACK_BOING_MS + "ms cubic-bezier(0.34, 1.25, 0.68, 1)"
-        );
+        requestAnimationFrame(() => {
+          ghost.style.setProperty(
+            "transition",
+            "transform " + FLYBACK_TRAVEL_MS + "ms " + RETURN_EASE
+          );
+          ghost.style.setProperty(
+            "transform",
+            "translate3d(" + dx + "px, " + dy + "px, 0)",
+            "important"
+          );
+        });
       });
 
       window.setTimeout(() => {
-        setXform("scale(1, 1)", "transform 18ms ease-out");
-      }, FLYBACK_BOING_MS);
-
-      window.setTimeout(() => {
-        setXform(
-          "translate(" + dx + "px, " + dy + "px)",
-          "transform " + FLYBACK_TRAVEL_MS + "ms " + RETURN_EASE
-        );
-      }, FLYBACK_BOING_MS + 22);
-
-      window.setTimeout(() => {
+        ghost.style.removeProperty("transition");
+        ghost.style.removeProperty("will-change");
+        ghost.style.removeProperty("transform");
         ghost.remove();
         resolve();
-      }, FLYBACK_BOING_MS + FLYBACK_TRAVEL_MS + 72);
+      }, FLYBACK_TRAVEL_MS + 48);
     });
   }
 
@@ -275,6 +269,8 @@
 
   function toolPriority(el, kind, pinEl, basePriority) {
     if (pinEl && el === pinEl && ANCHOR_KINDS.has(kind)) return 100;
+    /* Dragged glass/cloud stays put — nudge the other tool aside. */
+    if (pinEl && el === pinEl && isToolRowKind(kind)) return 100;
     return basePriority;
   }
 
@@ -405,11 +401,21 @@
 
   /** Pick which tool to nudge when two overlap. Anchors always win over movable tools. */
   function pickMove(fixed, movable, gap) {
-    /* Magnet is fixed — nudge the glass/cloud horizontally when they sit on it. */
-    const canMoveToolRow = isToolRowKind(movable.kind) && fixed.kind === "tools-cleanup";
-    if (!MOVABLE_KINDS.has(movable.kind) && !canMoveToolRow) return null;
+    /*
+     * Glass/cloud may clear the magnet (horizontal) and each other (shortest axis)
+     * so the two floating widgets cannot stack while dragging or after fling settle.
+     */
+    const toolRowVsMagnet =
+      isToolRowKind(movable.kind) && fixed.kind === "tools-cleanup";
+    const toolRowVsToolRow =
+      isToolRowKind(movable.kind) && isToolRowKind(fixed.kind);
+    if (!MOVABLE_KINDS.has(movable.kind) && !toolRowVsMagnet && !toolRowVsToolRow) {
+      return null;
+    }
     let sep;
-    if (isToolRowKind(movable.kind) || isToolRowPair(fixed, movable)) {
+    if (toolRowVsToolRow) {
+      sep = separation(fixed.rect, movable.rect, gap);
+    } else if (toolRowVsMagnet || isToolRowKind(movable.kind) || isToolRowPair(fixed, movable)) {
       sep = separationHorizontalOnly(fixed.rect, movable.rect, gap);
     } else {
       sep = separation(fixed.rect, movable.rect, gap);
@@ -454,6 +460,518 @@
     return flags?.magnifyingGlass?.() === true || flags?.homeworkComments?.() === true;
   }
 
+  const TOOL_SIZE = 72;
+  const STACK_CENTER_GAP = TOOL_SIZE + GAP; /* Glass above Cloud */
+  /** Authored homes — paste from teacher “Copy coords” tool. */
+  const FOCUS_NEUTRALS = {
+    lens: { x: 0, y: 497 },
+    launcher: { x: 0, y: 579 },
+  };
+  const NORMAL_NEUTRALS = {
+    lens: { x: 88.9, y: 329.3 },
+    launcher: { x: 88.9, y: 416.9 },
+  };
+  /** User-saved homes (drag → Save). Beats authored/computed defaults. */
+  const HOME_OVERRIDE_KEY = "hw-tool-homes-override-v1";
+  let focusNeutralWatchBound = false;
+  let lastFocusNeutralMode = null;
+  let focusNeutralTimer = null;
+
+  function isHomeworkFocusMode() {
+    return document.body.classList.contains("hw-hw-focus-mode");
+  }
+
+  function readHomeOverrides() {
+    try {
+      const raw = localStorage.getItem(HOME_OVERRIDE_KEY);
+      if (!raw) return {};
+      const data = JSON.parse(raw);
+      return data && typeof data === "object" ? data : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeHomeOverride(mode, lens, launcher) {
+    try {
+      const all = readHomeOverrides();
+      all[mode] = {
+        lens: { x: lens.x, y: lens.y },
+        launcher: { x: launcher.x, y: launcher.y },
+      };
+      localStorage.setItem(HOME_OVERRIDE_KEY, JSON.stringify(all));
+      return all[mode];
+    } catch {
+      return null;
+    }
+  }
+
+  function homeOverrideFor(mode) {
+    const slot = readHomeOverrides()[mode];
+    if (
+      slot?.lens &&
+      typeof slot.lens.x === "number" &&
+      typeof slot.lens.y === "number" &&
+      slot?.launcher &&
+      typeof slot.launcher.x === "number" &&
+      typeof slot.launcher.y === "number"
+    ) {
+      return {
+        lens: { x: slot.lens.x, y: slot.lens.y },
+        launcher: { x: slot.launcher.x, y: slot.launcher.y },
+      };
+    }
+    return null;
+  }
+
+  function findWorksheetToolHost() {
+    return (
+      document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet") ||
+      document.querySelector(".hw-hub-v2-worksheet") ||
+      document.getElementById("hw-v5-worksheet-card") ||
+      null
+    );
+  }
+
+  function toolIsDragging(el) {
+    return !!(el && el.classList.contains("is-dragging"));
+  }
+
+  /**
+   * Outside Focus homes (fixed — from teacher Copy coords).
+   * Host-local centers (translate -50%).
+   */
+  function computeNormalNeutrals(_hostEl) {
+    return {
+      lens: { ...NORMAL_NEUTRALS.lens },
+      launcher: { ...NORMAL_NEUTRALS.launcher },
+    };
+  }
+
+  /** Current-mode default homes for Glass + Cloud (focus vs normal). */
+  function getModeNeutrals(hostEl) {
+    const host = hostEl || findWorksheetToolHost();
+    const mode = isHomeworkFocusMode() ? "focus" : "normal";
+    const override = homeOverrideFor(mode);
+    if (override) {
+      return {
+        mode,
+        lens: override.lens,
+        launcher: override.launcher,
+        lensSnap: null,
+        launcherSnap: null,
+      };
+    }
+    if (mode === "focus") {
+      return {
+        mode,
+        lens: { ...FOCUS_NEUTRALS.lens },
+        launcher: { ...FOCUS_NEUTRALS.launcher },
+        lensSnap: null,
+        launcherSnap: null,
+      };
+    }
+    const pair = computeNormalNeutrals(host);
+    return {
+      mode,
+      lens: pair.lens,
+      launcher: pair.launcher,
+      lensSnap: null,
+      launcherSnap: null,
+    };
+  }
+
+  function modePositionTarget(kind, fallback) {
+    if (kind === "lens") {
+      const t = global.HwMagnifyingGlass?.getModePositionTarget?.();
+      if (t && typeof t.x === "number" && typeof t.y === "number") return t;
+    } else {
+      const t = global.HwHomeworkComments?.getModePositionTarget?.();
+      if (t && typeof t.x === "number" && typeof t.y === "number") return t;
+    }
+    return fallback;
+  }
+
+  /**
+   * When Focus turns on/off: move out tools to that mode’s saved-or-default home.
+   * Never overwrite a saved home with computed defaults (that was wiping drag work).
+   */
+  function applyModeNeutrals(hostEl, options) {
+    options = options || {};
+    const host = hostEl || findWorksheetToolHost();
+    if (!host) return null;
+    const fallback = getModeNeutrals(host);
+    const glassTo = modePositionTarget("lens", fallback.lens);
+    const cloudTo = modePositionTarget("launcher", fallback.launcher);
+    const targets = {
+      mode: fallback.mode,
+      lens: glassTo,
+      launcher: cloudTo,
+      lensSnap: null,
+      launcherSnap: null,
+    };
+    const lens = host.querySelector(":scope > .hw-mg-widget");
+    const launcher = host.querySelector(":scope > .hw-hc-launcher");
+    const glassOut = !!(lens && isVisibleTool(lens));
+    const cloudOut = !!(launcher && isVisibleTool(launcher));
+    const moveGlass = glassOut && !toolIsDragging(lens);
+    const moveCloud = cloudOut && !toolIsDragging(launcher);
+
+    /* Tucked tools: leave storage alone (next pop uses saved-or-default). */
+    if (!moveGlass && !moveCloud) return targets;
+
+    const animate = options.animate !== false && !prefersReducedMotion();
+    if (animate) {
+      const flingSpecs = [];
+      if (moveGlass && lens) {
+        const from = lens.getBoundingClientRect();
+        flingSpecs.push({
+          el: lens,
+          to: hostPointToViewportRect(host, glassTo.x, glassTo.y, from.width, from.height),
+        });
+        lens.style.visibility = "hidden";
+      }
+      if (moveCloud && launcher) {
+        const from = launcher.getBoundingClientRect();
+        flingSpecs.push({
+          el: launcher,
+          to: hostPointToViewportRect(host, cloudTo.x, cloudTo.y, from.width, from.height),
+        });
+        launcher.style.visibility = "hidden";
+      }
+      const fly = flingTools(flingSpecs);
+      Promise.resolve(fly)
+        .catch(() => {})
+        .then(() => {
+          if (moveGlass) {
+            global.HwMagnifyingGlass?.setLensPositionLocal?.(glassTo.x, glassTo.y, false);
+            if (lens) lens.style.visibility = "";
+          }
+          if (moveCloud) {
+            global.HwHomeworkComments?.setLauncherPositionLocal?.(cloudTo.x, cloudTo.y, false);
+            if (launcher) launcher.style.visibility = "";
+          }
+          requestAnimationFrame(() => resolve(host));
+        });
+      return targets;
+    }
+
+    if (moveGlass) {
+      global.HwMagnifyingGlass?.setLensPositionLocal?.(glassTo.x, glassTo.y, false);
+    }
+    if (moveCloud) {
+      global.HwHomeworkComments?.setLauncherPositionLocal?.(cloudTo.x, cloudTo.y, false);
+    }
+    requestAnimationFrame(() => resolve(host));
+    return targets;
+  }
+
+  function readCurrentToolPositions() {
+    const host = findWorksheetToolHost();
+    if (!host) return null;
+    const mode = isHomeworkFocusMode() ? "focus" : "normal";
+    const lens = host.querySelector(":scope > .hw-mg-widget");
+    const launcher = host.querySelector(":scope > .hw-hc-launcher");
+    const glassPos =
+      global.HwMagnifyingGlass?.getLensPosition?.() ||
+      (lens
+        ? {
+            x: parseFloat(lens.style.left) || 0,
+            y: parseFloat(lens.style.top) || 0,
+          }
+        : null);
+    const cloudPos =
+      global.HwHomeworkComments?.getLauncherPosition?.() ||
+      (launcher
+        ? {
+            x: parseFloat(launcher.style.left) || 0,
+            y: parseFloat(launcher.style.top) || 0,
+          }
+        : null);
+    if (
+      !glassPos ||
+      !cloudPos ||
+      typeof glassPos.x !== "number" ||
+      typeof cloudPos.x !== "number"
+    ) {
+      return null;
+    }
+    return {
+      mode,
+      glass: {
+        x: Math.round(glassPos.x * 10) / 10,
+        y: Math.round(glassPos.y * 10) / 10,
+      },
+      cloud: {
+        x: Math.round(cloudPos.x * 10) / 10,
+        y: Math.round(cloudPos.y * 10) / 10,
+      },
+    };
+  }
+
+  function formatCoordsBlurb(pos) {
+    if (!pos) return "";
+    const label = pos.mode === "focus" ? "live focus" : "live non-focus";
+    return (
+      label +
+      "\n" +
+      "Glass x: " +
+      pos.glass.x +
+      "  y: " +
+      pos.glass.y +
+      "\n" +
+      "Cloud x: " +
+      pos.cloud.x +
+      "  y: " +
+      pos.cloud.y
+    );
+  }
+
+  /**
+   * Drag Glass/Cloud where you want, then call this (or the Save button) to lock
+   * them as that mode’s home. Works with designFocus.
+   */
+  function saveCurrentAsHomes() {
+    const pos = readCurrentToolPositions();
+    if (!pos) {
+      console.warn("[hw tools] Pop Glass and Cloud out first, then save homes.");
+      return null;
+    }
+    const saved = writeHomeOverride(pos.mode, pos.glass, pos.cloud);
+    global.HwMagnifyingGlass?.setLensPositionLocal?.(pos.glass.x, pos.glass.y, true);
+    global.HwHomeworkComments?.setLauncherPositionLocal?.(pos.cloud.x, pos.cloud.y, true);
+    console.info("[hw tools] Saved " + pos.mode + " homes:", saved);
+    return { mode: pos.mode, ...saved };
+  }
+
+  function clearHomeOverrides() {
+    try {
+      localStorage.removeItem(HOME_OVERRIDE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function canUseLayoutTools() {
+    if (document.body.classList.contains("hw-role-teacher")) return true;
+    if (document.documentElement.classList.contains("hw-is-teacher")) return true;
+    /* Teacher viewing as a student still needs the coord tools. */
+    try {
+      if (global.HwAuth?.getTeacherSession?.()) return true;
+    } catch {
+      /* ignore */
+    }
+    if (global.HwFeatureFlags?.designFocus?.() === true) return true;
+    if (global.HwFeatureFlags?.isLocalDev?.() === true) return true;
+    return false;
+  }
+
+  function refreshLayoutToolsReadout() {
+    const readout = document.getElementById("hw-tool-coords-readout");
+    if (!readout) return;
+    const pos = readCurrentToolPositions();
+    if (!pos) {
+      readout.textContent = "Pop Glass + Cloud out to see coords";
+      return;
+    }
+    const label = pos.mode === "focus" ? "Focus" : "Non-focus";
+    readout.textContent =
+      label +
+      " · Glass " +
+      pos.glass.x +
+      "," +
+      pos.glass.y +
+      " · Cloud " +
+      pos.cloud.x +
+      "," +
+      pos.cloud.y;
+  }
+
+  async function copyToolCoords() {
+    const pos = readCurrentToolPositions();
+    if (!pos) return null;
+    const text = formatCoordsBlurb(pos);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      window.prompt("Copy these coords:", text);
+    }
+    console.info("[hw tools]\n" + text);
+    return text;
+  }
+
+  function ensureSaveHomesControl() {
+    if (!canUseLayoutTools()) return;
+    if (document.getElementById("hw-tool-layout-tools")) {
+      refreshLayoutToolsReadout();
+      return;
+    }
+
+    const panel = document.createElement("div");
+    panel.id = "hw-tool-layout-tools";
+    panel.className = "hw-tool-layout-tools";
+    panel.innerHTML =
+      '<p class="hw-tool-layout-tools__label">Tool positions</p>' +
+      '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Pop Glass + Cloud out to see coords</p>' +
+      '<div class="hw-tool-layout-tools__row">' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-copy-tool-coords">Copy coords</button>' +
+      '<button type="button" class="hw-tool-layout-tools__btn hw-tool-layout-tools__btn--save" id="hw-save-tool-homes">Save as home</button>' +
+      "</div>" +
+      '<p class="hw-tool-layout-tools__hint">Or right‑click Glass / Cloud → Copy coords</p>';
+
+    panel.querySelector("#hw-copy-tool-coords").addEventListener("click", async () => {
+      const btn = panel.querySelector("#hw-copy-tool-coords");
+      const text = await copyToolCoords();
+      if (!text) {
+        btn.textContent = "Pop tools out first";
+        window.setTimeout(() => {
+          btn.textContent = "Copy coords";
+        }, 1600);
+        return;
+      }
+      btn.textContent = "Copied!";
+      refreshLayoutToolsReadout();
+      window.setTimeout(() => {
+        btn.textContent = "Copy coords";
+      }, 1200);
+    });
+
+    panel.querySelector("#hw-save-tool-homes").addEventListener("click", () => {
+      const btn = panel.querySelector("#hw-save-tool-homes");
+      const result = saveCurrentAsHomes();
+      if (!result) {
+        btn.textContent = "Pop tools out first";
+        window.setTimeout(() => {
+          btn.textContent = "Save as home";
+        }, 1600);
+        return;
+      }
+      btn.textContent = "Saved " + result.mode;
+      refreshLayoutToolsReadout();
+      window.setTimeout(() => {
+        btn.textContent = "Save as home";
+      }, 1600);
+    });
+
+    document.body.appendChild(panel);
+    refreshLayoutToolsReadout();
+    document.addEventListener(
+      "pointerup",
+      () => window.setTimeout(refreshLayoutToolsReadout, 50),
+      true
+    );
+    try {
+      const obs = new MutationObserver(() => refreshLayoutToolsReadout());
+      obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    } catch {
+      /* ignore */
+    }
+    bindToolCoordContextMenus();
+  }
+
+  function bindToolCoordContextMenus() {
+    if (document.documentElement.dataset.hwToolCoordCtx === "1") return;
+    document.documentElement.dataset.hwToolCoordCtx = "1";
+    document.addEventListener(
+      "contextmenu",
+      async (e) => {
+        if (!canUseLayoutTools()) return;
+        const glass = e.target.closest?.(".hw-mg-widget");
+        const cloud = e.target.closest?.(".hw-hc-launcher");
+        if (!glass && !cloud) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const text = await copyToolCoords();
+        if (!text) {
+          window.alert("Pop both Glass and Cloud out first, then right‑click again.");
+          return;
+        }
+        const which = glass ? "Glass" : "Cloud";
+        const flash = document.getElementById("hw-tool-coord-toast");
+        const el =
+          flash ||
+          (() => {
+            const t = document.createElement("div");
+            t.id = "hw-tool-coord-toast";
+            t.className = "hw-tool-coord-toast";
+            document.body.appendChild(t);
+            return t;
+          })();
+        el.textContent = which + " — coords copied. Paste in chat.";
+        el.hidden = false;
+        window.clearTimeout(el._hwHide);
+        el._hwHide = window.setTimeout(() => {
+          el.hidden = true;
+        }, 1800);
+        refreshLayoutToolsReadout();
+      },
+      true
+    );
+  }
+
+  function setOutToolsHidden(host, hidden) {
+    if (!host) return;
+    const lens = host.querySelector(":scope > .hw-mg-widget");
+    const launcher = host.querySelector(":scope > .hw-hc-launcher");
+    [lens, launcher].forEach((el) => {
+      if (!el || !isVisibleTool(el)) return;
+      if (hidden) el.style.visibility = "hidden";
+      else el.style.visibility = "";
+    });
+  }
+
+  /**
+   * Call BEFORE toggling hw-hw-focus-mode so tools never paint mid-zoom.
+   */
+  function beginFocusToolSwitch() {
+    document.documentElement.classList.add("hw-focus-tools-switching");
+    document.body.classList.add("hw-focus-tools-switching");
+    const host = findWorksheetToolHost();
+    setOutToolsHidden(host, true);
+  }
+
+  function endFocusToolSwitch() {
+    const host = findWorksheetToolHost();
+    applyModeNeutrals(host, { animate: false });
+    /* Double rAF: wait for zoom/layout paint at new homes before showing. */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setOutToolsHidden(host, false);
+        document.documentElement.classList.remove("hw-focus-tools-switching");
+        document.body.classList.remove("hw-focus-tools-switching");
+      });
+    });
+  }
+
+  function onFocusModeChange() {
+    const host = findWorksheetToolHost();
+    if (!host) return;
+    const mode = isHomeworkFocusMode() ? "focus" : "normal";
+    if (mode === lastFocusNeutralMode) return;
+    lastFocusNeutralMode = mode;
+    if (focusNeutralTimer) window.clearTimeout(focusNeutralTimer);
+    beginFocusToolSwitch();
+    /* Wait for Focus scale / chrome hide to settle while tools stay invisible. */
+    focusNeutralTimer = window.setTimeout(() => {
+      focusNeutralTimer = null;
+      endFocusToolSwitch();
+    }, 280);
+  }
+
+  function ensureFocusNeutralWatch() {
+    if (focusNeutralWatchBound) return;
+    focusNeutralWatchBound = true;
+    lastFocusNeutralMode = isHomeworkFocusMode() ? "focus" : "normal";
+    try {
+      const obs = new MutationObserver(() => onFocusModeChange());
+      obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    } catch (_) {}
+    document.addEventListener("fullscreenchange", () => {
+      window.setTimeout(onFocusModeChange, 80);
+    });
+    ensureSaveHomesControl();
+  }
+
   /** Magnifying glass top-right; cloud launcher top-left (host-local px, snap like lens).
    *  Attach defaults (toolbar playtest free coords / snaps) override live neutrals. */
   function computeNeutralPositions(hostEl) {
@@ -461,6 +979,8 @@
     const w = hostEl.clientWidth;
     const h = hostEl.clientHeight;
     if (!w || !h) return null;
+
+    ensureFocusNeutralWatch();
 
     const pad = 12;
     const broomLane = 76;
@@ -696,6 +1216,8 @@
     if (lens) lens.style.visibility = "";
     if (launcher) launcher.style.visibility = "";
 
+    requestAnimationFrame(() => resolve(hostEl));
+
     resetBusy = false;
     if (cleanupBtn) cleanupBtn.disabled = false;
   }
@@ -782,30 +1304,37 @@
     const launcher = wantCloud ? hostEl.querySelector(":scope > .hw-hc-launcher") : null;
 
     /*
-     * First pop (nothing saved): pin to attach defaultLens / defaultLauncher so the
-     * fling lands on the authored neutral, not a stale style left/top.
+     * First pop / mode home: load this mode’s saved spot, or the mode neutral.
      */
     try {
       if (wantGlass) {
-        const mgKey =
-          (typeof global.HwMagnifyingGlass?.getStorageKey === "function" &&
-            global.HwMagnifyingGlass.getStorageKey()) ||
-          "";
-        if (!mgKey || !localStorage.getItem(mgKey)) {
-          global.HwMagnifyingGlass?.resetLensPosition?.();
+        if (typeof global.HwMagnifyingGlass?.syncModePosition === "function") {
+          global.HwMagnifyingGlass.syncModePosition();
         } else {
-          global.HwMagnifyingGlass?.refresh?.();
+          const mgKey =
+            (typeof global.HwMagnifyingGlass?.getStorageKey === "function" &&
+              global.HwMagnifyingGlass.getStorageKey()) ||
+            "";
+          if (!mgKey || !localStorage.getItem(mgKey)) {
+            global.HwMagnifyingGlass?.resetLensPosition?.();
+          } else {
+            global.HwMagnifyingGlass?.refresh?.();
+          }
         }
       }
       if (wantCloud) {
-        const hcKey =
-          (typeof global.HwHomeworkComments?.getStorageKey === "function" &&
-            global.HwHomeworkComments.getStorageKey()) ||
-          "";
-        if (!hcKey || !localStorage.getItem(hcKey)) {
-          global.HwHomeworkComments?.resetLauncherPosition?.();
+        if (typeof global.HwHomeworkComments?.syncModePosition === "function") {
+          global.HwHomeworkComments.syncModePosition();
         } else {
-          global.HwHomeworkComments?.applyLauncherPosition?.();
+          const hcKey =
+            (typeof global.HwHomeworkComments?.getStorageKey === "function" &&
+              global.HwHomeworkComments.getStorageKey()) ||
+            "";
+          if (!hcKey || !localStorage.getItem(hcKey)) {
+            global.HwHomeworkComments?.resetLauncherPosition?.();
+          } else {
+            global.HwHomeworkComments?.applyLauncherPosition?.();
+          }
         }
       }
     } catch (_) {
@@ -867,6 +1396,8 @@
     } catch (_) {}
 
     if (typeof options.onReveal === "function") options.onReveal();
+    /* After settle, separate glass/cloud if they land stacked. */
+    requestAnimationFrame(() => resolve(hostEl));
     resetBusy = false;
   }
 
@@ -1007,8 +1538,21 @@
     flingToolsFromToolbar,
     animateToolFlyback,
     computeNeutralPositions,
+    getModeNeutrals,
+    applyModeNeutrals,
+    onFocusModeChange,
+    ensureFocusNeutralWatch,
+    beginFocusToolSwitch,
+    saveCurrentAsHomes,
+    clearHomeOverrides,
+    ensureSaveHomesControl,
+    readCurrentToolPositions,
+    copyToolCoords,
+    formatCoordsBlurb,
     beginWorksheetToolBoot,
     cancelWorksheetToolBoot,
     revealWorksheetTools,
   };
 })(window);
+
+

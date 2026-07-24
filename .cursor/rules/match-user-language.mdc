@@ -1,0 +1,16 @@
+---
+description: Lead with the user's wording; teach jargon slowly, one term at a time
+alwaysApply: true
+---
+
+# Match user language
+
+When discussing product or UI behavior with the user:
+
+- **Lead with their phrases** (or close paraphrases). Explain in their words first.
+- **OK to teach UI/code jargon slowly** — one short term at a time, always paired with their wording.
+- **Do not go overboard**: no invented nicknames, no jargon piles that confuse.
+
+Example style: "the scale that makes everything bigger for fullscreen (CSS zoom)" — not "theater zoom".
+
+If a technical name is needed in code or comments, still explain to the user in their language first.

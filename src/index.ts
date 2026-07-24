@@ -1330,23 +1330,23 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
   const webhook = resolveHomeworkWebhook(env);
   let discordOk = false;
   if (webhook) {
-    if (webhook.usedFallback) {
-      console.warn(
-        "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
-      );
-    }
-
-    const channelError = await getWebhookChannelMismatch(
-      webhook.url,
-      webhook.channelId,
-      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+  if (webhook.usedFallback) {
+    console.warn(
+      "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
     );
-    if (channelError) {
-      console.warn("homework-submit channel check:", channelError);
-    }
+  }
 
-    const student = data.displayName?.trim() || data.username!.trim();
-    const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
+  const channelError = await getWebhookChannelMismatch(
+    webhook.url,
+    webhook.channelId,
+    webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+  );
+  if (channelError) {
+    console.warn("homework-submit channel check:", channelError);
+  }
+
+  const student = data.displayName?.trim() || data.username!.trim();
+  const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
     const { body: descriptionBody } = await buildHomeworkDiscordDescriptionForSubmit(
       data,
       student,
@@ -1354,19 +1354,19 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
       request,
       env
     );
-    const bodyText = [
-      webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
-      `Homework submitted — ${student} (${data.username!.trim()})`,
-      "",
+  const bodyText = [
+    webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
+    `Homework submitted — ${student} (${data.username!.trim()})`,
+    "",
       descriptionBody,
-    ]
-      .filter((line) => line != null)
-      .join("\n");
+  ]
+    .filter((line) => line != null)
+    .join("\n");
 
-    const result = await notifyHomeworkDiscord(webhook.url, bodyText);
+  const result = await notifyHomeworkDiscord(webhook.url, bodyText);
     discordOk = result.ok;
-    if (!result.ok) {
-      console.error("Homework Discord error", result.status, result.detail);
+  if (!result.ok) {
+    console.error("Homework Discord error", result.status, result.detail);
     }
   } else {
     console.error("homework-submit: no Discord webhook configured");
@@ -1604,34 +1604,34 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     let discordOk = false;
     if (webhook) {
       const safeName = safeKeyPart(file.name, "homework-video.webm");
-      const channelError = await getWebhookChannelMismatch(
-        webhook.url,
-        webhook.channelId,
-        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
-      );
-      if (channelError) {
+    const channelError = await getWebhookChannelMismatch(
+      webhook.url,
+      webhook.channelId,
+      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+    );
+    if (channelError) {
         console.warn("homework-video channel check:", channelError);
-      }
+    }
 
-      const text = [
-        webhook.usedFallback
+    const text = [
+      webhook.usedFallback
           ? "[Homework video — posted via site webhook until HW webhook is set]"
-          : null,
+        : null,
         `Video homework — ${displayName}`,
-        "",
-        `Student: ${displayName} (${username})`,
-        `Assignment: ${lessonName}`,
+      "",
+      `Student: ${displayName} (${username})`,
+      `Assignment: ${lessonName}`,
         promptLabel ? `Prompt: ${promptLabel}` : null,
-        `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
+      `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
         saveResult
           ? `Phone download (open in VLC if needed): ${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)}`
           : null,
-      ]
-        .filter((line) => line != null)
-        .join("\n");
-      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+    ]
+      .filter((line) => line != null)
+      .join("\n");
+    const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
       discordOk = result.ok;
-      if (!result.ok) {
+    if (!result.ok) {
         console.error("Homework video Discord error", result.status, result.detail);
       }
     } else {

@@ -25,8 +25,17 @@
     }
   }
 
-  /** Magnifying glass (虫眼鏡): enabled for all students on homework worksheets. */
+  /**
+   * Magnifying glass (虫眼鏡): on for all hosts (local + production).
+   * Live student toolbar pops Glass the same way as local Toolbar playtest.
+   * Force off: localStorage hw-mg-dev=0 (not used by default).
+   */
   function magnifyingGlass() {
+    try {
+      if (localStorage.getItem("hw-mg-dev") === "0") return false;
+    } catch {
+      /* ignore */
+    }
     return true;
   }
 
@@ -103,6 +112,19 @@
     /* ignore */
   }
 
+  /**
+   * Focus layout/scale without browser fullscreen — so Cursor design mode
+   * (and similar) still work. Enable: ?designFocus=1 or localStorage hw-design-focus=1
+   */
+  function designFocus() {
+    try {
+      if (new URLSearchParams(location.search).get("designFocus") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return devOverride("hw-design-focus");
+  }
+
   global.HwFeatureFlags = {
     isLocalDev,
     magnifyingGlass,
@@ -110,5 +132,6 @@
     hubV5,
     hubV5Demo,
     hubV6,
+    designFocus,
   };
 })(window);

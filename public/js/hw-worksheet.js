@@ -107,6 +107,7 @@
     if (mode === "context-blank") return "Open response";
     if (mode === "video-response") return "Video";
     if (mode === "audio-prompt") return "Audio";
+    if (mode === "audio-mimic") return "Mimic";
     if (mode === "translation") return "Translation";
     if (mode === "star-order") return "Order";
     return "Block";
@@ -145,6 +146,7 @@
     const num = line?.querySelector(".hw-item-num")?.textContent?.trim() || String(fallback);
     if (mode === "audio-listening") return "Listen " + num;
     if (mode === "audio-prompt") return "Audio " + num;
+    if (mode === "audio-mimic") return "Mimic " + num;
     if (mode === "context-blank") return "Question " + num;
     return num;
   }
@@ -885,6 +887,8 @@
     return (
       lineEl?.querySelector(".hw-video-prompt__question") ||
       lineEl?.querySelector(".hw-audio-prompt__head") ||
+      lineEl?.querySelector(".hw-audio-mimic__you-label") ||
+      lineEl?.querySelector(".hw-audio-mimic__head") ||
       null
     );
   }
@@ -1151,6 +1155,120 @@
     content.appendChild(prompt);
     wrap.appendChild(content);
     return wrap;
+  }
+
+  function normalizeItemAudioUrl(item) {
+    const raw = String(item?.audioUrl || "").trim();
+    if (!raw) {
+      const mediaId = String(item?.promptMediaId || "").trim();
+      if (mediaId) {
+        return global.HwAudioInline?.mediaUrl
+          ? global.HwAudioInline.mediaUrl(mediaId)
+          : global.HwVideoInline?.mediaUrl
+            ? global.HwVideoInline.mediaUrl(mediaId)
+            : "/api/hw-m/" + encodeURIComponent(mediaId);
+      }
+      return "";
+    }
+    return global.HwCompat?.normalizeMediaUrl ? global.HwCompat.normalizeMediaUrl(raw) : raw;
+  }
+
+  function renderAudioMimicCue(item, index, renderOptions) {
+    renderOptions = renderOptions || {};
+    const mimicLine = document.createElement("div");
+    mimicLine.className = "hw-worksheet__line hw-worksheet__line--audio-mimic";
+    mimicLine.dataset.itemId = item.id || "";
+
+    if (renderOptions.itemNum) {
+      appendLineNumber(mimicLine, renderOptions.itemNum);
+    }
+
+    const mimicContent = document.createElement("div");
+    mimicContent.className = "hw-worksheet__content";
+
+    const wrap = document.createElement("div");
+    wrap.className = "hw-audio-mimic";
+
+    const head = document.createElement("div");
+    head.className = "hw-audio-mimic__head";
+
+    const label = document.createElement("p");
+    label.className = "hw-audio-mimic__label";
+    label.textContent = "Listen, then record your version";
+    head.appendChild(label);
+
+    const promptText = String(item.prompt || "").trim();
+    if (promptText) {
+      const prompt = document.createElement("p");
+      prompt.className = "hw-audio-mimic__text";
+      prompt.textContent = promptText;
+      head.appendChild(prompt);
+    }
+
+    if (!renderOptions.preview && !renderOptions.readOnly) {
+      head.appendChild(
+        renderRecordingTip(item.id || "mimic-" + (index + 1), {
+          label: "IMPORTANT",
+          important: true,
+          lines: SUBMISSION_TIP_LINES,
+          ariaLabel: "Show important recording guidance",
+        })
+      );
+    }
+    wrap.appendChild(head);
+
+    const teacherMount = document.createElement("div");
+    teacherMount.className = "hw-audio-mimic__teacher";
+    const teacherUrl = normalizeItemAudioUrl(item);
+    if (teacherUrl) {
+      const teacherLabel = document.createElement("p");
+      teacherLabel.className = "hw-audio-mimic__teacher-label";
+      teacherLabel.textContent = "Teacher";
+      teacherMount.appendChild(teacherLabel);
+      teacherMount.appendChild(
+        renderListenSlideAudio(teacherUrl, {
+          ariaLabel: "Teacher audio to mimic",
+        })
+      );
+    } else if (renderOptions.preview) {
+      const missing = document.createElement("p");
+      missing.className = "hw-audio-mimic__note";
+      missing.textContent = "Teacher audio will play here once recorded.";
+      teacherMount.appendChild(missing);
+    }
+    wrap.appendChild(teacherMount);
+
+    const youLabel = document.createElement("p");
+    youLabel.className = "hw-audio-mimic__you-label";
+    youLabel.textContent = "You";
+    wrap.appendChild(youLabel);
+
+    const recorderMount = document.createElement("div");
+    recorderMount.className = "hw-audio-mimic__recorder";
+    wrap.appendChild(recorderMount);
+
+    if (renderOptions.preview) {
+      recorderMount.innerHTML =
+        '<p class="hw-audio-mimic__note">Students record their mimic here.</p>';
+    } else if (!renderOptions.readOnly && global.HwAudioInline?.mount) {
+      const meta = resolveRecorderMeta(renderOptions, renderOptions.assignment);
+      global.HwAudioInline.mount(recorderMount, {
+        username: meta.username,
+        displayName: meta.displayName,
+        assignmentId: meta.assignmentId,
+        lessonName: meta.lessonName,
+        promptId: item.id || "mimic-" + (index + 1),
+        promptLabel: promptText || "Listen & mimic",
+        startLabel: item.recordLabel || "Record",
+      });
+    } else {
+      recorderMount.innerHTML =
+        '<p class="hw-audio-mimic__note">Recording is not available in this browser.</p>';
+    }
+
+    mimicContent.appendChild(wrap);
+    mimicLine.appendChild(mimicContent);
+    return mimicLine;
   }
 
   function shufflePieces(list) {
@@ -1617,6 +1735,10 @@
         else wrap.appendChild(renderAudioRecordCue(item, i, { ...renderOptions, ...lineOpts }));
         return;
       }
+      if (section.mode === "audio-mimic") {
+        wrap.appendChild(renderAudioMimicCue(item, i, { ...renderOptions, ...lineOpts }));
+        return;
+      }
       if (section.mode === "translation") {
         wrap.appendChild(renderTranslationLine(item, lineOpts));
         return;
@@ -2047,7 +2169,8 @@
       const mediaId = String(row?.mediaId || "").trim();
       const recorder =
         lineEl.querySelector(".hw-video-prompt__recorder") ||
-        lineEl.querySelector(".hw-audio-prompt__recorder");
+        lineEl.querySelector(".hw-audio-prompt__recorder") ||
+        lineEl.querySelector(".hw-audio-mimic__recorder");
       if (!mediaId) {
         applyReplayNote(lineEl, row);
         return;
@@ -2115,6 +2238,13 @@
           return;
         }
 
+        if (mode === "audio-mimic") {
+          secEl.querySelectorAll(".hw-worksheet__line--audio-mimic").forEach((lineEl) => {
+            applyMediaReplay(lineEl, ordered[rowIdx++]);
+          });
+          return;
+        }
+
         secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl) => {
           const row = ordered[rowIdx++];
           if (!row) return;
@@ -2145,11 +2275,13 @@
     form.querySelectorAll(".hw-worksheet__section").forEach((secEl) => {
       const mode = secEl.dataset.mode || "";
 
-      if (mode === "video-response" || mode === "audio-prompt") {
+      if (mode === "video-response" || mode === "audio-prompt" || mode === "audio-mimic") {
         const selector =
           mode === "video-response"
             ? ".hw-worksheet__line--video"
-            : ".hw-worksheet__line--audio-prompt";
+            : mode === "audio-mimic"
+              ? ".hw-worksheet__line--audio-mimic"
+              : ".hw-worksheet__line--audio-prompt";
         secEl.querySelectorAll(selector).forEach((lineEl) => {
           applyMediaReplay(lineEl, rows[rowIdx++]);
         });
@@ -2236,6 +2368,7 @@
     if (!btn) return;
     btn.hidden = false;
     btn.disabled = false;
+    global.HwStudentToolbar?.sync?.(form);
   }
 
   function disableSeeAnswers(form) {
@@ -2246,6 +2379,7 @@
     hideTeacherAnswers(form);
     btn.hidden = true;
     btn.disabled = true;
+    global.HwStudentToolbar?.sync?.(form);
   }
 
   /**
@@ -2296,6 +2430,7 @@
       line.querySelector(".hw-listen-card") ||
       line.querySelector(".hw-video-prompt") ||
       line.querySelector(".hw-audio-prompt") ||
+      line.querySelector(".hw-audio-mimic") ||
       line.querySelector(".hw-worksheet__content") ||
       null
     );
@@ -2353,6 +2488,7 @@
     } else {
       submitBtn.removeAttribute("title");
     }
+    global.HwStudentToolbar?.sync?.(form);
   }
 
   function initSubmitGate(form) {
@@ -2520,13 +2656,18 @@
       document.getElementById("hw-hub-v4-homework") ||
       document.getElementById("hw-v5-homework-zone") ||
       document.querySelector(".hw-hub-v4-homework");
+    global.HwWorksheetToolLayout?.beginFocusToolSwitch?.();
     document.body.classList.remove("hw-hw-focus-mode");
-    section?.querySelector(".hw-focus-bar")?.setAttribute("hidden", "");
+    document.querySelectorAll(".hw-focus-bar").forEach((bar) => {
+      bar.hidden = true;
+      bar.setAttribute("hidden", "");
+    });
     section?.querySelector("[data-hw-focus]")?.removeAttribute("hidden");
     const exitFs = global.HwCompat?.exitFullscreen || (() => document.exitFullscreen?.());
     if (global.HwCompat?.getFullscreenElement?.() || document.fullscreenElement) {
       Promise.resolve(exitFs()).catch(() => {});
     }
+    global.HwWorksheetToolLayout?.onFocusModeChange?.();
   }
 
   /**
@@ -2575,18 +2716,29 @@
     async function enterFocus() {
       if (document.body.classList.contains("hw-hw-focus-mode")) return;
       updateTitle();
+      global.HwWorksheetToolLayout?.beginFocusToolSwitch?.();
       document.body.classList.add("hw-hw-focus-mode");
       focusBar.hidden = false;
       focusBtn.hidden = true;
       section.scrollTop = 0;
-      const reqFs =
-        global.HwCompat?.requestFullscreen ||
-        ((el) => el.requestFullscreen?.() || document.documentElement.requestFullscreen());
-      try {
-        await reqFs(section);
-      } catch (_) {
-        /* overlay-only focus is fine when fullscreen is blocked */
+      /*
+       * Fullscreen the document (not the homework section) so the HW box /
+       * Glass / Cloud / toolbar stay put. CSS turns the page background black.
+       * Skip fullscreen when designFocus is on so Cursor design mode can run
+       * (same Focus look/scale, no browser fullscreen takeover).
+       */
+      const skipFs = global.HwFeatureFlags?.designFocus?.() === true;
+      if (!skipFs) {
+        const reqFs =
+          global.HwCompat?.requestFullscreen ||
+          ((el) => el.requestFullscreen?.() || document.documentElement.requestFullscreen());
+        try {
+          await reqFs(document.documentElement);
+        } catch (_) {
+          /* Black-background focus still works when fullscreen is blocked. */
+        }
       }
+      global.HwWorksheetToolLayout?.onFocusModeChange?.();
     }
 
     focusBtn.addEventListener("click", () => enterFocus());
@@ -2787,6 +2939,20 @@
         return;
       }
 
+      if (mode === "audio-mimic") {
+        secEl.querySelectorAll(".hw-worksheet__line--audio-mimic").forEach((promptEl, ai) => {
+          const num = promptEl.querySelector(".hw-item-num")?.textContent?.trim() || String(ai + 1);
+          audioPrompts.push({
+            label: "Mimic " + num,
+            prompt:
+              promptEl.querySelector(".hw-audio-mimic__text")?.textContent?.trim() ||
+              "Listen & mimic",
+            student: "(submitted via audio upload)",
+          });
+        });
+        return;
+      }
+
       secEl.querySelectorAll("input.hw-blank, textarea.hw-blank").forEach((el) => {
         if (
           !el.name ||
@@ -2940,6 +3106,12 @@
         });
         return;
       }
+      if (mode === "audio-mimic") {
+        secEl.querySelectorAll(".hw-worksheet__line--audio-mimic").forEach((lineEl) => {
+          lines.push({ mode, lineEl });
+        });
+        return;
+      }
       secEl.querySelectorAll(".hw-worksheet__line").forEach((lineEl) => {
         lines.push({ mode, lineEl });
       });
@@ -2980,6 +3152,24 @@
             progress,
             blockType: blockTypeLabel(mode),
             label: "Audio " + num,
+            question: prompt || undefined,
+            student: saved ? "Audio submitted" : "(audio not saved)",
+            mediaId: saved && media.mediaId ? media.mediaId : undefined,
+            mediaKind: saved ? media.mediaKind || "audio" : undefined,
+          };
+        }
+        if (mode === "audio-mimic") {
+          const prompt =
+            lineEl.querySelector(".hw-audio-mimic__text")?.textContent?.trim() ||
+            "Listen & mimic";
+          const saved =
+            lineEl.querySelector('[data-hw-answer-saved="true"]') ||
+            lineEl.querySelector('.hw-audio-inline__card[data-state="saved"]');
+          const media = mediaFromLine(lineEl, "audio");
+          return {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: "Mimic " + num,
             question: prompt || undefined,
             student: saved ? "Audio submitted" : "(audio not saved)",
             mediaId: saved && media.mediaId ? media.mediaId : undefined,
@@ -3072,7 +3262,8 @@
     if (lineEl.classList.contains("hw-worksheet__line--video")) {
       return inlineMediaSaved(lineEl.querySelector(".hw-video-inline"));
     }
-    if (lineEl.classList.contains("hw-worksheet__line--audio-prompt")) {
+    if (lineEl.classList.contains("hw-worksheet__line--audio-prompt") ||
+      lineEl.classList.contains("hw-worksheet__line--audio-mimic")) {
       const inline = lineEl.querySelector(".hw-audio-inline");
       if (inline?.dataset?.hwAnswerSaved === "true" && inline.dataset.mediaId?.trim()) {
         return true;

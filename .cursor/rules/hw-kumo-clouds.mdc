@@ -1,0 +1,12 @@
+---
+description: Never remove or hide Homework Hub kumo cloud wallpaper
+alwaysApply: true
+---
+
+# Keep kumo clouds visible
+
+Never delete, hide, or disable `.section-kumo` / the kumo cloud wallpaper on Homework Hub (or any site page that uses it).
+
+- Do **not** remove the markup, CSS, or classes that render the decorative clouds.
+- Focus mode and other chrome/UI changes must keep the clouds visible.
+- The user loves them — treat them as permanent brand atmosphere, not optional decoration.

@@ -27,12 +27,16 @@
   }
 
   function studentHubHeading(name) {
+    if (typeof HwAuth.possessiveHubTitle === "function") {
+      return HwAuth.possessiveHubTitle(name);
+    }
     const label = String(name || "").trim();
-    if (!label) return "YOUR HOMEWORK HUB";
-    return (label + "'s homework hub").toUpperCase();
+    if (!label) return "Your hub";
+    return label + "'s hub";
   }
 
   if (!isTeacher) {
+    document.body.classList.add("hw-role-student");
     const hubTitle = document.getElementById("hw-hub-title");
     const eyebrow = document.getElementById("hw-hub-eyebrow");
     if (hubTitle) {
@@ -1415,6 +1419,7 @@
 
     if (!mount) return true;
 
+    global.HwStudentToolbar?.park?.();
     const form = HwWorksheet.render(mount, assignment, {
       omitMetaTitle: usesHubV4Layout(),
       omitMetaHint: usesHubV4Layout(),
@@ -1455,6 +1460,28 @@
             }
           : null,
       });
+    }
+
+    if (global.HwStudentToolbar?.mount) {
+      global.HwStudentToolbar.mount(form, {
+        username: session.username,
+        assignmentId: submission.assignmentId,
+        readOnly: true,
+        skipAttach: true,
+      });
+      if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo) {
+        const host =
+          form.closest(".hw-hub-v2-worksheet") || form.parentElement;
+        if (host) {
+          global.HwMagnifyingGlass.attachTo(host, {
+            skipOnboarding: true,
+            useModeNeutrals: true,
+            storageKey: "hw-mg-student-toolbar-v4",
+            defaultLens: { x: 0, y: 497 },
+          });
+          global.HwWorksheetToolLayout?.ensureFocusNeutralWatch?.();
+        }
+      }
     }
 
     applyNotebookOpenFocus(form, submission.id);
@@ -3862,6 +3889,7 @@
         v4Intro.textContent = "No assignment is linked to your account yet.";
         v4Intro.hidden = false;
       }
+      global.HwStudentToolbar?.unmount?.();
       if (mount) mount.innerHTML = "";
       studentMountedAssignmentId = null;
       hubV4WorksheetForm = null;
@@ -4049,6 +4077,7 @@
     };
 
     function mountWorksheet(data) {
+      global.HwStudentToolbar?.park?.();
       const form = HwWorksheet.render(mount, data, renderOptions);
       const saveMeta = {
         ...data,
@@ -4064,7 +4093,14 @@
       }
       bindWorksheetSave(form, saveMeta);
       bindHubV4WorksheetChrome(form, saveMeta);
-      if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
+      /* Floating toolbar replaces native Focus · Send · See Answers; Glass/Cloud tuck until popped. */
+      if (global.HwStudentToolbar?.mount) {
+        global.HwStudentToolbar.mount(form, {
+          username: session.username,
+          assignmentId: saveMeta.id || active.id,
+          readOnly: false,
+        });
+      } else if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
         global.HwHomeworkComments.attachTo(form, {
           username: session.username,
           assignmentId: saveMeta.id || active.id,

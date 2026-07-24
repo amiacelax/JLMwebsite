@@ -9,13 +9,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260815">
+  <link rel="stylesheet" href="/css/styles.css?v=20260724c">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=90">
   <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260807" data-hw-comments-css="1">
   <script src="/js/hw-auth.js?v=20260708b"></script>
-  <script src="/js/hw-feature-flags.js?v=11"></script>
+  <script src="/js/hw-feature-flags.js?v=13"></script>
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -37,7 +37,7 @@
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
       if (!pureTeacher) {
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=88">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=97">');
       }
       if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
         document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=14">');
@@ -49,6 +49,12 @@
   <script>
     (function () {
       try {
+        /* Role class before first paint of hub title — avoids giant white FOUC. */
+        var teacher = HwAuth.getTeacherSession && HwAuth.getTeacherSession();
+        var viewAs = HwAuth.isViewingAsStudent && HwAuth.isViewingAsStudent();
+        var pureTeacher = Boolean(teacher) && !viewAs;
+        if (pureTeacher) document.body.classList.add('hw-role-teacher');
+        else if (HwAuth.getSession()) document.body.classList.add('hw-role-student');
         var q = new URLSearchParams(location.search);
         if (q.get('v6full') === '1' || q.get('v6full') === 'true') {
           document.body.classList.add('hw-hub-v6-fullpage', 'hw-hub-v6-enabled');
@@ -766,6 +772,66 @@
               <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
               <p class="hw-worksheet-intro hw-hub-v4-intro" id="hw-v4-worksheet-intro" hidden>Loading worksheet…</p>
               <div id="hw-v2-worksheet-mount" lang="ja"></div>
+              <!-- Floating tools bar — placed under the active HW section by HwStudentToolbar -->
+              <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Glass" aria-pressed="false">
+                  <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">
+                    <svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">
+                      <g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M50 -11.5V-13.5"/>
+                        <path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>
+                        <path d="M11.85 60.11A39 39 0 1 1 50 91"/>
+                        <path d="M50 91V125"/>
+                        <path d="M36 103H64"/>
+                        <path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/>
+                      </g>
+                    </svg>
+                  </span>
+                </button>
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Cloud" aria-pressed="false">
+                  <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--cloud" aria-hidden="true">
+                    <svg class="hw-toolbar-bar__cloud" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48">
+                      <g fill="currentColor">
+                        <circle cx="22" cy="28" r="13"/>
+                        <circle cx="40" cy="21" r="16"/>
+                        <circle cx="58" cy="28" r="12"/>
+                        <rect x="12" y="26" width="56" height="15" rx="7.5"/>
+                      </g>
+                    </svg>
+                  </span>
+                </button>
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="focus" title="Focus Mode">
+                  <span class="hw-toolbar-bar__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/><circle cx="12" cy="12" r="3"/></svg>
+                  </span>
+                </button>
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="answers" title="See Answers">
+                  <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--answers" aria-hidden="true">
+                    <svg class="hw-toolbar-bar__q hw-toolbar-bar__q--dual" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22">
+                      <g class="hw-toolbar-bar__q-idle">
+                        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+                        <text x="12" y="16.2" text-anchor="middle" font-size="12.5" font-weight="700" fill="currentColor">?</text>
+                      </g>
+                      <g class="hw-toolbar-bar__q-ready">
+                        <circle cx="12" cy="12" r="10" fill="currentColor"/>
+                        <text x="12" y="16.4" text-anchor="middle" font-size="13" font-weight="800" fill="#fff" style="fill:#fff">?</text>
+                      </g>
+                    </svg>
+                  </span>
+                </button>
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="send" title="Send">
+                  <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--send" aria-hidden="true">
+                    <span class="hw-toolbar-bar__send-wake" aria-hidden="true">
+                      <span class="hw-toolbar-bar__send-streak"></span>
+                      <span class="hw-toolbar-bar__send-streak"></span>
+                      <span class="hw-toolbar-bar__send-streak"></span>
+                    </span>
+                    <svg class="hw-toolbar-bar__send" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20">
+                      <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                  </span>
+                </button>
+              </nav>
               <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
             </section>
 
@@ -1095,18 +1161,20 @@
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260771" defer></script>
   <script src="/js/hw-video-inline.js?v=20260773" defer></script>
-  <script src="/js/hw-audio-inline.js?v=20260754" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260757" defer></script>
   <script src="/js/hw-submit-format.js?v=20260619" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260794" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260805" defer></script>
   <script src="/js/hw-star-block.js?v=20260722b" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=19" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
-  <script src="/js/hw-worksheet-tools-layout.js?v=42" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=81" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=55" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=82" defer></script>
   <script src="/js/hw-review-media.js?v=20260781" defer></script>
-  <script src="/js/hw-homework-comments.js?v=96" defer></script>
+  <script src="/js/hw-homework-comments.js?v=97" defer></script>
+  <script src="/js/hw-toolbar-q-icons.js?v=4" defer></script>
+  <script src="/js/hw-student-toolbar.js?v=6" defer></script>
   <script src="/js/hw-encoding.js?v=2" defer></script>
-  <script src="/js/hw-platform-boot.js?v=7" defer></script>
+  <script src="/js/hw-platform-boot.js?v=11" defer></script>
 </body>
 </html>

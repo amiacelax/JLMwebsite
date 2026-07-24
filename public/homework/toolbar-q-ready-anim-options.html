@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Toolbar ? ready — animation options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #10161f;
+      --card: #1a2230;
+      --border: #2d3a4f;
+      --muted: #8b9cb3;
+      --text: #e8edf5;
+      --gold: #d4a853;
+      --grey: #9ca3af;
+      --accent: #67c4eb;
+      --stage: color-mix(in srgb, #fff 92%, #d48a38);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.25rem;
+      font-family: system-ui, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .sub {
+      margin: 0 auto 1.25rem;
+      max-width: 42rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .refs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      max-width: 1100px;
+      margin: 0 auto 1.35rem;
+    }
+    .ref {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.55rem 0.85rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 11rem;
+    }
+    .ref__stage {
+      width: 3.25rem;
+      height: 3.25rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--stage);
+      display: grid;
+      place-items: center;
+      color: var(--grey);
+    }
+    .ref--gold .ref__stage { color: var(--gold); }
+    .ref__meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .ref__meta strong {
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .ref__meta span {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
+    .option {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .option__tag {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      background: rgba(103, 196, 235, 0.15);
+      color: var(--accent);
+    }
+    .option h2 {
+      margin: 0;
+      font-size: 0.98rem;
+      font-weight: 650;
+    }
+    .option p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.35;
+      flex: 1;
+    }
+    .stage {
+      display: grid;
+      place-items: center;
+      min-height: 7.5rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--stage);
+      position: relative;
+      overflow: hidden;
+    }
+    .glyph {
+      width: 3.25rem;
+      height: 3.25rem;
+      color: var(--gold);
+      position: relative;
+    }
+    .glyph svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .q-mark {
+      font-family: system-ui, Segoe UI, sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      fill: #fff;
+    }
+    .replay {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .replay:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .foot {
+      margin: 1.5rem auto 0;
+      max-width: 42rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .foot a { color: var(--accent); }
+
+    /* ——— Option 1: Soft pulse glow ——— */
+    .anim-pulse .disc {
+      transform-origin: 12px 12px;
+      animation: q-soft-pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes q-soft-pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: drop-shadow(0 0 0 transparent);
+      }
+      50% {
+        opacity: 0.88;
+        transform: scale(1.025);
+        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--gold) 55%, transparent));
+      }
+    }
+
+    /* ——— Option 2: Ring draw (shrinking trail, slow→zip→settle) ——— */
+    /* Circumference ≈ 2π·11.15 ≈ 70. Cycle 2.2s; linear between keyframes, ease via uneven rotate°. */
+    .anim-ring .sweep {
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 1.35;
+      stroke-linecap: round;
+      stroke-dasharray: 18 52;
+      transform-origin: 12px 12px;
+      animation: q-ring-sweep 2.2s linear infinite;
+    }
+    @keyframes q-ring-sweep {
+      0% {
+        stroke-dasharray: 18 52;
+        transform: rotate(0deg);
+      }
+      15% {
+        stroke-dasharray: 16 54;
+        transform: rotate(70deg);
+      }
+      55% {
+        stroke-dasharray: 8 62;
+        transform: rotate(580deg);
+      }
+      85% {
+        stroke-dasharray: 2.5 67.5;
+        transform: rotate(690deg);
+      }
+      100% {
+        stroke-dasharray: 0.8 69.2;
+        transform: rotate(720deg);
+      }
+    }
+
+    /* ——— Option 3: Gentle bob (Glass/Send-like) ——— */
+    .anim-bob .bob-disc {
+      transform-origin: 12px 12px;
+      animation: q-gentle-bob 2.4s ease-in-out infinite;
+    }
+    .anim-bob .bob-mark {
+      /* Mark stays visually locked to disc center — disc alone translates */
+    }
+    @keyframes q-gentle-bob {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(0.4px, -1.5px); }
+    }
+
+    /* ——— Option 4: Hint spark ——— */
+    .anim-spark .spark {
+      opacity: 0;
+      transform-origin: center;
+      animation: q-hint-spark 4.2s ease-in-out infinite;
+    }
+    @keyframes q-hint-spark {
+      0%, 62%, 100% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0.4) rotate(0deg);
+      }
+      68% {
+        opacity: 1;
+        transform: translate(1.2px, -1.6px) scale(1) rotate(12deg);
+      }
+      74% {
+        opacity: 0.85;
+        transform: translate(3.2px, -2.8px) scale(0.75) rotate(28deg);
+      }
+      82% {
+        opacity: 0;
+        transform: translate(5px, -3.5px) scale(0.35) rotate(40deg);
+      }
+    }
+
+    /* ——— Option 5: Fill settle ——— */
+    .anim-fill .fill-ring {
+      opacity: 1;
+      transition: opacity 0.12s ease;
+    }
+    .anim-fill .fill-disc {
+      transform-origin: 12px 12px;
+      transform: scale(0);
+      opacity: 0;
+    }
+    .anim-fill .fill-mark {
+      opacity: 0;
+    }
+    .anim-fill.is-settling .fill-ring {
+      opacity: 0;
+    }
+    .anim-fill.is-settling .fill-disc {
+      animation: q-fill-settle 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .anim-fill.is-settling .fill-mark {
+      animation: q-fill-mark 0.45s ease 0.12s forwards;
+    }
+    .anim-fill.is-ready .fill-ring { display: none; }
+    .anim-fill.is-ready .fill-disc {
+      transform: scale(1);
+      opacity: 1;
+      animation: none;
+    }
+    .anim-fill.is-ready .fill-mark {
+      opacity: 1;
+      animation: none;
+    }
+    @keyframes q-fill-settle {
+      0% {
+        transform: scale(0.35);
+        opacity: 0.55;
+      }
+      55% {
+        transform: scale(1.06);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    @keyframes q-fill-mark {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .anim-pulse .disc,
+      .anim-ring .sweep,
+      .anim-bob .bob-disc,
+      .anim-spark .spark,
+      .anim-fill.is-settling .fill-disc,
+      .anim-fill.is-settling .fill-mark {
+        animation: none !important;
+      }
+      .anim-pulse .disc {
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--gold) 40%, transparent));
+      }
+      .anim-ring .sweep {
+        stroke-dasharray: 8 62;
+        transform: rotate(-40deg);
+      }
+      .anim-spark .spark {
+        opacity: 0.7;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>See Answers ? — ready-state animations</h1>
+  <p class="sub">
+    Side-by-side mocks for the gold solid-disc ready state (Option 6 glyph).
+    Option 2 (shrinking ring draw, slow→zip→settle) is the shipped ready-state animation.
+  </p>
+
+  <div class="refs" aria-label="Reference states">
+    <div class="ref">
+      <div class="ref__stage" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+          <text x="12" y="16.2" text-anchor="middle" class="q-mark" style="fill:currentColor;font-size:12.5px;font-weight:700">?</text>
+        </svg>
+      </div>
+      <div class="ref__meta">
+        <strong>Not ready</strong>
+        <span>Grey ring / empty idle</span>
+      </div>
+    </div>
+    <div class="ref ref--gold">
+      <div class="ref__stage" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36">
+          <circle cx="12" cy="12" r="10" fill="currentColor"/>
+          <text x="12" y="16.4" text-anchor="middle" class="q-mark">?</text>
+        </svg>
+      </div>
+      <div class="ref__meta">
+        <strong>Ready base</strong>
+        <span>Static gold solid disc</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Option 1 -->
+    <article class="option">
+      <span class="option__tag">Option 1</span>
+      <h2>Soft pulse glow</h2>
+      <p>Gold disc breathes opacity and scale (~2–3%) with a faint glow.</p>
+      <div class="stage">
+        <div class="glyph anim-pulse" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <circle class="disc" cx="12" cy="12" r="10" fill="currentColor"/>
+            <text x="12" y="16.4" text-anchor="middle" class="q-mark">?</text>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <!-- Option 2 -->
+    <article class="option">
+      <span class="option__tag">Option 2 · shipped</span>
+      <h2>Ring draw (eased)</h2>
+      <p>Thin gold arc: 2.2s cycle, 2 laps; keyframed rotate° eases in, zips ~1s, then settles. Dash shrinks over the cycle.</p>
+      <div class="stage">
+        <div class="glyph anim-ring" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="currentColor"/>
+            <circle class="sweep" cx="12" cy="12" r="11.15"/>
+            <text x="12" y="16.4" text-anchor="middle" class="q-mark">?</text>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <!-- Option 3 -->
+    <article class="option">
+      <span class="option__tag">Option 3</span>
+      <h2>Gentle bob</h2>
+      <p>Same light float as Glass/Send; the ? stays locked in the disc center.</p>
+      <div class="stage">
+        <div class="glyph anim-bob" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g class="bob-disc">
+              <circle cx="12" cy="12" r="10" fill="currentColor"/>
+              <text class="bob-mark q-mark" x="12" y="16.4" text-anchor="middle">?</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <!-- Option 4 -->
+    <article class="option">
+      <span class="option__tag">Option 4</span>
+      <h2>Hint spark</h2>
+      <p>Tiny star/glint ticks across the ? every few seconds, then rests.</p>
+      <div class="stage">
+        <div class="glyph anim-spark" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="currentColor"/>
+            <text x="12" y="16.4" text-anchor="middle" class="q-mark">?</text>
+            <g class="spark" transform="translate(13.2 8.2)">
+              <path
+                d="M0-2.4 L0.55-0.55 L2.4 0 L0.55 0.55 L0 2.4 L-0.55 0.55 L-2.4 0 L-0.55-0.55 Z"
+                fill="#fff8e8"
+                stroke="color-mix(in srgb, #fff 70%, var(--gold))"
+                stroke-width="0.35"
+              />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </article>
+
+    <!-- Option 5 -->
+    <article class="option">
+      <span class="option__tag">Option 5</span>
+      <h2>Fill settle</h2>
+      <p>Short inward fill when flipping ring → solid, then static gold. Replay to rewatch.</p>
+      <div class="stage">
+        <div class="glyph anim-fill is-ready" id="fill-demo" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <g class="fill-ring" style="color: var(--grey)">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.75"/>
+              <text x="12" y="16.2" text-anchor="middle" class="q-mark" style="fill:currentColor;font-size:12.5px;font-weight:700">?</text>
+            </g>
+            <circle class="fill-disc" cx="12" cy="12" r="10" fill="currentColor"/>
+            <text class="fill-mark q-mark" x="12" y="16.4" text-anchor="middle">?</text>
+          </svg>
+        </div>
+      </div>
+      <button type="button" class="replay" id="fill-replay">Replay fill</button>
+    </article>
+  </div>
+
+  <p class="foot">
+    Glyph options:
+    <a href="/homework/toolbar-q-icon-options.html">toolbar-q-icon-options</a>
+    · Open toolbar playtest:
+    <a href="/homework/hub-v5-preview.html?toolbar=1&amp;status=in_progress">hub-v5-preview?toolbar=1&amp;status=in_progress</a>
+  </p>
+
+  <script>
+    (function () {
+      var el = document.getElementById("fill-demo");
+      var btn = document.getElementById("fill-replay");
+      if (!el || !btn) return;
+
+      function play() {
+        el.classList.remove("is-ready", "is-settling");
+        /* force reflow so animation restarts cleanly */
+        void el.offsetWidth;
+        el.classList.add("is-settling");
+        window.clearTimeout(play._t);
+        play._t = window.setTimeout(function () {
+          el.classList.remove("is-settling");
+          el.classList.add("is-ready");
+        }, 620);
+      }
+
+      btn.addEventListener("click", play);
+      /* autoplay once so the transition is visible on first glance */
+      window.setTimeout(play, 700);
+    })();
+  </script>
+</body>
+</html>
