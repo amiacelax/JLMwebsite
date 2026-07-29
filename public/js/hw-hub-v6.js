@@ -199,9 +199,10 @@
     const items = [];
     const teacher = encodeURIComponent(session.username);
 
-    const [subResult, promoResult] = await Promise.all([
+    const [subResult, promoResult, reportResult] = await Promise.all([
       fetchJson("/api/homework-submissions?teacherUsername=" + teacher + "&limit=40").catch(() => null),
-      fetchJson("/api/promo-signups").catch(() => null),
+      fetchJson("/api/promo-signups?teacherUsername=" + teacher).catch(() => null),
+      fetchJson("/api/feature-reports?teacherUsername=" + teacher + "&limit=40").catch(() => null),
     ]);
 
     const submissions = Array.isArray(subResult?.submissions) ? subResult.submissions : [];
@@ -255,6 +256,22 @@
         body: (row.email || "Someone") + " joined the promotions list.",
         promo: row,
         openLabel: "View signup",
+      });
+    });
+
+    const reports = Array.isArray(reportResult?.reports) ? reportResult.reports : [];
+    reports.forEach((row) => {
+      const who =
+        row.displayName || row.username || "A student";
+      const isBug = String(row.kind || "").toLowerCase() === "bug";
+      items.push({
+        id: "report-" + row.id,
+        type: isBug ? "bug" : "feature",
+        at: row.createdAt,
+        title: isBug ? "Bug report from " + who : "Feature request from " + who,
+        body: String(row.message || "").trim(),
+        report: row,
+        openLabel: "View message",
       });
     });
 
@@ -582,6 +599,63 @@
     document.querySelectorAll("[data-hub-v6-pane]").forEach((pane) => {
       pane.hidden = pane.getAttribute("data-hub-v6-pane") !== tabId;
     });
+    syncHubV6TabSlider();
+  }
+
+  function ensureHubV6TabSlider(tablist) {
+    if (!tablist) return null;
+    let slider = tablist.querySelector(".hw-hub-v6-tabs__slider");
+    if (!slider) {
+      slider = document.createElement("span");
+      slider.className = "hw-hub-v6-tabs__slider";
+      slider.setAttribute("aria-hidden", "true");
+      tablist.insertBefore(slider, tablist.firstChild);
+    }
+    return slider;
+  }
+
+  function syncHubV6TabSlider() {
+    const tablist =
+      document.querySelector("#hw-hub-v6-panel .hw-hub-v6-tabs") ||
+      document.querySelector(".hw-hub-v6-tabs");
+    if (!tablist) return;
+    const slider = ensureHubV6TabSlider(tablist);
+    const active =
+      tablist.querySelector(".hw-hub-v6-tabs__btn.is-active") ||
+      tablist.querySelector('[aria-selected="true"]');
+    if (!slider || !active || active.hidden) {
+      if (slider) slider.style.opacity = "0";
+      return;
+    }
+    slider.style.opacity = "1";
+    const listRect = tablist.getBoundingClientRect();
+    const btnRect = active.getBoundingClientRect();
+    const x = btnRect.left - listRect.left + tablist.scrollLeft;
+    const y = btnRect.top - listRect.top + tablist.scrollTop;
+    slider.style.width = Math.max(0, btnRect.width) + "px";
+    slider.style.height = Math.max(0, btnRect.height) + "px";
+    slider.style.transform = "translate(" + x + "px, " + y + "px)";
+
+    if (!tablist.classList.contains("is-slider-ready")) {
+      requestAnimationFrame(() => {
+        tablist.classList.add("is-slider-ready");
+      });
+    }
+  }
+
+  function bindHubV6TabSliderLayout() {
+    if (bindHubV6TabSliderLayout.bound) return;
+    bindHubV6TabSliderLayout.bound = true;
+    window.addEventListener("resize", syncHubV6TabSlider);
+    if (typeof ResizeObserver === "function") {
+      const tablist =
+        document.querySelector("#hw-hub-v6-panel .hw-hub-v6-tabs") ||
+        document.querySelector(".hw-hub-v6-tabs");
+      if (tablist) {
+        const ro = new ResizeObserver(() => syncHubV6TabSlider());
+        ro.observe(tablist);
+      }
+    }
   }
 
   function birthdayTickerPhrase(entry) {
@@ -666,6 +740,11 @@
       document.body.classList.remove("hw-hub-v1-classic");
     }
 
+    const tablist =
+      document.querySelector("#hw-hub-v6-panel .hw-hub-v6-tabs") ||
+      document.querySelector(".hw-hub-v6-tabs");
+    const tabsTopBefore = tablist?.getBoundingClientRect().top;
+
     releaseMounts();
     syncTabButtons(tabId);
 
@@ -705,6 +784,13 @@
         /* ignore */
       }
     }
+
+    /* Keep the tab row visually stable when pane height changes. */
+    if (tablist && tabsTopBefore != null) {
+      const delta = tablist.getBoundingClientRect().top - tabsTopBefore;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+      syncHubV6TabSlider();
+    }
   }
 
   /* ── Notifications (Hub Preview tab) ── */
@@ -743,7 +829,7 @@
     const actions = document.createElement("div");
     actions.className = "hw-hub-v6__main-actions";
 
-    if (note.submission || note.demo || note.promo || note.birthday) {
+    if (note.submission || note.demo || note.promo || note.birthday || note.report) {
       const openBtn = document.createElement("button");
       openBtn.type = "button";
       openBtn.className = "btn btn--primary btn--sm";
@@ -780,6 +866,15 @@
     if (note.promo) {
       activateV6Tab("students");
       document.getElementById("hw-hub-v6-email-anchor")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (note.report) {
+      /* Full message is already on the detail card. */
+      global.HwToast?.show?.(
+        (note.report.kind === "bug" ? "Bug report" : "Feature request") +
+          " from " +
+          (note.report.displayName || note.report.username || "student")
+      );
       return;
     }
     if (note.birthday) {
@@ -951,6 +1046,10 @@
     tablist.className = "hw-hub-v6-tabs";
     tablist.setAttribute("role", "tablist");
     tablist.setAttribute("aria-label", "Teacher Hub sections");
+    const slider = document.createElement("span");
+    slider.className = "hw-hub-v6-tabs__slider";
+    slider.setAttribute("aria-hidden", "true");
+    tablist.appendChild(slider);
     TAB_DEFS.forEach((t, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1102,10 +1201,14 @@
     if (homeTab && homeTab.textContent.trim() === "Hub Preview") {
       homeTab.textContent = "Home";
     }
-    /* Prefer Home first in the tab strip */
+    /* Prefer Home first in the tab strip (after the sliding pill). */
     const tablist = pane.closest(".hw-hub-v6")?.querySelector(".hw-hub-v6-tabs");
-    if (tablist && homeTab && tablist.firstElementChild !== homeTab) {
-      tablist.insertBefore(homeTab, tablist.firstElementChild);
+    if (tablist && homeTab) {
+      const slider = tablist.querySelector(".hw-hub-v6-tabs__slider");
+      const firstBtn = tablist.querySelector(".hw-hub-v6-tabs__btn");
+      if (firstBtn !== homeTab) {
+        tablist.insertBefore(homeTab, slider ? slider.nextSibling : tablist.firstChild);
+      }
     }
   }
 
@@ -1118,6 +1221,8 @@
     ensureHomeTickerMarkup();
     ensureHubPreviewTab();
     bindTabs();
+    bindHubV6TabSliderLayout();
+    syncHubV6TabSlider();
   }
 
   function ensureHubPreviewTab() {

@@ -286,12 +286,15 @@
     };
   }
 
-  const TAB_IDS = ["homework", "lessons", "mistakes", "notifications", "games"];
+  const TAB_IDS = ["homework", "notebook", "lessons", "games"];
 
   const TAB_ALIASES = {
     lesson: "lessons",
-    study: "mistakes",
-    more: "notifications",
+    study: "lessons",
+    mistakes: "lessons",
+    more: "notebook",
+    notifications: "notebook",
+    notifs: "notebook",
   };
 
   function normalizeTabId(tabId) {
@@ -300,16 +303,77 @@
     return TAB_IDS.includes(mapped) ? mapped : "homework";
   }
 
-  function isMobileTabs() {
-    return global.matchMedia("(max-width: 767px)").matches;
+  function ensureHubTabSlider(tablist) {
+    if (!tablist) return null;
+    let slider = tablist.querySelector(".hw-hub-v5-tabs__slider");
+    if (!slider) {
+      slider = document.createElement("span");
+      slider.className = "hw-hub-v5-tabs__slider";
+      slider.setAttribute("aria-hidden", "true");
+      tablist.insertBefore(slider, tablist.firstChild);
+    }
+    return slider;
+  }
+
+  function syncHubTabSlider() {
+    const tablist = document.getElementById("hw-v5-tabs") || document.querySelector(".hw-hub-v5-tabs");
+    if (!tablist) return;
+    const slider = ensureHubTabSlider(tablist);
+    const active =
+      tablist.querySelector(".hw-hub-v5-tabs__btn.is-active") ||
+      tablist.querySelector('[aria-selected="true"]');
+    if (!slider || !active) return;
+
+    const listRect = tablist.getBoundingClientRect();
+    const btnRect = active.getBoundingClientRect();
+    const x = btnRect.left - listRect.left + tablist.scrollLeft;
+    const y = btnRect.top - listRect.top + tablist.scrollTop;
+    slider.style.width = Math.max(0, btnRect.width) + "px";
+    slider.style.height = Math.max(0, btnRect.height) + "px";
+    slider.style.transform = "translate(" + x + "px, " + y + "px)";
+
+    if (!tablist.classList.contains("is-slider-ready")) {
+      requestAnimationFrame(() => {
+        tablist.classList.add("is-slider-ready");
+      });
+    }
+  }
+
+  function bindHubTabSliderLayout() {
+    if (bindHubTabSliderLayout.bound) return;
+    bindHubTabSliderLayout.bound = true;
+    window.addEventListener("resize", syncHubTabSlider);
+    if (typeof ResizeObserver === "function") {
+      const tablist = document.getElementById("hw-v5-tabs") || document.querySelector(".hw-hub-v5-tabs");
+      if (tablist) {
+        const ro = new ResizeObserver(() => syncHubTabSlider());
+        ro.observe(tablist);
+      }
+    }
+  }
+
+  function ensureHubPanelsWrapper() {
+    const app = document.getElementById("hw-v5-app");
+    if (!app || app.querySelector(".hw-hub-v5-panels")) return;
+    const homeworkPanel = document.getElementById("hw-v5-panel-homework");
+    const below = document.getElementById("hw-v5-below");
+    if (!homeworkPanel || !below) return;
+    const panels = document.createElement("div");
+    panels.className = "hw-hub-v5-panels";
+    homeworkPanel.parentNode?.insertBefore(panels, homeworkPanel);
+    panels.appendChild(homeworkPanel);
+    panels.appendChild(below);
   }
 
   function setActiveTab(tabId, options) {
     const app = document.getElementById("hw-v5-app");
     if (!app) return;
+    const keepViewport = !options?.scrollTop;
+    const prevY = keepViewport ? window.scrollY : 0;
 
     const tab = normalizeTabId(tabId);
     app.dataset.v5ActiveTab = tab;
+    if (!options?.skipPersist) writeStorage(STORAGE.tab, tab);
 
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       const active = btn.getAttribute("data-v5-tab") === tab;
@@ -318,6 +382,12 @@
     });
 
     applyTabPanels(tab);
+    syncHubTabSlider();
+    if (keepViewport) {
+      requestAnimationFrame(() => {
+        if (window.scrollY !== prevY) window.scrollTo({ top: prevY, left: window.scrollX });
+      });
+    }
 
     if (options?.scrollTop) {
       app.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -328,16 +398,6 @@
     const homeworkPanel = document.getElementById("hw-v5-panel-homework");
     const belowPanels = document.querySelectorAll("#hw-v5-below [data-v5-panel]");
     const activeTab = normalizeTabId(tab);
-
-    if (!isMobileTabs()) {
-      homeworkPanel?.classList.add("is-active");
-      homeworkPanel?.removeAttribute("hidden");
-      belowPanels.forEach((panel) => {
-        panel.classList.add("is-active");
-        panel.removeAttribute("hidden");
-      });
-      return;
-    }
 
     const onHomework = activeTab === "homework";
     homeworkPanel?.classList.toggle("is-active", onHomework);
@@ -352,22 +412,29 @@
     });
   }
 
-  function initMobileTabs() {
-    try {
-      localStorage.removeItem(STORAGE.tab);
-    } catch {
-      /* ignore */
-    }
-    setActiveTab("homework");
-    global.matchMedia("(max-width: 767px)").addEventListener("change", () => {
-      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
-    });
+  function initHubTabs() {
+    ensureHubPanelsWrapper();
+    setActiveTab(normalizeTabId(readStorage(STORAGE.tab, "homework")));
   }
 
-  function bindMobileTabs() {
+  function bindHubTabs() {
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        setActiveTab(btn.getAttribute("data-v5-tab") || "homework", { scrollTop: true });
+        setActiveTab(btn.getAttribute("data-v5-tab") || "homework");
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      const lessonTab = e.target.closest("[data-lesson-pane]");
+      if (!lessonTab) return;
+      const pane = lessonTab.getAttribute("data-lesson-pane") === "playlist" ? "playlist" : "latest";
+      document.querySelectorAll("[data-lesson-pane]").forEach((btn) => {
+        const active = btn.getAttribute("data-lesson-pane") === pane;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      document.querySelectorAll("[data-lesson-panel]").forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-lesson-panel") !== pane;
       });
     });
   }
@@ -637,14 +704,24 @@
   }
 
   function renderLessons() {
-    const meta = document.getElementById("hw-lesson-meta");
     const lessonBtn = document.getElementById("hw-latest-lesson");
-    if (meta) meta.textContent = MOCK.lessonMeta;
+    const playlist = document.getElementById("hw-lesson-playlist");
+    document.querySelectorAll(".hw-grid-lesson, .hw-hub-v5-lesson-pane, .hw-lesson-actions").forEach((el) => {
+      el.remove();
+    });
+    document.getElementById("hw-lesson-meta")?.remove();
     if (lessonBtn) {
       lessonBtn.href = MOCK.lessonUrl;
-      lessonBtn.textContent = "Watch your latest lesson";
-      lessonBtn.classList.add("btn--primary");
-      lessonBtn.classList.remove("btn--ghost");
+      lessonBtn.textContent = "Latest lesson";
+      lessonBtn.className = "hw-hub-v5-lesson-tabs__btn";
+      lessonBtn.removeAttribute("aria-disabled");
+    }
+    if (playlist) {
+      playlist.href = MOCK.lessonUrl;
+      playlist.textContent = "Lesson playlist";
+      playlist.className = "hw-hub-v5-lesson-tabs__btn hw-lesson-playlist";
+      playlist.removeAttribute("aria-disabled");
+      playlist.hidden = false;
     }
   }
 
@@ -709,9 +786,7 @@
     renderLessons();
     renderGames();
     renderHistory();
-    if (isMobileTabs()) {
-      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
-    }
+    setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
   }
 
   async function mountWorksheet() {
@@ -847,6 +922,23 @@
     return document.documentElement.classList.contains("hw-tb-cloud-out");
   }
 
+  /** Phone widths — same as live student toolbar mobile arm. */
+  function usesToolbarDirectArm() {
+    try {
+      return global.matchMedia("(max-width: 767px)").matches;
+    } catch {
+      return false;
+    }
+  }
+
+  function isGlassArmed() {
+    return !!document.querySelector(".hw-mg-host.hw-mg-armed");
+  }
+
+  function isCloudArmed() {
+    return !!document.querySelector(".hw-hc-host.hw-hc-armed");
+  }
+
   function worksheetToolHostEl() {
     const form = worksheetFormEl();
     return (
@@ -875,7 +967,28 @@
     global.HwHomeworkComments?.applyLauncherPosition?.();
   }
 
+  function toggleGlassArmFromToolbar() {
+    const next = !isGlassArmed();
+    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
+    global.HwHomeworkComments?.disarm?.();
+    global.HwMagnifyingGlass?.setArmed?.(next);
+    syncToolbarActionState();
+  }
+
+  function toggleCloudArmFromToolbar() {
+    const next = !isCloudArmed();
+    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
+    global.HwMagnifyingGlass?.setArmed?.(false);
+    if (next) global.HwHomeworkComments?.setArmed?.(true);
+    else global.HwHomeworkComments?.disarm?.();
+    syncToolbarActionState();
+  }
+
   function toggleGlassFromToolbar(glassBtn) {
+    if (usesToolbarDirectArm()) {
+      toggleGlassArmFromToolbar();
+      return;
+    }
     const host = worksheetToolHostEl();
     const layout = global.HwWorksheetToolLayout;
     if (isGlassPopped()) {
@@ -914,6 +1027,10 @@
   }
 
   function toggleCloudFromToolbar(cloudBtn) {
+    if (usesToolbarDirectArm()) {
+      toggleCloudArmFromToolbar();
+      return;
+    }
     const host = worksheetToolHostEl();
     const layout = global.HwWorksheetToolLayout;
     if (isCloudPopped()) {
@@ -951,23 +1068,24 @@
     syncToolbarActionState();
   }
 
-  /** Sit the toolbar under the HW box, inside the section (above its bottom border). */
+  /** Sit the toolbar under the HW content, inside the blue grammar box (after the mount). */
   function placeToolbarUnderHwBox() {
     if (!document.documentElement.classList.contains("hw-hub-v5-toolbar-embed")) return;
     const bar = document.getElementById("hw-toolbar-bar");
-    const form = worksheetFormEl();
-    if (!bar || !form) return;
-
-    const activeLine =
-      form.querySelector(".hw-worksheet--slide-mode .hw-worksheet__line:not([hidden])") ||
-      form.querySelector(".hw-worksheet__line:not([hidden])");
-    const section =
-      activeLine?.closest(".hw-worksheet__section") ||
-      form.querySelector(".hw-worksheet__section:not([hidden])") ||
-      form.querySelector(".hw-worksheet__section");
-    if (!section) return;
-    if (bar.parentElement === section && section.lastElementChild === bar) return;
-    section.appendChild(bar);
+    const card =
+      document.getElementById("hw-v5-worksheet-card") ||
+      document.querySelector(".hw-hub-v2-worksheet.hw-hub-worksheet-card") ||
+      document.querySelector(".hw-hub-v2-worksheet");
+    const mount =
+      document.getElementById("hw-v2-worksheet-mount") ||
+      document.getElementById("hw-worksheet-mount");
+    if (!bar || !card) return;
+    if (mount && card.contains(mount)) {
+      if (bar.previousElementSibling !== mount || bar.parentElement !== card) mount.after(bar);
+    } else if (bar.parentElement !== card) {
+      card.appendChild(bar);
+    }
+    global.HwWorksheetToolLayout?.clearMobileToolbarHome?.(bar);
   }
 
   function worksheetFormEl() {
@@ -1033,13 +1151,15 @@
       glassBtn.disabled = !(
         global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo
       );
-      glassBtn.setAttribute("aria-pressed", isGlassPopped() ? "true" : "false");
+      const glassOn = usesToolbarDirectArm() ? isGlassArmed() : isGlassPopped();
+      glassBtn.setAttribute("aria-pressed", glassOn ? "true" : "false");
     }
     if (cloudBtn) {
       cloudBtn.disabled = !(
         global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo
       );
-      cloudBtn.setAttribute("aria-pressed", isCloudPopped() ? "true" : "false");
+      const cloudOn = usesToolbarDirectArm() ? isCloudArmed() : isCloudPopped();
+      cloudBtn.setAttribute("aria-pressed", cloudOn ? "true" : "false");
     }
     global.HwToolbarQIcons?.applyToToolbar?.(bar);
   }
@@ -1056,7 +1176,6 @@
       if (tool === "focus") {
         if (document.body.classList.contains("hw-hw-focus-mode")) {
           global.HwWorksheet?.exitFocusMode?.();
-          document.querySelector(".hw-focus-bar__exit")?.click();
         } else {
           form?.querySelector("[data-hw-focus]")?.click();
         }
@@ -1076,17 +1195,16 @@
         return;
       }
       if (tool === "glass") {
-        /* Pop out / tuck the floating movable glass widget — do not arm from the toolbar. */
         toggleGlassFromToolbar(btn);
         return;
       }
       if (tool === "cloud") {
-        /* Pop out / tuck the floating movable cloud launcher — do not arm from the toolbar. */
         toggleCloudFromToolbar(btn);
         return;
       }
     });
     document.addEventListener("fullscreenchange", () => syncToolbarActionState());
+    document.addEventListener("hw-tool-arm-change", () => syncToolbarActionState());
   }
 
   function bindUi() {
@@ -1103,18 +1221,14 @@
     });
 
     document.getElementById("hw-v5-past-btn")?.addEventListener("click", () => {
-      if (isMobileTabs()) {
-        setActiveTab("homework", { scrollTop: true });
-      }
+      setActiveTab("homework", { scrollTop: true });
       const fold = document.getElementById("hw-v5-past-fold");
       if (fold && !fold.open) fold.open = true;
-      if (!isMobileTabs()) {
-        fold?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
     });
 
-    bindMobileTabs();
-    initMobileTabs();
+    bindHubTabs();
+    bindHubTabSliderLayout();
+    initHubTabs();
   }
 
   function init() {

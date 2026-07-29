@@ -116,6 +116,28 @@ Paste the homework-channel webhook URL, then redeploy. If this secret is missing
 
 ---
 
+## Student Discord DMs (publish + review ready)
+
+When homework is **published** or a submission is marked **reviewed**, the Worker DMs the student on Discord (bot). If the student has no Discord user ID in Student info, it DMs JD instead. If the bot secrets are missing, it falls back to the homework webhook channel.
+
+1. Discord Developer Portal → create a Bot → copy token.
+2. Invite the bot to the JLM server (students need DMs from server members allowed, or an open DM path with the bot).
+3. Production secrets:
+
+```powershell
+npx.cmd wrangler secret put DISCORD_BOT_TOKEN
+npx.cmd wrangler secret put DISCORD_TEACHER_USER_ID
+```
+
+`DISCORD_TEACHER_USER_ID` is JD’s Discord snowflake (Developer Mode → right-click your profile → **Copy User ID**).
+
+4. Local: add both to `.dev.vars` (see `.dev.vars.example`).
+5. Teacher Hub → Student info → paste each student’s Discord user ID → Save.
+
+Without `DISCORD_BOT_TOKEN` / `DISCORD_TEACHER_USER_ID`, publish and review still succeed; notify falls back to `DISCORD_HOMEWORK_WEBHOOK_URL` (or site webhook).
+
+---
+
 ## Checklist
 
 | Step | Status |
@@ -123,6 +145,7 @@ Paste the homework-channel webhook URL, then redeploy. If this secret is missing
 | Logged into Cloudflare (`wrangler whoami`) | Done |
 | `DISCORD_WEBHOOK_URL` secret on Worker | Done |
 | `DISCORD_HOMEWORK_WEBHOOK_URL` secret on Worker | **Required for homework submit** |
+| `DISCORD_BOT_TOKEN` + `DISCORD_TEACHER_USER_ID` | **Required for student/teacher DMs** (else webhook fallback) |
 | Register workers.dev subdomain | **You** — one dashboard click |
 | `npx.cmd wrangler deploy` | Run after subdomain |
 | Domain on Cloudflare + custom domain on Worker | **You** — DNS cutover |

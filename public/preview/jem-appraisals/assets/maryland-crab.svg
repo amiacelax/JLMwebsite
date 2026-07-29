@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 140" role="img" aria-label="Maryland blue crab with claws up">
+  <g fill="#1e4d7b">
+    <!-- Left walking legs -->
+    <path d="M52 88 L28 78 L24 82 L48 94 Z" opacity="0.9"/>
+    <path d="M50 96 L22 96 L22 101 L50 101 Z" opacity="0.85"/>
+    <path d="M52 104 L30 114 L34 118 L54 108 Z" opacity="0.9"/>
+
+    <!-- Right walking legs -->
+    <path d="M108 88 L132 78 L136 82 L112 94 Z" opacity="0.9"/>
+    <path d="M110 96 L138 96 L138 101 L110 101 Z" opacity="0.85"/>
+    <path d="M108 104 L130 114 L126 118 L106 108 Z" opacity="0.9"/>
+
+    <!-- Body / shell -->
+    <ellipse cx="80" cy="92" rx="42" ry="28"/>
+    <!-- Shell ridge hint -->
+    <ellipse cx="80" cy="88" rx="28" ry="12" fill="#2a5f8f"/>
+
+    <!-- Eyes -->
+    <circle cx="68" cy="78" r="4" fill="#0d2a45"/>
+    <circle cx="92" cy="78" r="4" fill="#0d2a45"/>
+    <circle cx="69" cy="77" r="1.5" fill="#cfe6df"/>
+    <circle cx="93" cy="77" r="1.5" fill="#cfe6df"/>
+
+    <!-- Left claw arm (raised up) -->
+    <path d="M48 78
+      C38 62 32 48 36 34
+      C38 28 46 26 52 32
+      C56 38 54 52 50 66
+      C50 72 50 76 48 78 Z"/>
+
+    <!-- Left claw (open, facing up) -->
+    <path d="M36 34
+      C28 22 18 18 14 28
+      C12 34 18 40 26 38
+      C30 37 34 36 36 34 Z"/>
+    <path d="M52 32
+      C58 18 70 16 72 28
+      C73 34 66 38 58 36
+      C54 35 52 34 52 32 Z"/>
+
+    <!-- Right claw arm (raised up) -->
+    <path d="M112 78
+      C122 62 128 48 124 34
+      C122 28 114 26 108 32
+      C104 38 106 52 110 66
+      C110 72 110 76 112 78 Z"/>
+
+    <!-- Right claw (open, facing up) -->
+    <path d="M124 34
+      C132 22 142 18 146 28
+      C148 34 142 40 134 38
+      C130 37 126 36 124 34 Z"/>
+    <path d="M108 32
+      C102 18 90 16 88 28
+      C87 34 94 38 102 36
+      C106 35 108 34 108 32 Z"/>
+  </g>
+</svg>

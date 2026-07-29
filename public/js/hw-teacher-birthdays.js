@@ -86,7 +86,7 @@
       .toLowerCase();
     const filtered = birthdaysCache.filter((entry) => {
       if (!query) return true;
-      return [entry.name, formatLabel(entry), entry.note || ""]
+      return [entry.id, entry.name, formatLabel(entry), entry.note || ""]
         .join(" ")
         .toLowerCase()
         .includes(query);

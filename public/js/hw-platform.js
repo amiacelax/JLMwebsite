@@ -44,20 +44,17 @@
     }
     if (eyebrow) eyebrow.hidden = true;
 
-    const footerInfo = document.getElementById("hw-platform-footer-info");
     const footerLogout = document.getElementById("hw-platform-logout-footer");
-    if (footerInfo) footerInfo.hidden = true;
     if (footerLogout) {
       footerLogout.hidden = false;
       footerLogout.addEventListener("click", () => HwAuth.logout());
     }
   }
 
-  /** Hub v4: worksheet on top, cards below. Legacy bottom worksheet for noplan only. */
+  /** Hub v4: worksheet on top, cards below. */
   function usesHubV4Layout() {
     if (isTeacher) return false;
-    if (global.__JLM_HUB_V5) return true;
-    return session.username !== "noplan";
+    return Boolean(global.__JLM_HUB_V5) || Boolean(session?.username);
   }
 
   let hubV4WorksheetForm = null;
@@ -986,7 +983,12 @@
         banner.textContent = "";
       }
     }
-    if (offlineCard) offlineCard.hidden = Boolean(viewing);
+    if (offlineCard) {
+      offlineCard.hidden =
+        Boolean(viewing) || !offlineCard.classList.contains("is-capturing");
+    }
+    const printMenu = document.getElementById("hw-print-menu");
+    if (printMenu && viewing) printMenu.hidden = true;
     if (pastFold && viewing && !global.__JLM_HUB_V5) {
       pastFold.hidden = false;
     }
@@ -994,20 +996,66 @@
 
   function bindOfflineTools() {
     const printBtn = document.getElementById("hw-offline-print");
-    if (!printBtn || printBtn.dataset.bound === "true") return;
-    printBtn.dataset.bound = "true";
-    printBtn.addEventListener("click", () => {
-      const form = document.getElementById("hw-worksheet-form");
-      if (form && global.HwWorksheet?.printBlank) {
-        global.HwWorksheet.printBlank(form);
+    const toggle = document.getElementById("hw-print-menu-toggle");
+    const popup = document.getElementById("hw-print-menu-popup");
+    const menu = document.getElementById("hw-print-menu");
+
+    function closePrintMenu() {
+      if (!popup || !toggle) return;
+      popup.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    if (printBtn && printBtn.dataset.bound !== "true") {
+      printBtn.dataset.bound = "true";
+      printBtn.addEventListener("click", () => {
+        closePrintMenu();
+        const form = document.getElementById("hw-worksheet-form");
+        if (form && global.HwWorksheet?.printBlank) {
+          global.HwWorksheet.printBlank(form);
+        }
+      });
+    }
+
+    if (!toggle || !popup || !menu || toggle.dataset.bound === "true") return;
+    toggle.dataset.bound = "true";
+
+    function openPrintMenu() {
+      popup.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+    }
+
+    toggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (popup.hidden) openPrintMenu();
+      else closePrintMenu();
+    });
+
+    popup.addEventListener("click", (e) => {
+      if (e.target.closest("[data-hw-photo-take], [data-hw-photo-choose], [data-hw-print]")) {
+        closePrintMenu();
       }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target)) closePrintMenu();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closePrintMenu();
     });
   }
 
   function setOfflineToolsVisible(show) {
+    const printMenu = document.getElementById("hw-print-menu");
+    if (printMenu) printMenu.hidden = !show;
     const offlineCard = document.getElementById("hw-offline-tools-card");
     if (!offlineCard) return;
-    offlineCard.hidden = !show;
+    /* Photo shell only — keep hidden unless camera capture is active. */
+    if (!offlineCard.classList.contains("is-capturing")) {
+      offlineCard.hidden = true;
+    }
   }
 
   function openPastAssignment(entry) {
@@ -1950,38 +1998,47 @@
   function setLessonLinks(assignment, catalog) {
     const lessonBtn = document.getElementById("hw-latest-lesson");
     const lessonPlaylist = document.getElementById("hw-lesson-playlist");
-    const lessonMeta = document.getElementById("hw-lesson-meta");
     const media = getStudentMedia(catalog);
     const lessonUrl = media.latestLessonUrl || assignment?.youtubeUrl;
 
+    /* Never bring back the old lesson card. */
+    document.querySelectorAll(".hw-grid-lesson, .hw-hub-v5-lesson-pane, .hw-lesson-actions").forEach((el) => {
+      el.remove();
+    });
+    document.getElementById("hw-lesson-meta")?.remove();
+
     if (lessonBtn) {
+      lessonBtn.hidden = false;
+      lessonBtn.target = "_blank";
+      lessonBtn.rel = "noopener noreferrer";
+      lessonBtn.className = "hw-hub-v5-lesson-tabs__btn";
+      lessonBtn.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
+      lessonBtn.textContent = "Latest lesson";
       if (isYoutubeReady(lessonUrl)) {
         lessonBtn.href = lessonUrl;
-        lessonBtn.textContent = "Watch your latest lesson";
+        lessonBtn.removeAttribute("aria-disabled");
         lessonBtn.removeAttribute("data-placeholder");
-        lessonBtn.classList.remove("btn--ghost");
-        lessonBtn.classList.add("btn--primary");
       } else {
         lessonBtn.removeAttribute("href");
-        lessonBtn.textContent = "Watch lesson (YouTube link coming soon)";
-        lessonBtn.classList.add("btn--ghost");
-        lessonBtn.classList.remove("btn--primary");
+        lessonBtn.setAttribute("aria-disabled", "true");
       }
     }
 
     if (lessonPlaylist) {
+      lessonPlaylist.hidden = false;
+      lessonPlaylist.target = "_blank";
+      lessonPlaylist.rel = "noopener noreferrer";
+      lessonPlaylist.className = "hw-hub-v5-lesson-tabs__btn hw-lesson-playlist";
+      lessonPlaylist.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
+      lessonPlaylist.textContent = "Lesson playlist";
       const playlistUrl = media.lessonPlaylistUrl;
       if (isYoutubeReady(playlistUrl)) {
         lessonPlaylist.href = playlistUrl;
-        lessonPlaylist.hidden = false;
+        lessonPlaylist.removeAttribute("aria-disabled");
       } else {
-        lessonPlaylist.hidden = true;
+        lessonPlaylist.removeAttribute("href");
+        lessonPlaylist.setAttribute("aria-disabled", "true");
       }
-    }
-
-    if (lessonMeta) {
-      const catalogEntry = assignment || {};
-      lessonMeta.textContent = studentViewMeta(catalogEntry, assignment).lessonMeta;
     }
   }
 
@@ -2168,12 +2225,21 @@
 
     function hideCaptureUi() {
       stopCamera();
+      const offlineCard = document.getElementById("hw-offline-tools-card");
+      offlineCard?.classList.remove("is-capturing");
+      if (offlineCard) offlineCard.hidden = true;
       captureWrap?.setAttribute("hidden", "");
       livePanel?.setAttribute("hidden", "");
       previewPanel?.setAttribute("hidden", "");
     }
 
     function showCaptureLive() {
+      const offlineCard = document.getElementById("hw-offline-tools-card");
+      if (offlineCard) {
+        offlineCard.classList.add("is-capturing");
+        offlineCard.hidden = false;
+      }
+      form.hidden = false;
       captureWrap?.removeAttribute("hidden");
       livePanel?.removeAttribute("hidden");
       previewPanel?.setAttribute("hidden", "");
@@ -2181,6 +2247,12 @@
 
     function showCapturePreview() {
       stopCamera();
+      const offlineCard = document.getElementById("hw-offline-tools-card");
+      if (offlineCard) {
+        offlineCard.classList.add("is-capturing");
+        offlineCard.hidden = false;
+      }
+      form.hidden = false;
       captureWrap?.removeAttribute("hidden");
       livePanel?.setAttribute("hidden", "");
       previewPanel?.removeAttribute("hidden");
@@ -2723,7 +2795,7 @@
         if (global.HwAuth && typeof global.HwAuth.isStudentAccount === "function") {
           return global.HwAuth.isStudentAccount(username);
         }
-        return ["joshs", "benm", "deme", "ivan", "benc", "noplan"].includes(key);
+        return ["joshs", "benm", "deme", "ivan", "benc"].includes(key);
       },
       onWorksheetSaved: async function () {
         invalidateCatalogCaches();
@@ -3685,6 +3757,9 @@
 
   function notifyStudentHubReady() {
     if (isTeacher) return;
+    document.documentElement.classList.remove("hw-boot-pending");
+    document.getElementById("hw-hub-boot")?.remove();
+    document.getElementById("hw-boot-gate-css")?.remove();
     document.dispatchEvent(new CustomEvent("hw-platform-student-ready"));
   }
 
@@ -3883,12 +3958,20 @@
     bindVideoUpload(active);
 
     if (!active || !mount) {
+      /* Hub v5 owns empty HW via no-plan / no-HW status pages — don't leave
+         the old Loading… worksheet card + "No assignment…" intro chrome. */
+      document.body.classList.add("hw-hub-no-linked-assignment");
       if (heading) heading.textContent = "Current homework";
-      if (intro) intro.textContent = "No assignment is linked to your account yet.";
+      if (intro) {
+        intro.textContent = "";
+        intro.hidden = true;
+      }
       if (v4Intro) {
         v4Intro.textContent = "No assignment is linked to your account yet.";
-        v4Intro.hidden = false;
+        v4Intro.hidden = true;
       }
+      const v2Title = document.getElementById("hw-v2-title");
+      if (v2Title) v2Title.textContent = "";
       global.HwStudentToolbar?.unmount?.();
       if (mount) mount.innerHTML = "";
       studentMountedAssignmentId = null;
@@ -3901,6 +3984,7 @@
       settleHub(abortStudentWorksheetBoot);
       return;
     }
+    document.body.classList.remove("hw-hub-no-linked-assignment");
 
     /*
      * If this homework was already submitted/reviewed, do not remount a fresh

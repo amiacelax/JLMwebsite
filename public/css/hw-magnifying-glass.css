@@ -330,14 +330,14 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 .hw-mg-hover-highlight__rect {
   position: absolute;
   border-radius: 0.2rem;
-  background: color-mix(in srgb, var(--color-green, #2d6a4f) 30%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-green, #2d6a4f) 45%, transparent);
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 42%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-green, #2d6a4f) 70%, transparent);
   transition: opacity 0.06s ease, background 0.06s ease;
   box-sizing: border-box;
 }
 
 .hw-mg-host.hw-mg-armed .hw-mg-hover-highlight__rect {
-  background: color-mix(in srgb, var(--color-green, #2d6a4f) 38%, transparent);
+  background: color-mix(in srgb, var(--color-green, #2d6a4f) 52%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -727,6 +727,28 @@ body.hw-mg-onboarding-active .hw-mg-lens {
   opacity: 1;
 }
 
+/*
+ * Toolbar is fixed at the bottom of the screen — don’t let the “tap a word…”
+ * tip sit on top of it. Park the toast just above the pill.
+ */
+body:has(.hw-toolbar-bar:not([hidden])) .hw-mg-toast {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  /* tb: bottom ~1rem + ~5rem pill (+ safe area on phones) */
+  bottom: calc(6.25rem + env(safe-area-inset-bottom, 0px));
+  top: auto;
+  z-index: 460;
+  max-width: min(22rem, calc(100% - 1.5rem));
+}
+
+@media (max-width: 640px) {
+  body:has(.hw-toolbar-bar:not([hidden])) .hw-mg-toast {
+    /* Smaller mobile pill (~3.15rem buttons + pad) */
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (max-width: 767px) {
   .hw-mg-lens {
     width: 3.6rem;
@@ -925,11 +947,11 @@ body.hw-worksheet-tools-booting .hw-hub-v2-worksheet .hw-mg-shell,
 .hw-hc-launcher.hw-tools-returning,
 .hw-mg-widget.hw-tools-returning {
   animation: none !important;
-  cursor: default !important;
 }
 
 /* StarQ-style tool flyback ghost (magnet reset / toolbar put-away / pop-out).
- * Dedicated root class only — never .hw-mg-widget / .hw-hc-launcher (tuck targets). */
+ * Dedicated root class only — never .hw-mg-widget / .hw-hc-launcher (tuck targets).
+ * pointer-events:none so the live tool underneath stays clickable mid-flight. */
 .hw-tools-flyback {
   position: fixed !important;
   display: flex !important;

@@ -11,7 +11,8 @@ export interface StudentBirthday {
 
 export const STUDENT_BIRTHDAYS: StudentBirthday[] = [
   { id: "david", name: "David", month: 1, day: 27 },
-  { id: "jay", name: "Jay", month: 2, day: 5 },
+  { id: "sgtjamjar", name: "Jay", month: 2, day: 5 },
+  { id: "benm", name: "Ben M", month: 3, day: 22 },
   { id: "zenny", name: "Zenny", month: 4, day: 12 },
   { id: "jeremiah", name: "Jeremiah", month: 5, day: 2 },
   { id: "faye", name: "Faye", month: 5, day: 8 },

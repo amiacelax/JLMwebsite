@@ -134,78 +134,56 @@
         </div>
 
         <div id="hw-gate" class="hw-gate">
-          <details class="hw-about-details">
-            <summary>What is Homework Hub?</summary>
-            <div class="hw-about-details__body">
-              <p>A subscription for learners who want expert-made homework and language advice without booking a full private lesson every week. After each lesson recording, you get short practice that matches what we did — plus access to your lesson video when it’s ready.</p>
-              <ul>
-                <li>Homework drafted from your lesson (AI-assisted, <strong>always reviewed by JD</strong> before you see it)</li>
-                <li>Fill-in-the-blank style sheets in the browser — type answers like a PDF form</li>
-                <li>Account types: <strong>Current Student</strong> (private-lesson students) or <strong>Homework Only</strong></li>
-                <li>Three paid tiers — Basic, Premium, and Ultra — plus a <strong>Student Special Tier</strong> for current students</li>
-                <li>Personal video feedback from JD is included on <strong>Ultra only</strong> — not sold as a separate add-on</li>
-                <li>Discord ping when homework and YouTube lesson links are ready</li>
-                <li>Pitch accent checker coming soon</li>
-              </ul>
-            </div>
-          </details>
+          <section class="hw-pitch" aria-labelledby="hw-pitch-title">
+            <h2 class="hw-pitch__title" id="hw-pitch-title">Practice between lessons — or without them</h2>
+            <p class="hw-pitch__desc">Custom homework from JD, done in the browser. Discord pings when new work is ready. Written feedback on every plan; personal video feedback on Ultra.</p>
+          </section>
 
-          <h2 class="hw-plans-heading">Choose your tier</h2>
-          <div class="hw-breakdown-grid hw-breakdown-grid--landing">
-            <div class="hw-breakdown-column">
-              <article class="hw-breakdown-card hw-breakdown-card--featured">
-                <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
-                <h3>Basic</h3>
-                <ul class="hw-breakdown-card__list">
-                  <li>HW assignment once per month</li>
-                  <li>General written feedback/advice</li>
-                  <li>Phone or print — works either way</li>
-                  <li>Full learning game access</li>
-                </ul>
-              </article>
+          <section class="hw-plans" aria-labelledby="hw-plans-heading">
+            <h2 class="hw-plans-heading" id="hw-plans-heading">Plans</h2>
+            <div class="hw-breakdown-grid hw-breakdown-grid--landing">
+              <div class="hw-breakdown-column">
+                <article class="hw-breakdown-card">
+                  <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+                  <h3>Basic</h3>
+                  <ul class="hw-breakdown-card__list">
+                    <li>1 assignment / month</li>
+                    <li>Written feedback</li>
+                    <li>Learning games</li>
+                  </ul>
+                </article>
+              </div>
+              <div class="hw-breakdown-column">
+                <article class="hw-breakdown-card hw-breakdown-card--featured">
+                  <p class="hw-breakdown-card__badge">Popular</p>
+                  <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
+                  <h3>Premium</h3>
+                  <ul class="hw-breakdown-card__list">
+                    <li>4 assignments / month</li>
+                    <li>Written feedback from JD</li>
+                    <li>Games + private Discord</li>
+                  </ul>
+                </article>
+              </div>
+              <div class="hw-breakdown-column">
+                <article class="hw-breakdown-card">
+                  <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video</p>
+                  <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
+                  <h3>Ultra</h3>
+                  <ul class="hw-breakdown-card__list">
+                    <li>Everything in Premium</li>
+                    <li>Personal video feedback</li>
+                    <li>Priority review</li>
+                  </ul>
+                </article>
+              </div>
             </div>
-            <div class="hw-breakdown-column">
-              <article class="hw-breakdown-card">
-                <p class="hw-breakdown-card__badge">Popular</p>
-                <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
-                <h3>Premium</h3>
-                <ul class="hw-breakdown-card__list">
-                  <li><u>Four</u> HW assignments per month</li>
-                  <li><u>Written</u> feedback and advice from JD</li>
-                  <li>AI study tutor for hints and grammar help</li>
-                  <li>Phone or print — works either way</li>
-                  <li>Full learning game access</li>
-                  <li>Private Discord access</li>
-                </ul>
-              </article>
+
+            <div class="hw-subscribe-cta-wrap">
+              <button type="button" class="btn btn--primary hw-subscribe-cta" data-hw-subscribe-open>Subscribe</button>
+              <p class="hw-plans-note">Already take lessons with JD? <a href="/#contact" data-service="Homework Hub">Student Special — $10/mo</a></p>
             </div>
-            <div class="hw-breakdown-column">
-              <article class="hw-breakdown-card hw-breakdown-card--included">
-                <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
-                <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
-                <h3>Ultra</h3>
-                <ul class="hw-breakdown-card__list">
-                  <li><u>Four</u> HW assignments per month</li>
-                  <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
-                  <li>Everything in Premium (AI tutor, games, Discord)</li>
-                  <li>Priority review queue</li>
-                  <li>Phone or print — works either way</li>
-                </ul>
-              </article>
-            </div>
-          </div>
-
-          <div class="hw-subscribe-cta-wrap">
-            <button type="button" class="btn btn--primary hw-subscribe-cta" data-hw-subscribe-open>Subscribe</button>
-          </div>
-
-          <aside class="hw-student-special" aria-label="Student Special Tier">
-            <p class="hw-student-special__eyebrow">Already take lessons with JD?</p>
-            <h2 class="hw-student-special__title">Student Special Tier — <span class="hw-student-special__price">$10/mo</span></h2>
-            <p class="hw-student-special__desc">Current private-lesson students get <strong>Premium-level Homework Hub</strong> — weekly assignments, extensive feedback, full games, and Discord access — for just <strong>$10/month</strong> on top of your lesson plan.</p>
-            <a class="btn btn--ghost btn--sm hw-student-special__link" href="/#contact" data-service="Homework Hub">Ask about Student Special Tier</a>
-          </aside>
-
+          </section>
         </div>
 
         <p class="subpage-back">

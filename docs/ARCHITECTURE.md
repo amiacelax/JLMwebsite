@@ -92,6 +92,7 @@ c:\JLM Website\
 - Worker **GETs webhook metadata** before send; wrong channel → 503 (no silent post to #rules).
 - Embeds: contact = red “new message”; promo = blue “promo email signup”.
 - **Do not commit** webhook URLs; rotate if leaked.
+- **Student DMs (publish / review ready):** `src/discord-notify.ts` uses bot token `DISCORD_BOT_TOKEN` + optional `DISCORD_TEACHER_USER_ID`. Discord user IDs live in KV (`student:{user}:discord-user-id`), set in Teacher Hub → Student info. Missing ID or DM failure → teacher DM, else homework webhook fallback. Never fails the HTTP publish/review response.
 
 ---
 
@@ -150,6 +151,8 @@ ffmpeg -y -i "c:\External HD Copy\YouTube Edits\Da Vinci Export\Kash Lesson Comm
 | `DISCORD_CHANNEL_ID` | `wrangler.toml` [vars] | Validate webhook channel |
 | `DISCORD_HOMEWORK_WEBHOOK_URL` | Secret / `.dev.vars` | Homework submissions + photo upload notifications |
 | `DISCORD_HOMEWORK_CHANNEL_ID` | `wrangler.toml` [vars] | Validate homework webhook channel |
+| `DISCORD_BOT_TOKEN` | Secret / `.dev.vars` | Bot DMs for publish / review-ready pings |
+| `DISCORD_TEACHER_USER_ID` | Secret / `.dev.vars` | JD snowflake — fallback when student has no Discord ID |
 | `ASSETS` | Worker binding | Static files from `public/` |
 
 ---

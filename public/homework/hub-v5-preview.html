@@ -9,12 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260724c">
+  <link rel="stylesheet" href="/css/styles.css?v=20260728a">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=11">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=5">
-  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=97">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=90">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260807" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-hub-v5.css?v=136">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=92">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260808" data-hw-comments-css="1">
   <script src="/js/hw-feature-flags.js?v=13"></script>
   <script src="/js/hw-auth.js"></script>
   <script>
@@ -76,14 +76,17 @@
         </div>
 
         <div class="hw-hub-v5-app" id="hw-v5-app" data-v5-active-tab="homework">
+          <div class="hw-hub-v5-tabs-wrap">
           <nav class="hw-hub-v5-tabs" role="tablist" aria-label="Hub sections" id="hw-v5-tabs">
+            <span class="hw-hub-v5-tabs__slider" aria-hidden="true"></span>
             <button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">HW</button>
-            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons</button>
-            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-mistakes" data-v5-tab="mistakes" aria-selected="false" aria-controls="hw-v5-panel-mistakes">Mistakes</button>
-            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notifications" data-v5-tab="notifications" aria-selected="false" aria-controls="hw-v5-panel-notifications">Notifications</button>
+            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notebook" data-v5-tab="notebook" aria-selected="false" aria-controls="hw-v5-panel-notebook">Notebook</button>
+            <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons/Mistakes</button>
             <button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-games" data-v5-tab="games" aria-selected="false" aria-controls="hw-v5-panel-games">Games</button>
           </nav>
+          </div>
 
+          <div class="hw-hub-v5-panels">
           <div class="hw-hub-v5-panel hw-hub-v5-panel--homework is-active" id="hw-v5-panel-homework" data-v5-panel="homework" role="tabpanel" aria-labelledby="hw-v5-tab-homework">
             <div class="hw-hub-v4-homework" id="hw-v5-homework-zone">
           <section class="hw-hub-v2-feedback hw-hub-jd-memo" id="hw-v2-feedback" hidden aria-labelledby="hw-v2-feedback-title">
@@ -120,9 +123,8 @@
             </header>
             <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
             <div id="hw-v2-worksheet-mount" lang="ja"></div>
-
-          <!-- Directly under the worksheet mount so the bar sits under the HW box (Focus Mode still covers it via the homework zone). -->
-          <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
+            <!-- Tools bar — under HW content, inside the blue grammar box. -->
+            <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
             <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Glass" aria-pressed="false">
               <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">
                 <svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">
@@ -180,7 +182,8 @@
                 </svg>
               </span>
             </button>
-          </nav>
+            </nav>
+
           </section>
 
           <details class="hw-hub-v2-fold" id="hw-v5-past-fold">
@@ -193,37 +196,74 @@
 
           <div class="hw-hub-v5-below hw-platform-grid hw-platform-grid--student hw-hub-v4-below" id="hw-v5-below">
             <div class="hw-hub-v5-panel" id="hw-v5-panel-lessons" data-v5-panel="lessons" role="tabpanel" aria-labelledby="hw-v5-tab-lessons" hidden>
-              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
-                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
-                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
-                <div class="hw-lesson-actions">
-                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+              <div class="hw-hub-v5-lessons-stack" id="hw-v5-lessons-stack">
+                <nav class="hw-hub-v5-lesson-tabs" id="hw-v5-lesson-tabs" aria-label="Lesson links">
+                  <a class="hw-hub-v5-lesson-tabs__btn" id="hw-latest-lesson" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer">Latest lesson</a>
+                  <a class="hw-hub-v5-lesson-tabs__btn hw-lesson-playlist" id="hw-lesson-playlist" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer">Lesson playlist</a>
+                </nav>
+                <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+                  <h2 class="hw-platform-card__title">Recent mistakes</h2>
+                  <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
+                  <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty">No mistakes on your list — nice work!</p>
+                </section>
+              </div>
+            </div>
+
+            <div class="hw-hub-v5-panel" id="hw-v5-panel-notebook" data-v5-panel="notebook" role="tabpanel" aria-labelledby="hw-v5-tab-notebook" hidden>
+              <section class="hw-hub-v5-notebook-diary" id="hw-notebook-diary" aria-labelledby="hw-notebook-diary-date">
+                <nav class="hw-hub-v5-notebook-books" id="hw-notebook-books" aria-label="Notebooks">
+                  <button type="button" class="hw-hub-v5-notebook-books__btn" data-nb-book="daily" aria-pressed="false">Daily Notebook</button>
+                  <button type="button" class="hw-hub-v5-notebook-books__btn is-active" data-nb-book="hw" aria-pressed="true">HW Notebook</button>
+                  <button type="button" class="hw-hub-v5-notebook-books__btn" data-nb-book="kanji" aria-pressed="false">Kanji Notebook</button>
+                  <button type="button" class="hw-hub-v5-notebook-books__btn hw-hub-v5-notebook-books__btn--add" data-nb-book-add="1">Add Notebook</button>
+                </nav>
+                <div class="hw-hub-v5-notebook-diary__chrome">
+                  <header class="hw-hub-v5-notebook-diary__header">
+                    <div class="hw-hub-v5-notebook-diary__mast">
+                      <p class="hw-hub-v5-notebook-diary__date" id="hw-notebook-diary-date">2026年7月9日（木）</p>
+                      <p class="hw-hub-v5-notebook-diary__lesson" id="hw-notebook-diary-lesson">よく・あまり</p>
+                    </div>
+                  </header>
+                  <div class="hw-hub-v5-notebook-diary__search" id="hw-notebook-search-wrap">
+                    <label class="visually-hidden" for="hw-notebook-search">Search HW notebook</label>
+                    <input type="search" class="hw-hub-v5-notebook-diary__search-input" id="hw-notebook-search" placeholder="Search comments, homework, dates…" autocomplete="off" enterkeyhint="search" />
+                  </div>
+                  <div class="hw-hub-v5-notebook-diary__page hw-hub-v5-notebook-diary__page--lined" id="hw-notebook-diary-page" tabindex="0" aria-label="HW Notebook — lined page">
+                    <p class="hw-hub-v5-notebook__empty">No notebook pages yet. Notes from JD will appear here after he reviews your homework.</p>
+                  </div>
+                  <div class="hw-hub-v5-notebook-diary__pager-row" id="hw-notebook-pager-row">
+                    <nav class="hw-hub-v5-notebook-diary__pager" id="hw-notebook-diary-pager" aria-label="Notebook pages">
+                      <button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-prev" aria-label="Previous assignment page" disabled>←</button>
+                      <p class="hw-hub-v5-notebook-diary__counter" id="hw-notebook-counter" aria-live="polite">1 of 1</p>
+                      <button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-next" aria-label="Next assignment page" disabled>→</button>
+                    </nav>
+                  </div>
                 </div>
               </section>
             </div>
 
-            <div class="hw-hub-v5-panel" id="hw-v5-panel-mistakes" data-v5-panel="mistakes" role="tabpanel" aria-labelledby="hw-v5-tab-mistakes" hidden>
-              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
-                <h2 class="hw-platform-card__title">Recent mistakes</h2>
-                <p class="hw-platform-card__desc hw-platform-card__desc--tight">From your lessons — tap to select, then copy or delete.</p>
-                <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty">No mistakes on your list — nice work!</p>
-              </section>
-            </div>
-
-            <div class="hw-hub-v5-panel" id="hw-v5-panel-notifications" data-v5-panel="notifications" role="tabpanel" aria-labelledby="hw-v5-tab-notifications" hidden>
-              <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
-                <h2 class="hw-platform-card__title">Notifications</h2>
-                <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready.</p>
-                <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
-              </section>
-            </div>
-
             <div class="hw-hub-v5-panel" id="hw-v5-panel-games" data-v5-panel="games" role="tabpanel" aria-labelledby="hw-v5-tab-games" hidden>
-              <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
-                <h2 class="course-card__title">Learning Games 👾</h2>
-                <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
-              </article>
+              <div class="hw-hub-v5-games-stack">
+                <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
+                  <h2 class="course-card__title">Learning Games 👾</h2>
+                  <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
+                </article>
+                <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko hw-sachiko-card--soon" id="hw-sachiko-card" aria-label="Talk to Sachiko — coming soon">
+                  <span class="hw-sachiko-card__badge">Coming soon</span>
+                  <div class="hw-sachiko-card__row">
+                    <div class="hw-sachiko-face-wrap" aria-hidden="true">
+                      <svg class="hw-sachiko-face hw-sachiko-face--card" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+                    </div>
+                    <div class="hw-sachiko-card__text">
+                      <h2 class="hw-platform-card__title">Talk to Sachiko</h2>
+                      <p class="hw-platform-card__desc hw-platform-card__desc--tight">Speak with a chatbot designed after my actual host mom :)</p>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-sachiko-open" disabled>Coming soon</button>
+                </section>
+              </div>
             </div>
+          </div>
           </div>
         </div>
 
@@ -287,18 +327,18 @@
   <script src="/js/hw-audio-player.js?v=20260786" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260694" defer></script>
-  <script src="/js/hw-video-inline.js?v=20260773" defer></script>
-  <script src="/js/hw-audio-inline.js?v=20260754" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260774" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260728a" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
-  <script src="/js/hw-worksheet-tools-layout.js?v=55" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=59" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=19" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=82" defer></script>
-  <script src="/js/hw-homework-comments.js?v=97" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260805" defer></script>
-  <script src="/js/hw-star-block.js?v=20260722b" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=84" defer></script>
+  <script src="/js/hw-homework-comments.js?v=99" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260728a" defer></script>
+  <script src="/js/hw-star-block.js?v=20260727" defer></script>
   <script src="/js/hw-checkout.js" defer></script>
   <script src="/js/hw-toolbar-q-icons.js?v=4" defer></script>
-  <script src="/js/hw-hub-v5.js?v=51" defer></script>
+  <script src="/js/hw-hub-v5.js?v=62" defer></script>
 </body>
 </html>

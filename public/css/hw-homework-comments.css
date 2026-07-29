@@ -242,6 +242,33 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--hw-hc-blue) 55%, transparent);
 }
 
+/* Soft lexicon-word preview while Cloud is armed (not a committed selection). */
+.hw-hc-hover-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 57;
+  pointer-events: none;
+}
+
+.hw-hc-hover-highlight__rect {
+  position: absolute;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--hw-hc-blue) 26%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hw-hc-blue) 42%, transparent);
+  box-sizing: border-box;
+  transition: opacity 0.06s ease, background 0.06s ease;
+}
+
+.hw-hc-host.hw-hc-armed .hw-hc-hover-highlight__rect {
+  background: color-mix(in srgb, var(--hw-hc-blue) 32%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-hc-hover-highlight__rect {
+    transition: none;
+  }
+}
+
 .hw-hc-memo__body {
   position: relative;
   padding: 0.65rem 0.75rem 0.55rem;

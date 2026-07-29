@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credential pill variants</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #2a7d6e;
+      --green-dark: #1f5f53;
+      --green-deep: #122e29;
+      --mist: #cfe6df;
+      --fog: #dceee9;
+      --surface: #b9d6cd;
+      --pale: #9fc4b8;
+      --on-dark: #e7f5f0;
+      --navy: #1e4d7b;
+      --navy-soft: #d6e4f2;
+      --copper: #8b7355;
+      --copper-soft: #ebe4d8;
+      --slate: #3d5c55;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: var(--fog);
+      color: var(--green-deep);
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      margin: 0 0 0.35rem;
+    }
+
+    .intro {
+      color: var(--slate);
+      margin: 0 0 2rem;
+      font-size: 0.95rem;
+    }
+
+    .variant {
+      background: #fff;
+      border: 1px solid var(--pale);
+      border-radius: 14px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+      max-width: 640px;
+    }
+
+    .variant h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--slate);
+      margin: 0 0 0.85rem;
+      font-weight: 700;
+    }
+
+    .pair {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .round { border-radius: 999px; }
+    .square { border-radius: 6px; }
+    .soft-square { border-radius: 10px; }
+
+    /* Color sets */
+    .c1-a { background: var(--green); color: var(--on-dark); }
+    .c1-b { background: var(--mist); color: var(--green-dark); }
+
+    .c2-a { background: var(--navy); color: #eef5fb; }
+    .c2-b { background: var(--navy-soft); color: var(--navy); }
+
+    .c3-a { background: var(--green-deep); color: var(--on-dark); }
+    .c3-b { background: var(--surface); color: var(--green-deep); }
+
+    .c4-a { background: var(--copper); color: #faf7f2; }
+    .c4-b { background: var(--copper-soft); color: #5c4a38; }
+
+    .c5-a { background: transparent; color: var(--green); border: 1.5px solid var(--green); }
+    .c5-b { background: var(--green); color: var(--on-dark); }
+
+    .swatch-note {
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--slate);
+    }
+
+    .shape-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    @media (min-width: 700px) {
+      .shape-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Credential pill variants</h1>
+  <p class="intro">Two pills: <strong>Maryland-certified Appraiser</strong> + <strong>since 1992</strong>. Five color pairs, then shape mixes.</p>
+
+  <section class="variant">
+    <h2>Color 1 — Site green</h2>
+    <div class="pair">
+      <span class="pill round c1-a">Maryland-certified Appraiser</span>
+      <span class="pill round c1-b">since 1992</span>
+    </div>
+    <p class="swatch-note">Primary green + soft mist</p>
+  </section>
+
+  <section class="variant">
+    <h2>Color 2 — Chesapeake navy</h2>
+    <div class="pair">
+      <span class="pill round c2-a">Maryland-certified Appraiser</span>
+      <span class="pill round c2-b">since 1992</span>
+    </div>
+    <p class="swatch-note">Navy + soft blue</p>
+  </section>
+
+  <section class="variant">
+    <h2>Color 3 — Deep forest</h2>
+    <div class="pair">
+      <span class="pill round c3-a">Maryland-certified Appraiser</span>
+      <span class="pill round c3-b">since 1992</span>
+    </div>
+    <p class="swatch-note">Near-black green + sage fill</p>
+  </section>
+
+  <section class="variant">
+    <h2>Color 4 — Warm copper</h2>
+    <div class="pair">
+      <span class="pill round c4-a">Maryland-certified Appraiser</span>
+      <span class="pill round c4-b">since 1992</span>
+    </div>
+    <p class="swatch-note">Copper + cream (accent pair)</p>
+  </section>
+
+  <section class="variant">
+    <h2>Color 5 — Outline + fill</h2>
+    <div class="pair">
+      <span class="pill round c5-a">Maryland-certified Appraiser</span>
+      <span class="pill round c5-b">since 1992</span>
+    </div>
+    <p class="swatch-note">Outlined main + solid year</p>
+  </section>
+
+  <h1 style="margin-top: 2.5rem;">Shape mixes (using Color 1)</h1>
+  <p class="intro">Same green pair, different corners.</p>
+
+  <div class="shape-grid">
+    <section class="variant">
+      <h2>A — Both round</h2>
+      <div class="pair">
+        <span class="pill round c1-a">Maryland-certified Appraiser</span>
+        <span class="pill round c1-b">since 1992</span>
+      </div>
+    </section>
+
+    <section class="variant">
+      <h2>B — Both square</h2>
+      <div class="pair">
+        <span class="pill square c1-a">Maryland-certified Appraiser</span>
+        <span class="pill square c1-b">since 1992</span>
+      </div>
+    </section>
+
+    <section class="variant">
+      <h2>C — Both soft-square</h2>
+      <div class="pair">
+        <span class="pill soft-square c1-a">Maryland-certified Appraiser</span>
+        <span class="pill soft-square c1-b">since 1992</span>
+      </div>
+    </section>
+
+    <section class="variant">
+      <h2>D — Round + square</h2>
+      <div class="pair">
+        <span class="pill round c1-a">Maryland-certified Appraiser</span>
+        <span class="pill square c1-b">since 1992</span>
+      </div>
+    </section>
+
+    <section class="variant">
+      <h2>E — Square + round</h2>
+      <div class="pair">
+        <span class="pill square c1-a">Maryland-certified Appraiser</span>
+        <span class="pill round c1-b">since 1992</span>
+      </div>
+    </section>
+
+    <section class="variant">
+      <h2>F — Soft-square + round</h2>
+      <div class="pair">
+        <span class="pill soft-square c1-a">Maryland-certified Appraiser</span>
+        <span class="pill round c1-b">since 1992</span>
+      </div>
+    </section>
+  </div>
+
+  <h1 style="margin-top: 2.5rem;">Bonus — navy shapes</h1>
+  <div class="shape-grid">
+    <section class="variant">
+      <h2>Navy · both round</h2>
+      <div class="pair">
+        <span class="pill round c2-a">Maryland-certified Appraiser</span>
+        <span class="pill round c2-b">since 1992</span>
+      </div>
+    </section>
+    <section class="variant">
+      <h2>Navy · square + round</h2>
+      <div class="pair">
+        <span class="pill square c2-a">Maryland-certified Appraiser</span>
+        <span class="pill round c2-b">since 1992</span>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

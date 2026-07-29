@@ -8,7 +8,6 @@
     { username: "deme", displayName: "Deme" },
     { username: "ivan", displayName: "Ivan" },
     { username: "benc", displayName: "benc" },
-    { username: "noplan", displayName: "No Plan" },
   ];
 
   let catalogAssignments = [];
@@ -190,6 +189,7 @@
         lessonPlaylistUrl: "",
         accountLabel: "",
         tier: "",
+        discordUserId: "",
       };
     }
     return {
@@ -204,6 +204,7 @@
       ).trim(),
       accountLabel: String(form.querySelector('[name="accountLabel"]')?.value || "").trim(),
       tier: String(form.querySelector('[name="accountTier"]')?.value || "").trim(),
+      discordUserId: String(form.querySelector('[name="discordUserId"]')?.value || "").trim(),
     };
   }
 
@@ -221,11 +222,15 @@
     if (!form || !profile) return;
     const labelInput = form.querySelector('[name="accountLabel"]');
     const tierInput = form.querySelector('[name="accountTier"]');
+    const discordInput = form.querySelector('[name="discordUserId"]');
     if (labelInput && profile.accountLabel) {
       labelInput.value = profile.accountLabel;
     }
     if (tierInput && profile.tier) {
       tierInput.value = profile.tier;
+    }
+    if (discordInput) {
+      discordInput.value = String(profile.discordUserId || "").trim();
     }
   }
 
@@ -293,6 +298,7 @@
       accountLabel: media.accountLabel,
       tier: media.tier,
       youtubeUrl: media.youtubeUrl,
+      discordUserId: media.discordUserId || "",
     };
     if (media.lessonPlaylistUrl) {
       payload.lessonPlaylistUrl = media.lessonPlaylistUrl;
@@ -966,6 +972,9 @@
       const audio = assignment.sections.find((s) => s.mode === "audio-prompt");
       if (audio?.items?.length) return true;
 
+      const mimic = assignment.sections.find((s) => s.mode === "audio-mimic");
+      if (mimic?.items?.length) return true;
+
       return false;
     }
 
@@ -1457,6 +1466,99 @@
         e.preventDefault();
         saveAccountProfile();
       });
+
+      const wipeBtn = document.getElementById("hw-teacher-account-wipe-btn");
+      const wipeDialog = document.getElementById("hw-student-wipe-dialog");
+      const wipeConfirmInput = document.getElementById("hw-student-wipe-confirm");
+      const wipeConfirmBtn = document.getElementById("hw-student-wipe-confirm-btn");
+      const wipeStatus = document.getElementById("hw-student-wipe-status");
+      const wipeWarn = document.getElementById("hw-student-wipe-warn");
+
+      function syncWipeConfirmEnabled() {
+        if (!wipeConfirmBtn || !wipeConfirmInput) return;
+        wipeConfirmBtn.disabled = wipeConfirmInput.value.trim() !== "DELETE";
+      }
+
+      function openWipeDialog() {
+        const student = String(accountStudentSelect?.value || "").trim().toLowerCase();
+        if (!student) {
+          setAccountStatus("Pick a student first.", true);
+          return;
+        }
+        if (!wipeDialog) {
+          setAccountStatus("Wipe dialog missing — hard refresh.", true);
+          return;
+        }
+        if (wipeWarn) {
+          wipeWarn.innerHTML =
+            "This permanently deletes <strong>" +
+            student +
+            "</strong>’s login, homework links, submissions, notebooks, and mistakes. It cannot be undone.";
+        }
+        if (wipeConfirmInput) wipeConfirmInput.value = "";
+        if (wipeStatus) {
+          wipeStatus.hidden = true;
+          wipeStatus.textContent = "";
+        }
+        syncWipeConfirmEnabled();
+        if (typeof wipeDialog.showModal === "function") wipeDialog.showModal();
+        else wipeDialog.setAttribute("open", "");
+        wipeConfirmInput?.focus();
+      }
+
+      wipeBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        openWipeDialog();
+      });
+
+      wipeConfirmInput?.addEventListener("input", syncWipeConfirmEnabled);
+
+      wipeConfirmBtn?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const student = String(accountStudentSelect?.value || "").trim().toLowerCase();
+        const teacher = getTeacherSession()?.username;
+        if (!student || !teacher) return;
+        if (wipeConfirmInput?.value.trim() !== "DELETE") {
+          syncWipeConfirmEnabled();
+          return;
+        }
+        wipeConfirmBtn.disabled = true;
+        if (wipeStatus) {
+          wipeStatus.hidden = false;
+          wipeStatus.textContent = "Wiping " + student + "…";
+        }
+        try {
+          const res = await fetch("/api/homework-student-wipe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              teacherUsername: teacher,
+              studentUsername: student,
+              confirmDelete: "DELETE",
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || "Wipe failed.");
+          }
+          if (typeof wipeDialog?.close === "function") wipeDialog.close();
+          else wipeDialog?.removeAttribute("open");
+          global.HwStudentList?.resetCache?.();
+          await global.HwStudentList?.refreshTeacherFilterSelects?.();
+          await ensureCatalogLoaded();
+          populateAllStudentSelects();
+          fillStudentSelect(accountStudentSelect, "");
+          populateCurrentHomeworkSelect("", null);
+          setAccountStatus(data.message || "Wiped " + student + ".");
+          showToast(data.message || "Student wiped.");
+        } catch (err) {
+          if (wipeStatus) {
+            wipeStatus.hidden = false;
+            wipeStatus.textContent = err.message || "Wipe failed.";
+          }
+          syncWipeConfirmEnabled();
+        }
+      });
     }
 
     updateMakerEditUI();
@@ -1617,3 +1719,4 @@
     downloadCurrent,
   };
 })(window);
+/* jlm-wipe-ui-v1 */

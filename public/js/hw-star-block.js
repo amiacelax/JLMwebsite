@@ -62,13 +62,35 @@
   }
 
   function colorIndexForPiece(line, piece) {
-    try {
-      const pieces = JSON.parse(line.dataset.pieces || "[]");
-      const i = pieces.indexOf(piece);
-      return String((i >= 0 ? i : 0) % 4 + 1);
-    } catch {
-      return "1";
+    const chip = findChip(line.querySelector(".hw-star-block__pool"), piece);
+    if (chip?.dataset?.color) return String(chip.dataset.color);
+    return "1";
+  }
+
+  function shuffleDomOrder(nodes) {
+    const arr = Array.from(nodes);
+    if (arr.length < 2) return arr;
+    const original = arr.slice();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+      if (!arr.every((node, i) => node === original[i])) return arr;
     }
+    const tmp = arr[0];
+    arr[0] = arr[1];
+    arr[1] = tmp;
+    return arr;
+  }
+
+  /** Re-mix pool chip order after reset so the answer order never reappears. */
+  function reshufflePool(pool) {
+    if (!pool) return;
+    const chips = pool.querySelectorAll(".hw-star-block__chip");
+    shuffleDomOrder(chips).forEach((chip) => pool.appendChild(chip));
   }
 
   function emptySlot(slot) {
@@ -496,12 +518,15 @@
         const toRect = chip ? chip.getBoundingClientRect() : fromRect;
         const colorClass = "hw-star-block__chip--" + colorIndex;
         emptySlot(slot);
+        /* Keep the pool chip hidden until the flyback ghost lands — otherwise
+         * mobile shows the card already “home” while another copy is still mid-flight. */
         await animateFlyback(fromRect, toRect, colorClass, piece);
         showChip(pool, piece);
       });
     });
 
     await Promise.all(jobs);
+    reshufflePool(pool);
     syncLine(line);
     if (global.HwWorksheet && typeof global.HwWorksheet.scheduleFitStarLine === "function") {
       global.HwWorksheet.scheduleFitStarLine(line);

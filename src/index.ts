@@ -18,11 +18,13 @@ import {
   generateHomeworkWithAi,
   type HomeworkGenerateRequest,
 } from "./homework-generate";
+import { notifyStudentWithTeacherFallback } from "./discord-notify";
 import {
   mergeCatalog,
   publishToStudentHub,
   saveStudentProfile,
   getStudentProfileForTeacher,
+  getStudentDiscordUserId,
   saveWorksheetDraft,
   deleteWorksheetFromLibrary,
   loadPublishedAssignment,
@@ -59,6 +61,12 @@ import {
   loadHomeworkDraft,
   saveHomeworkDraft,
   deleteHomeworkDraft,
+  getDailyNotebook,
+  saveDailyNotebook,
+  type DailyNotebookSaveInput,
+  getKanjiNotebook,
+  saveKanjiNotebook,
+  type KanjiNotebookSaveInput,
   loadHomeworkCommentsDraft,
   saveHomeworkCommentsDraft,
   deleteHomeworkCommentsDraft,
@@ -68,6 +76,8 @@ import {
   savePromoSignup,
   listPromoSignups,
   savePromoSignupTeacher,
+  saveFeatureReport,
+  listFeatureReports,
   deletePromoSignup,
   type PromoSignupSavePayload,
   type PromoSignupDeletePayload,
@@ -84,6 +94,7 @@ import {
   isKnownStudent,
   isTeacherMistakesAccess,
   listAllStudentAccounts,
+  wipeStudentCompletely,
   type StudentMistakePayload,
   type StudentMistakeDeletePayload,
   type StudentMistakeResolvePayload,
@@ -123,6 +134,10 @@ interface Env {
   DISCORD_CHANNEL_ID?: string;
   DISCORD_HOMEWORK_WEBHOOK_URL?: string;
   DISCORD_HOMEWORK_CHANNEL_ID?: string;
+  /** Bot token for student/teacher DMs (secret). */
+  DISCORD_BOT_TOKEN?: string;
+  /** JD Discord snowflake — fallback when student has no Discord linked. */
+  DISCORD_TEACHER_USER_ID?: string;
   OPENAI_API_KEY?: string;
   HW_TEACHER_USER?: string;
   MISTAKES_LOG_KEY?: string;
@@ -506,6 +521,82 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
     success: true,
     message: "You're on the list! Watch your inbox for updates.",
   });
+}
+
+async function handleFeatureReport(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let data: {
+    kind?: string;
+    message?: string;
+    username?: string;
+    displayName?: string;
+    page?: string;
+  };
+  try {
+    data = (await request.json()) as typeof data;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  try {
+    const report = await saveFeatureReport(data, env);
+    return jsonResponse({
+      success: true,
+      message: "Sent to JD — thanks!",
+      id: report.id,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Reports are not configured on this server yet." }, 503);
+    }
+    if (code === "KIND_REQUIRED") {
+      return jsonResponse({ error: "Choose Feature request or Bug report." }, 400);
+    }
+    if (code === "MESSAGE_REQUIRED") {
+      return jsonResponse({ error: "Write a short message before sending." }, 400);
+    }
+    if (code === "MESSAGE_TOO_LONG") {
+      return jsonResponse({ error: "Message is too long (max about 4000 characters)." }, 400);
+    }
+    console.error("feature-report failed:", err);
+    return jsonResponse({ error: "Could not send your report. Try again in a moment." }, 500);
+  }
+}
+
+async function handleFeatureReports(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const limit = Number(url.searchParams.get("limit") || "40");
+    const reports = await listFeatureReports(env, { limit });
+    return jsonResponse({ reports });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Report storage is not configured on this server." }, 503);
+    }
+    console.error("feature-reports list failed:", err);
+    return jsonResponse({ error: "Could not load reports." }, 500);
+  }
 }
 
 async function handlePromoSignups(request: Request, env: Env): Promise<Response> {
@@ -1978,6 +2069,39 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       .filter(Boolean);
     const result = await publishToStudentHub(data, env, { staticStudents });
     const origin = new URL(request.url).origin;
+    const studentUsername = String(data.studentUsername || "")
+      .trim()
+      .toLowerCase();
+    const title = String(
+      data.assignment?.title || data.catalogEntry?.title || result.id || "Homework"
+    ).trim();
+    const hubUrl = origin + "/homework/platform.html";
+    const sheetUrl = origin + result.studentUrl;
+
+    let discordNotify = null;
+    if (env.HOMEWORK_KV && studentUsername) {
+      try {
+        const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
+        discordNotify = await notifyStudentWithTeacherFallback(env, {
+          studentUsername,
+          discordUserId,
+          studentContent: [
+            "New homework is ready on your Homework Hub.",
+            title ? `“${title}”` : null,
+            sheetUrl,
+            "",
+            "Open Homework Hub: " + hubUrl,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          teacherContent: discordUserId
+            ? `Published homework for ${studentUsername}: ${title}`
+            : `Published homework for ${studentUsername} (${title}) — no Discord user ID linked. Add it in Student info so they get DMs.`,
+        });
+      } catch (err) {
+        console.error("homework-publish discord notify:", err);
+      }
+    }
 
     let lexiconAdded = 0;
     let lexiconPending = 0;
@@ -2013,6 +2137,7 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       lexiconPending,
       lexiconTexts,
       lexiconCandidates,
+      discordNotify,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -2178,8 +2303,61 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
     if (code === "INVALID_ACCOUNT_LABEL" || code === "INVALID_ACCOUNT_TIER") {
       return jsonResponse({ error: "Invalid account type or plan tier." }, 400);
     }
+    if (code === "INVALID_DISCORD_USER_ID") {
+      return jsonResponse(
+        {
+          error:
+            "Discord user ID must be digits only (Developer Mode → right-click their profile → Copy User ID).",
+        },
+        400
+      );
+    }
     console.error("homework-student-profile failed:", err);
     return jsonResponse({ error: "Could not save student info." }, 500);
+  }
+}
+
+async function handleHomeworkStudentWipe(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as {
+      teacherUsername?: string;
+      studentUsername?: string;
+      confirmDelete?: string;
+    };
+    const result = await wipeStudentCompletely(data, env);
+    return jsonResponse({
+      success: true,
+      message: result.stillInCodeDemoList
+        ? `Wiped ${result.username} from live data, but they remain in the built-in demo login list until removed from code.`
+        : `Fully wiped ${result.username}.`,
+      result,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Student id is required." }, 400);
+    }
+    if (code === "CANNOT_WIPE_TEACHER") {
+      return jsonResponse({ error: "Cannot wipe the teacher account." }, 400);
+    }
+    if (code === "CONFIRM_REQUIRED") {
+      return jsonResponse({ error: "Type DELETE to confirm." }, 400);
+    }
+    console.error("homework-student-wipe failed:", err);
+    return jsonResponse({ error: "Could not wipe student." }, 500);
   }
 }
 
@@ -2977,9 +3155,46 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
   }
 
   try {
+    const existingBefore = await getHomeworkSubmission(
+      env,
+      String(body.submissionId || "").trim()
+    );
+    const wasReviewed = existingBefore?.reviewStatus === "reviewed";
     const submission = await saveHomeworkReview(body, env);
+
+    let discordNotify = null;
+    const newlyReviewed = submission.reviewStatus === "reviewed" && !wasReviewed;
+    if (newlyReviewed && env.HOMEWORK_KV) {
+      try {
+        const studentUsername = String(submission.username || "").trim().toLowerCase();
+        const origin = new URL(request.url).origin;
+        const hubUrl = origin + "/homework/platform.html";
+        const lesson = String(submission.lessonName || submission.assignmentId || "Homework").trim();
+        if (studentUsername) {
+          const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
+          discordNotify = await notifyStudentWithTeacherFallback(env, {
+            studentUsername,
+            discordUserId,
+            studentContent: [
+              "JD finished reviewing your homework.",
+              lesson ? `“${lesson}”` : null,
+              "",
+              "Open Homework Hub to see the review: " + hubUrl,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            teacherContent: discordUserId
+              ? `Review ready for ${studentUsername}: ${lesson}`
+              : `Review ready for ${studentUsername} (${lesson}) — no Discord user ID linked. Add it in Student info so they get DMs.`,
+          });
+        }
+      } catch (err) {
+        console.error("homework-review discord notify:", err);
+      }
+    }
+
     return jsonResponse(
-      { ok: true, submission },
+      { ok: true, submission, discordNotify },
       200,
       { "Cache-Control": "private, no-store" }
     );
@@ -2997,6 +3212,190 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
     console.error("homework-review failed:", err);
     return jsonResponse({ error: "Could not save review notes." }, 500);
   }
+}
+
+async function handleDailyNotebook(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+  const allowedTeacher = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = String(url.searchParams.get("teacherUsername") || "")
+    .trim()
+    .toLowerCase();
+  const isTeacher = teacherUsername === allowedTeacher;
+
+  if (request.method === "GET") {
+    let username = String(url.searchParams.get("username") || "")
+      .trim()
+      .toLowerCase();
+    const student = String(url.searchParams.get("student") || "")
+      .trim()
+      .toLowerCase();
+    if (isTeacher && student) username = student;
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+
+    const date = String(url.searchParams.get("date") || "").trim();
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const payload = await getDailyNotebook(env, {
+        username,
+        date: date || undefined,
+      });
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Notebook storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "DATE_INVALID") {
+        return jsonResponse({ error: "Date must be YYYY-MM-DD." }, 400);
+      }
+      if (code === "DATE_FUTURE") {
+        return jsonResponse({ error: "Cannot open a future notebook day." }, 400);
+      }
+      console.error("daily-notebook GET failed:", err);
+      return jsonResponse({ error: "Could not load daily notebook." }, 500);
+    }
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    let body: DailyNotebookSaveInput;
+    try {
+      body = (await request.json()) as DailyNotebookSaveInput;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+
+    try {
+      const saved = await saveDailyNotebook(body, env);
+      return jsonResponse({ ok: true, ...saved }, 200, {
+        "Cache-Control": "private, no-store",
+      });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Notebook storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "DATE_INVALID") {
+        return jsonResponse({ error: "Date must be YYYY-MM-DD." }, 400);
+      }
+      if (code === "DATE_FUTURE") {
+        return jsonResponse({ error: "Cannot write a future notebook day." }, 400);
+      }
+      if (code === "TEXT_TOO_LONG") {
+        return jsonResponse({ error: "That note is too long." }, 400);
+      }
+      console.error("daily-notebook save failed:", err);
+      return jsonResponse({ error: "Could not save daily notebook." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
+async function handleKanjiNotebook(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+  const allowedTeacher = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = String(url.searchParams.get("teacherUsername") || "")
+    .trim()
+    .toLowerCase();
+  const isTeacher = teacherUsername === allowedTeacher;
+
+  if (request.method === "GET") {
+    let username = String(url.searchParams.get("username") || "")
+      .trim()
+      .toLowerCase();
+    const student = String(url.searchParams.get("student") || "")
+      .trim()
+      .toLowerCase();
+    if (isTeacher && student) username = student;
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+
+    const page = url.searchParams.get("page");
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const payload = await getKanjiNotebook(env, {
+        username,
+        page: page == null || page === "" ? 0 : page,
+      });
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Notebook storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      console.error("kanji-notebook GET failed:", err);
+      return jsonResponse({ error: "Could not load kanji notebook." }, 500);
+    }
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    let body: KanjiNotebookSaveInput;
+    try {
+      body = (await request.json()) as KanjiNotebookSaveInput;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+
+    try {
+      const saved = await saveKanjiNotebook(body, env);
+      return jsonResponse({ ok: true, ...saved }, 200, {
+        "Cache-Control": "private, no-store",
+      });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Notebook storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "TEXT_TOO_LONG") {
+        return jsonResponse({ error: "That page is too long." }, 400);
+      }
+      console.error("kanji-notebook save failed:", err);
+      return jsonResponse({ error: "Could not save kanji notebook." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
 }
 
 async function handleHomeworkNotebook(request: Request, env: Env): Promise<Response> {
@@ -3672,6 +4071,27 @@ function fetchAsset(request: Request, env: Env, pathname?: string): Promise<Resp
   return env.ASSETS.fetch(assetUrl.toString());
 }
 
+/** Homework hub shell must never stick on an old deploy at the edge. */
+function withFreshHtmlHeaders(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate");
+  headers.set("CDN-Cache-Control", "no-store");
+  headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+  headers.set("Pragma", "no-cache");
+  headers.set("Expires", "0");
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
+
+function isHomeworkShellPath(pathname: string): boolean {
+  return (
+    pathname === "/homework" ||
+    pathname === "/homework/" ||
+    pathname === "/homework.html" ||
+    pathname === "/homework/platform" ||
+    pathname === "/homework/platform.html"
+  );
+}
+
 /** True when ASSETS returned a real JSON body (not SPA index.html fallback). */
 function isJsonAssetResponse(res: Response): boolean {
   if (!res.ok) return false;
@@ -3730,6 +4150,14 @@ export default {
       return handlePromoSignup(request, env);
     }
 
+    if (url.pathname === "/api/feature-report") {
+      return handleFeatureReport(request, env);
+    }
+
+    if (url.pathname === "/api/feature-reports") {
+      return handleFeatureReports(request, env);
+    }
+
     if (url.pathname === "/api/promo-signups") {
       return handlePromoSignups(request, env);
     }
@@ -3752,6 +4180,14 @@ export default {
 
     if (url.pathname === "/api/homework-notebook") {
       return handleHomeworkNotebook(request, env);
+    }
+
+    if (url.pathname === "/api/daily-notebook") {
+      return handleDailyNotebook(request, env);
+    }
+
+    if (url.pathname === "/api/kanji-notebook") {
+      return handleKanjiNotebook(request, env);
     }
 
     if (url.pathname === "/api/homework-review-ack") {
@@ -3836,6 +4272,10 @@ export default {
 
     if (url.pathname === "/api/homework-student-profile") {
       return handleHomeworkStudentProfile(request, env);
+    }
+
+    if (url.pathname === "/api/homework-student-wipe") {
+      return handleHomeworkStudentWipe(request, env);
     }
 
     if (url.pathname === "/api/homework-save-worksheet") {
@@ -3927,6 +4367,17 @@ export default {
     if (isJemPreviewPath(url.pathname)) {
       const assetResponse = await fetchAsset(request, env);
       return withJemPreviewHeaders(await spaFallback(request, env, assetResponse));
+    }
+
+    if (isHomeworkShellPath(url.pathname)) {
+      const shellPath =
+        url.pathname === "/homework" || url.pathname === "/homework/"
+          ? "/homework.html"
+          : url.pathname === "/homework/platform"
+            ? "/homework/platform.html"
+            : url.pathname;
+      const assetResponse = await fetchAsset(request, env, shellPath);
+      return withFreshHtmlHeaders(await spaFallback(request, env, assetResponse));
     }
 
     const assetResponse = await fetchAsset(request, env);

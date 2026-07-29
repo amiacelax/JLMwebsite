@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" role="img" aria-label="JEM Appraisals">
+  <text x="0" y="34" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="700" fill="#1a2b3d">JEM</text>
+  <text x="78" y="34" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#2f4d6e">Appraisals</text>
+  <path d="M0 42 L28 42 L14 48 Z" fill="#c45e2c" opacity="0.85"/>
+</svg>

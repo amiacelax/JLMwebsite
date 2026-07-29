@@ -17,8 +17,8 @@
 
   /** Keep versions in sync with former platform.html cache-busts. */
   const V = {
-    builder: "20260715",
-    editor: "20260716c",
+    builder: "20260729c",
+    editor: "20260729c",
     studentList: "20260725",
     ideas: "20260610",
     mistakeFeed: "20260674",
@@ -26,15 +26,16 @@
     teacherMistakes: "20260675",
     studentMistakes: "20260728",
     promo: "20260609",
-    birthdays: "20260716",
+    birthdays: "20260729",
     lanternFormat: "20260650",
     lanternWords: "20260650",
     lookup: "24",
     checkout: "20260611",
     sachiko: "20260694",
-    platform: "20260818",
-    hubV5: "69",
-    hubV6: "17",
+    hubV5: "108",
+    platform: "20260826",
+    hubV6: "22",
+    feedback: "1",
   };
 
   function injectOrdered(urls) {
@@ -68,6 +69,7 @@
     "/js/hw-student-mistakes.js?v=" + V.studentMistakes,
     "/js/hw-checkout.js?v=" + V.checkout,
     "/js/hw-sachiko.js?v=" + V.sachiko,
+    "/js/hw-hub-feedback.js?v=" + V.feedback,
   ];
 
   /** View-as needs the student picker on the teacher chrome. */

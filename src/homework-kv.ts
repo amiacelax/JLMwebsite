@@ -1,12 +1,13 @@
 /** Published homework in KV (teacher → student hub, no git deploy). */
 
-import { extractPlaylistId, fetchLatestVideoFromPlaylist } from "./youtube-playlist";
+import { extractPlaylistId, extractVideoId, fetchLatestVideoFromPlaylist } from "./youtube-playlist";
 import { repairAssignmentRecord } from "./homework-encoding";
 import {
   getUserAccount,
   updateUserAccountSettings,
   normalizeAccountLabel,
   normalizeAccountTier,
+  deleteUserAccount,
   type AccountLabel,
   type AccountTier,
 } from "./user-accounts";
@@ -40,8 +41,9 @@ const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
 const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
 const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
 const studentAccountSettingsKey = (username: string) => `student:${username}:account-settings`;
+const studentDiscordKey = (username: string) => `student:${username}:discord-user-id`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
-  `student:${username}:playlist-latest:${playlistId}`;
+  `student:${username}:playlist-latest-v3:${playlistId}`;
 
 const PLAYLIST_LATEST_TTL_SEC = 3600;
 
@@ -61,6 +63,8 @@ export interface StudentProfilePayload {
   lessonPlaylistUrl?: string;
   accountLabel?: AccountLabel;
   tier?: AccountTier;
+  /** Discord snowflake for student DMs (digits only). Empty string clears. */
+  discordUserId?: string;
 }
 
 export interface StudentProfileView {
@@ -72,6 +76,7 @@ export interface StudentProfileView {
   hasKvAccount: boolean;
   currentHomeworkId: string;
   currentHomeworkTitle: string;
+  discordUserId: string;
 }
 
 export interface SaveWorksheetPayload {
@@ -100,9 +105,6 @@ const STUDENT_ACCOUNTS = new Set([
   "deme",
   "ivan",
   "benc",
-  "noplan",
-  /* Toolbar / hub-v5 playtest sandbox (not a real login student). */
-  "demo",
 ]);
 
 const LEGACY_STUDENT_LABELS: Record<string, string> = {
@@ -111,8 +113,6 @@ const LEGACY_STUDENT_LABELS: Record<string, string> = {
   deme: "Deme",
   ivan: "Ivan",
   benc: "benc",
-  noplan: "No Plan",
-  demo: "Demo",
 };
 
 const USERS_INDEX = "user-accounts-index";
@@ -406,6 +406,7 @@ export async function getStudentProfileForTeacher(
     hasKvAccount: account.hasKvAccount,
     currentHomeworkId,
     currentHomeworkTitle,
+    discordUserId: String((await kv.get(studentDiscordKey(student))) || "").trim(),
   };
 }
 
@@ -439,6 +440,8 @@ export async function saveStudentProfile(
 
   const playlist = String(data.lessonPlaylistUrl || "").trim();
   if (playlist) {
+    /* Playlist owns Latest lesson — drop frozen manual youtube so it can't stick. */
+    await kv.delete(studentYoutubeKey(student));
     await resolveLatestLessonFromPlaylist(kv, student, playlist, true);
   }
 
@@ -449,7 +452,36 @@ export async function saveStudentProfile(
     });
   }
 
+  if (data.discordUserId !== undefined) {
+    await saveStudentDiscordUserId(kv, student, data.discordUserId);
+  }
+
   return { student };
+}
+
+/** Digits-only Discord snowflake, or empty to clear. */
+export function normalizeDiscordUserIdInput(raw: string | undefined | null): string {
+  const id = String(raw || "").trim();
+  if (!id) return "";
+  if (!/^\d{5,32}$/.test(id)) throw new Error("INVALID_DISCORD_USER_ID");
+  return id;
+}
+
+export async function getStudentDiscordUserId(
+  kv: KVNamespace,
+  username: string
+): Promise<string> {
+  return String((await kv.get(studentDiscordKey(username.toLowerCase()))) || "").trim();
+}
+
+async function saveStudentDiscordUserId(
+  kv: KVNamespace,
+  student: string,
+  raw: string
+): Promise<void> {
+  const id = normalizeDiscordUserIdInput(raw);
+  if (id) await kv.put(studentDiscordKey(student), id);
+  else await kv.delete(studentDiscordKey(student));
 }
 
 export async function publishToStudentHub(
@@ -695,7 +727,11 @@ async function resolveLatestLessonFromPlaylist(
   allowLiveFetch = true
 ): Promise<string | null> {
   const playlistId = extractPlaylistId(playlistUrl);
-  if (!playlistId) return null;
+  if (!playlistId) {
+    /* Teacher pasted a single video into the playlist field — still enable Latest lesson. */
+    const videoId = extractVideoId(playlistUrl);
+    return videoId ? `https://youtu.be/${videoId}` : null;
+  }
 
   const cacheKey = playlistLatestCacheKey(student.toLowerCase(), playlistId);
   if (kv && !bustCache) {
@@ -751,7 +787,7 @@ async function enrichProfileWithPlaylistLatest(
 }
 
 export interface MergeCatalogOptions {
-  /** Student hub: only enrich this learner — skips full roster + live playlist fetches. */
+  /** Student hub: only enrich this learner — skips full roster (still resolves their playlist → latest lesson). */
   student?: string;
 }
 
@@ -817,7 +853,6 @@ export async function mergeCatalog(
   if (!kv) return merged;
 
   const kvNs = kv;
-  const allowLivePlaylist = !studentKey;
 
   if (studentKey) {
     const base = staticCatalog.studentProfiles?.[studentKey] || {};
@@ -839,19 +874,20 @@ export async function mergeCatalog(
     const profile = merged.studentProfiles[studentKey] || {};
     const playlistUrl = String(profile.lessonPlaylistUrl || "").trim();
     if (playlistUrl) {
-      const manualYt = await getStudentYoutube(kvNs, studentKey);
-      if (manualYt) {
-        merged.studentProfiles[studentKey] = {
-          ...profile,
-          latestLessonUrl: manualYt,
-          youtubeUrl: manualYt,
-        };
+      /* Playlist wins over any frozen student:youtube override. */
+      const enriched = await enrichProfileWithPlaylistLatest(kvNs, studentKey, profile, {
+        allowLiveFetch: true,
+      });
+      if (enriched.latestLessonUrl) {
+        merged.studentProfiles[studentKey] = enriched;
       } else {
-        const enriched = await enrichProfileWithPlaylistLatest(kvNs, studentKey, profile, {
-          allowLiveFetch: allowLivePlaylist,
-        });
-        if (enriched.latestLessonUrl) {
-          merged.studentProfiles[studentKey] = enriched;
+        const manualYt = await getStudentYoutube(kvNs, studentKey);
+        if (manualYt) {
+          merged.studentProfiles[studentKey] = {
+            ...profile,
+            latestLessonUrl: manualYt,
+            youtubeUrl: manualYt,
+          };
         }
       }
     }
@@ -900,6 +936,14 @@ export async function mergeCatalog(
       const playlistUrl = String(profile.lessonPlaylistUrl || "").trim();
       if (!playlistUrl) return;
 
+      const enriched = await enrichProfileWithPlaylistLatest(kvNs, key, profile, {
+        allowLiveFetch: true,
+      });
+      if (enriched.latestLessonUrl) {
+        merged.studentProfiles![key] = enriched;
+        return;
+      }
+
       const manualYt = await getStudentYoutube(kvNs, key);
       if (manualYt) {
         merged.studentProfiles![key] = {
@@ -907,14 +951,6 @@ export async function mergeCatalog(
           latestLessonUrl: manualYt,
           youtubeUrl: manualYt,
         };
-        return;
-      }
-
-      const enriched = await enrichProfileWithPlaylistLatest(kvNs, key, profile, {
-        allowLiveFetch: true,
-      });
-      if (enriched.latestLessonUrl) {
-        merged.studentProfiles![key] = enriched;
       }
     })
   );
@@ -2431,6 +2467,316 @@ export async function deleteHomeworkDraft(
   await kv.delete(homeworkDraftKey(user, id));
 }
 
+/** Student Daily Notebook — free notes keyed by Japan calendar day. */
+
+const dailyNotebookKey = (username: string) => `hw-daily-notebook:${username}`;
+
+const DAILY_NOTEBOOK_MAX_CHARS = 20000;
+
+export interface DailyNotebookEntry {
+  text: string;
+  updatedAt: string;
+}
+
+export interface DailyNotebookStore {
+  username: string;
+  entries: Record<string, DailyNotebookEntry>;
+  updatedAt: string;
+}
+
+export interface DailyNotebookSaveInput {
+  username?: string;
+  date?: string;
+  text?: string;
+}
+
+/** YYYY-MM-DD in Asia/Tokyo. */
+export function tokyoDateKey(from: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(from);
+}
+
+export function isValidDailyNotebookDateKey(raw: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+  const [y, m, d] = raw.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const probe = new Date(Date.UTC(y, m - 1, d, 3, 0, 0));
+  return tokyoDateKey(probe) === raw;
+}
+
+export function shiftTokyoDateKey(dateKey: string, deltaDays: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const probe = new Date(Date.UTC(y, m - 1, d + deltaDays, 3, 0, 0));
+  return tokyoDateKey(probe);
+}
+
+async function loadDailyNotebookStore(
+  env: KvEnv,
+  username: string
+): Promise<DailyNotebookStore> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const raw = await kv.get(dailyNotebookKey(user));
+  if (!raw) {
+    return { username: user, entries: {}, updatedAt: "" };
+  }
+  try {
+    const parsed = JSON.parse(raw) as DailyNotebookStore;
+    const entries =
+      parsed?.entries && typeof parsed.entries === "object" && !Array.isArray(parsed.entries)
+        ? parsed.entries
+        : {};
+    return {
+      username: user,
+      entries,
+      updatedAt: String(parsed?.updatedAt || ""),
+    };
+  } catch {
+    return { username: user, entries: {}, updatedAt: "" };
+  }
+}
+
+export async function getDailyNotebook(
+  env: KvEnv,
+  opts: { username: string; date?: string }
+): Promise<{
+  username: string;
+  today: string;
+  date: string;
+  text: string;
+  updatedAt: string;
+  dates: string[];
+  /** Saved day texts for client-side notebook search (date → text). */
+  texts: Record<string, string>;
+}> {
+  const store = await loadDailyNotebookStore(env, opts.username);
+  const today = tokyoDateKey();
+  const want = String(opts.date || "").trim() || today;
+  if (!isValidDailyNotebookDateKey(want)) throw new Error("DATE_INVALID");
+  if (want > today) throw new Error("DATE_FUTURE");
+
+  const entry = store.entries[want];
+  const dates = Object.keys(store.entries)
+    .filter((k) => isValidDailyNotebookDateKey(k) && k <= today)
+    .sort();
+  const texts: Record<string, string> = {};
+  for (const k of dates) {
+    texts[k] = String(store.entries[k]?.text || "");
+  }
+
+  return {
+    username: store.username,
+    today,
+    date: want,
+    text: String(entry?.text || ""),
+    updatedAt: String(entry?.updatedAt || ""),
+    dates,
+    texts,
+  };
+}
+
+export async function saveDailyNotebook(
+  data: DailyNotebookSaveInput,
+  env: KvEnv
+): Promise<{
+  username: string;
+  today: string;
+  date: string;
+  text: string;
+  updatedAt: string;
+  dates: string[];
+  texts: Record<string, string>;
+}> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!username) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const today = tokyoDateKey();
+  const date = String(data.date || "").trim();
+  if (!isValidDailyNotebookDateKey(date)) throw new Error("DATE_INVALID");
+  if (date > today) throw new Error("DATE_FUTURE");
+
+  const text = String(data.text ?? "");
+  if (text.length > DAILY_NOTEBOOK_MAX_CHARS) throw new Error("TEXT_TOO_LONG");
+
+  const store = await loadDailyNotebookStore(env, username);
+  const now = new Date().toISOString();
+  if (!text.trim()) {
+    delete store.entries[date];
+  } else {
+    store.entries[date] = { text, updatedAt: now };
+  }
+  store.updatedAt = now;
+  store.username = username;
+
+  await kv.put(dailyNotebookKey(username), JSON.stringify(store));
+
+  return getDailyNotebook(env, { username, date });
+}
+
+/** Student Kanji Notebook — one character per genkouyoushi square, paged. */
+
+const kanjiNotebookKey = (username: string) => `hw-kanji-notebook:${username}`;
+
+const KANJI_NOTEBOOK_MAX_CHARS = 8000;
+const KANJI_NOTEBOOK_MAX_PAGES = 40;
+
+export interface KanjiNotebookPage {
+  text: string;
+  updatedAt: string;
+}
+
+export interface KanjiNotebookStore {
+  username: string;
+  pages: Record<string, KanjiNotebookPage>;
+  updatedAt: string;
+}
+
+export interface KanjiNotebookSaveInput {
+  username?: string;
+  page?: number | string;
+  text?: string;
+}
+
+function normalizeKanjiPageIndex(raw: unknown): number {
+  const n = typeof raw === "number" ? raw : Number.parseInt(String(raw ?? "0"), 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(Math.floor(n), KANJI_NOTEBOOK_MAX_PAGES - 1);
+}
+
+async function loadKanjiNotebookStore(
+  env: KvEnv,
+  username: string
+): Promise<KanjiNotebookStore> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const raw = await kv.get(kanjiNotebookKey(user));
+  if (!raw) {
+    return { username: user, pages: {}, updatedAt: "" };
+  }
+  try {
+    const parsed = JSON.parse(raw) as KanjiNotebookStore;
+    const pages =
+      parsed?.pages && typeof parsed.pages === "object" && !Array.isArray(parsed.pages)
+        ? parsed.pages
+        : {};
+    return {
+      username: user,
+      pages,
+      updatedAt: String(parsed?.updatedAt || ""),
+    };
+  } catch {
+    return { username: user, pages: {}, updatedAt: "" };
+  }
+}
+
+function listKanjiNotebookPageIndexes(store: KanjiNotebookStore): number[] {
+  const keys = Object.keys(store.pages)
+    .map((k) => normalizeKanjiPageIndex(k))
+    .filter((n, i, arr) => arr.indexOf(n) === i)
+    .sort((a, b) => a - b);
+  /* Always expose at least page 0 so a blank book is writable. */
+  if (!keys.includes(0)) keys.unshift(0);
+  return keys;
+}
+
+export async function getKanjiNotebook(
+  env: KvEnv,
+  opts: { username: string; page?: number | string }
+): Promise<{
+  username: string;
+  page: number;
+  text: string;
+  updatedAt: string;
+  pages: number[];
+  /** Saved page texts for client-side notebook search (page index → text). */
+  pageTexts: Record<string, string>;
+}> {
+  const store = await loadKanjiNotebookStore(env, opts.username);
+  const page = normalizeKanjiPageIndex(opts.page ?? 0);
+  const entry = store.pages[String(page)];
+  const pages = listKanjiNotebookPageIndexes(store);
+  /* If requesting a page past the last filled+1, still allow current blank page. */
+  if (!pages.includes(page)) pages.push(page);
+  pages.sort((a, b) => a - b);
+  const pageTexts: Record<string, string> = {};
+  for (const [k, v] of Object.entries(store.pages)) {
+    const idx = normalizeKanjiPageIndex(k);
+    pageTexts[String(idx)] = String(v?.text || "");
+  }
+
+  return {
+    username: store.username,
+    page,
+    text: String(entry?.text || ""),
+    updatedAt: String(entry?.updatedAt || ""),
+    pages,
+    pageTexts,
+  };
+}
+
+export async function saveKanjiNotebook(
+  data: KanjiNotebookSaveInput,
+  env: KvEnv
+): Promise<{
+  username: string;
+  page: number;
+  text: string;
+  updatedAt: string;
+  pages: number[];
+  pageTexts: Record<string, string>;
+}> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!username) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const page = normalizeKanjiPageIndex(data.page ?? 0);
+  const text = String(data.text ?? "");
+  if (text.length > KANJI_NOTEBOOK_MAX_CHARS) throw new Error("TEXT_TOO_LONG");
+
+  const store = await loadKanjiNotebookStore(env, username);
+  const now = new Date().toISOString();
+  if (!text.trim()) {
+    delete store.pages[String(page)];
+  } else {
+    store.pages[String(page)] = { text, updatedAt: now };
+  }
+  store.updatedAt = now;
+  store.username = username;
+
+  await kv.put(kanjiNotebookKey(username), JSON.stringify(store));
+
+  return getKanjiNotebook(env, { username, page });
+}
+
 /** In-progress worksheet comments (synced per student account). */
 
 const homeworkCommentsDraftKey = (username: string, assignmentId: string) =>
@@ -2656,6 +3002,126 @@ export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
 
   return signups.sort(
     (a, b) => new Date(b.signedUpAt).getTime() - new Date(a.signedUpAt).getTime()
+  );
+}
+
+/** Student hub feature requests / bug reports → Teacher Hub Home feed. */
+
+const FEATURE_REPORT_INDEX = "feature-reports-index";
+const featureReportKey = (id: string) => `feature-report:${id}`;
+
+export type FeatureReportKind = "feature" | "bug";
+
+export interface FeatureReport {
+  id: string;
+  kind: FeatureReportKind;
+  message: string;
+  username?: string;
+  displayName?: string;
+  page?: string;
+  createdAt: string;
+}
+
+export interface FeatureReportPayload {
+  kind?: string;
+  message?: string;
+  username?: string;
+  displayName?: string;
+  page?: string;
+}
+
+function makeFeatureReportId(): string {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `fr-${Date.now()}-${rand}`;
+}
+
+function normalizeFeatureReportKind(raw: string | undefined): FeatureReportKind | null {
+  const k = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (k === "feature" || k === "feature-request" || k === "feature_request") return "feature";
+  if (k === "bug" || k === "bug-report" || k === "bug_report") return "bug";
+  return null;
+}
+
+async function readFeatureReportIndex(kv: KVNamespace): Promise<string[]> {
+  const raw = await kv.get(FEATURE_REPORT_INDEX);
+  if (!raw) return [];
+  try {
+    const ids = JSON.parse(raw) as string[];
+    return Array.isArray(ids) ? ids : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeFeatureReportIndex(kv: KVNamespace, ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  await kv.put(FEATURE_REPORT_INDEX, JSON.stringify(unique.slice(0, 200)));
+}
+
+export async function saveFeatureReport(
+  data: FeatureReportPayload,
+  env: KvEnv
+): Promise<FeatureReport> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const kind = normalizeFeatureReportKind(data.kind);
+  if (!kind) throw new Error("KIND_REQUIRED");
+
+  const message = String(data.message || "").trim();
+  if (!message) throw new Error("MESSAGE_REQUIRED");
+  if (message.length > 4000) throw new Error("MESSAGE_TOO_LONG");
+
+  const id = makeFeatureReportId();
+  const record: FeatureReport = {
+    id,
+    kind,
+    message: message.slice(0, 4000),
+    createdAt: new Date().toISOString(),
+  };
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  const displayName = String(data.displayName || "").trim();
+  const page = String(data.page || "").trim();
+  if (username) record.username = username.slice(0, 64);
+  if (displayName) record.displayName = displayName.slice(0, 120);
+  if (page) record.page = page.slice(0, 200);
+
+  await kv.put(featureReportKey(id), JSON.stringify(record));
+  const ids = await readFeatureReportIndex(kv);
+  ids.unshift(id);
+  await writeFeatureReportIndex(kv, ids);
+  return record;
+}
+
+export async function listFeatureReports(
+  env: KvEnv,
+  opts?: { limit?: number }
+): Promise<FeatureReport[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const limit = Math.max(1, Math.min(100, Number(opts?.limit) || 40));
+  const ids = (await readFeatureReportIndex(kv)).slice(0, limit);
+  const reports: FeatureReport[] = [];
+
+  await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(featureReportKey(id));
+      if (!raw) return;
+      try {
+        reports.push(JSON.parse(raw) as FeatureReport);
+      } catch {
+        /* skip */
+      }
+    })
+  );
+
+  return reports.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
 
@@ -3412,4 +3878,165 @@ export async function deleteLanternWordSet(
   );
 
   return { setId };
+}
+
+async function listKvKeysWithPrefix(kv: KVNamespace, prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await kv.list({ prefix, cursor });
+    for (const entry of page.keys) keys.push(entry.name);
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  return keys;
+}
+
+export interface WipeStudentResult {
+  username: string;
+  catalogSheetsScrubbed: number;
+  submissionsRemoved: number;
+  mistakesRemoved: number;
+  keysDeleted: number;
+  accountDeleted: boolean;
+  stillInCodeDemoList: boolean;
+}
+
+/**
+ * Full teacher wipe: scrub from every published sheet, delete submissions /
+ * mistakes / notebooks / drafts / media / login. Confirm with confirmDelete === "DELETE".
+ */
+export async function wipeStudentCompletely(
+  data: { teacherUsername?: string; studentUsername?: string; confirmDelete?: string },
+  env: KvEnv
+): Promise<WipeStudentResult> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const user = String(data.studentUsername || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("STUDENT_REQUIRED");
+  if (user === String(env.HW_TEACHER_USER || TEACHER_DEFAULT).toLowerCase()) {
+    throw new Error("CANNOT_WIPE_TEACHER");
+  }
+  if (String(data.confirmDelete || "").trim() !== "DELETE") {
+    throw new Error("CONFIRM_REQUIRED");
+  }
+
+  let keysDeleted = 0;
+  const del = async (key: string) => {
+    await kv.delete(key);
+    keysDeleted += 1;
+  };
+
+  /* 1. Scrub student off every published catalog (+ assignment if it mirrors students). */
+  let catalogSheetsScrubbed = 0;
+  const catalogIds = await readIndex(kv);
+  for (const id of catalogIds) {
+    const catRaw = await kv.get(catalogKey(id));
+    if (catRaw) {
+      try {
+        const entry = JSON.parse(catRaw) as Record<string, unknown>;
+        const students = Array.isArray(entry.students)
+          ? (entry.students as unknown[]).map((s) => String(s || "").toLowerCase())
+          : [];
+        if (students.includes(user)) {
+          entry.students = students.filter((s) => s !== user);
+          await kv.put(catalogKey(id), JSON.stringify(entry));
+          catalogSheetsScrubbed += 1;
+        }
+      } catch {
+        /* skip corrupt */
+      }
+    }
+    const asgRaw = await kv.get(assignmentKey(id));
+    if (asgRaw) {
+      try {
+        const assignment = JSON.parse(asgRaw) as Record<string, unknown>;
+        const students = Array.isArray(assignment.students)
+          ? (assignment.students as unknown[]).map((s) => String(s || "").toLowerCase())
+          : [];
+        if (students.includes(user)) {
+          assignment.students = students.filter((s) => s !== user);
+          await kv.put(assignmentKey(id), JSON.stringify(assignment));
+        }
+      } catch {
+        /* skip */
+      }
+    }
+  }
+
+  /* 2. Submissions + media */
+  let submissionsRemoved = 0;
+  const subIndex = (await readStudentSubmissionsIndex(kv, user)) || [];
+  const globalSubs = await readSubmissionsIndex(kv);
+  for (const subId of subIndex) {
+    await del(submissionKey(subId));
+    await del(submissionPhotoKey(subId));
+    await del(submissionPhotoMetaKey(subId));
+    await del(submissionVideoKey(subId));
+    await del(submissionVideoMetaKey(subId));
+    submissionsRemoved += 1;
+  }
+  await writeSubmissionsIndex(
+    kv,
+    globalSubs.filter((id) => !subIndex.includes(id))
+  );
+  await del(studentSubmissionsIndexKey(user));
+
+  /* 3. Mistakes */
+  let mistakesRemoved = 0;
+  const mistakesRaw = await kv.get(studentMistakesIndexKey(user));
+  let mistakeIds: string[] = [];
+  if (mistakesRaw) {
+    try {
+      const parsed = JSON.parse(mistakesRaw) as string[];
+      if (Array.isArray(parsed)) mistakeIds = parsed;
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const mid of mistakeIds) {
+    await del(mistakeKey(mid));
+    mistakesRemoved += 1;
+  }
+  const globalMistakes = await readMistakesIndex(kv);
+  await writeMistakesIndex(
+    kv,
+    globalMistakes.filter((id) => !mistakeIds.includes(id))
+  );
+  await del(studentMistakesIndexKey(user));
+
+  /* 4. Notebooks, drafts, media, settings, playlist cache */
+  await del(dailyNotebookKey(user));
+  await del(kanjiNotebookKey(user));
+  await del(studentYoutubeKey(user));
+  await del(studentLessonPlaylistKey(user));
+  await del(studentCurrentHomeworkKey(user));
+  await del(studentAccountSettingsKey(user));
+  await del(studentDiscordKey(user));
+
+  for (const key of await listKvKeysWithPrefix(kv, `hw-draft:${user}:`)) {
+    await del(key);
+  }
+  for (const key of await listKvKeysWithPrefix(kv, `hw-comments-draft:${user}:`)) {
+    await del(key);
+  }
+  for (const key of await listKvKeysWithPrefix(kv, `student:${user}:playlist-latest`)) {
+    await del(key);
+  }
+
+  /* 5. Login account */
+  const accountResult = await deleteUserAccount(user, env);
+
+  return {
+    username: user,
+    catalogSheetsScrubbed,
+    submissionsRemoved,
+    mistakesRemoved,
+    keysDeleted,
+    accountDeleted: accountResult.deleted,
+    stillInCodeDemoList: STUDENT_ACCOUNTS.has(user),
+  };
 }

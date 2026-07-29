@@ -16,6 +16,7 @@
     account: "jlm-hw-v5-live-demo-account",
     archiveReturnHash: "hw-v5-archive-return-hash",
     notebookFocus: "hw-notebook-focus",
+    tab: "jlm-hw-v5-live-active-tab",
   };
 
   const TIER_PLANS = {
@@ -120,7 +121,7 @@
     },
   ];
 
-  const TAB_IDS = ["homework", "lessons", "mistakes", "notifications", "games"];
+  const TAB_IDS = ["homework", "notebook", "lessons", "games"];
 
   let shellBuilt = false;
   let tierDetailBound = false;
@@ -562,21 +563,149 @@
 
   function normalizeTabId(tabId) {
     const key = String(tabId || "").trim().toLowerCase();
-    const aliases = { lesson: "lessons", study: "mistakes", more: "notifications" };
+    const aliases = {
+      lesson: "lessons",
+      study: "lessons",
+      mistakes: "lessons",
+      more: "notebook",
+      notifications: "notebook",
+      notifs: "notebook",
+    };
     const mapped = aliases[key] || key;
     return TAB_IDS.includes(mapped) ? mapped : "homework";
   }
 
-  function isMobileTabs() {
-    return global.matchMedia("(max-width: 767px)").matches;
+  function ensureHubTabSlider(tablist) {
+    if (!tablist) return null;
+    let slider = tablist.querySelector(".hw-hub-v5-tabs__slider");
+    if (!slider) {
+      slider = document.createElement("span");
+      slider.className = "hw-hub-v5-tabs__slider";
+      slider.setAttribute("aria-hidden", "true");
+      tablist.insertBefore(slider, tablist.firstChild);
+    }
+    return slider;
+  }
+
+  function syncHubTabSlider() {
+    const tablist = document.getElementById("hw-v5-tabs") || document.querySelector(".hw-hub-v5-tabs");
+    if (!tablist) return;
+    const slider = ensureHubTabSlider(tablist);
+    const active =
+      tablist.querySelector(".hw-hub-v5-tabs__btn.is-active") ||
+      tablist.querySelector('[aria-selected="true"]');
+    if (!slider || !active) return;
+
+    const listRect = tablist.getBoundingClientRect();
+    const btnRect = active.getBoundingClientRect();
+    const x = btnRect.left - listRect.left + tablist.scrollLeft;
+    const y = btnRect.top - listRect.top + tablist.scrollTop;
+    slider.style.width = Math.max(0, btnRect.width) + "px";
+    slider.style.height = Math.max(0, btnRect.height) + "px";
+    slider.style.transform = "translate(" + x + "px, " + y + "px)";
+
+    if (!tablist.classList.contains("is-slider-ready")) {
+      requestAnimationFrame(() => {
+        tablist.classList.add("is-slider-ready");
+      });
+    }
+  }
+
+  function bindHubTabSliderLayout() {
+    if (bindHubTabSliderLayout.bound) return;
+    bindHubTabSliderLayout.bound = true;
+    window.addEventListener("resize", syncHubTabSlider);
+    if (typeof ResizeObserver === "function") {
+      const tablist = document.getElementById("hw-v5-tabs") || document.querySelector(".hw-hub-v5-tabs");
+      if (tablist) {
+        const ro = new ResizeObserver(() => syncHubTabSlider());
+        ro.observe(tablist);
+      }
+    }
+  }
+
+  function ensureHubPanelsWrapper() {
+    const app = document.getElementById("hw-v5-app");
+    if (!app || app.querySelector(".hw-hub-v5-panels")) return;
+    const homeworkPanel = document.getElementById("hw-v5-panel-homework");
+    const below = document.getElementById("hw-v5-below");
+    if (!homeworkPanel || !below) return;
+    const panels = document.createElement("div");
+    panels.className = "hw-hub-v5-panels";
+    homeworkPanel.parentNode?.insertBefore(panels, homeworkPanel);
+    panels.appendChild(homeworkPanel);
+    panels.appendChild(below);
+  }
+
+  let hubPanelsHeightBound = false;
+
+  /** Lock hub panel stack height so tab switches (Notebook, Games, …) never shrink the section. */
+  function lockHubPanelsMinHeight() {
+    const panels = document.querySelector(".hw-hub-v5-panels");
+    const homework = document.getElementById("hw-v5-panel-homework");
+    const below = document.getElementById("hw-v5-below");
+    if (!panels) return;
+
+    let maxH = 0;
+    if (homework) maxH = Math.max(maxH, homework.scrollHeight);
+    if (below) maxH = Math.max(maxH, below.scrollHeight);
+
+    const current = parseFloat(panels.style.getPropertyValue("--hw-hub-panels-min-h")) || 0;
+    if (maxH > current) {
+      panels.style.setProperty("--hw-hub-panels-min-h", maxH + "px");
+    }
+  }
+
+  function bindHubPanelsHeightLock() {
+    if (hubPanelsHeightBound) return;
+    const homework = document.getElementById("hw-v5-panel-homework");
+    const below = document.getElementById("hw-v5-below");
+    if (!homework && !below) return;
+    hubPanelsHeightBound = true;
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => lockHubPanelsMinHeight()) : null;
+    if (ro) {
+      if (homework) ro.observe(homework);
+      if (below) ro.observe(below);
+    }
+    window.addEventListener("resize", lockHubPanelsMinHeight, { passive: true });
+    lockHubPanelsMinHeight();
+  }
+
+  function restoreViewportScroll(prevY) {
+    window.scrollTo({ top: prevY, left: window.scrollX });
+    requestAnimationFrame(() => {
+      if (window.scrollY !== prevY) window.scrollTo({ top: prevY, left: window.scrollX });
+      requestAnimationFrame(() => {
+        if (window.scrollY !== prevY) window.scrollTo({ top: prevY, left: window.scrollX });
+      });
+    });
+  }
+
+  function hubTabStorageKey() {
+    const username = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return username ? STORAGE.tab + ":" + username : STORAGE.tab;
+  }
+
+  function readSavedHubTab() {
+    return normalizeTabId(readStorage(hubTabStorageKey(), "homework"));
+  }
+
+  function writeSavedHubTab(tabId) {
+    writeStorage(hubTabStorageKey(), normalizeTabId(tabId));
   }
 
   function setActiveTab(tabId, options) {
     const app = document.getElementById("hw-v5-app");
     if (!app) return;
+    const keepViewport = !options?.scrollTop;
+    const prevY = keepViewport ? window.scrollY : 0;
 
     const tab = normalizeTabId(tabId);
     app.dataset.v5ActiveTab = tab;
+    if (!options?.skipPersist) writeSavedHubTab(tab);
 
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       const active = btn.getAttribute("data-v5-tab") === tab;
@@ -585,26 +714,59 @@
     });
 
     applyTabPanels(tab);
+    syncHubTabSlider();
+    syncNotebookWithTab(tab, options);
+    bindHubPanelsHeightLock();
+    lockHubPanelsMinHeight();
+    /* Keep hub ping mapped to worksheet host-local point across tab switches. */
+    if (!isArchiveMode()) {
+      window.requestAnimationFrame(() => mountStatusBubble(getHubStatus()));
+    }
+    if (keepViewport) restoreViewportScroll(prevY);
 
     if (options?.scrollTop) {
       app.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
+  /** Notebook tab hosts the diary — keep notebookOpen in sync with the active tab. */
+  function syncNotebookWithTab(tab, options) {
+    const wantOpen = normalizeTabId(tab) === "notebook";
+    if (wantOpen === notebookOpen) {
+      if (wantOpen) applyNotebookOpenUi();
+      return;
+    }
+    if (wantOpen) {
+      notebookOpen = true;
+      if (isArchiveMode() && !options?.keepArchive) exitArchiveMode();
+      applyNotebookOpenUi();
+      queueNotebookRefresh();
+      if (!options?.skipFocus) {
+        const page = document.getElementById("hw-notebook-diary-page");
+        try {
+          page?.focus?.({ preventScroll: true });
+        } catch {
+          page?.focus?.();
+        }
+      }
+      return;
+    }
+    if (notebookBookId === "daily") {
+      window.clearTimeout(dailyNotebookSaveTimer);
+      void flushDailyNotebookSave();
+    }
+    if (notebookBookId === "kanji") {
+      window.clearTimeout(kanjiNotebookSaveTimer);
+      void flushKanjiNotebookSave();
+    }
+    notebookOpen = false;
+    applyNotebookOpenUi();
+  }
+
   function applyTabPanels(tab) {
     const homeworkPanel = document.getElementById("hw-v5-panel-homework");
     const belowPanels = document.querySelectorAll("#hw-v5-below [data-v5-panel]");
     const activeTab = normalizeTabId(tab);
-
-    if (!isMobileTabs()) {
-      homeworkPanel?.classList.add("is-active");
-      homeworkPanel?.removeAttribute("hidden");
-      belowPanels.forEach((panel) => {
-        panel.classList.add("is-active");
-        panel.removeAttribute("hidden");
-      });
-      return;
-    }
 
     const onHomework = activeTab === "homework";
     homeworkPanel?.classList.toggle("is-active", onHomework);
@@ -619,11 +781,9 @@
     });
   }
 
-  function initMobileTabs() {
-    setActiveTab("homework");
-    global.matchMedia("(max-width: 767px)").addEventListener("change", () => {
-      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
-    });
+  function initHubTabs() {
+    ensureHubPanelsWrapper();
+    setActiveTab(readSavedHubTab(), { skipFocus: true });
   }
 
   function escapeHtml(s) {
@@ -823,10 +983,10 @@
       return "Let\u2019s keep learning \u2014 upgrade or take lessons";
     }
     if (variant === "weekly") {
-      return "Homework between lessons \u2014 Student Special pricing";
+      return "Weekly homework \u2014 Student Special";
     }
     if (variant === "student_no_hw") {
-      return "Homework between lessons \u2014 Student Special pricing";
+      return "Weekly homework \u2014 Student Special";
     }
     if (variant === "ultra-games") {
       return "Video feedback from JD \u2014 or relax with Japanese games";
@@ -996,8 +1156,8 @@
     empty.hidden = true;
     empty.setAttribute("aria-labelledby", "hw-v5-no-hw-title");
     empty.innerHTML =
-      '<h2 class="hw-hub-v5-no-hw__title" id="hw-v5-no-hw-title">Keep the momentum between lessons</h2>' +
-      '<p class="hw-hub-v5-no-hw__desc">You\u2019re on a lesson plan \u2014 add weekly homework when you want structured practice and feedback from JD between sessions.</p>' +
+      '<h2 class="hw-hub-v5-no-hw__title" id="hw-v5-no-hw-title">Homework between lessons</h2>' +
+      '<p class="hw-hub-v5-no-hw__desc">Add weekly homework for practice and feedback from JD.</p>' +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-no-hw-sellup-caption" hidden></p>' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-no-hw-sellup-frame" hidden>' +
       '<div class="hw-hub-v5-sellup" id="hw-v5-no-hw-sellup" aria-label="Weekly homework add-on"></div>' +
@@ -1036,6 +1196,92 @@
     return panel;
   }
 
+  function ensureLessonLinkPills(stack) {
+    let tabs = document.getElementById("hw-v5-lesson-tabs");
+    if (!tabs) {
+      tabs = document.createElement("nav");
+      tabs.className = "hw-hub-v5-lesson-tabs";
+      tabs.id = "hw-v5-lesson-tabs";
+      tabs.setAttribute("aria-label", "Lesson links");
+      stack.insertBefore(tabs, stack.firstChild);
+    } else {
+      tabs.removeAttribute("role");
+      tabs.setAttribute("aria-label", "Lesson links");
+    }
+
+    const makeLink = (id, extraClass, label) => {
+      let a = document.getElementById(id);
+      if (a && a.tagName !== "A") {
+        a.remove();
+        a = null;
+      }
+      if (!a) {
+        a = document.createElement("a");
+        a.id = id;
+        a.href = "#";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.setAttribute("aria-disabled", "true");
+      }
+      a.className =
+        "hw-hub-v5-lesson-tabs__btn" + (extraClass ? " " + extraClass : "");
+      a.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
+      a.removeAttribute("role");
+      a.removeAttribute("aria-selected");
+      a.removeAttribute("aria-controls");
+      a.removeAttribute("data-lesson-pane");
+      a.removeAttribute("type");
+      a.textContent = label;
+      return a;
+    };
+
+    const latest = makeLink("hw-latest-lesson", "", "Latest lesson");
+    const playlist = makeLink(
+      "hw-lesson-playlist",
+      "hw-lesson-playlist",
+      "Lesson playlist"
+    );
+    playlist.hidden = false;
+    tabs.replaceChildren(latest, playlist);
+
+    /* Remove leftover nested lesson card UI. */
+    stack.querySelectorAll(".hw-grid-lesson, .hw-hub-v5-lesson-pane, .hw-lesson-actions").forEach((el) => {
+      el.remove();
+    });
+    document.querySelectorAll(".hw-grid-lesson").forEach((el) => el.remove());
+    document.getElementById("hw-lesson-meta")?.remove();
+    document.getElementById("hw-lesson-playlist-meta")?.remove();
+
+    const lessonsTab = document.getElementById("hw-v5-tab-lessons");
+    if (lessonsTab) lessonsTab.textContent = "Lessons/Mistakes";
+
+    return tabs;
+  }
+
+  function ensureLessonsStack(gridStack, mistakesCard) {
+    const existing = document.getElementById("hw-v5-lessons-stack");
+    if (existing) {
+      ensureLessonLinkPills(existing);
+      if (mistakesCard && !existing.contains(mistakesCard)) {
+        existing.appendChild(mistakesCard);
+      }
+      return existing;
+    }
+
+    const stack = document.createElement("div");
+    stack.className = "hw-hub-v5-lessons-stack";
+    stack.id = "hw-v5-lessons-stack";
+    ensureLessonLinkPills(stack);
+    if (mistakesCard) stack.appendChild(mistakesCard);
+
+    /* Drop emptied grid stack leftovers (offline already moved into HW zone). */
+    if (gridStack && gridStack.parentNode) {
+      gridStack.replaceWith(stack);
+    }
+
+    return stack;
+  }
+
   function buildV5Shell() {
     if (shellBuilt) return;
     const studentOnly = document.getElementById("hw-platform-student-only");
@@ -1063,12 +1309,10 @@
         v4Homework.insertBefore(completeCard, worksheetSection);
         v4Homework.insertBefore(noPlanWelcome, worksheetSection);
         v4Homework.insertBefore(noHwEmpty, worksheetSection);
-        v4Homework.insertBefore(notebookDiary, worksheetSection);
       } else {
         v4Homework.prepend(noHwEmpty);
         v4Homework.prepend(noPlanWelcome);
         v4Homework.prepend(completeCard);
-        v4Homework.prepend(notebookDiary);
       }
 
       const assignCard = document.getElementById("hw-current-assignment-card");
@@ -1087,17 +1331,21 @@
       app.id = "hw-v5-app";
       app.dataset.v5ActiveTab = "homework";
 
+      const tabsWrap = document.createElement("div");
+      tabsWrap.className = "hw-hub-v5-tabs-wrap";
+
       const tabs = document.createElement("nav");
       tabs.className = "hw-hub-v5-tabs";
       tabs.id = "hw-v5-tabs";
       tabs.setAttribute("role", "tablist");
       tabs.setAttribute("aria-label", "Hub sections");
       tabs.innerHTML =
+        '<span class="hw-hub-v5-tabs__slider" aria-hidden="true"></span>' +
         '<button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">HW</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-mistakes" data-v5-tab="mistakes" aria-selected="false" aria-controls="hw-v5-panel-mistakes">Mistakes</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notifications" data-v5-tab="notifications" aria-selected="false" aria-controls="hw-v5-panel-notifications">Notifications</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notebook" data-v5-tab="notebook" aria-selected="false" aria-controls="hw-v5-panel-notebook">Notebook</button>' +
+        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons/Mistakes</button>' +
         '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-games" data-v5-tab="games" aria-selected="false" aria-controls="hw-v5-panel-games">Games</button>';
+      tabsWrap.appendChild(tabs);
 
       const homeworkPanel = document.createElement("div");
       homeworkPanel.className = "hw-hub-v5-panel hw-hub-v5-panel--homework is-active";
@@ -1114,37 +1362,32 @@
       const gridStack = document.getElementById("hw-grid-stack");
       const mistakesCard = document.getElementById("hw-student-mistakes-card");
       const gamesCard = document.getElementById("hw-games-hub-card");
-      const notifsCard = studentGrid.querySelector(".hw-grid-notifs");
+      const sachikoCard = document.getElementById("hw-sachiko-card");
+      const lessonsStack = ensureLessonsStack(gridStack, mistakesCard);
 
-      if (gridStack) {
+      below.appendChild(
+        wrapBelowPanel("hw-v5-panel-lessons", "lessons", "hw-v5-tab-lessons", lessonsStack)
+      );
+      below.appendChild(
+        wrapBelowPanel("hw-v5-panel-notebook", "notebook", "hw-v5-tab-notebook", notebookDiary)
+      );
+      if (gamesCard || sachikoCard) {
+        const gamesStack = document.createElement("div");
+        gamesStack.className = "hw-hub-v5-games-stack";
+        if (gamesCard) gamesStack.appendChild(gamesCard);
+        if (sachikoCard) gamesStack.appendChild(sachikoCard);
         below.appendChild(
-          wrapBelowPanel("hw-v5-panel-lessons", "lessons", "hw-v5-tab-lessons", gridStack)
-        );
-      }
-      if (mistakesCard) {
-        below.appendChild(
-          wrapBelowPanel("hw-v5-panel-mistakes", "mistakes", "hw-v5-tab-mistakes", mistakesCard)
-        );
-      }
-      if (notifsCard) {
-        below.appendChild(
-          wrapBelowPanel(
-            "hw-v5-panel-notifications",
-            "notifications",
-            "hw-v5-tab-notifications",
-            notifsCard
-          )
-        );
-      }
-      if (gamesCard) {
-        below.appendChild(
-          wrapBelowPanel("hw-v5-panel-games", "games", "hw-v5-tab-games", gamesCard)
+          wrapBelowPanel("hw-v5-panel-games", "games", "hw-v5-tab-games", gamesStack)
         );
       }
 
-      app.appendChild(tabs);
-      app.appendChild(homeworkPanel);
-      app.appendChild(below);
+      const panels = document.createElement("div");
+      panels.className = "hw-hub-v5-panels";
+      panels.appendChild(homeworkPanel);
+      panels.appendChild(below);
+
+      app.appendChild(tabsWrap);
+      app.appendChild(panels);
 
       studentOnly.insertBefore(app, studentOnly.firstChild);
 
@@ -1177,6 +1420,48 @@
     document.getElementById("hw-v5-status-bubble-hint")?.remove();
   }
 
+  /**
+   * Persistent ping host on the panels shell so it stays visible on every major
+   * tab (HW / Notebook / Lessons / Games). Position is worksheet host-local
+   * (same space as Glass/Cloud pick tools): center at 49.5, 41.4.
+   */
+  function ensureHubStatusPingHost() {
+    const panels = document.querySelector(".hw-hub-v5-panels");
+    if (!panels) return null;
+
+    let host = document.getElementById("hw-v5-diary-ping-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "hw-v5-diary-ping-host";
+      host.setAttribute("aria-hidden", "false");
+    }
+    host.className =
+      "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary hw-hub-v5-status-ping-host--hub";
+    if (host.parentElement !== panels) panels.appendChild(host);
+
+    /* Map worksheet-local center → panels-local (Glass/Cloud host space). */
+    const worksheet = document.querySelector(
+      "#hw-hub-v4-homework .hw-hub-v2-worksheet"
+    );
+    const PING_X = 49.5;
+    const PING_Y = 41.4;
+    if (worksheet) {
+      const wr = worksheet.getBoundingClientRect();
+      const pr = panels.getBoundingClientRect();
+      if (wr.width || wr.height) {
+        host.style.left = wr.left - pr.left + PING_X + "px";
+        host.style.top = wr.top - pr.top + PING_Y + "px";
+      } else {
+        host.style.left = PING_X + "px";
+        host.style.top = PING_Y + "px";
+      }
+    } else {
+      host.style.left = PING_X + "px";
+      host.style.top = PING_Y + "px";
+    }
+    return host;
+  }
+
   function mountStatusBubble(status) {
     const bubble = document.getElementById("hw-v5-status-bubble");
     const hint = document.getElementById("hw-v5-status-bubble-hint");
@@ -1200,24 +1485,15 @@
     const stickyHead = worksheetCard?.querySelector(".hw-worksheet__slide-sticky-head");
     const navRow = stickyHead?.querySelector(".hw-worksheet__slide-nav-row");
 
-    /* Diary replaces the status slot — keep home ping on the notebook chrome. */
-    if (notebookOpen) {
-      ensureNotebookDiary();
-      const diaryHost = document.getElementById("hw-v5-diary-ping-host");
-      if (diaryHost) {
-        bubble.classList.add(
-          "hw-hub-v5-status-bubble--in-hub",
-          "hw-hub-v5-status-bubble--hub-signal",
-          "hw-hub-v5-status-bubble--in-diary"
-        );
-        if (bubble.parentElement !== diaryHost) diaryHost.appendChild(bubble);
-        if (hint.parentElement !== document.body) document.body.appendChild(hint);
-        if (bubble.matches(":hover")) scheduleBubbleHint();
-        return;
-      }
-    }
+    /* Hide legacy complete-card ping slots — hub uses the persistent host. */
+    const reviewHost = document.getElementById("hw-v5-status-ping-host");
+    const completeHost = document.getElementById("hw-v5-complete-ping-host");
+    if (completeHost) completeHost.hidden = true;
+    if (reviewHost) reviewHost.hidden = true;
 
     if (archive) {
+      const hubHost = document.getElementById("hw-v5-diary-ping-host");
+      if (hubHost) hubHost.hidden = true;
       const host = navRow || stickyHead || worksheetCard;
       if (host) {
         bubble.classList.add(
@@ -1236,20 +1512,17 @@
         if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
       }
     } else {
-      /* Hub complete screens: same colored ping as archive, at-a-glance status. */
+      /* Hub-wide ping at Glass/Cloud host-local point — every major tab. */
       ensureCompleteCard();
-      const reviewHost = document.getElementById("hw-v5-status-ping-host");
-      const completeHost = document.getElementById("hw-v5-complete-ping-host");
-      const reviewed = status === "reviewed";
-      const host = reviewed ? reviewHost || completeHost : completeHost || reviewHost;
-      if (completeHost) completeHost.hidden = reviewed;
-      if (host) {
-        host.hidden = false;
+      const hubHost = ensureHubStatusPingHost();
+      if (hubHost) {
+        hubHost.hidden = false;
         bubble.classList.add(
           "hw-hub-v5-status-bubble--in-hub",
-          "hw-hub-v5-status-bubble--hub-signal"
+          "hw-hub-v5-status-bubble--hub-signal",
+          "hw-hub-v5-status-bubble--in-diary"
         );
-        if (bubble.parentElement !== host) host.appendChild(bubble);
+        if (bubble.parentElement !== hubHost) hubHost.appendChild(bubble);
       } else {
         bubble.classList.add("hw-hub-v5-status-bubble--dock");
         if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
@@ -1274,7 +1547,8 @@
     bubble.id = "hw-v5-status-bubble";
     bubble.className = "hw-hub-v5-status-bubble";
     bubble.hidden = true;
-    bubble.setAttribute("aria-label", "HW under review");
+    bubble.setAttribute("aria-label", "Working on your homework");
+    bubble.setAttribute("aria-describedby", "hw-v5-status-bubble-hint");
     bubble.innerHTML =
       '<span class="hw-hub-v5-status-bubble__ring" aria-hidden="true"></span>' +
       '<span class="hw-hub-v5-status-bubble__dot" aria-hidden="true"></span>';
@@ -1282,7 +1556,8 @@
     const hint = document.createElement("p");
     hint.id = "hw-v5-status-bubble-hint";
     hint.className = "hw-hub-v5-status-bubble__hint";
-    hint.textContent = "HW under review";
+    hint.setAttribute("role", "tooltip");
+    hint.textContent = "Working on your homework";
 
     document.body.appendChild(hint);
     document.body.appendChild(bubble);
@@ -1381,17 +1656,63 @@
     }
   }
 
+  /**
+   * Hover / a11y copy for the status ping — plain student language matching
+   * pending-card and complete-card phrasing. Custom hint tooltip (not native
+   * title) already exists in the hub design.
+   */
+  function statusBubbleLabels(status, homeExit) {
+    let aria;
+    let hint;
+    const noHw =
+      !studentHasActiveAssignment() ||
+      platformSaysNoLinkedAssignment() ||
+      document.body.classList.contains("hw-hub-v5-noplan-view") ||
+      document.body.classList.contains("hw-hub-v5-no-hw-view");
+
+    if (noHw && status !== "reviewed" && status !== "submitted") {
+      /* Empty hub / waiting for first or next assignment */
+      aria = "Waiting for homework";
+      hint = "Waiting for homework";
+    } else if (status === "reviewed") {
+      aria = "Homework reviewed — JD’s notes are ready";
+      hint = "Homework done — JD’s notes are ready";
+    } else if (status === "acknowledged") {
+      aria = "Waiting for your next homework";
+      hint = "Waiting for JD to send new homework";
+    } else if (status === "submitted") {
+      aria = "Homework under review";
+      hint = "JD is reviewing your homework";
+    } else {
+      /* in_progress / working on assigned HW */
+      aria = "Working on your homework";
+      hint = "Working on your homework";
+    }
+    if (homeExit) {
+      const returnBit = " Click to return to home";
+      if (noHw && status !== "reviewed" && status !== "submitted") {
+        aria = "Waiting for homework." + returnBit;
+        hint = "Waiting for homework." + returnBit;
+      } else if (status === "reviewed") {
+        aria = "JD’s notes are ready." + returnBit;
+        hint = "JD’s notes are ready." + returnBit;
+      } else if (status === "acknowledged") {
+        aria = "Waiting for new homework." + returnBit;
+        hint = "Waiting for JD to send new homework." + returnBit;
+      } else if (status === "submitted") {
+        aria = "HW under review." + returnBit;
+        hint = "HW under review." + returnBit;
+      } else {
+        aria = "Working on your homework." + returnBit;
+        hint = "Working on your homework." + returnBit;
+      }
+    }
+    return { aria: aria, hint: hint };
+  }
+
   function renderStatusBubble(status) {
     const archive = isArchiveMode();
-    const complete = isCompleteView(status);
-    /* Archive, hub complete states, or notebook (home ping on diary chrome). */
-    if (!archive && !complete && !notebookOpen) {
-      teardownStatusBubble();
-      const completeHost = document.getElementById("hw-v5-complete-ping-host");
-      if (completeHost) completeHost.hidden = true;
-      return;
-    }
-
+    /* Archive + complete + in-progress: ping stays on every major hub tab. */
     ensureStatusBubble();
     bindStatusBubble();
     mountStatusBubble(status);
@@ -1414,50 +1735,19 @@
     );
 
     const homeExit = archive || notebookOpen;
+    const labels = statusBubbleLabels(status, homeExit);
 
     if (status === "reviewed") {
       bubble.classList.add("hw-hub-v5-status-bubble--reviewed");
-      bubble.setAttribute(
-        "aria-label",
-        homeExit
-          ? "JD’s notes are ready. Click to return to home"
-          : "Homework reviewed — JD’s notes are ready"
-      );
-      if (hint) {
-        hint.textContent = homeExit
-          ? "JD’s notes are ready. Click to return to home"
-          : "Homework done — JD’s notes are ready";
-      }
     } else if (status === "acknowledged") {
       bubble.classList.add("hw-hub-v5-status-bubble--acked");
-      bubble.setAttribute(
-        "aria-label",
-        homeExit
-          ? "Waiting for new homework. Click to return to home"
-          : "Waiting for your next homework"
-      );
-      if (hint) {
-        hint.textContent = homeExit
-          ? "Waiting for JD to send new homework. Click to return to home"
-          : "Waiting for JD to send new homework";
-      }
-    } else if (status === "submitted" || complete) {
-      bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
-      bubble.setAttribute(
-        "aria-label",
-        homeExit ? "HW under review. Click to return to home" : "Homework under review"
-      );
-      if (hint) {
-        hint.textContent = homeExit
-          ? "HW under review. Click to return to home"
-          : "JD is reviewing your homework";
-      }
     } else {
-      /* Notebook open during active HW — ping still exits diary to status. */
+      /* submitted (JD reviewing) + in_progress (working) share the ping pulse */
       bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
-      bubble.setAttribute("aria-label", "Click to return to home");
-      if (hint) hint.textContent = "Click to return to home";
     }
+
+    bubble.setAttribute("aria-label", labels.aria);
+    if (hint) hint.textContent = labels.hint;
   }
 
   function renderCompleteCard(status) {
@@ -1950,29 +2240,312 @@
   let notebookOpen = false;
   let notebookPageIndex = 0;
   let notebookUiBound = false;
+  let notebookBookId = "daily";
+  let notebookSearchQuery = "";
+  let dailyNotebookDateKey = "";
+  let dailyNotebookTodayKey = "";
+  let dailyNotebookText = "";
+  let dailyNotebookSaveTimer = 0;
+  let dailyNotebookLoadGen = 0;
+  let dailyNotebookDirty = false;
+  let dailyNotebookStatus = "";
+  let dailyNotebookDates = [];
+  /** dateKey → text, filled from API for Daily notebook search. */
+  let dailyNotebookTextCache = Object.create(null);
+  let kanjiNotebookPageIndex = 0;
+  let kanjiNotebookPages = [0];
+  let kanjiNotebookText = "";
+  let kanjiNotebookSaveTimer = 0;
+  let kanjiNotebookLoadGen = 0;
+  let kanjiNotebookDirty = false;
+  /** pageIndex → text, filled from API for Kanji notebook search. */
+  let kanjiNotebookTextCache = Object.create(null);
+  const KANJI_NOTEBOOK_COLS = 4;
+  const KANJI_NOTEBOOK_ROWS = 5;
+  const KANJI_NOTEBOOK_CELLS = KANJI_NOTEBOOK_COLS * KANJI_NOTEBOOK_ROWS;
+
+  const NOTEBOOK_WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
+
+  const NOTEBOOK_BOOK_DEFAULTS = [
+    { id: "daily", label: "Daily Notebook", paper: "lined" },
+    { id: "hw", label: "HW Notebook", paper: "lined" },
+    { id: "kanji", label: "Kanji Notebook", paper: "kanji" },
+  ];
+
+  function notebookCustomBooksKey() {
+    const username = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return username ? "hw-nb-custom-books:" + username : "hw-nb-custom-books";
+  }
+
+  function loadCustomNotebookBooks() {
+    try {
+      const raw = localStorage.getItem(notebookCustomBooksKey());
+      const list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) return [];
+      return list
+        .map((item) => ({
+          id: String(item?.id || "").trim(),
+          label: String(item?.label || "").trim(),
+          paper: item?.paper === "kanji" ? "kanji" : "lined",
+        }))
+        .filter((item) => item.id && item.label);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveCustomNotebookBooks(list) {
+    try {
+      localStorage.setItem(notebookCustomBooksKey(), JSON.stringify(list));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getNotebookBooks() {
+    return NOTEBOOK_BOOK_DEFAULTS.concat(loadCustomNotebookBooks());
+  }
+
+  function getActiveNotebookBook() {
+    const books = getNotebookBooks();
+    return books.find((b) => b.id === notebookBookId) || books[0];
+  }
 
   function formatNotebookWhen(iso) {
     if (!iso) return "";
     try {
       const d = new Date(iso);
       if (Number.isNaN(d.getTime())) return "";
-      return d.toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
+      /* Prefer Japan calendar day for the notebook date line. */
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Tokyo",
         year: "numeric",
-      });
+        month: "numeric",
+        day: "numeric",
+        weekday: "short",
+      }).formatToParts(d);
+      const get = (type) => parts.find((p) => p.type === type)?.value || "";
+      const weekEn = get("weekday");
+      const weekMap = {
+        Sun: "日",
+        Mon: "月",
+        Tue: "火",
+        Wed: "水",
+        Thu: "木",
+        Fri: "金",
+        Sat: "土",
+      };
+      const w =
+        weekMap[weekEn] ||
+        NOTEBOOK_WEEKDAYS_JA[d.getDay()] ||
+        "";
+      return (
+        get("year") +
+        "年" +
+        get("month") +
+        "月" +
+        get("day") +
+        "日（" +
+        w +
+        "）"
+      );
     } catch {
       return "";
     }
   }
 
+  function tokyoDateKeyFromDate(from) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(from || new Date());
+  }
+
+  function formatNotebookDateKey(dateKey) {
+    const key = String(dateKey || "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return "";
+    const [y, m, d] = key.split("-").map(Number);
+    /* Noon UTC keeps the Japan calendar day stable for formatting. */
+    return formatNotebookWhen(new Date(Date.UTC(y, m - 1, d, 3, 0, 0)).toISOString());
+  }
+
+  function shiftNotebookDateKey(dateKey, deltaDays) {
+    const [y, m, d] = String(dateKey || "")
+      .split("-")
+      .map(Number);
+    if (!y || !m || !d) return tokyoDateKeyFromDate();
+    return tokyoDateKeyFromDate(new Date(Date.UTC(y, m - 1, d + deltaDays, 3, 0, 0)));
+  }
+
+  function syncDailyNotebookDates(rawDates) {
+    const today = dailyNotebookTodayKey || tokyoDateKeyFromDate();
+    dailyNotebookDates = (Array.isArray(rawDates) ? rawDates : [])
+      .map((k) => String(k || "").trim())
+      .filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= today)
+      .sort();
+  }
+
+  function syncDailyNotebookTextCache(rawTexts) {
+    if (!rawTexts || typeof rawTexts !== "object") return;
+    Object.keys(rawTexts).forEach((k) => {
+      const key = String(k || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+      dailyNotebookTextCache[key] = String(rawTexts[k] || "");
+    });
+  }
+
+  /** First page = earliest saved entry day; if none yet, today only. */
+  function dailyNotebookFirstKey() {
+    const today = dailyNotebookTodayKey || tokyoDateKeyFromDate();
+    return dailyNotebookDates[0] || today;
+  }
+
+  /** Calendar days from first saved entry through today (inclusive). */
+  function dailyNotebookDayKeys() {
+    const first = dailyNotebookFirstKey();
+    const today = dailyNotebookTodayKey || tokyoDateKeyFromDate();
+    const keys = [];
+    let cur = first;
+    for (let i = 0; i < 4000 && cur <= today; i += 1) {
+      keys.push(cur);
+      if (cur === today) break;
+      cur = shiftNotebookDateKey(cur, 1);
+    }
+    return keys;
+  }
+
+  function dailyNotebookDaySearchText(dateKey) {
+    const key = String(dateKey || "");
+    const label = formatNotebookDateKey(key);
+    const text =
+      key === dailyNotebookDateKey
+        ? dailyNotebookText
+        : String(dailyNotebookTextCache[key] || "");
+    return [key, label, text]
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join("\n")
+      .toLowerCase();
+  }
+
+  function filterDailyNotebookDayKeys() {
+    const keys = dailyNotebookDayKeys();
+    const q = getNotebookSearchQuery().toLowerCase();
+    if (!q) return keys;
+    return keys.filter((key) => dailyNotebookDaySearchText(key).includes(q));
+  }
+
+  function updateDailyNotebookPagerUi() {
+    const counter = document.getElementById("hw-notebook-counter");
+    const prevBtn = document.getElementById("hw-notebook-prev");
+    const nextBtn = document.getElementById("hw-notebook-next");
+    const q = getNotebookSearchQuery();
+    const keys = filterDailyNotebookDayKeys();
+    let idx = keys.indexOf(dailyNotebookDateKey);
+    if (idx < 0 && !q) {
+      dailyNotebookDateKey = keys[keys.length - 1] || dailyNotebookTodayKey;
+      idx = Math.max(0, keys.indexOf(dailyNotebookDateKey));
+    }
+    if (counter) {
+      if (q && !keys.length) {
+        counter.textContent = "0 of 0";
+      } else if (idx < 0) {
+        counter.textContent = keys.length ? "— of " + keys.length : "0 of 0";
+      } else {
+        counter.textContent = keys.length
+          ? idx + 1 + " of " + keys.length
+          : "1 of 1";
+      }
+    }
+    if (prevBtn) {
+      prevBtn.disabled = idx <= 0;
+      prevBtn.setAttribute("aria-label", "Previous day");
+    }
+    if (nextBtn) {
+      nextBtn.disabled = idx < 0 || idx >= keys.length - 1;
+      nextBtn.setAttribute("aria-label", "Next day");
+    }
+  }
+
   function packDisplayTitle(pack) {
-    return (
-      String(pack?.lessonName || "").trim() ||
-      String(pack?.title || "").trim() ||
-      "Homework"
-    );
+    const stripDatePrefix = (raw) =>
+      String(raw || "")
+        .trim()
+        .replace(/^\d{4}-\d{2}-\d{2}\s*[—–\-:・]\s*/u, "")
+        .replace(
+          /^(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?\s*[—–\-:・]\s*/iu,
+          ""
+        )
+        .trim();
+
+    /* Prefer clean HW title; drop leftover "2026-06-17 — …" date prefixes. */
+    const title = stripDatePrefix(pack?.title);
+    const lesson = stripDatePrefix(pack?.lessonName);
+    return title || lesson || String(pack?.title || pack?.lessonName || "").trim() || "Homework";
+  }
+
+  function notebookRowSearchText(row) {
+    return [
+      row?.studentText,
+      row?.studentAnchor,
+      row?.jdText,
+      row?.teacherText,
+      row?.commentText,
+      typeof row?.slideIndex === "number" ? "Q" + (row.slideIndex + 1) : "",
+    ]
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function notebookPackSearchText(pack) {
+    const iso = pack?.reviewedAt || pack?.savedAt || "";
+    const when = formatNotebookWhen(iso);
+    const title = packDisplayTitle(pack);
+    const rowText = (Array.isArray(pack?.rows) ? pack.rows : [])
+      .map(notebookRowSearchText)
+      .join("\n");
+    return [when, title, iso, pack?.lessonName, pack?.title, rowText]
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join("\n")
+      .toLowerCase();
+  }
+
+  function getNotebookSearchQuery() {
+    const input = document.getElementById("hw-notebook-search");
+    if (input) notebookSearchQuery = String(input.value || "");
+    return String(notebookSearchQuery || "").trim();
+  }
+
+  function filterNotebookPacks(packs) {
+    const usable = usableNotebookPacks(packs);
+    const q = getNotebookSearchQuery().toLowerCase();
+    if (!q) return usable;
+
+    return usable
+      .map((pack) => {
+        const title = packDisplayTitle(pack).toLowerCase();
+        const when = formatNotebookWhen(pack.reviewedAt || pack.savedAt).toLowerCase();
+        const iso = String(pack.reviewedAt || pack.savedAt || "").toLowerCase();
+        const packHit =
+          title.includes(q) || when.includes(q) || iso.includes(q);
+
+        const matchingRows = (pack.rows || []).filter((row) =>
+          notebookRowSearchText(row).toLowerCase().includes(q)
+        );
+
+        if (packHit) return pack;
+        if (matchingRows.length) {
+          return Object.assign({}, pack, { rows: matchingRows });
+        }
+        return null;
+      })
+      .filter(Boolean);
   }
 
   /** Student name for Notebook column headers (CSS uppercases the label). */
@@ -2015,10 +2588,9 @@
     } catch {
       /* ignore */
     }
-    /* Close diary before archive hash so platform doesn't skip/abort the sheet. */
+    /* Leave Notebook tab before archive hash so platform doesn't skip/abort the sheet. */
     if (notebookOpen) {
-      notebookOpen = false;
-      applyNotebookOpenUi();
+      setActiveTab("homework", { skipFocus: true });
     }
     window.location.hash = "hw-submission-" + submissionId;
   }
@@ -2246,13 +2818,189 @@
     return el;
   }
 
+  function ensureNotebookBookTabs(diary) {
+    let booksNav = diary.querySelector(".hw-hub-v5-notebook-books");
+    if (!booksNav) {
+      booksNav = document.createElement("nav");
+      booksNav.className = "hw-hub-v5-notebook-books";
+      booksNav.id = "hw-notebook-books";
+      booksNav.setAttribute("aria-label", "Notebooks");
+      diary.insertBefore(booksNav, diary.firstChild);
+    }
+
+    const books = getNotebookBooks();
+    const active = getActiveNotebookBook();
+    notebookBookId = active.id;
+
+    booksNav.replaceChildren();
+    books.forEach((book) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v5-notebook-books__btn";
+      if (book.id === notebookBookId) btn.classList.add("is-active");
+      btn.setAttribute("data-nb-book", book.id);
+      btn.setAttribute("aria-pressed", book.id === notebookBookId ? "true" : "false");
+      btn.textContent = book.label;
+      booksNav.appendChild(btn);
+    });
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className =
+      "hw-hub-v5-notebook-books__btn hw-hub-v5-notebook-books__btn--add";
+    addBtn.setAttribute("data-nb-book-add", "1");
+    addBtn.textContent = "Add Notebook";
+    booksNav.appendChild(addBtn);
+    return booksNav;
+  }
+
+  function applyNotebookPaperStyle() {
+    const page = document.getElementById("hw-notebook-diary-page");
+    const diary = document.getElementById("hw-notebook-diary");
+    const book = getActiveNotebookBook();
+    if (!page || !book) return;
+    page.classList.remove(
+      "hw-hub-v5-notebook-diary__page--lined",
+      "hw-hub-v5-notebook-diary__page--kanji"
+    );
+    page.classList.add(
+      book.paper === "kanji"
+        ? "hw-hub-v5-notebook-diary__page--kanji"
+        : "hw-hub-v5-notebook-diary__page--lined"
+    );
+    page.setAttribute(
+      "aria-label",
+      book.label + (book.paper === "kanji" ? " — kanji boxes" : " — lined page")
+    );
+    diary?.classList.toggle("hw-hub-v5-notebook-diary--daily", book.id === "daily");
+  }
+
+  function setNotebookBook(bookId) {
+    const books = getNotebookBooks();
+    const next = books.find((b) => b.id === bookId);
+    if (!next) return;
+    if (notebookBookId === "daily" && next.id !== "daily") {
+      window.clearTimeout(dailyNotebookSaveTimer);
+      void flushDailyNotebookSave();
+    }
+    if (notebookBookId === "kanji" && next.id !== "kanji") {
+      window.clearTimeout(kanjiNotebookSaveTimer);
+      void flushKanjiNotebookSave();
+    }
+    notebookBookId = next.id;
+    if (next.id === "daily" && !dailyNotebookDateKey) {
+      dailyNotebookDateKey = tokyoDateKeyFromDate();
+      dailyNotebookTodayKey = dailyNotebookDateKey;
+    }
+    ensureNotebookBookTabs(ensureNotebookDiary());
+    applyNotebookPaperStyle();
+    renderNotebookDiaryPage(notebookCachePacks || []);
+  }
+
+  function promptAddNotebook() {
+    const label = String(
+      window.prompt("Name for the new notebook:", "") || ""
+    ).trim();
+    if (!label) return;
+    const custom = loadCustomNotebookBooks();
+    const id =
+      "custom-" +
+      label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 40) +
+      "-" +
+      Date.now().toString(36);
+    custom.push({ id, label, paper: "lined" });
+    saveCustomNotebookBooks(custom);
+    setNotebookBook(id);
+  }
+
+  function ensureNotebookSearch(diary) {
+    const chrome = diary.querySelector(".hw-hub-v5-notebook-diary__chrome");
+    const header = diary.querySelector(".hw-hub-v5-notebook-diary__header");
+    const page =
+      diary.querySelector("#hw-notebook-diary-page") ||
+      document.getElementById("hw-notebook-diary-page");
+    if (!chrome || !header) return null;
+
+    /* Prefer querySelector on diary — getElementById misses nodes not yet
+       attached to the document, which used to insert a second search bar. */
+    let wraps = Array.from(
+      diary.querySelectorAll(".hw-hub-v5-notebook-diary__search")
+    );
+    if (!wraps.length) {
+      const orphan = document.getElementById("hw-notebook-search-wrap");
+      if (orphan) wraps = [orphan];
+    }
+    let wrap = wraps[0] || null;
+    wraps.slice(1).forEach((extra) => extra.remove());
+
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.className = "hw-hub-v5-notebook-diary__search";
+      wrap.id = "hw-notebook-search-wrap";
+      wrap.innerHTML =
+        '<label class="visually-hidden" for="hw-notebook-search">Search notebook</label>' +
+        '<input type="search" class="hw-hub-v5-notebook-diary__search-input" id="hw-notebook-search" placeholder="Search\u2026" autocomplete="off" enterkeyhint="search" />';
+      if (page && page.parentElement === chrome) {
+        chrome.insertBefore(wrap, page);
+      } else {
+        header.insertAdjacentElement("afterend", wrap);
+      }
+    } else {
+      wrap.id = "hw-notebook-search-wrap";
+      const inputEl = wrap.querySelector('input[type="search"]');
+      if (inputEl) inputEl.id = "hw-notebook-search";
+    }
+
+    const input =
+      wrap.querySelector("#hw-notebook-search") ||
+      wrap.querySelector('input[type="search"]') ||
+      document.getElementById("hw-notebook-search");
+    if (input && input.value !== notebookSearchQuery) {
+      input.value = notebookSearchQuery;
+    }
+
+    wrap.hidden = false;
+    updateNotebookSearchPlaceholder();
+    return wrap;
+  }
+
+  function updateNotebookSearchPlaceholder() {
+    const input = document.getElementById("hw-notebook-search");
+    const label = document.querySelector('label[for="hw-notebook-search"]');
+    if (!input) return;
+    const book = getActiveNotebookBook();
+    const id = book?.id || "hw";
+    let placeholder = "Search\u2026";
+    let aria = "Search notebook";
+    if (id === "hw") {
+      placeholder = "Search comments, homework, dates\u2026";
+      aria = "Search HW notebook";
+    } else if (id === "daily") {
+      placeholder = "Search days, notes, dates\u2026";
+      aria = "Search daily notebook";
+    } else if (id === "kanji") {
+      placeholder = "Search kanji pages\u2026";
+      aria = "Search kanji notebook";
+    } else {
+      placeholder = "Search notebook\u2026";
+      aria = "Search " + (book?.label || "notebook");
+    }
+    input.placeholder = placeholder;
+    input.setAttribute("aria-label", aria);
+    if (label) label.textContent = aria;
+  }
+
   function ensureNotebookDiary() {
     let diary = document.getElementById("hw-notebook-diary");
     if (!diary) {
       diary = document.createElement("section");
       diary.className = "hw-hub-v5-notebook-diary";
       diary.id = "hw-notebook-diary";
-      diary.hidden = true;
+      diary.hidden = false;
       diary.setAttribute("aria-labelledby", "hw-notebook-diary-date");
       diary.innerHTML =
         '<div class="hw-hub-v5-notebook-diary__chrome">' +
@@ -2261,10 +3009,13 @@
         '<p class="hw-hub-v5-notebook-diary__date" id="hw-notebook-diary-date">Notebook</p>' +
         '<p class="hw-hub-v5-notebook-diary__lesson" id="hw-notebook-diary-lesson" hidden></p>' +
         "</div>" +
-        '<div class="hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary" id="hw-v5-diary-ping-host" aria-hidden="false"></div>' +
         "</header>" +
-        '<div class="hw-hub-v5-notebook-diary__page" id="hw-notebook-diary-page" tabindex="0" aria-label="Notebook page"></div>' +
-        '<div class="hw-hub-v5-notebook-diary__pager-row">' +
+        '<div class="hw-hub-v5-notebook-diary__search" id="hw-notebook-search-wrap">' +
+        '<label class="visually-hidden" for="hw-notebook-search">Search notebook</label>' +
+        '<input type="search" class="hw-hub-v5-notebook-diary__search-input" id="hw-notebook-search" placeholder="Search\u2026" autocomplete="off" enterkeyhint="search" />' +
+        "</div>" +
+        '<div class="hw-hub-v5-notebook-diary__page hw-hub-v5-notebook-diary__page--lined" id="hw-notebook-diary-page" tabindex="0" aria-label="Notebook page"></div>' +
+        '<div class="hw-hub-v5-notebook-diary__pager-row" id="hw-notebook-pager-row">' +
         '<nav class="hw-hub-v5-notebook-diary__pager" id="hw-notebook-diary-pager" aria-label="Notebook pages">' +
         '<button type="button" class="hw-hub-v5-notebook-diary__nav" id="hw-notebook-prev" aria-label="Previous assignment page">\u2190</button>' +
         '<p class="hw-hub-v5-notebook-diary__counter" id="hw-notebook-counter" aria-live="polite">1 of 1</p>' +
@@ -2274,7 +3025,10 @@
         "</div>";
     }
 
-    /* Keep status ping top-right of the notebook chrome (not beside the pager). */
+    ensureNotebookBookTabs(diary);
+    ensureNotebookSearch(diary);
+
+    /* Status ping lives on the hub panels shell (all tabs), not diary chrome. */
     const header = diary.querySelector(".hw-hub-v5-notebook-diary__header");
     let mast = diary.querySelector(".hw-hub-v5-notebook-diary__mast");
     const dateEl = document.getElementById("hw-notebook-diary-date");
@@ -2286,17 +3040,17 @@
       mast.appendChild(dateEl);
       if (lessonEl) mast.appendChild(lessonEl);
     }
-    let host = document.getElementById("hw-v5-diary-ping-host");
-    if (!host && header) {
-      host = document.createElement("div");
-      host.className =
-        "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary";
-      host.id = "hw-v5-diary-ping-host";
-      host.setAttribute("aria-hidden", "false");
+    const strayDiaryPing = header?.querySelector("#hw-v5-diary-ping-host");
+    if (strayDiaryPing) strayDiaryPing.remove();
+    ensureHubStatusPingHost();
+
+    let pagerRow = document.getElementById("hw-notebook-pager-row");
+    if (!pagerRow) {
+      pagerRow = diary.querySelector(".hw-hub-v5-notebook-diary__pager-row");
+      if (pagerRow) pagerRow.id = "hw-notebook-pager-row";
     }
-    if (header && host && host.parentElement !== header) {
-      header.appendChild(host);
-    }
+
+    applyNotebookPaperStyle();
 
     return diary;
   }
@@ -2308,19 +3062,719 @@
   }
 
   function updateNotebookEntryHint(usable) {
-    const hint = document.getElementById("hw-notebook-entry-hint");
-    const btn = document.getElementById("hw-notebook-open-btn");
-    if (hint) {
-      hint.textContent = usable.length
-        ? usable.length === 1
-          ? "1 assignment with notes"
-          : usable.length + " assignments with notes"
-        : "No notes yet — JD’s comments appear after review";
+    /* Hint lived on the old View notebook button — diary page counter covers this now. */
+    void usable;
+  }
+
+  function setDailyNotebookStatus(msg) {
+    dailyNotebookStatus = String(msg || "");
+    const el = document.getElementById("hw-notebook-daily-status");
+    if (el) el.textContent = dailyNotebookStatus;
+  }
+
+  async function flushDailyNotebookSave() {
+    if (!dailyNotebookDirty) return;
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    const date = dailyNotebookDateKey;
+    if (!username || !date) return;
+
+    dailyNotebookDirty = false;
+    setDailyNotebookStatus("Saving…");
+    try {
+      const res = await fetch("/api/daily-notebook", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          date,
+          text: dailyNotebookText,
+        }),
+      });
+      if (!res.ok) {
+        dailyNotebookDirty = true;
+        setDailyNotebookStatus("Couldn’t save — try again");
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data && Array.isArray(data.dates)) syncDailyNotebookDates(data.dates);
+      if (data && data.texts) syncDailyNotebookTextCache(data.texts);
+      dailyNotebookTextCache[date] = dailyNotebookText;
+      if (data && data.today) dailyNotebookTodayKey = String(data.today);
+      updateDailyNotebookPagerUi();
+      setDailyNotebookStatus("Saved");
+    } catch {
+      dailyNotebookDirty = true;
+      setDailyNotebookStatus("Couldn’t save — try again");
     }
-    if (btn) {
-      btn.setAttribute("aria-expanded", notebookOpen ? "true" : "false");
-      btn.classList.toggle("is-open", notebookOpen);
+  }
+
+  function queueDailyNotebookSave() {
+    dailyNotebookDirty = true;
+    setDailyNotebookStatus("Saving…");
+    window.clearTimeout(dailyNotebookSaveTimer);
+    dailyNotebookSaveTimer = window.setTimeout(() => {
+      void flushDailyNotebookSave();
+    }, 650);
+  }
+
+  function bindDailyNotebookWriter(textarea) {
+    if (!textarea || textarea.dataset.bound === "1") return;
+    textarea.dataset.bound = "1";
+    textarea.addEventListener("input", () => {
+      dailyNotebookText = textarea.value;
+      dailyNotebookTextCache[dailyNotebookDateKey] = dailyNotebookText;
+      queueDailyNotebookSave();
+    });
+    textarea.addEventListener("blur", () => {
+      window.clearTimeout(dailyNotebookSaveTimer);
+      void flushDailyNotebookSave();
+    });
+  }
+
+  async function loadDailyNotebookDay(dateKey) {
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    if (!username) {
+      dailyNotebookText = "";
+      return { text: "", today: tokyoDateKeyFromDate(), date: dateKey };
     }
+
+    const gen = ++dailyNotebookLoadGen;
+    const url =
+      "/api/daily-notebook?username=" +
+      encodeURIComponent(username) +
+      "&date=" +
+      encodeURIComponent(dateKey);
+    const res = await fetch(url, { cache: "no-store" });
+    if (gen !== dailyNotebookLoadGen) return null;
+    if (!res.ok) throw new Error("load-failed");
+    const data = await res.json().catch(() => ({}));
+    if (gen !== dailyNotebookLoadGen) return null;
+    dailyNotebookTodayKey = String(data.today || tokyoDateKeyFromDate());
+    dailyNotebookDateKey = String(data.date || dateKey);
+    dailyNotebookText = String(data.text || "");
+    syncDailyNotebookDates(data.dates);
+    syncDailyNotebookTextCache(data.texts);
+    dailyNotebookTextCache[dailyNotebookDateKey] = dailyNotebookText;
+    const first = dailyNotebookFirstKey();
+    if (dailyNotebookDateKey < first) dailyNotebookDateKey = first;
+    if (dailyNotebookDateKey > dailyNotebookTodayKey) {
+      dailyNotebookDateKey = dailyNotebookTodayKey;
+    }
+    return data;
+  }
+
+  async function renderDailyNotebookPage() {
+    const diary = ensureNotebookDiary();
+    const page = document.getElementById("hw-notebook-diary-page");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    const counter = document.getElementById("hw-notebook-counter");
+    const prevBtn = document.getElementById("hw-notebook-prev");
+    const nextBtn = document.getElementById("hw-notebook-next");
+    const pagerRow = document.getElementById("hw-notebook-pager-row");
+    const searchWrap = document.getElementById("hw-notebook-search-wrap");
+    if (!page || !dateEl) return;
+
+    applyNotebookPaperStyle();
+    if (searchWrap) searchWrap.hidden = false;
+    updateNotebookSearchPlaceholder();
+    if (pagerRow) pagerRow.hidden = false;
+
+    const query = getNotebookSearchQuery();
+    const matches = filterDailyNotebookDayKeys();
+    if (query && !matches.length) {
+      dateEl.textContent = "No matches";
+      if (lessonEl) {
+        lessonEl.hidden = false;
+        lessonEl.textContent = "Try another word or date";
+      }
+      page.replaceChildren();
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v5-notebook__empty";
+      empty.textContent = "No daily notes matched “" + query + "”.";
+      page.appendChild(empty);
+      document.getElementById("hw-notebook-daily-status")?.remove();
+      if (counter) counter.textContent = "0 of 0";
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+    if (query && matches.length && !matches.includes(dailyNotebookDateKey)) {
+      dailyNotebookDateKey = matches[0];
+    }
+
+    if (!dailyNotebookTodayKey) dailyNotebookTodayKey = tokyoDateKeyFromDate();
+    if (!dailyNotebookDateKey || dailyNotebookDateKey > dailyNotebookTodayKey) {
+      dailyNotebookDateKey = dailyNotebookTodayKey;
+    }
+
+    dateEl.textContent =
+      formatNotebookDateKey(dailyNotebookDateKey) || "日常日記";
+    if (lessonEl) {
+      lessonEl.hidden = false;
+      lessonEl.textContent = "日常日記";
+    }
+    document.getElementById("hw-notebook-diary")?.classList.add(
+      "hw-hub-v5-notebook-diary--daily"
+    );
+
+    page.replaceChildren();
+
+    const chrome = diary.querySelector(".hw-hub-v5-notebook-diary__chrome");
+    let status = document.getElementById("hw-notebook-daily-status");
+    if (!status) {
+      status = document.createElement("p");
+      status.className = "hw-hub-v5-notebook-diary__write-status";
+      status.id = "hw-notebook-daily-status";
+    } else {
+      status.className = "hw-hub-v5-notebook-diary__write-status";
+    }
+    status.textContent = dailyNotebookStatus || "Loading…";
+    if (chrome && status.parentElement !== chrome) {
+      chrome.appendChild(status);
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "hw-hub-v5-notebook-diary__write";
+    textarea.id = "hw-notebook-daily-write";
+    textarea.setAttribute("aria-label", "Daily notebook page");
+    textarea.placeholder = "なんでも書いてください";
+    textarea.spellcheck = true;
+    textarea.value = dailyNotebookText;
+    textarea.disabled = true;
+
+    page.appendChild(textarea);
+    bindDailyNotebookWriter(textarea);
+
+    if (counter) {
+      counter.textContent = "…";
+    }
+    if (prevBtn) {
+      prevBtn.disabled = true;
+      prevBtn.setAttribute("aria-label", "Previous day");
+    }
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.setAttribute("aria-label", "Next day");
+    }
+
+    try {
+      await loadDailyNotebookDay(dailyNotebookDateKey);
+      if (getActiveNotebookBook()?.id !== "daily") return;
+      dateEl.textContent =
+        formatNotebookDateKey(dailyNotebookDateKey) || "日常日記";
+      textarea.value = dailyNotebookText;
+      textarea.disabled = false;
+      setDailyNotebookStatus(dailyNotebookDirty ? "Saving…" : "Saved");
+      updateDailyNotebookPagerUi();
+      textarea.focus({ preventScroll: true });
+    } catch {
+      if (getActiveNotebookBook()?.id !== "daily") return;
+      textarea.disabled = false;
+      setDailyNotebookStatus("Couldn’t load — try again");
+      updateDailyNotebookPagerUi();
+    }
+
+    void diary;
+  }
+
+  async function stepDailyNotebookDay(delta) {
+    window.clearTimeout(dailyNotebookSaveTimer);
+    await flushDailyNotebookSave();
+
+    if (!dailyNotebookTodayKey) dailyNotebookTodayKey = tokyoDateKeyFromDate();
+    if (!dailyNotebookDateKey) dailyNotebookDateKey = dailyNotebookTodayKey;
+
+    const keys = filterDailyNotebookDayKeys();
+    let idx = keys.indexOf(dailyNotebookDateKey);
+    if (idx < 0) idx = keys.length - 1;
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= keys.length) return;
+
+    dailyNotebookDateKey = keys[nextIdx];
+    dailyNotebookText = "";
+    dailyNotebookDirty = false;
+    setDailyNotebookStatus("Loading…");
+    await renderDailyNotebookPage();
+  }
+
+  function renderNotebookBlankPage(book) {
+    if (book.id === "daily") {
+      void renderDailyNotebookPage();
+      return;
+    }
+    if (book.id === "kanji") {
+      void renderKanjiNotebookPage();
+      return;
+    }
+
+    const page = document.getElementById("hw-notebook-diary-page");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    const pagerRow = document.getElementById("hw-notebook-pager-row");
+    const searchWrap = document.getElementById("hw-notebook-search-wrap");
+    if (!page || !dateEl) return;
+
+    if (searchWrap) searchWrap.hidden = false;
+    updateNotebookSearchPlaceholder();
+
+    dateEl.textContent = book.label;
+    if (lessonEl) {
+      lessonEl.textContent = "Your custom notebook";
+      lessonEl.hidden = false;
+    }
+
+    page.replaceChildren();
+    const empty = document.createElement("p");
+    empty.className = "hw-hub-v5-notebook__empty";
+    const query = getNotebookSearchQuery();
+    empty.textContent = query
+      ? "Search isn’t available in this notebook yet."
+      : "Empty notebook page — writing coming soon.";
+    page.appendChild(empty);
+    if (pagerRow) pagerRow.hidden = true;
+    document.getElementById("hw-notebook-daily-status")?.remove();
+  }
+
+  function syncKanjiNotebookPages(rawPages) {
+    const list = (Array.isArray(rawPages) ? rawPages : [])
+      .map((n) => Number(n))
+      .filter((n) => Number.isFinite(n) && n >= 0)
+      .map((n) => Math.floor(n));
+    const uniq = Array.from(new Set(list)).sort((a, b) => a - b);
+    if (!uniq.includes(0)) uniq.unshift(0);
+    kanjiNotebookPages = uniq;
+  }
+
+  function syncKanjiNotebookTextCache(rawTexts) {
+    if (!rawTexts || typeof rawTexts !== "object") return;
+    Object.keys(rawTexts).forEach((k) => {
+      const idx = Number(k);
+      if (!Number.isFinite(idx) || idx < 0) return;
+      kanjiNotebookTextCache[Math.floor(idx)] = String(rawTexts[k] || "");
+    });
+  }
+
+  function kanjiNotebookMaxPage() {
+    const maxSaved = kanjiNotebookPages.length
+      ? Math.max.apply(null, kanjiNotebookPages)
+      : 0;
+    let max = Math.max(maxSaved, kanjiNotebookPageIndex, 0);
+    if (String(kanjiNotebookText || "").replace(/\s/g, "").length) {
+      max = Math.max(max, kanjiNotebookPageIndex + 1);
+    }
+    return max;
+  }
+
+  function kanjiNotebookPageSearchText(pageIndex) {
+    const idx = Number(pageIndex) || 0;
+    const text =
+      idx === kanjiNotebookPageIndex
+        ? kanjiNotebookText
+        : String(kanjiNotebookTextCache[idx] || "");
+    return [String(idx + 1), "page " + (idx + 1), text]
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join("\n")
+      .toLowerCase();
+  }
+
+  function filterKanjiNotebookPages() {
+    const max = kanjiNotebookMaxPage();
+    const all = [];
+    for (let i = 0; i <= max; i += 1) all.push(i);
+    const q = getNotebookSearchQuery().toLowerCase();
+    if (!q) return all;
+    return all.filter((idx) => kanjiNotebookPageSearchText(idx).includes(q));
+  }
+
+  function updateKanjiNotebookPagerUi() {
+    const counter = document.getElementById("hw-notebook-counter");
+    const prevBtn = document.getElementById("hw-notebook-prev");
+    const nextBtn = document.getElementById("hw-notebook-next");
+    const q = getNotebookSearchQuery();
+    const pages = filterKanjiNotebookPages();
+    let idx = pages.indexOf(kanjiNotebookPageIndex);
+    if (idx < 0 && !q) {
+      const max = kanjiNotebookMaxPage();
+      kanjiNotebookPageIndex = Math.min(Math.max(0, kanjiNotebookPageIndex), max);
+      const all = filterKanjiNotebookPages();
+      idx = all.indexOf(kanjiNotebookPageIndex);
+    }
+    if (counter) {
+      if (q && !pages.length) {
+        counter.textContent = "0 of 0";
+      } else if (idx < 0) {
+        counter.textContent = pages.length ? "— of " + pages.length : "0 of 0";
+      } else {
+        counter.textContent = pages.length
+          ? idx + 1 + " of " + pages.length
+          : "1 of 1";
+      }
+    }
+    if (prevBtn) {
+      prevBtn.disabled = idx <= 0;
+      prevBtn.setAttribute("aria-label", "Previous kanji page");
+    }
+    if (nextBtn) {
+      nextBtn.disabled = idx < 0 || idx >= pages.length - 1;
+      nextBtn.setAttribute("aria-label", "Next kanji page");
+    }
+  }
+
+  function readKanjiGridText(grid) {
+    if (!grid) return "";
+    const cells = grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell");
+    let out = "";
+    cells.forEach((cell) => {
+      out += String(cell.value || "").slice(0, 1) || " ";
+    });
+    return out.replace(/\s+$/u, "");
+  }
+
+  function writeKanjiGridText(grid, text) {
+    if (!grid) return;
+    const chars = Array.from(String(text || ""));
+    const cells = grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell");
+    cells.forEach((cell, i) => {
+      const ch = chars[i];
+      cell.value = ch && !/\s/u.test(ch) ? ch : "";
+    });
+    applyKanjiSearchCellFilter(grid);
+  }
+
+  /** Dim cells that don’t match the current search (when query is set). */
+  function applyKanjiSearchCellFilter(grid) {
+    if (!grid) grid = document.getElementById("hw-notebook-kanji-grid");
+    if (!grid) return;
+    const q = getNotebookSearchQuery().toLowerCase();
+    grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell").forEach((cell) => {
+      const v = String(cell.value || "").toLowerCase();
+      const hit = !q || !v || v.includes(q) || q.includes(v);
+      cell.classList.toggle("hw-hub-v5-notebook-kanji-cell--search-miss", Boolean(q) && !hit);
+      cell.classList.toggle("hw-hub-v5-notebook-kanji-cell--search-hit", Boolean(q) && Boolean(v) && hit);
+    });
+  }
+
+  async function flushKanjiNotebookSave() {
+    if (!kanjiNotebookDirty) return;
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    if (!username) return;
+
+    kanjiNotebookDirty = false;
+    try {
+      const res = await fetch("/api/kanji-notebook", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          page: kanjiNotebookPageIndex,
+          text: kanjiNotebookText,
+        }),
+      });
+      if (!res.ok) {
+        kanjiNotebookDirty = true;
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data && Array.isArray(data.pages)) syncKanjiNotebookPages(data.pages);
+      if (data && data.pageTexts) syncKanjiNotebookTextCache(data.pageTexts);
+      kanjiNotebookTextCache[kanjiNotebookPageIndex] = kanjiNotebookText;
+      updateKanjiNotebookPagerUi();
+    } catch {
+      kanjiNotebookDirty = true;
+    }
+  }
+
+  function queueKanjiNotebookSave() {
+    kanjiNotebookDirty = true;
+    window.clearTimeout(kanjiNotebookSaveTimer);
+    kanjiNotebookSaveTimer = window.setTimeout(() => {
+      void flushKanjiNotebookSave();
+    }, 650);
+  }
+
+  function segmentKanjiGraphemes(raw) {
+    const s = String(raw || "").replace(/\s/gu, "");
+    if (!s) return [];
+    try {
+      return Array.from(
+        new Intl.Segmenter("ja", { granularity: "grapheme" }).segment(s),
+        (part) => part.segment
+      );
+    } catch {
+      return Array.from(s);
+    }
+  }
+
+  function bindKanjiNotebookGrid(grid) {
+    if (!grid || grid.dataset.bound === "1") return;
+    grid.dataset.bound = "1";
+    const cells = () =>
+      Array.from(grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell"));
+
+    const focusAt = (i) => {
+      const list = cells();
+      const cell = list[Math.max(0, Math.min(list.length - 1, i))];
+      if (!cell || cell.disabled) return;
+      cell.focus();
+      cell.select();
+    };
+
+    const syncFromGrid = () => {
+      kanjiNotebookText = readKanjiGridText(grid);
+      kanjiNotebookTextCache[kanjiNotebookPageIndex] = kanjiNotebookText;
+      queueKanjiNotebookSave();
+      updateKanjiNotebookPagerUi();
+      applyKanjiSearchCellFilter(grid);
+    };
+
+    /** 朝 → 1 square; 朝練 → 2; 練習中 → 3 — one grapheme per square. */
+    const placeGraphemesAt = (startIndex, raw) => {
+      const chars = segmentKanjiGraphemes(raw);
+      if (!chars.length) return;
+      const list = cells();
+      let i = Math.max(0, startIndex);
+      chars.forEach((ch) => {
+        if (i >= list.length) return;
+        list[i].value = ch;
+        i += 1;
+      });
+      syncFromGrid();
+      focusAt(i < list.length ? i : list.length - 1);
+    };
+
+    grid.addEventListener("beforeinput", (e) => {
+      const cell = e.target.closest?.(".hw-hub-v5-notebook-kanji-cell");
+      if (!cell || cell.disabled) return;
+      if (e.inputType === "insertFromPaste") return;
+      if (e.isComposing) return;
+      if (e.inputType && e.inputType.startsWith("insert") && e.data) {
+        e.preventDefault();
+        placeGraphemesAt(cells().indexOf(cell), e.data);
+      }
+    });
+
+    grid.addEventListener("compositionend", (e) => {
+      const cell = e.target.closest?.(".hw-hub-v5-notebook-kanji-cell");
+      if (!cell || cell.disabled) return;
+      const raw = cell.value || e.data || "";
+      cell.value = "";
+      placeGraphemesAt(cells().indexOf(cell), raw);
+    });
+
+    grid.addEventListener("input", (e) => {
+      const cell = e.target.closest?.(".hw-hub-v5-notebook-kanji-cell");
+      if (!cell || cell.disabled) return;
+      if (e.isComposing) return;
+      const chars = segmentKanjiGraphemes(cell.value);
+      if (chars.length <= 1) {
+        if (cell.value !== (chars[0] || "")) cell.value = chars[0] || "";
+        syncFromGrid();
+        if (chars[0]) focusAt(cells().indexOf(cell) + 1);
+        return;
+      }
+      cell.value = "";
+      placeGraphemesAt(cells().indexOf(cell), chars.join(""));
+    });
+
+    grid.addEventListener("keydown", (e) => {
+      const cell = e.target.closest?.(".hw-hub-v5-notebook-kanji-cell");
+      if (!cell || cell.disabled) return;
+      const list = cells();
+      const i = list.indexOf(cell);
+      const cols = KANJI_NOTEBOOK_COLS;
+      if (e.key === "Backspace") {
+        if (cell.value) {
+          cell.value = "";
+          syncFromGrid();
+          e.preventDefault();
+          return;
+        }
+        if (i > 0) {
+          e.preventDefault();
+          list[i - 1].value = "";
+          syncFromGrid();
+          focusAt(i - 1);
+        }
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        focusAt(i - 1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        focusAt(i + 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        focusAt(i - cols);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        focusAt(i + cols);
+      }
+    });
+
+    grid.addEventListener("paste", (e) => {
+      const cell = e.target.closest?.(".hw-hub-v5-notebook-kanji-cell");
+      if (!cell || cell.disabled) return;
+      e.preventDefault();
+      placeGraphemesAt(
+        cells().indexOf(cell),
+        String(e.clipboardData?.getData("text") || "")
+      );
+    });
+  }
+
+  async function loadKanjiNotebookPage(pageIndex) {
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    if (!username) {
+      kanjiNotebookText = "";
+      return { text: "", page: pageIndex, pages: [0] };
+    }
+
+    const gen = ++kanjiNotebookLoadGen;
+    const url =
+      "/api/kanji-notebook?username=" +
+      encodeURIComponent(username) +
+      "&page=" +
+      encodeURIComponent(String(pageIndex));
+    const res = await fetch(url, { cache: "no-store" });
+    if (gen !== kanjiNotebookLoadGen) return null;
+    if (!res.ok) throw new Error("load-failed");
+    const data = await res.json().catch(() => ({}));
+    if (gen !== kanjiNotebookLoadGen) return null;
+    kanjiNotebookPageIndex = Number(data.page) || 0;
+    kanjiNotebookText = String(data.text || "");
+    syncKanjiNotebookPages(data.pages);
+    syncKanjiNotebookTextCache(data.pageTexts);
+    kanjiNotebookTextCache[kanjiNotebookPageIndex] = kanjiNotebookText;
+    return data;
+  }
+
+  async function renderKanjiNotebookPage() {
+    const page = document.getElementById("hw-notebook-diary-page");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    const pagerRow = document.getElementById("hw-notebook-pager-row");
+    const searchWrap = document.getElementById("hw-notebook-search-wrap");
+    const counter = document.getElementById("hw-notebook-counter");
+    const prevBtn = document.getElementById("hw-notebook-prev");
+    const nextBtn = document.getElementById("hw-notebook-next");
+    if (!page || !dateEl) return;
+
+    applyNotebookPaperStyle();
+    if (searchWrap) searchWrap.hidden = false;
+    updateNotebookSearchPlaceholder();
+    if (pagerRow) pagerRow.hidden = false;
+    document.getElementById("hw-notebook-daily-status")?.remove();
+
+    const query = getNotebookSearchQuery();
+    /* Prefer cached texts so search can filter before/without a full reload loop. */
+    const matches = filterKanjiNotebookPages();
+    if (query && !matches.length) {
+      dateEl.textContent = "No matches";
+      if (lessonEl) {
+        lessonEl.hidden = false;
+        lessonEl.textContent = "Try another character or page number";
+      }
+      page.replaceChildren();
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v5-notebook__empty";
+      empty.textContent = "No kanji pages matched “" + query + "”.";
+      page.appendChild(empty);
+      if (counter) counter.textContent = "0 of 0";
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+    if (query && matches.length && !matches.includes(kanjiNotebookPageIndex)) {
+      kanjiNotebookPageIndex = matches[0];
+    }
+
+    dateEl.textContent = "Kanji Notebook";
+    if (lessonEl) {
+      lessonEl.hidden = false;
+      lessonEl.textContent = "One character per square — big and clear";
+    }
+
+    page.replaceChildren();
+    const grid = document.createElement("div");
+    grid.className = "hw-hub-v5-notebook-kanji-grid";
+    grid.id = "hw-notebook-kanji-grid";
+    grid.style.setProperty("--hw-kanji-cols", String(KANJI_NOTEBOOK_COLS));
+    grid.style.setProperty("--hw-kanji-rows", String(KANJI_NOTEBOOK_ROWS));
+    grid.setAttribute("role", "grid");
+    grid.setAttribute("aria-label", "Kanji practice squares");
+
+    for (let i = 0; i < KANJI_NOTEBOOK_CELLS; i += 1) {
+      const col = i % KANJI_NOTEBOOK_COLS;
+      const row = Math.floor(i / KANJI_NOTEBOOK_COLS);
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "hw-hub-v5-notebook-kanji-cell";
+      input.setAttribute("role", "gridcell");
+      input.setAttribute("aria-label", "Kanji square " + (i + 1));
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("autocapitalize", "off");
+      input.setAttribute("spellcheck", "false");
+      input.setAttribute("inputmode", "text");
+      input.setAttribute("lang", "ja");
+      input.maxLength = 24;
+      input.disabled = true;
+      if (col === KANJI_NOTEBOOK_COLS - 1) {
+        input.setAttribute("data-kanji-edge-right", "1");
+      }
+      if (row === KANJI_NOTEBOOK_ROWS - 1) {
+        input.setAttribute("data-kanji-edge-bottom", "1");
+      }
+      grid.appendChild(input);
+    }
+
+    page.appendChild(grid);
+    bindKanjiNotebookGrid(grid);
+    updateKanjiNotebookPagerUi();
+
+    try {
+      await loadKanjiNotebookPage(kanjiNotebookPageIndex);
+      if (getActiveNotebookBook()?.id !== "kanji") return;
+      writeKanjiGridText(grid, kanjiNotebookText);
+      grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell").forEach((cell) => {
+        cell.disabled = false;
+      });
+      updateKanjiNotebookPagerUi();
+      const firstEmpty = Array.from(
+        grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell")
+      ).find((cell) => !cell.value);
+      (firstEmpty || grid.querySelector(".hw-hub-v5-notebook-kanji-cell"))?.focus({
+        preventScroll: true,
+      });
+    } catch {
+      if (getActiveNotebookBook()?.id !== "kanji") return;
+      grid.querySelectorAll(".hw-hub-v5-notebook-kanji-cell").forEach((cell) => {
+        cell.disabled = false;
+      });
+      updateKanjiNotebookPagerUi();
+    }
+  }
+
+  async function stepKanjiNotebookPage(delta) {
+    window.clearTimeout(kanjiNotebookSaveTimer);
+    await flushKanjiNotebookSave();
+
+    const pages = filterKanjiNotebookPages();
+    let idx = pages.indexOf(kanjiNotebookPageIndex);
+    if (idx < 0) idx = 0;
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= pages.length) return;
+
+    kanjiNotebookPageIndex = pages[nextIdx];
+    kanjiNotebookText = "";
+    kanjiNotebookDirty = false;
+    await renderKanjiNotebookPage();
   }
 
   function renderNotebookDiaryPage(packs) {
@@ -2331,25 +3785,52 @@
     const counter = document.getElementById("hw-notebook-counter");
     const prevBtn = document.getElementById("hw-notebook-prev");
     const nextBtn = document.getElementById("hw-notebook-next");
+    const pagerRow = document.getElementById("hw-notebook-pager-row");
+    const searchWrap = document.getElementById("hw-notebook-search-wrap");
     if (!page || !dateEl) return;
 
-    const usable = usableNotebookPacks(packs);
+    applyNotebookPaperStyle();
+    const book = getActiveNotebookBook();
+    if (book.id !== "hw") {
+      renderNotebookBlankPage(book);
+      return;
+    }
+
+    if (searchWrap) searchWrap.hidden = false;
+    updateNotebookSearchPlaceholder();
+    document.getElementById("hw-notebook-daily-status")?.remove();
+
+    const query = getNotebookSearchQuery();
+    const usable = filterNotebookPacks(packs);
     clampNotebookPageIndex(usable);
     updateNotebookEntryHint(usable);
 
     page.replaceChildren();
+    if (pagerRow) pagerRow.hidden = false;
 
     if (!usable.length) {
-      dateEl.textContent = "Notebook";
-      if (lessonEl) {
-        lessonEl.hidden = true;
-        lessonEl.textContent = "";
+      if (query) {
+        dateEl.textContent = "No matches";
+        if (lessonEl) {
+          lessonEl.hidden = false;
+          lessonEl.textContent = "Try another word, homework title, or date";
+        }
+        const empty = document.createElement("p");
+        empty.className = "hw-hub-v5-notebook__empty";
+        empty.textContent = "No comments or homework matched “" + query + "”.";
+        page.appendChild(empty);
+      } else {
+        dateEl.textContent = "HW Notebook";
+        if (lessonEl) {
+          lessonEl.hidden = false;
+          lessonEl.textContent = "Notes from reviewed homework";
+        }
+        const empty = document.createElement("p");
+        empty.className = "hw-hub-v5-notebook__empty";
+        empty.textContent =
+          "No notebook pages yet. Notes from JD will appear here after he reviews your homework.";
+        page.appendChild(empty);
       }
-      const empty = document.createElement("p");
-      empty.className = "hw-hub-v5-notebook__empty";
-      empty.textContent =
-        "No notebook pages yet. Notes from JD will appear here after he reviews your homework.";
-      page.appendChild(empty);
       if (counter) counter.textContent = "0 of 0";
       if (prevBtn) prevBtn.disabled = true;
       if (nextBtn) nextBtn.disabled = true;
@@ -2384,45 +3865,35 @@
   function applyNotebookOpenUi() {
     const diary = ensureNotebookDiary();
     document.body.classList.toggle("hw-hub-v5-notebook-open", notebookOpen);
-    diary.hidden = !notebookOpen;
+    /* Diary lives in the Notebook tab panel — keep it visible whenever mounted. */
+    diary.hidden = false;
     if (notebookOpen) {
       renderNotebookDiaryPage(notebookCachePacks || []);
     }
-    /* Remount status ping onto diary chrome (or back to hub) when slot changes. */
+    /* Remount hub-wide status ping when notebook slot changes. */
     renderStatusBubble(getHubStatus());
   }
 
   function openNotebook() {
-    notebookOpen = true;
-    /* Leave archive sheet so diary can occupy the top status/HW slot. */
-    if (isArchiveMode()) exitArchiveMode();
-    applyNotebookOpenUi();
+    setActiveTab("notebook", { scrollTop: true });
     renderHomeworkZone(getHubStatus());
-    const page = document.getElementById("hw-notebook-diary-page");
-    try {
-      page?.focus?.({ preventScroll: true });
-    } catch {
-      page?.focus?.();
-    }
   }
 
   function closeNotebook() {
     if (!notebookOpen) return;
-    notebookOpen = false;
-    applyNotebookOpenUi();
+    setActiveTab("homework");
     /* Full paint restores complete card + Past HW entry (not just zone flags). */
     renderAll();
   }
 
   /**
-   * Leave diary / empty archive chrome, then open the Past HW list.
-   * Opening Past HW while the diary owns the status slot left archive hash +
+   * Leave Notebook tab / empty archive chrome, then open the Past HW list.
+   * Opening Past HW while the diary owned the status slot left archive hash +
    * empty mount with Past HW permanently hidden.
    */
   function openPastHomeworkFromHub() {
     if (notebookOpen) {
-      notebookOpen = false;
-      applyNotebookOpenUi();
+      setActiveTab("homework", { skipFocus: true });
     }
     if (isArchiveMode()) {
       exitArchiveMode();
@@ -2467,20 +3938,7 @@
     });
     modal.querySelector("[data-hw-next-games]")?.addEventListener("click", () => {
       closePostSubmitNextModal();
-      if (isMobileTabs()) {
-        setActiveTab("games", { scrollTop: true });
-        return;
-      }
-      const gamesCard = document.getElementById("hw-games-hub-card");
-      if (gamesCard) {
-        try {
-          gamesCard.scrollIntoView({ behavior: "smooth", block: "start" });
-          return;
-        } catch {
-          /* fall through */
-        }
-      }
-      global.location.href = "/games.html";
+      setActiveTab("games", { scrollTop: true });
     });
     modal.querySelector("[data-hw-next-past]")?.addEventListener("click", () => {
       closePostSubmitNextModal();
@@ -2525,12 +3983,22 @@
   }
 
   function stepNotebookPage(delta) {
-    const usable = usableNotebookPacks(notebookCachePacks || []);
+    const book = getActiveNotebookBook();
+    if (book?.id === "daily") {
+      void stepDailyNotebookDay(delta);
+      return;
+    }
+    if (book?.id === "kanji") {
+      void stepKanjiNotebookPage(delta);
+      return;
+    }
+    if (book?.id !== "hw") return;
+    const usable = filterNotebookPacks(notebookCachePacks || []);
     if (!usable.length) return;
     const next = notebookPageIndex + delta;
     if (next < 0 || next >= usable.length) return;
     notebookPageIndex = next;
-    renderNotebookDiaryPage(usable);
+    renderNotebookDiaryPage(notebookCachePacks || []);
   }
 
   function bindNotebookUi() {
@@ -2538,10 +4006,16 @@
     notebookUiBound = true;
 
     document.addEventListener("click", (e) => {
-      if (e.target.closest("#hw-notebook-open-btn")) {
+      const addBtn = e.target.closest("[data-nb-book-add]");
+      if (addBtn) {
         e.preventDefault();
-        if (notebookOpen) closeNotebook();
-        else openNotebook();
+        promptAddNotebook();
+        return;
+      }
+      const bookBtn = e.target.closest("[data-nb-book]");
+      if (bookBtn) {
+        e.preventDefault();
+        setNotebookBook(bookBtn.getAttribute("data-nb-book") || "daily");
         return;
       }
       if (e.target.closest("#hw-notebook-prev")) {
@@ -2554,6 +4028,116 @@
         stepNotebookPage(1);
       }
     });
+
+    document.addEventListener("input", (e) => {
+      const input = e.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      if (input.id !== "hw-notebook-search") return;
+      notebookSearchQuery = String(input.value || "");
+      applyNotebookSearchFromInput(input);
+    });
+  }
+
+  function applyNotebookSearchFromInput(input) {
+    const book = getActiveNotebookBook();
+    const id = book?.id || "hw";
+
+    if (id === "hw") {
+      notebookPageIndex = 0;
+      renderNotebookDiaryPage(notebookCachePacks || []);
+    } else if (id === "daily") {
+      void applyDailyNotebookSearch();
+    } else if (id === "kanji") {
+      void applyKanjiNotebookSearch();
+    } else {
+      renderNotebookBlankPage(book);
+    }
+
+    /* Keep typing focus — render rebuilds page content, not the input. */
+    if (document.activeElement !== input) {
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+    }
+  }
+
+  async function applyDailyNotebookSearch() {
+    const query = getNotebookSearchQuery();
+    const matches = filterDailyNotebookDayKeys();
+    const write = document.getElementById("hw-notebook-daily-write");
+
+    if (query && !matches.length) {
+      await renderDailyNotebookPage();
+      return;
+    }
+
+    if (query && matches.length && !matches.includes(dailyNotebookDateKey)) {
+      window.clearTimeout(dailyNotebookSaveTimer);
+      await flushDailyNotebookSave();
+      dailyNotebookDateKey = matches[0];
+      dailyNotebookText = String(dailyNotebookTextCache[dailyNotebookDateKey] || "");
+      dailyNotebookDirty = false;
+      await renderDailyNotebookPage();
+      return;
+    }
+
+    /* Stay on the same day — only refresh pager / chrome, keep the writer focused. */
+    if (write && (!query || matches.includes(dailyNotebookDateKey))) {
+      const dateEl = document.getElementById("hw-notebook-diary-date");
+      const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+      if (dateEl) {
+        dateEl.textContent =
+          formatNotebookDateKey(dailyNotebookDateKey) || "日常日記";
+      }
+      if (lessonEl) {
+        lessonEl.hidden = false;
+        lessonEl.textContent = "日常日記";
+      }
+      updateDailyNotebookPagerUi();
+      return;
+    }
+
+    await renderDailyNotebookPage();
+  }
+
+  async function applyKanjiNotebookSearch() {
+    const query = getNotebookSearchQuery();
+    const grid = document.getElementById("hw-notebook-kanji-grid");
+    const matches = filterKanjiNotebookPages();
+
+    if (!query) {
+      if (grid) {
+        applyKanjiSearchCellFilter(grid);
+        updateKanjiNotebookPagerUi();
+        return;
+      }
+      await renderKanjiNotebookPage();
+      return;
+    }
+
+    if (!matches.length) {
+      await renderKanjiNotebookPage();
+      return;
+    }
+
+    if (!matches.includes(kanjiNotebookPageIndex)) {
+      window.clearTimeout(kanjiNotebookSaveTimer);
+      await flushKanjiNotebookSave();
+      kanjiNotebookPageIndex = matches[0];
+      kanjiNotebookText = String(kanjiNotebookTextCache[kanjiNotebookPageIndex] || "");
+      kanjiNotebookDirty = false;
+      await renderKanjiNotebookPage();
+      return;
+    }
+
+    if (!grid) {
+      await renderKanjiNotebookPage();
+      return;
+    }
+    applyKanjiSearchCellFilter(grid);
+    updateKanjiNotebookPagerUi();
   }
 
   function renderNotebookPacks(packs) {
@@ -2583,8 +4167,7 @@
     notebookRefreshQueued = true;
     const run = async () => {
       notebookRefreshQueued = false;
-      const section = document.getElementById("hw-student-notebook");
-      if (!section || section.hidden) return;
+      if (!document.getElementById("hw-notebook-diary")) return;
       const session = getActiveSession();
       const username = String(session?.username || "").trim().toLowerCase();
       if (!username) {
@@ -2614,6 +4197,16 @@
     }
   }
 
+  function clearHubBootGate() {
+    document.documentElement.classList.remove("hw-boot-pending");
+    const boot = document.getElementById("hw-hub-boot");
+    if (boot) {
+      boot.hidden = true;
+      boot.remove();
+    }
+    document.getElementById("hw-boot-gate-css")?.remove();
+  }
+
   function ensureWorksheetLoadingPlaceholder() {
     const mount =
       document.getElementById("hw-v2-worksheet-mount") ||
@@ -2629,6 +4222,10 @@
       intro.textContent = "";
       intro.hidden = true;
       clearedStaleIntro = true;
+    }
+    /* While hub is still booting, never keep a leftover worksheet from a prior paint. */
+    if (!hubReady && mount.querySelector(".hw-worksheet, form.hw-worksheet, [data-assignment-id]")) {
+      mount.replaceChildren();
     }
     if (mount.querySelector(".hw-worksheet, form.hw-worksheet, .hw-list-wait, [data-assignment-id]")) {
       return;
@@ -2647,7 +4244,17 @@
     mount.innerHTML = '<p class="hw-worksheet-intro">Loading…</p>';
   }
 
+  function platformSaysNoLinkedAssignment() {
+    if (document.body.classList.contains("hw-hub-no-linked-assignment")) return true;
+    const intro = document.getElementById("hw-v4-worksheet-intro");
+    const introText = String(intro?.textContent || "");
+    return Boolean(intro && /no assignment/i.test(introText));
+  }
+
   function studentHasActiveAssignment() {
+    /* Platform already settled: no HW linked — don't trust stale catalog ids. */
+    if (platformSaysNoLinkedAssignment()) return false;
+
     const assignmentId = getActiveAssignmentId();
     if (assignmentId) return true;
 
@@ -2660,13 +4267,47 @@
       return true;
     }
 
-    const intro = document.getElementById("hw-v4-worksheet-intro");
-    const introText = String(intro?.textContent || "");
-    if (intro && !intro.hidden && /no assignment/i.test(introText)) {
-      return false;
+    return Boolean(readCatalogAssignmentId());
+  }
+
+  /** Strip leftover Loading… / toolbar / floating Glass·Cloud when empty status pages own HW. */
+  function clearLegacyEmptyHwChrome() {
+    const mount =
+      document.getElementById("hw-v2-worksheet-mount") ||
+      document.getElementById("hw-worksheet-mount");
+    if (mount) {
+      mount.querySelector(".hw-hub-v5-loading-list")?.remove();
+      mount.querySelectorAll(".hw-list-wait").forEach((node) => node.remove());
+      if (!mount.querySelector(".hw-worksheet, form.hw-worksheet, #hw-worksheet-form")) {
+        mount.replaceChildren();
+      }
     }
 
-    return Boolean(readCatalogAssignmentId());
+    const v4Intro = document.getElementById("hw-v4-worksheet-intro");
+    if (v4Intro) {
+      v4Intro.textContent = "";
+      v4Intro.hidden = true;
+    }
+    const legacyIntro = document.getElementById("hw-worksheet-intro");
+    if (legacyIntro) {
+      legacyIntro.textContent = "";
+      legacyIntro.hidden = true;
+    }
+    const v2Title = document.getElementById("hw-v2-title");
+    if (v2Title && /loading/i.test(String(v2Title.textContent || ""))) {
+      v2Title.textContent = "";
+    }
+
+    global.HwStudentToolbar?.unmount?.();
+    const toolbar = document.getElementById("hw-toolbar-bar");
+    if (toolbar) toolbar.hidden = true;
+
+    document.querySelectorAll(".hw-mg-widget, .hw-hc-launcher").forEach((el) => {
+      el.hidden = true;
+      el.setAttribute("aria-hidden", "true");
+      el.style.display = "none";
+    });
+    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
   }
 
   function renderAssignmentLanding(show) {
@@ -2691,8 +4332,6 @@
       if (worksheetSection) worksheetSection.hidden = false;
       if (completeCard) completeCard.hidden = true;
       if (pastFold) pastFold.hidden = true;
-      const notebookBoot = document.getElementById("hw-student-notebook");
-      if (notebookBoot) notebookBoot.hidden = true;
       const entryBoot = document.getElementById("hw-hub-v5-entry-row");
       if (entryBoot) entryBoot.hidden = true;
       renderNoPlanWelcome(false);
@@ -2701,16 +4340,15 @@
       return;
     }
 
-    /* Only show empty/upsell shells when there is no live worksheet.
-       Assigned homework always wins over account-type messaging.
-       Reviewed/submitted complete views must not fall into student_special empty. */
-    const showNoPlan = isNoPlanAccount() && !hasAssignment && !isCompleteView(status);
-    const showNoHw =
-      isStudentNoHwAccount() &&
-      !showNoPlan &&
-      !hasAssignment &&
-      !isCompleteView(status);
+    clearHubBootGate();
+
+    /* No linked homework → always use the no-plan / no-HW status pages.
+       Never leave the old Loading… worksheet card + floating tools. */
     const archive = isArchiveMode();
+    const emptyStatus =
+      !hasAssignment && !isCompleteView(status) && !archive;
+    const showNoPlan = emptyStatus && isNoPlanAccount();
+    const showNoHw = emptyStatus && !showNoPlan;
     const showComplete =
       !archive &&
       isCompleteView(status) &&
@@ -2723,36 +4361,38 @@
     document.body.classList.toggle("hw-hub-v5-complete-view", showComplete);
 
     if (worksheetSection) {
-      worksheetSection.hidden = notebookOpen
-        ? true
-        : archive
-          ? false
-          : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
+      worksheetSection.hidden = archive
+        ? false
+        : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
     }
-    if (completeCard) completeCard.hidden = notebookOpen || !showComplete;
+    if (completeCard) completeCard.hidden = !showComplete;
     if (pastFold) {
       pastFold.hidden = archive || !showComplete || showNoHw || showNoPlan;
     }
-    const notebook = document.getElementById("hw-student-notebook");
-    if (notebook) {
-      notebook.hidden = !ready || showNoHw || showNoPlan;
-      if (!notebook.hidden) queueNotebookRefresh();
-    }
+    queueNotebookRefresh();
     const entryRow = document.getElementById("hw-hub-v5-entry-row");
     if (entryRow) {
       const pastVisible = pastFold && !pastFold.hidden;
-      const noteVisible = notebook && !notebook.hidden;
-      entryRow.hidden = !pastVisible && !noteVisible;
+      entryRow.hidden = !pastVisible;
     }
     applyNotebookOpenUi();
     if (offlineCard) {
-      offlineCard.hidden = notebookOpen || archive || showComplete || showNoHw || showNoPlan;
+      /* Print moved to footer menu — photo shell only when capturing. */
+      offlineCard.hidden = !offlineCard.classList.contains("is-capturing");
+    }
+    const printMenu = document.getElementById("hw-print-menu");
+    if (printMenu) {
+      printMenu.hidden =
+        notebookOpen || archive || showComplete || showNoHw || showNoPlan || !hasAssignment;
     }
 
     renderStatusBubble(status);
 
-    renderNoPlanWelcome(notebookOpen ? false : showNoPlan);
-    renderNoHwEmpty(notebookOpen ? false : showNoHw);
+    renderNoPlanWelcome(showNoPlan);
+    renderNoHwEmpty(showNoHw);
+    if (showNoPlan || showNoHw) {
+      clearLegacyEmptyHwChrome();
+    }
 
     const worksheetMounted = isWorksheetMounted();
     document.body.classList.toggle("hw-hub-v5-worksheet-ready", worksheetMounted);
@@ -2789,6 +4429,8 @@
         }
       }
     }
+    bindHubPanelsHeightLock();
+    lockHubPanelsMinHeight();
   }
 
   function renderDemoBar(status) {
@@ -2850,21 +4492,9 @@
     renderCompleteCard(status);
     renderSellup();
     renderFeedback(status);
-    if (isMobileTabs()) {
-      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
-    } else {
-      applyTabPanels(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
-    }
+    setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
     /* Re-assert diary after every paint so async hub refreshes can't flash status. */
     applyNotebookOpenUi();
-    if (notebookOpen) {
-      const completeCard = document.getElementById("hw-v5-complete-card");
-      if (completeCard) completeCard.hidden = true;
-      const worksheetSection = document.querySelector(
-        "#hw-hub-v4-homework .hw-hub-v2-worksheet"
-      );
-      if (worksheetSection) worksheetSection.hidden = true;
-    }
     queueLiveReviewRefresh();
     ensureReviewPoll(status);
   }
@@ -2967,16 +4597,14 @@
       }
       if (e.target.closest("#hw-v5-past-btn")) {
         e.preventDefault();
-        if (isMobileTabs()) {
-          setActiveTab("homework", { scrollTop: true });
-        }
+        setActiveTab("homework", { scrollTop: true });
         openPastHomeworkFromHub();
       }
     });
 
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        setActiveTab(btn.getAttribute("data-v5-tab") || "homework", { scrollTop: true });
+        setActiveTab(btn.getAttribute("data-v5-tab") || "homework");
       });
     });
 
@@ -3026,19 +4654,17 @@
     });
 
     window.addEventListener("hashchange", () => {
-      /* Entering a past sheet while diary is open = intentional row/open-past. */
+      /* Entering a past sheet while Notebook is open = intentional row/open-past. */
       if (notebookOpen && isArchiveMode()) {
-        notebookOpen = false;
-        applyNotebookOpenUi();
+        setActiveTab("homework", { skipFocus: true });
       }
       renderAll();
     });
     document.addEventListener("hw-platform-submission-view", () => {
       hubReady = true;
-      /* Archive sheet owns the top slot — diary yields for explicit past views. */
+      /* Archive sheet owns the top slot — Notebook tab yields for explicit past views. */
       if (notebookOpen) {
-        notebookOpen = false;
-        applyNotebookOpenUi();
+        setActiveTab("homework", { skipFocus: true });
       }
       renderAll();
     });
@@ -3067,8 +4693,11 @@
     activateChrome();
     buildV5Shell();
     bindUi();
-    initMobileTabs();
+    bindHubTabSliderLayout();
+    initHubTabs();
     renderAll();
+    /* Safety: never leave the boot veil forever if ready events stall. */
+    window.setTimeout(clearHubBootGate, 9000);
   }
 
   /** Durable notebook open state for platform refresh paths. */

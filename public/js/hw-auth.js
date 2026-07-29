@@ -108,23 +108,6 @@
       tier: "student_special",
       videoResponseUnlock: false,
     },
-    noplan: {
-      password: "demo",
-      displayName: "No Plan",
-      role: "student",
-      accountLabel: "homework_only",
-      tier: "pending",
-      videoResponseUnlock: false,
-    },
-    /* Hub v5 / toolbar playtest sandbox (matches DEMO_ACCOUNTS username). */
-    demo: {
-      password: "demo",
-      displayName: "Alex",
-      role: "student",
-      accountLabel: "homework_only",
-      tier: "tier1",
-      videoResponseUnlock: false,
-    },
   };
 
   function normalizeUsername(raw) {

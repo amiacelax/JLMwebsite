@@ -481,6 +481,32 @@
     return document.body.classList.contains("hw-hw-focus-mode");
   }
 
+  function toolbarBarEl() {
+    return document.getElementById("hw-toolbar-bar");
+  }
+
+  /** Toolbar is in-flow under the HW box — no host-local absolute homes. */
+  function getToolbarHome() {
+    return null;
+  }
+
+  function clearMobileToolbarHome(bar) {
+    const el = bar || toolbarBarEl();
+    if (!el) return;
+    el.classList.remove("hw-toolbar-bar--host-home");
+    el.style.left = "";
+    el.style.top = "";
+  }
+
+  /** Clears any leftover absolute parking; bar stays in document flow under the HW box. */
+  function applyMobileToolbarHome() {
+    clearMobileToolbarHome();
+  }
+
+  function ensureMobileToolbarWatch() {
+    clearMobileToolbarHome();
+  }
+
   function readHomeOverrides() {
     try {
       const raw = localStorage.getItem(HOME_OVERRIDE_KEY);
@@ -627,30 +653,29 @@
         const from = lens.getBoundingClientRect();
         flingSpecs.push({
           el: lens,
+          fromRect: from,
           to: hostPointToViewportRect(host, glassTo.x, glassTo.y, from.width, from.height),
         });
-        lens.style.visibility = "hidden";
       }
       if (moveCloud && launcher) {
         const from = launcher.getBoundingClientRect();
         flingSpecs.push({
           el: launcher,
+          fromRect: from,
           to: hostPointToViewportRect(host, cloudTo.x, cloudTo.y, from.width, from.height),
         });
-        launcher.style.visibility = "hidden";
       }
+      /* Mount decorative ghosts from the old spots, then snap live tools home. */
       const fly = flingTools(flingSpecs);
+      if (moveGlass) {
+        global.HwMagnifyingGlass?.setLensPositionLocal?.(glassTo.x, glassTo.y, false);
+      }
+      if (moveCloud) {
+        global.HwHomeworkComments?.setLauncherPositionLocal?.(cloudTo.x, cloudTo.y, false);
+      }
       Promise.resolve(fly)
         .catch(() => {})
         .then(() => {
-          if (moveGlass) {
-            global.HwMagnifyingGlass?.setLensPositionLocal?.(glassTo.x, glassTo.y, false);
-            if (lens) lens.style.visibility = "";
-          }
-          if (moveCloud) {
-            global.HwHomeworkComments?.setLauncherPositionLocal?.(cloudTo.x, cloudTo.y, false);
-            if (launcher) launcher.style.visibility = "";
-          }
           requestAnimationFrame(() => resolve(host));
         });
       return targets;
@@ -727,6 +752,384 @@
     );
   }
 
+  /* ——— Click-to-copy coords (same host-local space as Glass/Cloud) ——— */
+  let pickModeActive = false;
+  let pickedEl = null;
+  let pickHoverEl = null;
+  let pickHighlightEl = null;
+  let pickLiveRaf = 0;
+  /** Last click-point payload (re-copied by “Copy coords”). */
+  let lastPointCoords = null;
+
+  function round1(n) {
+    return Math.round(n * 10) / 10;
+  }
+
+  function shortElementLabel(el) {
+    if (!el || el === document.body || el === document.documentElement) return "page";
+    if (el.id) return "#" + el.id;
+    const cls = (el.className && typeof el.className === "string"
+      ? el.className
+      : el.getAttribute?.("class") || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(".");
+    const tag = (el.tagName || "?").toLowerCase();
+    return cls ? tag + "." + cls : tag;
+  }
+
+  function measureClickPoint(clientX, clientY) {
+    const host = findWorksheetToolHost();
+    const mode = isHomeworkFocusMode() ? "focus" : "normal";
+    let space = "viewport";
+    let x = clientX;
+    let y = clientY;
+    if (host) {
+      const hr = host.getBoundingClientRect();
+      x = clientX - hr.left;
+      y = clientY - hr.top;
+      space = "host-local";
+    }
+    return {
+      mode,
+      space,
+      x: round1(x),
+      y: round1(y),
+    };
+  }
+
+  function measureElementCoords(el) {
+    if (!el || typeof el.getBoundingClientRect !== "function") return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return null;
+    const host = findWorksheetToolHost();
+    const mode = isHomeworkFocusMode() ? "focus" : "normal";
+    let space = "viewport";
+    let left = r.left;
+    let top = r.top;
+    if (host) {
+      const hr = host.getBoundingClientRect();
+      left = r.left - hr.left;
+      top = r.top - hr.top;
+      space = "host-local";
+    }
+    const cx = left + r.width / 2;
+    const cy = top + r.height / 2;
+    /* Glass/Cloud store center points with translate(-50%,-50%). */
+    return {
+      mode,
+      space,
+      label: shortElementLabel(el),
+      x: round1(cx),
+      y: round1(cy),
+      left: round1(left),
+      top: round1(top),
+      w: round1(r.width),
+      h: round1(r.height),
+      viewport: {
+        left: round1(r.left),
+        top: round1(r.top),
+        x: round1(r.left + r.width / 2),
+        y: round1(r.top + r.height / 2),
+      },
+    };
+  }
+
+  function formatPointCoordsBlurb(info) {
+    if (!info) return "";
+    const spaceNote =
+      info.space === "host-local"
+        ? "host-local (same as Glass/Cloud)"
+        : "viewport (no worksheet host)";
+    const modeLabel = info.mode === "focus" ? "live focus" : "live non-focus";
+    let text =
+      "point · " +
+      modeLabel +
+      " · " +
+      spaceNote +
+      "\n" +
+      "x: " +
+      info.x +
+      "  y: " +
+      info.y;
+    if (info.elCenter && info.under) {
+      text +=
+        "\n" +
+        info.under +
+        " center x: " +
+        info.elCenter.x +
+        "  y: " +
+        info.elCenter.y;
+    } else if (info.under) {
+      text += "\nunder: " + info.under;
+    }
+    return text;
+  }
+
+  function formatPickedCoordsBlurb(info) {
+    if (!info) return "";
+    const spaceNote =
+      info.space === "host-local"
+        ? "host-local center (same as Glass/Cloud)"
+        : "viewport center (no worksheet host)";
+    const modeLabel = info.mode === "focus" ? "focus" : "non-focus";
+    return (
+      info.label +
+      " · " +
+      modeLabel +
+      " · " +
+      spaceNote +
+      "\n" +
+      "center x: " +
+      info.x +
+      "  y: " +
+      info.y +
+      "\n" +
+      "top-left x: " +
+      info.left +
+      "  y: " +
+      info.top +
+      "\n" +
+      "size w: " +
+      info.w +
+      "  h: " +
+      info.h
+    );
+  }
+
+  function ensurePickHighlight() {
+    if (pickHighlightEl && pickHighlightEl.isConnected) return pickHighlightEl;
+    const box = document.createElement("div");
+    box.id = "hw-tool-pick-highlight";
+    box.className = "hw-tool-pick-highlight";
+    box.setAttribute("aria-hidden", "true");
+    document.body.appendChild(box);
+    pickHighlightEl = box;
+    return box;
+  }
+
+  function updatePickHighlight(el) {
+    const box = ensurePickHighlight();
+    if (!el) {
+      box.hidden = true;
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    box.style.left = r.left + "px";
+    box.style.top = r.top + "px";
+    box.style.width = r.width + "px";
+    box.style.height = r.height + "px";
+  }
+
+  function isLayoutToolsChrome(el) {
+    if (!el || !el.closest) return false;
+    return !!(
+      el.closest("#hw-tool-layout-tools") ||
+      el.closest("#hw-tool-pick-highlight") ||
+      el.closest("#hw-tool-coord-toast")
+    );
+  }
+
+  function resolvePickTarget(raw) {
+    if (!raw || isLayoutToolsChrome(raw)) return null;
+    let el = raw;
+    /* Prefer a meaningful interactive / layout node over tiny text nodes' parents. */
+    if (el.nodeType === 3) el = el.parentElement;
+    if (!el || el === document.body || el === document.documentElement) return null;
+    return el;
+  }
+
+  function refreshPickChrome() {
+    const btn = document.getElementById("hw-pick-element-coords");
+    if (btn) {
+      btn.classList.toggle("is-active", pickModeActive);
+      if (pickModeActive) {
+        btn.textContent = pickedEl ? "Click a point…" : "Click to lock…";
+      } else {
+        btn.textContent = "Click to copy";
+      }
+      btn.setAttribute("aria-pressed", pickModeActive ? "true" : "false");
+    }
+    const hint = document.getElementById("hw-tool-layout-hint");
+    if (hint) {
+      if (pickModeActive) {
+        hint.textContent = pickedEl
+          ? "Element locked — click anywhere for coords · Esc clears lock"
+          : "First click locks an element · then click for coords";
+      } else if (pickedEl) {
+        hint.textContent =
+          "Locked " +
+          shortElementLabel(pickedEl) +
+          " · Click to copy for points, or Clear / Esc";
+      } else {
+        hint.textContent = "Click to copy a point, or right‑click Glass / Cloud";
+      }
+    }
+    const clearBtn = document.getElementById("hw-clear-pick-coords");
+    if (clearBtn) {
+      clearBtn.hidden = !(pickedEl || lastPointCoords);
+    }
+  }
+
+  function setPickMode(on) {
+    pickModeActive = !!on;
+    document.documentElement.classList.toggle("hw-tool-pick-mode", pickModeActive);
+    if (!pickModeActive) {
+      pickHoverEl = null;
+      if (!pickedEl && !lastPointCoords) updatePickHighlight(null);
+      else if (pickedEl) updatePickHighlight(pickedEl);
+    }
+    refreshPickChrome();
+    refreshLayoutToolsReadout();
+  }
+
+  function clearPickedElement() {
+    pickedEl = null;
+    pickHoverEl = null;
+    lastPointCoords = null;
+    updatePickHighlight(null);
+    refreshPickChrome();
+    refreshLayoutToolsReadout();
+  }
+
+  /** First click: lock one element. Does not copy. */
+  function selectLockedElement(el) {
+    if (!el) return;
+    pickedEl = el;
+    pickHoverEl = null;
+    updatePickHighlight(el);
+    refreshPickChrome();
+    refreshLayoutToolsReadout();
+    showCoordToast(shortElementLabel(el) + " — locked. Next click copies a point.");
+  }
+
+  /**
+   * Further clicks: copy host-local point. Never changes the locked element.
+   * Pass lockedEl only for blurb labeling (center of locked selection).
+   */
+  async function copyPickAtPoint(clientX, clientY) {
+    const point = measureClickPoint(clientX, clientY);
+    const el = pickedEl && pickedEl.isConnected ? pickedEl : null;
+    if (el) {
+      updatePickHighlight(el);
+      point.under = shortElementLabel(el);
+      const elInfo = measureElementCoords(el);
+      if (elInfo) {
+        point.elCenter = { x: elInfo.x, y: elInfo.y };
+      }
+    }
+    lastPointCoords = point;
+    refreshPickChrome();
+    refreshLayoutToolsReadout();
+    const text = await copyTextToClipboard(formatPointCoordsBlurb(point));
+    showCoordToast("Copied " + point.x + ", " + point.y);
+    return text;
+  }
+
+  function showCoordToast(message) {
+    const flash = document.getElementById("hw-tool-coord-toast");
+    const el =
+      flash ||
+      (() => {
+        const t = document.createElement("div");
+        t.id = "hw-tool-coord-toast";
+        t.className = "hw-tool-coord-toast";
+        document.body.appendChild(t);
+        return t;
+      })();
+    el.textContent = message;
+    el.hidden = false;
+    window.clearTimeout(el._hwHide);
+    el._hwHide = window.setTimeout(() => {
+      el.hidden = true;
+    }, 1800);
+  }
+
+  function schedulePickLiveRefresh() {
+    if (pickLiveRaf) return;
+    pickLiveRaf = requestAnimationFrame(() => {
+      pickLiveRaf = 0;
+      if (pickedEl) updatePickHighlight(pickedEl);
+      else if (pickModeActive && pickHoverEl) updatePickHighlight(pickHoverEl);
+      refreshLayoutToolsReadout();
+    });
+  }
+
+  function bindPickElementMode() {
+    if (document.documentElement.dataset.hwToolPickBound === "1") return;
+    document.documentElement.dataset.hwToolPickBound = "1";
+
+    document.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!pickModeActive || !canUseLayoutTools()) return;
+        /* Locked selection — highlight stays on that element. */
+        if (pickedEl) {
+          if (pickedEl.isConnected) updatePickHighlight(pickedEl);
+          return;
+        }
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        const target = resolvePickTarget(under);
+        if (target === pickHoverEl) return;
+        pickHoverEl = target;
+        updatePickHighlight(target);
+      },
+      true
+    );
+
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!pickModeActive || !canUseLayoutTools()) return;
+        if (isLayoutToolsChrome(e.target)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        /* Already locked — further clicks only copy the point. */
+        if (pickedEl && pickedEl.isConnected) {
+          copyPickAtPoint(e.clientX, e.clientY);
+          return;
+        }
+        /* First click — lock element only (no copy, no re-select later). */
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        const target = resolvePickTarget(under);
+        if (!target) {
+          showCoordToast("Click an element to lock it first");
+          return;
+        }
+        selectLockedElement(target);
+      },
+      true
+    );
+
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (!canUseLayoutTools()) return;
+        if (e.key !== "Escape") return;
+        if (pickedEl || lastPointCoords) {
+          clearPickedElement();
+          e.preventDefault();
+          return;
+        }
+        if (pickModeActive) {
+          setPickMode(false);
+          e.preventDefault();
+        }
+      },
+      true
+    );
+
+    window.addEventListener("scroll", schedulePickLiveRefresh, true);
+    window.addEventListener("resize", schedulePickLiveRefresh);
+  }
+
   /**
    * Drag Glass/Cloud where you want, then call this (or the Save button) to lock
    * them as that mode’s home. Works with designFocus.
@@ -769,9 +1172,70 @@
   function refreshLayoutToolsReadout() {
     const readout = document.getElementById("hw-tool-coords-readout");
     if (!readout) return;
+
+    if (pickModeActive) {
+      if (pickedEl && pickedEl.isConnected) {
+        const lock = shortElementLabel(pickedEl);
+        const last = lastPointCoords
+          ? " · last " + lastPointCoords.x + "," + lastPointCoords.y
+          : "";
+        readout.textContent = "Locked " + lock + last + " · click for coords";
+        return;
+      }
+      if (pickHoverEl) {
+        const info = measureElementCoords(pickHoverEl);
+        if (info) {
+          readout.textContent =
+            "Lock · " + info.label + " · center " + info.x + "," + info.y;
+          return;
+        }
+      }
+      readout.textContent = "Click an element to lock it";
+      return;
+    }
+
+    if (lastPointCoords) {
+      const p = lastPointCoords;
+      const space = p.space === "host-local" ? "host" : "vp";
+      let text =
+        "Point · " + space + " " + p.x + "," + p.y;
+      if (p.under) text += " · " + p.under;
+      readout.textContent = text;
+      return;
+    }
+
+    if (pickedEl) {
+      if (!pickedEl.isConnected) {
+        pickedEl = null;
+        pickHoverEl = null;
+        updatePickHighlight(null);
+        refreshPickChrome();
+      } else {
+        const info = measureElementCoords(pickedEl);
+        if (!info) {
+          readout.textContent = "Selected element not measurable";
+          return;
+        }
+        const space = info.space === "host-local" ? "host" : "vp";
+        readout.textContent =
+          info.label +
+          " · " +
+          space +
+          " center " +
+          info.x +
+          "," +
+          info.y +
+          " · " +
+          info.w +
+          "×" +
+          info.h;
+        return;
+      }
+    }
+
     const pos = readCurrentToolPositions();
     if (!pos) {
-      readout.textContent = "Pop Glass + Cloud out to see coords";
+      readout.textContent = "Pop Glass + Cloud, or Click to copy";
       return;
     }
     const label = pos.mode === "focus" ? "Focus" : "Non-focus";
@@ -787,10 +1251,7 @@
       pos.cloud.y;
   }
 
-  async function copyToolCoords() {
-    const pos = readCurrentToolPositions();
-    if (!pos) return null;
-    const text = formatCoordsBlurb(pos);
+  async function copyTextToClipboard(text) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -798,6 +1259,30 @@
     }
     console.info("[hw tools]\n" + text);
     return text;
+  }
+
+  async function copyPickedCoords() {
+    if (!pickedEl || !pickedEl.isConnected) return null;
+    const info = measureElementCoords(pickedEl);
+    if (!info) return null;
+    return copyTextToClipboard(formatPickedCoordsBlurb(info));
+  }
+
+  async function copyLastPointCoords() {
+    if (!lastPointCoords) return null;
+    return copyTextToClipboard(formatPointCoordsBlurb(lastPointCoords));
+  }
+
+  async function copyToolCoords() {
+    if (lastPointCoords) {
+      return copyLastPointCoords();
+    }
+    if (pickedEl && pickedEl.isConnected) {
+      return copyPickedCoords();
+    }
+    const pos = readCurrentToolPositions();
+    if (!pos) return null;
+    return copyTextToClipboard(formatCoordsBlurb(pos));
   }
 
   function ensureSaveHomesControl() {
@@ -812,18 +1297,29 @@
     panel.className = "hw-tool-layout-tools";
     panel.innerHTML =
       '<p class="hw-tool-layout-tools__label">Tool positions</p>' +
-      '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Pop Glass + Cloud out to see coords</p>' +
+      '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Pop Glass + Cloud, or Click to copy</p>' +
       '<div class="hw-tool-layout-tools__row">' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-pick-element-coords" aria-pressed="false">Click to copy</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn" id="hw-copy-tool-coords">Copy coords</button>' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-clear-pick-coords" hidden>Clear</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn hw-tool-layout-tools__btn--save" id="hw-save-tool-homes">Save as home</button>' +
       "</div>" +
-      '<p class="hw-tool-layout-tools__hint">Or right‑click Glass / Cloud → Copy coords</p>';
+      '<p class="hw-tool-layout-tools__hint" id="hw-tool-layout-hint">Click to copy a point, or right‑click Glass / Cloud</p>';
+
+    panel.querySelector("#hw-pick-element-coords").addEventListener("click", () => {
+      if (pickModeActive) {
+        setPickMode(false);
+        return;
+      }
+      setPickMode(true);
+    });
 
     panel.querySelector("#hw-copy-tool-coords").addEventListener("click", async () => {
       const btn = panel.querySelector("#hw-copy-tool-coords");
       const text = await copyToolCoords();
       if (!text) {
-        btn.textContent = "Pop tools out first";
+        btn.textContent =
+          pickedEl || lastPointCoords ? "Nothing to copy" : "Pop tools or Click";
         window.setTimeout(() => {
           btn.textContent = "Copy coords";
         }, 1600);
@@ -834,6 +1330,11 @@
       window.setTimeout(() => {
         btn.textContent = "Copy coords";
       }, 1200);
+    });
+
+    panel.querySelector("#hw-clear-pick-coords").addEventListener("click", () => {
+      clearPickedElement();
+      showCoordToast("Selection cleared");
     });
 
     panel.querySelector("#hw-save-tool-homes").addEventListener("click", () => {
@@ -854,6 +1355,7 @@
     });
 
     document.body.appendChild(panel);
+    refreshPickChrome();
     refreshLayoutToolsReadout();
     document.addEventListener(
       "pointerup",
@@ -867,6 +1369,7 @@
       /* ignore */
     }
     bindToolCoordContextMenus();
+    bindPickElementMode();
   }
 
   function bindToolCoordContextMenus() {
@@ -876,34 +1379,23 @@
       "contextmenu",
       async (e) => {
         if (!canUseLayoutTools()) return;
+        if (pickModeActive) return;
         const glass = e.target.closest?.(".hw-mg-widget");
         const cloud = e.target.closest?.(".hw-hc-launcher");
         if (!glass && !cloud) return;
         e.preventDefault();
         e.stopPropagation();
-        const text = await copyToolCoords();
-        if (!text) {
+        /* Right-click always copies Glass+Cloud pair (ignore pick selection). */
+        const pos = readCurrentToolPositions();
+        if (!pos) {
           window.alert("Pop both Glass and Cloud out first, then right‑click again.");
           return;
         }
+        const text = await copyTextToClipboard(formatCoordsBlurb(pos));
         const which = glass ? "Glass" : "Cloud";
-        const flash = document.getElementById("hw-tool-coord-toast");
-        const el =
-          flash ||
-          (() => {
-            const t = document.createElement("div");
-            t.id = "hw-tool-coord-toast";
-            t.className = "hw-tool-coord-toast";
-            document.body.appendChild(t);
-            return t;
-          })();
-        el.textContent = which + " — coords copied. Paste in chat.";
-        el.hidden = false;
-        window.clearTimeout(el._hwHide);
-        el._hwHide = window.setTimeout(() => {
-          el.hidden = true;
-        }, 1800);
+        showCoordToast(which + " — coords copied. Paste in chat.");
         refreshLayoutToolsReadout();
+        return text;
       },
       true
     );
@@ -933,9 +1425,11 @@
   function endFocusToolSwitch() {
     const host = findWorksheetToolHost();
     applyModeNeutrals(host, { animate: false });
+    applyMobileToolbarHome(host);
     /* Double rAF: wait for zoom/layout paint at new homes before showing. */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        applyMobileToolbarHome(host);
         setOutToolsHidden(host, false);
         document.documentElement.classList.remove("hw-focus-tools-switching");
         document.body.classList.remove("hw-focus-tools-switching");
@@ -969,6 +1463,7 @@
     document.addEventListener("fullscreenchange", () => {
       window.setTimeout(onFocusModeChange, 80);
     });
+    ensureMobileToolbarWatch();
     ensureSaveHomesControl();
   }
 
@@ -1141,14 +1636,21 @@
       return Promise.resolve();
     }
     return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        el.style.transition = "";
+        el.classList.remove("hw-tools-returning");
+        el.removeEventListener("pointerdown", finish, true);
+        resolve();
+      };
       el.classList.add("hw-tools-returning");
       el.style.transition = "left " + RETURN_MS + "ms " + RETURN_EASE;
       el.style.left = targetLeft + unit;
-      window.setTimeout(() => {
-        el.style.transition = "";
-        el.classList.remove("hw-tools-returning");
-        resolve();
-      }, RETURN_MS + 40);
+      /* Pointer takes over immediately — do not wait for the slide to finish. */
+      el.addEventListener("pointerdown", finish, true);
+      window.setTimeout(finish, RETURN_MS + 40);
     });
   }
 
@@ -1170,6 +1672,7 @@
       const from = lens.getBoundingClientRect();
       flingSpecs.push({
         el: lens,
+        fromRect: from,
         to: hostPointToViewportRect(hostEl, neutral.lens.x, neutral.lens.y, from.width, from.height),
       });
     }
@@ -1177,6 +1680,7 @@
       const from = launcher.getBoundingClientRect();
       flingSpecs.push({
         el: launcher,
+        fromRect: from,
         to: hostPointToViewportRect(
           hostEl,
           neutral.launcher.x,
@@ -1187,14 +1691,11 @@
       });
     }
 
-    /* Ghosts mount sync; hide originals so they don't double-draw during flight. */
+    /*
+     * Ghosts mount at the old spots first. Then snap tools to neutrals and keep
+     * them live — decorative flyback must not block click/drag.
+     */
     const flyPromise = flingTools(flingSpecs);
-    if (lens) lens.style.visibility = "hidden";
-    if (launcher) launcher.style.visibility = "hidden";
-
-    try {
-      await flyPromise;
-    } catch (_) {}
 
     try {
       const mgKey =
@@ -1213,8 +1714,9 @@
 
     if (neutral) finalizeNeutralPositions(hostEl, neutral, { includeLauncher: true });
 
-    if (lens) lens.style.visibility = "";
-    if (launcher) launcher.style.visibility = "";
+    try {
+      await flyPromise;
+    } catch (_) {}
 
     requestAnimationFrame(() => resolve(hostEl));
 
@@ -1391,11 +1893,16 @@
       )
     ).then(() => {});
 
+    /*
+     * Reveal immediately so Glass/Cloud are live at their home while the
+     * decorative ghost still flies out of the toolbar (ghost is pointer-events:none).
+     */
+    if (typeof options.onReveal === "function") options.onReveal();
+
     try {
       await flyPromise;
     } catch (_) {}
 
-    if (typeof options.onReveal === "function") options.onReveal();
     /* After settle, separate glass/cloud if they land stacked. */
     requestAnimationFrame(() => resolve(hostEl));
     resetBusy = false;
@@ -1548,10 +2055,20 @@
     ensureSaveHomesControl,
     readCurrentToolPositions,
     copyToolCoords,
+    copyPickedCoords,
+    copyLastPointCoords,
     formatCoordsBlurb,
+    formatPickedCoordsBlurb,
+    formatPointCoordsBlurb,
+    measureElementCoords,
+    measureClickPoint,
     beginWorksheetToolBoot,
     cancelWorksheetToolBoot,
     revealWorksheetTools,
+    getToolbarHome,
+    applyMobileToolbarHome,
+    clearMobileToolbarHome,
+    ensureMobileToolbarWatch,
   };
 })(window);
 

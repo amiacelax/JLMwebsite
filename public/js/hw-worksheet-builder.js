@@ -9,6 +9,11 @@
     { type: "star-line", label: "Sentence order", hint: "Drag & drop pieces" },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
     { type: "audio-prompt", label: "Audio prompt", hint: "Student records an answer" },
+    {
+      type: "audio-mimic",
+      label: "Listen & mimic",
+      hint: "Teacher audio + student records their version",
+    },
     { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
   ];
 
@@ -294,6 +299,15 @@
         return { id, type, prompt: "", recordLabel: "Record your answer" };
       case "audio-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
+      case "audio-mimic":
+        return {
+          id,
+          type,
+          prompt: "",
+          audioUrl: "",
+          promptMediaId: "",
+          recordLabel: "Record your version",
+        };
       case "listen-line":
         return ensureListenBlock({
           id,
@@ -322,14 +336,7 @@
         return {
           id,
           type,
-          tokens: [
-            { text: "今日", fixed: true },
-            { text: "は", fixed: false },
-            { text: "学校", fixed: false },
-            { text: "に", fixed: false },
-            { text: "行きました", fixed: false },
-            { text: "。", fixed: true },
-          ],
+          tokens: [{ text: "", fixed: false }],
         };
       default:
         return null;
@@ -446,6 +453,15 @@
             prompt: item.prompt || "",
             recordLabel: item.recordLabel || "Record your answer",
           });
+        } else if (sec.mode === "audio-mimic") {
+          blocks.push({
+            id: item.id || uid("blk"),
+            type: "audio-mimic",
+            prompt: item.prompt || "",
+            audioUrl: String(item.audioUrl || "").trim(),
+            promptMediaId: String(item.promptMediaId || "").trim(),
+            recordLabel: item.recordLabel || "Record your version",
+          });
         } else if (sec.mode === "translation") {
           const blank = (item.parts || []).find((p) => p.type === "blank");
           blocks.push({
@@ -552,6 +568,33 @@
         continue;
       }
 
+      if (block.type === "audio-mimic") {
+        const sec = {
+          id: uid("sec"),
+          mode: "audio-mimic",
+          title: "",
+          instructions: "Listen to the teacher, then record yourself sounding as close as you can.",
+          items: [],
+        };
+        while (i < blocks.length && blocks[i].type === "audio-mimic") {
+          const audioUrl = String(blocks[i].audioUrl || "").trim();
+          if (audioUrl) {
+            const item = {
+              id: blocks[i].id || "mimic-" + (sec.items.length + 1),
+              prompt: String(blocks[i].prompt || "").trim(),
+              audioUrl,
+              recordLabel: blocks[i].recordLabel || "Record your version",
+            };
+            const promptMediaId = String(blocks[i].promptMediaId || "").trim();
+            if (promptMediaId) item.promptMediaId = promptMediaId;
+            sec.items.push(item);
+          }
+          i++;
+        }
+        if (sec.items.length) sections.push(sec);
+        continue;
+      }
+
       if (block.type === "translation-line") {
         const sec = {
           id: uid("sec"),
@@ -634,31 +677,24 @@
     return out;
   }
 
-  function normalizeStarTokens(source) {
-    if (Array.isArray(source?.tokens) && source.tokens.length) {
-      return source.tokens
-        .map((t) => ({
-          text: String(t.text || "").trim(),
-          fixed: !!t.fixed,
-        }))
-        .filter((t) => t.text);
+  function normalizeStarTokens(source, options) {
+    const keepEmpty = options?.keepEmpty === true;
+    if (Array.isArray(source?.tokens) && (source.tokens.length || keepEmpty)) {
+      const mapped = source.tokens.map((t) => ({
+        text: String(t.text || "").trim(),
+        fixed: !!t.fixed,
+      }));
+      return keepEmpty ? mapped : mapped.filter((t) => t.text);
     }
     const tokens = [];
     const prefix = String(source?.prefix || "").trim();
-    const suffix = String(source?.suffix ?? "。").trim();
+    const suffix = String(source?.suffix ?? "").trim();
     const pieces = (source?.pieces || []).map((p) => String(p).trim()).filter(Boolean);
     if (prefix) tokens.push({ text: prefix, fixed: true });
     pieces.forEach((p) => tokens.push({ text: p, fixed: false }));
     if (suffix) tokens.push({ text: suffix, fixed: true });
     if (!tokens.length) {
-      return [
-        { text: "今日", fixed: true },
-        { text: "は", fixed: false },
-        { text: "学校", fixed: false },
-        { text: "に", fixed: false },
-        { text: "行きました", fixed: false },
-        { text: "。", fixed: true },
-      ];
+      return keepEmpty ? [{ text: "", fixed: false }] : [];
     }
     return tokens;
   }
@@ -719,7 +755,14 @@
    */
   function mount(mount, options) {
     options = options || {};
-    let state = { templateType: "custom", blocks: [], topicExplanation: "", topicVideoText: "" };
+    let state = {
+      templateType: "custom",
+      blocks: [],
+      topicExplanation: "",
+      topicExplanationAudioUrl: "",
+      topicExplanationMediaId: "",
+      topicVideoText: "",
+    };
     let previewOpen = false;
     let canvasAssignmentId = null;
     let clipboardBlock = null;
@@ -811,7 +854,54 @@
       notifyChange();
     });
     explainWrap.appendChild(explainInput);
+
+    const topicAudioMount = document.createElement("div");
+    topicAudioMount.className = "hw-builder__topic-audio";
+    explainWrap.appendChild(topicAudioMount);
     topicFields.appendChild(explainWrap);
+
+    function remountTopicAudioClip() {
+      topicAudioMount.replaceChildren();
+      delete topicAudioMount.dataset.bound;
+      const teacherUsername = String(
+        global.HwAuth?.getTeacherSession?.()?.username ||
+          global.HwAuth?.getSession?.()?.username ||
+          ""
+      ).trim();
+      if (global.HwAudioInline?.mountTeacherClip) {
+        global.HwAudioInline.mountTeacherClip(topicAudioMount, {
+          teacherUsername,
+          audioUrl: state.topicExplanationAudioUrl || "",
+          mediaId: state.topicExplanationMediaId || "",
+          startLabel: "Record grammar audio",
+          uploadLabel: "Upload audio",
+          urlLabel: "Or paste grammar audio URL",
+          previewAriaLabel: "Grammar description audio",
+          onChange: (next) => {
+            state.topicExplanationAudioUrl = String(next?.audioUrl || "").trim();
+            state.topicExplanationMediaId = String(next?.mediaId || "").trim();
+            notifyChange();
+          },
+        });
+        return;
+      }
+      const fallbackLabel = document.createElement("label");
+      fallbackLabel.className = "hw-builder__audio-label";
+      fallbackLabel.textContent = "Grammar audio URL";
+      const audioInput = document.createElement("input");
+      audioInput.type = "text";
+      audioInput.className = "hw-builder__field hw-builder__field--compact";
+      audioInput.spellcheck = false;
+      audioInput.placeholder = "Paste audio URL";
+      audioInput.value = state.topicExplanationAudioUrl || "";
+      audioInput.addEventListener("input", () => {
+        state.topicExplanationAudioUrl = audioInput.value.trim();
+        state.topicExplanationMediaId = "";
+        notifyChange();
+      });
+      fallbackLabel.appendChild(audioInput);
+      topicAudioMount.appendChild(fallbackLabel);
+    }
 
     const videosWrap = document.createElement("div");
     videosWrap.className = "hw-builder__field-row";
@@ -1130,6 +1220,12 @@
       if (block.type === "audio-prompt") {
         return clip(block.prompt) || "Audio prompt";
       }
+      if (block.type === "audio-mimic") {
+        return (
+          clip(block.prompt) ||
+          (block.audioUrl ? "Teacher audio ready" : "Listen & mimic")
+        );
+      }
       if (block.type === "listen-line") {
         const jp = (block.parts || []).find((p) => p.type === "blank")?.answer;
         return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
@@ -1146,7 +1242,8 @@
       if (block.type === "star-line") {
         const tokens = normalizeStarTokens(block);
         const preview = tokens
-          .map((t) => (t.fixed ? t.text : "□"))
+          .map((t) => String(t.text || "").trim())
+          .filter(Boolean)
           .join("");
         return clip(preview) || "Sentence order";
       }
@@ -1275,6 +1372,73 @@
           notifyChange();
         });
         body.appendChild(prompt);
+        return el;
+      }
+
+      if (block.type === "audio-mimic") {
+        const hint = document.createElement("p");
+        hint.className = "hw-builder__inline-hint";
+        hint.textContent =
+          "Record the phrase students should copy (or paste a URL). Students hear yours, then record theirs.";
+        body.appendChild(hint);
+
+        const promptLabel = document.createElement("label");
+        promptLabel.className = "hw-builder__field-label";
+        promptLabel.textContent = "Phrase / note (optional)";
+        const prompt = document.createElement("textarea");
+        prompt.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
+        prompt.rows = 2;
+        prompt.placeholder = "e.g. Could we reschedule for Thursday?";
+        prompt.value = block.prompt || "";
+        prompt.addEventListener("input", () => {
+          block.prompt = prompt.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        promptLabel.appendChild(prompt);
+        body.appendChild(promptLabel);
+
+        const clipMount = document.createElement("div");
+        clipMount.className = "hw-builder__mimic-clip";
+        body.appendChild(clipMount);
+
+        const teacherUsername = String(
+          global.HwAuth?.getTeacherSession?.()?.username ||
+            global.HwAuth?.getSession?.()?.username ||
+            ""
+        ).trim();
+
+        if (global.HwAudioInline?.mountTeacherClip) {
+          global.HwAudioInline.mountTeacherClip(clipMount, {
+            teacherUsername,
+            audioUrl: block.audioUrl || "",
+            mediaId: block.promptMediaId || "",
+            onChange: (next) => {
+              block.audioUrl = String(next?.audioUrl || "").trim();
+              block.promptMediaId = String(next?.mediaId || "").trim();
+              if (block.collapsed) summaryEl.textContent = blockSummary(block);
+              notifyChange();
+            },
+          });
+        } else {
+          const fallbackLabel = document.createElement("label");
+          fallbackLabel.className = "hw-builder__audio-label";
+          fallbackLabel.textContent = "Teacher audio URL";
+          const audioInput = document.createElement("input");
+          audioInput.type = "text";
+          audioInput.className = "hw-builder__field hw-builder__field--compact";
+          audioInput.spellcheck = false;
+          audioInput.placeholder = "Paste audio URL";
+          audioInput.value = block.audioUrl || "";
+          audioInput.addEventListener("input", () => {
+            block.audioUrl = audioInput.value.trim();
+            block.promptMediaId = "";
+            if (block.collapsed) summaryEl.textContent = blockSummary(block);
+            notifyChange();
+          });
+          fallbackLabel.appendChild(audioInput);
+          body.appendChild(fallbackLabel);
+        }
         return el;
       }
 
@@ -1437,7 +1601,7 @@
       }
 
       if (block.type === "star-line") {
-        block.tokens = normalizeStarTokens(block);
+        block.tokens = normalizeStarTokens(block, { keepEmpty: true });
 
         const hint = document.createElement("p");
         hint.className = "hw-builder__star-hint";
@@ -1450,12 +1614,11 @@
         const tokenInputs = [];
 
         function syncStarFromTokens() {
-          block.tokens = tokenInputs
-            .map((row) => ({
-              text: row.input.value.trim(),
-              fixed: row.fixed.checked,
-            }))
-            .filter((t) => t.text);
+          /* Keep blank boxes so Add word works anytime — empties drop on save. */
+          block.tokens = tokenInputs.map((row) => ({
+            text: row.input.value.trim(),
+            fixed: row.fixed.checked,
+          }));
           if (block.collapsed) summaryEl.textContent = blockSummary(block);
           notifyChange();
         }
@@ -1490,6 +1653,7 @@
             removeBtn.textContent = "Remove";
             removeBtn.addEventListener("click", () => {
               block.tokens = (block.tokens || []).filter((_, idx) => idx !== ti);
+              if (!block.tokens.length) block.tokens = [{ text: "", fixed: false }];
               renderTokenRows();
               syncStarFromTokens();
             });
@@ -1508,9 +1672,10 @@
         addTokenBtn.className = "btn btn--ghost btn--sm";
         addTokenBtn.textContent = "Add word";
         addTokenBtn.addEventListener("click", () => {
+          syncStarFromTokens();
           block.tokens = (block.tokens || []).concat([{ text: "", fixed: false }]);
           renderTokenRows();
-          syncStarFromTokens();
+          notifyChange();
           const last = tokenInputs[tokenInputs.length - 1];
           last?.input.focus();
         });
@@ -1721,6 +1886,7 @@
     function syncTopicFieldsFromState() {
       explainInput.value = state.topicExplanation || "";
       videosInput.value = state.topicVideoText || "";
+      remountTopicAudioClip();
     }
 
     function setTopicFieldsHidden(hidden) {
@@ -1735,6 +1901,8 @@
         templateType: t.templateType,
         blocks: sectionsToBlocks(t.sections || []),
         topicExplanation: "",
+        topicExplanationAudioUrl: "",
+        topicExplanationMediaId: "",
         topicVideoText: "",
       };
       previewOpen = false;
@@ -1754,6 +1922,8 @@
         templateType: entry.templateType || "custom",
         blocks: normalizeBlocks(cloneBlocks(entry.blocks || [])),
         topicExplanation: entry.topicExplanation || "",
+        topicExplanationAudioUrl: entry.topicExplanationAudioUrl || "",
+        topicExplanationMediaId: entry.topicExplanationMediaId || "",
         topicVideoText: entry.topicVideoText || "",
       };
       previewOpen = false;
@@ -1776,6 +1946,8 @@
         templateType: state.templateType || "custom",
         blocks: cloneBlocks(state.blocks),
         topicExplanation: state.topicExplanation || "",
+        topicExplanationAudioUrl: state.topicExplanationAudioUrl || "",
+        topicExplanationMediaId: state.topicExplanationMediaId || "",
         topicVideoText: state.topicVideoText || "",
       };
     }
@@ -1805,6 +1977,8 @@
 
     function toAssignment(meta) {
       const topicExplanation = String(state.topicExplanation || "").trim();
+      const topicExplanationAudioUrl = String(state.topicExplanationAudioUrl || "").trim();
+      const topicExplanationMediaId = String(state.topicExplanationMediaId || "").trim();
       const topicVideos = parseTopicVideoUrls(state.topicVideoText);
       const assignment = {
         id: meta?.id || "",
@@ -1817,6 +1991,12 @@
         sections: blocksToSections(normalizeBlocks(state.blocks)),
       };
       if (topicExplanation) assignment.topicExplanation = topicExplanation;
+      if (topicExplanationAudioUrl) {
+        assignment.topicExplanationAudioUrl = topicExplanationAudioUrl;
+        if (topicExplanationMediaId) {
+          assignment.topicExplanationMediaId = topicExplanationMediaId;
+        }
+      }
       if (topicVideos.length) assignment.topicVideos = topicVideos;
       if (global.HwWorksheet?.enrichGrammarVariants) {
         global.HwWorksheet.enrichGrammarVariants(assignment);
@@ -1834,6 +2014,8 @@
         templateType: data.templateType || "custom",
         blocks: sectionsToBlocks(data.sections || [], data.register),
         topicExplanation: data.topicExplanation || "",
+        topicExplanationAudioUrl: data.topicExplanationAudioUrl || "",
+        topicExplanationMediaId: data.topicExplanationMediaId || "",
         topicVideoText: Array.isArray(data.topicVideos) ? data.topicVideos.join("\n") : "",
       };
       previewOpen = false;

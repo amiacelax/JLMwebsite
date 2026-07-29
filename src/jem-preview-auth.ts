@@ -1,11 +1,28 @@
 const JEM_PREVIEW_PREFIX = "/preview/jem-appraisals";
 
+const JEM_SITE_HOSTS = new Set([
+  "jem-appraisals.com",
+  "www.jem-appraisals.com",
+]);
+
+export function isJemSiteHost(hostname: string): boolean {
+  return JEM_SITE_HOSTS.has(hostname.toLowerCase());
+}
+
 export function isJemPreviewPath(pathname: string): boolean {
   return (
     pathname === JEM_PREVIEW_PREFIX ||
     pathname === `${JEM_PREVIEW_PREFIX}/` ||
     pathname.startsWith(`${JEM_PREVIEW_PREFIX}/`)
   );
+}
+
+/** Map jem-appraisals.com/foo → /preview/jem-appraisals/foo for ASSETS. */
+export function jemSiteAssetPath(pathname: string): string {
+  if (pathname === "/" || pathname === "") {
+    return `${JEM_PREVIEW_PREFIX}/`;
+  }
+  return `${JEM_PREVIEW_PREFIX}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
 
 export function jemPreviewCredentials(env: {
@@ -58,6 +75,17 @@ export function withJemPreviewHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   headers.set("Cache-Control", "private, no-store");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+/** Production domain — allow indexing, normal caching. */
+export function withJemSiteHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.delete("X-Robots-Tag");
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

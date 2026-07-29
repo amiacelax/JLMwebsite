@@ -10,6 +10,10 @@ DISCORD_CHANNEL_ID=1507209734095241266
 DISCORD_HOMEWORK_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_HW_ID/YOUR_HW_TOKEN
 DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
 
+# Student DMs on publish / review-ready (bot). Without these, notify falls back to homework webhook.
+# DISCORD_BOT_TOKEN=your-bot-token
+# DISCORD_TEACHER_USER_ID=your-discord-snowflake
+
 # Homework maker — OPTIONAL. The maker works with NO keys (built-in templates).
 # Only add this if you sign up at platform.openai.com and want smarter AI drafts:
 # OPENAI_API_KEY=sk-...

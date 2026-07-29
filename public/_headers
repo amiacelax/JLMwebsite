@@ -1,0 +1,19 @@
+# Keep hub HTML fresh after deploys (don't let edge/browser keep an old shell).
+/*.html
+  Cache-Control: private, no-cache, no-store, must-revalidate
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
+/homework/*
+  Cache-Control: private, no-cache, no-store, must-revalidate
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
+# Versioned JS/CSS (?v=) can revalidate; prefer fresh after deploy.
+/js/*
+  Cache-Control: public, max-age=0, must-revalidate
+  CDN-Cache-Control: no-store
+
+/css/*
+  Cache-Control: public, max-age=0, must-revalidate
+  CDN-Cache-Control: no-store

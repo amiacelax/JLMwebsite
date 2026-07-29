@@ -1,16 +1,21 @@
+html.jem-production .version-nav {
+  display: none !important;
+}
+
 .version-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.45rem 1rem;
-  background: var(--green-deep);
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--green-deep, #1a2b3d);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .version-nav a {
   display: inline-flex;
   align-items: center;
-  padding: 0.3rem 0.85rem;
+  padding: 0.28rem 0.7rem;
   font-size: 0.75rem;
   font-weight: 600;
   text-decoration: none;

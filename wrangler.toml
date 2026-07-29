@@ -12,7 +12,7 @@ binding = "ASSETS"
 # or Sec-Fetch-Mode: navigate can serve index.html instead of the Worker
 # (compatibility_date >= 2025-04-01 assets_navigation_prefers_asset_serving).
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/preview/*"]
+run_worker_first = ["/api/*", "/preview/*", "/homework/platform", "/homework/platform.html", "/homework.html", "/homework"]
 
 [observability]
 enabled = true

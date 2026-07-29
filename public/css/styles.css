@@ -3892,6 +3892,80 @@ body.hw-role-student .subpage-back {
   text-align: center;
 }
 
+.hw-platform-footer-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.hw-platform-footer-nav__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+}
+
+.hw-platform-footer-nav__logout {
+  margin-top: 1.15rem;
+}
+
+.hw-print-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.hw-print-menu__popup {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.4rem);
+  transform: translateX(-50%);
+  z-index: 20;
+  min-width: 10.5rem;
+  padding: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated, #fff);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-text) 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.hw-print-menu__popup[hidden] {
+  display: none !important;
+}
+
+.hw-print-menu__item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hw-print-menu__item:hover,
+.hw-print-menu__item:focus-visible {
+  background: color-mix(in srgb, var(--color-accent-soft, #eee) 80%, transparent);
+  outline: none;
+}
+
+.hw-grid-offline--photo-shell {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.hw-grid-offline--photo-shell .hw-photo-upload--worksheet {
+  margin-top: 0;
+}
+
 .hw-hub-tier-pick {
   position: relative;
   z-index: 4;
@@ -4147,6 +4221,91 @@ body.hw-role-student .subpage-back {
 .hw-grid-assignments .hw-current-assignment__pill {
   padding: 0.7rem 1rem;
   font-size: 0.9375rem;
+}
+
+.hw-hub-feedback-pill-wrap {
+  grid-column: 1 / -1;
+  margin-top: 0.35rem;
+}
+
+.hw-hub-feedback-pill {
+  width: 100%;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.hw-hub-feedback-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.hw-hub-feedback-dialog::backdrop {
+  background: rgba(8, 12, 22, 0.55);
+}
+
+.hw-hub-feedback-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.15rem 1.15rem;
+}
+
+.hw-hub-feedback-dialog__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.hw-hub-feedback-dialog__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-feedback-dialog__kind {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.hw-hub-feedback-dialog__legend {
+  width: 100%;
+  margin: 0 0 0.15rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.hw-hub-feedback-dialog__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.hw-hub-feedback-dialog__form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  resize: vertical;
+  min-height: 7rem;
+  box-sizing: border-box;
+}
+
+.hw-hub-feedback-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
 }
 
 .hw-grid-assignments {
@@ -4640,6 +4799,61 @@ body.hw-role-student .subpage-back {
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+#hw-teacher-account-wipe-btn {
+  color: #b42318;
+  border-color: color-mix(in srgb, #b42318 45%, transparent);
+}
+
+#hw-teacher-account-wipe-btn:hover {
+  background: color-mix(in srgb, #b42318 12%, transparent);
+}
+
+.hw-wipe-dialog {
+  max-width: 26rem;
+  width: calc(100% - 2rem);
+  padding: 0;
+  border: 1px solid color-mix(in srgb, #8a7460 35%, transparent);
+  border-radius: 0.75rem;
+  background: #fffaf3;
+  color: #2c2418;
+  box-shadow: 0 18px 48px rgba(20, 16, 10, 0.28);
+}
+
+.hw-wipe-dialog::backdrop {
+  background: rgba(12, 18, 28, 0.55);
+}
+
+.hw-wipe-dialog__form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.15rem 1.25rem 1.2rem;
+}
+
+.hw-wipe-dialog__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.hw-wipe-dialog__warn {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #5c4030;
+}
+
+.hw-wipe-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+#hw-student-wipe-confirm-btn:not(:disabled) {
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
 }
 
 .hw-teacher-edit-row {
@@ -5786,6 +6000,9 @@ body.hw-role-student .subpage-back {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .hw-audio-inline__saved[hidden],
@@ -5805,6 +6022,8 @@ body.hw-role-student .subpage-back {
 .hw-audio-inline__saved-player {
   flex: 1 1 12rem;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .hw-audio-inline__url-label {
@@ -5814,6 +6033,44 @@ body.hw-role-student .subpage-back {
 
 .hw-audio-inline__teacher-row {
   margin-bottom: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Teacher clip in worksheet maker: player full width, actions under it — no overlap after save */
+.hw-audio-inline--teacher .hw-audio-inline__saved,
+.hw-audio-inline--teacher .hw-audio-inline__preview {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.hw-audio-inline--teacher .hw-audio-inline__saved-player,
+.hw-audio-inline--teacher .hw-audio-inline__preview-player {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hw-audio-inline--teacher .hw-audio-inline__saved-actions,
+.hw-audio-inline--teacher .hw-audio-inline__preview-actions {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.hw-audio-inline--teacher .hw-listen-card,
+.hw-audio-inline--teacher .hw-audio-player,
+.hw-audio-inline--teacher .hw-audio-chrome {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+}
+
+.hw-audio-inline--teacher .hw-listen-card {
+  margin-bottom: 0;
 }
 
 .hw-audio-inline__idle,
@@ -6130,6 +6387,50 @@ body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
 .hw-audio-chrome__pip svg {
   width: 1rem;
   height: 1rem;
+}
+
+/* Narrow phones: keep play/seek/time/speed inside the listen card */
+@media (max-width: 520px) {
+  .hw-audio-chrome__bar {
+    gap: 0.3rem;
+    padding: 0.3rem 0.4rem;
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .hw-audio-chrome__play {
+    width: 2.1rem;
+    height: 1.7rem;
+  }
+
+  .hw-audio-chrome__seek-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .hw-audio-chrome__time {
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+
+  .hw-audio-chrome__speed {
+    min-width: 2.55rem;
+    padding: 0.15rem 0.15rem;
+    font-size: 0.7rem;
+  }
+
+  .hw-listen-card .hw-audio-chrome__pip,
+  .hw-worksheet .hw-audio-chrome__pip {
+    display: none;
+  }
+
+  .hw-listen-card,
+  .hw-audio-chrome,
+  .hw-audio-player {
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 body.hw-audio-chrome--pip-root {
@@ -7975,40 +8276,76 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
 
 @media (max-width: 640px) {
   .hw-toolbar-bar {
-    bottom: 0.65rem;
-    padding: 0.35rem 0.825rem;
-    gap: 0.375rem;
+    bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.35rem 0.65rem;
+    gap: 0.28rem;
+    max-width: calc(100% - 0.85rem);
+  }
+
+  .subpage--homework .hw-toolbar-bar__btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .subpage--homework .hw-toolbar-bar__btn:focus:not(:focus-visible) {
+    outline: none;
   }
 
   .hw-toolbar-bar__btn {
-    width: 3.6rem;
-    height: 3.6rem;
+    width: 3.15rem;
+    height: 3.15rem;
   }
 
   .hw-toolbar-bar__icon {
-    width: 2.925rem;
-    height: 2.925rem;
-  }
-
-  .hw-toolbar-bar__icon--glass .hw-toolbar-bar__glass {
-    width: 2.7rem;
-    height: 3rem;
-  }
-
-  .hw-toolbar-bar__icon--cloud .hw-toolbar-bar__cloud {
-    width: 3rem;
-    height: 1.8rem;
-  }
-
-  .hw-toolbar-bar__icon--send .hw-toolbar-bar__send,
-  .hw-toolbar-bar__icon--answers .hw-toolbar-bar__q {
     width: 2.55rem;
     height: 2.55rem;
   }
 
+  .hw-toolbar-bar__icon > svg {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .hw-toolbar-bar__icon--glass .hw-toolbar-bar__glass {
+    width: 2.35rem;
+    height: 2.6rem;
+  }
+
+  .hw-toolbar-bar__icon--cloud .hw-toolbar-bar__cloud {
+    width: 2.55rem;
+    height: 1.55rem;
+  }
+
+  .hw-toolbar-bar__icon--send .hw-toolbar-bar__send,
+  .hw-toolbar-bar__icon--answers .hw-toolbar-bar__q {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
   .hw-toolbar-bar__icon--magnet .hw-tools-cleanup__magnet {
-    width: 2.7rem;
-    height: 2.7rem;
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .hw-toolbar-bar {
+    padding: 0.3rem 0.45rem;
+    gap: 0.18rem;
+  }
+
+  .hw-toolbar-bar__btn {
+    width: 2.85rem;
+    height: 2.85rem;
+  }
+
+  .hw-toolbar-bar__icon {
+    width: 2.3rem;
+    height: 2.3rem;
+  }
+
+  .hw-toolbar-bar__icon > svg {
+    width: 2.1rem;
+    height: 2.1rem;
   }
 }
 
@@ -10030,6 +10367,66 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   margin: 0;
 }
 
+.hw-pitch {
+  max-width: 36rem;
+  margin: 0 auto 2.25rem;
+  text-align: center;
+}
+
+.hw-pitch__title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.2rem, 3.2vw, 1.55rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+.hw-pitch__desc {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.hw-gate .hw-plans-heading {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 1.15rem;
+}
+
+.hw-plans-note {
+  margin: 1rem 0 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hw-plans-note a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.hw-gate .hw-breakdown-grid--landing {
+  margin-bottom: 1.5rem;
+}
+
+.hw-gate .hw-breakdown-card {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.hw-gate .hw-breakdown-card--featured {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
 .hw-about h2 {
   font-size: 1.125rem;
   font-weight: 700;
@@ -10091,6 +10488,98 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   text-align: center;
   font-size: 1.25rem;
   margin: 2.5rem 0 0.5rem;
+}
+
+@media (max-width: 767px) {
+  body.subpage--homework .subpage-hero .section__header {
+    margin-bottom: 1.15rem;
+  }
+
+  body.subpage--homework .section__title {
+    font-size: clamp(1.55rem, 7.2vw, 1.95rem);
+    line-height: 1.2;
+  }
+
+  body.subpage--homework .section__desc {
+    font-size: 0.95rem;
+    max-width: 22rem;
+    margin-inline: auto;
+  }
+
+  .hw-login-hero {
+    margin-bottom: 1.35rem;
+    padding: 0 0.65rem 1.15rem;
+  }
+
+  .hw-login-hero__words {
+    margin-bottom: 0.75rem;
+  }
+
+  .hw-login-inlay {
+    padding: 1.35rem 1.15rem 1.25rem;
+  }
+
+  .hw-login-inlay__field {
+    margin-bottom: 0.85rem;
+  }
+
+  .hw-pitch {
+    margin-bottom: 1.65rem;
+  }
+
+  .hw-pitch__desc {
+    font-size: 0.95rem;
+  }
+
+  .hw-gate .hw-plans-heading {
+    margin-bottom: 0.9rem;
+    font-size: 0.95rem;
+  }
+
+  .hw-about-details {
+    margin-bottom: 1.1rem;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .hw-plans-heading {
+    margin: 1.35rem 0 0.85rem;
+    font-size: 1.15rem;
+  }
+
+  .hw-breakdown-grid--landing {
+    margin-bottom: 1.25rem;
+    gap: 0.7rem;
+  }
+
+  .hw-breakdown-grid--landing .hw-breakdown-card {
+    padding: 1rem 0.95rem;
+  }
+
+  .hw-breakdown-grid--landing .hw-breakdown-card__list {
+    font-size: 0.82rem;
+  }
+
+  .hw-breakdown-grid--landing .hw-breakdown-card__list li {
+    margin-bottom: 0.32rem;
+  }
+
+  .hw-subscribe-cta-wrap {
+    margin-bottom: 1.35rem;
+  }
+
+  .hw-plans-note {
+    font-size: 0.85rem;
+  }
+
+  .hw-student-special {
+    margin: 0 auto 1.5rem;
+    padding: 1.1rem 1.1rem;
+  }
+
+  .hw-student-special__desc {
+    font-size: 0.88rem;
+    margin-bottom: 0.85rem;
+  }
 }
 
 .hw-plans-sub {
@@ -10921,18 +11410,14 @@ body.hw-hw-focus-mode .hw-hub-v4-homework {
   margin: 0;
 }
 
-.hw-focus-bar {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.75rem;
-  padding: 0.5rem 1rem;
-  background: rgba(8, 8, 10, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+/*
+ * Exit focus pill + title chrome removed everywhere.
+ * Leave Focus via the toolbar Focus toggle (or Esc / fullscreen exit).
+ */
+.hw-focus-bar,
+.hw-focus-bar__exit,
+.hw-focus-bar__title {
+  display: none !important;
 }
 
 .hw-focus-bar[hidden] {
@@ -10945,36 +11430,6 @@ body.hw-focus-tools-switching .hw-hc-launcher {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}
-
-
-.hw-focus-bar__exit {
-  position: absolute;
-  left: max(1rem, env(safe-area-inset-left));
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
-}
-
-.hw-focus-bar__exit:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.hw-focus-bar__title {
-  max-width: min(28rem, 60vw);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 body.hw-hw-focus-mode #hw-worksheet-mount,
@@ -11217,6 +11672,17 @@ button.hw-register__pill {
   white-space: nowrap;
 }
 
+.hw-worksheet__topic-brief-audio-hint {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--color-brand-blue);
+  white-space: nowrap;
+}
+
 .hw-worksheet__topic-brief-body {
   margin-top: 0.65rem;
   padding-top: 0.65rem;
@@ -11247,6 +11713,31 @@ button.hw-register__pill {
   line-height: 1.55;
   color: var(--color-text);
   white-space: pre-wrap;
+}
+
+.hw-worksheet__topic-audio {
+  margin-top: 0.75rem;
+}
+
+.hw-worksheet__topic-explanation + .hw-worksheet__topic-audio {
+  margin-top: 0.65rem;
+}
+
+.hw-worksheet__topic-audio .hw-listen-card,
+.hw-worksheet__topic-audio .hw-audio-player {
+  max-width: 100%;
+}
+
+.hw-builder__topic-audio {
+  margin-top: 0.55rem;
+}
+
+.hw-audio-inline__saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  flex: 0 0 auto;
 }
 
 .hw-worksheet__topic-videos {
@@ -11985,6 +12476,14 @@ body.hw-hw-focus-mode .hw-worksheet__actions {
     padding: 1rem 0.85rem;
     font-size: 1rem;
     line-height: 2;
+  }
+
+  /* Hub / Focus sheet: less side padding so listen cards fit the phone */
+  html.hw-ws-toolbar .hw-worksheet,
+  html.hw-hub-v5-toolbar-embed .hw-worksheet,
+  body.hw-hw-focus-mode .hw-worksheet {
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
   }
 
   .hw-worksheet__meta-top {
@@ -13132,3 +13631,4 @@ body.hw-hw-focus-mode .hw-sachiko-dock,
 body.hw-hw-focus-mode .hw-sachiko-modal {
   display: none !important;
 }
+/* jlm-wipe-dialog-v1 */

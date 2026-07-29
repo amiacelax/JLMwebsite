@@ -1,0 +1,381 @@
+/* Article crawl preview — standalone TN-style prototype */
+
+:root {
+  --ac-bg: #0b0d12;
+  --ac-panel: #12151c;
+  --ac-border: rgba(255, 255, 255, 0.1);
+  --ac-text: #e8e6e1;
+  --ac-muted: #9a968c;
+  --ac-crawl: #ffe81f;
+  --ac-crawl-dim: #c4b000;
+  --ac-radius: 10px;
+  --ac-font: "Inter", system-ui, sans-serif;
+  --ac-crawl-font: "Newsreader", "Times New Roman", Georgia, serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(120% 80% at 50% -10%, #1a2030 0%, var(--ac-bg) 55%);
+  color: var(--ac-text);
+  font-family: var(--ac-font);
+  line-height: 1.5;
+}
+
+.ac-header {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 1.5rem;
+}
+
+.ac-kicker {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ac-muted);
+}
+
+.ac-header h1 {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.ac-lede {
+  margin: 0 0 0.75rem;
+  color: var(--ac-muted);
+  max-width: 40rem;
+}
+
+.ac-lede em {
+  color: var(--ac-text);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.ac-note {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.85rem;
+  color: var(--ac-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--ac-border);
+  border-radius: 8px;
+  max-width: 40rem;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.05em 0.4em;
+  font-size: 0.85em;
+  font-family: inherit;
+  border: 1px solid var(--ac-border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ac-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr));
+  gap: 1.1rem;
+  max-width: 56rem;
+  margin: 0 auto 3rem;
+  padding: 0 1.25rem 2rem;
+}
+
+/* Story card — image thumb is the “similar feature”; Peek text opens crawl */
+.ac-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--ac-panel);
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.ac-card:hover,
+.ac-card:focus-within {
+  border-color: rgba(255, 232, 31, 0.35);
+  transform: translateY(-2px);
+}
+
+.ac-card__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #050608;
+  overflow: hidden;
+}
+
+/* Small art stays small on dark — mirrors TN “don’t blow up tiny images” */
+.ac-card__media--letterbox .ac-card__img {
+  width: auto;
+  max-width: 72%;
+  max-height: 78%;
+  height: auto;
+  object-fit: contain;
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ac-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0a0a0a;
+}
+
+.ac-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.85rem 0.9rem 1rem;
+  flex: 1;
+}
+
+.ac-card__hed {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.ac-card__dek {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ac-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ac-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.ac-btn {
+  appearance: none;
+  border: 1px solid var(--ac-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ac-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ac-btn:hover,
+.ac-btn:focus-visible {
+  border-color: rgba(255, 232, 31, 0.55);
+  outline: none;
+}
+
+.ac-btn--crawl {
+  background: rgba(255, 232, 31, 0.12);
+  border-color: rgba(255, 232, 31, 0.35);
+  color: #ffe81f;
+}
+
+/* —— Star Wars crawl overlay —— */
+.ac-crawl[hidden] {
+  display: none !important;
+}
+
+.ac-crawl {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+}
+
+.ac-crawl__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  cursor: pointer;
+}
+
+.ac-crawl__stage {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 28rem);
+  height: min(78vh, 36rem);
+  background: #000;
+  border: 1px solid rgba(255, 232, 31, 0.22);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.ac-crawl__close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.55rem;
+  z-index: 5;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ac-crawl__close:hover,
+.ac-crawl__close:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  outline: none;
+}
+
+.ac-crawl__viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 380px;
+  perspective-origin: 50% 100%;
+}
+
+.ac-crawl__perspective {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(28deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 78%, transparent 100%);
+}
+
+.ac-crawl__scroll {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  transform-origin: 50% 100%;
+  animation: ac-crawl-up 42s linear forwards;
+  will-change: transform;
+}
+
+.ac-crawl__scroll.is-restarting {
+  animation: none;
+}
+
+.ac-crawl__episode {
+  margin: 0 0 1.25rem;
+  text-align: center;
+  font-family: var(--ac-crawl-font);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ac-crawl);
+  letter-spacing: 0.02em;
+}
+
+.ac-crawl__body {
+  font-family: var(--ac-crawl-font);
+  font-size: clamp(1.05rem, 2.6vw, 1.25rem);
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: justify;
+  color: var(--ac-crawl);
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.ac-crawl__body p {
+  margin: 0 0 1.1em;
+}
+
+.ac-crawl__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3.5rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ac-crawl__fade--top {
+  top: 0;
+  background: linear-gradient(to bottom, #000 20%, transparent);
+}
+
+.ac-crawl__fade--bottom {
+  bottom: 1.6rem;
+  background: linear-gradient(to top, #000 10%, transparent);
+}
+
+.ac-crawl__hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.45rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  z-index: 3;
+}
+
+@keyframes ac-crawl-up {
+  from {
+    transform: translateY(55%) translateZ(0);
+  }
+  to {
+    transform: translateY(-120%) translateZ(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-crawl__scroll {
+    animation: none;
+    position: relative;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    max-height: 100%;
+    overflow: auto;
+    padding: 2.5rem 1.25rem 2rem;
+    transform: none;
+  }
+
+  .ac-crawl__viewport {
+    perspective: none;
+    overflow: auto;
+  }
+
+  .ac-crawl__perspective {
+    transform: none;
+    mask-image: none;
+    -webkit-mask-image: none;
+    position: relative;
+    inset: auto;
+  }
+
+  .ac-card:hover,
+  .ac-card:focus-within {
+    transform: none;
+  }
+}

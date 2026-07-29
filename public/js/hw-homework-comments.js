@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260807";
+    link.href = "/css/hw-homework-comments.css?v=20260808";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -24,10 +24,17 @@
   const DRAG_THRESHOLD = 5;
   const TOUCH_HOLD_MS = 420;
   const TOUCH_MOVE_CANCEL = 12;
+  /** Tap vs drag — beyond this, prefer the user's selection over the soft word preview. */
+  const PREVIEW_DRAG_PX = 10;
+  const PREVIEW_POINTER_MAX_PX = 24;
+  /** Hard cap so a bad lexicon hit never soft-highlights a whole sentence. */
+  const PREVIEW_MAX_CHARS = 40;
   const SKIP_SELECTOR =
-    "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard, .hw-hc-sel-menu";
+    "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard, .hw-hc-sel-menu, .hw-toolbar-bar, .hw-mg-widget, .hw-mg-popup";
   const TOUCH_SKIP_EXTRA =
     ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled)";
+  const PREVIEW_TEXT_SELECTOR =
+    ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-star-block__chip, .hw-star-block__slot-text, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']";
 
   function openRecordingEraseConfirm(anchorBtn, onConfirm) {
     if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
@@ -188,6 +195,14 @@
   let contextMenuBound = null;
   let coarseResizeBound = null;
   let readAloudUtterance = null;
+  /** Soft lexicon-word preview while Cloud is armed (not a committed selection). */
+  let wordPreviewEl = null;
+  let wordPreview = null;
+  let wordPreviewRaf = null;
+  let wordPreviewSeq = 0;
+  let pendingPreviewPoint = null;
+  let wordPreviewBound = false;
+  let previewPointerDown = null;
 
   function hasTeacherReply(comment) {
     return !!(String(comment?.teacherRemark || "").trim() || comment?.teacherRemarkMedia?.id);
@@ -588,8 +603,8 @@
 
     body.appendChild(actions);
 
-    /* Memo boxes are draggable; position is saved. Mini clouds are not. */
-    if (pair) attachMemoDragHandles(body, comment.id, pair);
+    /* Memo + mini clouds are draggable; positions save to draft until submit. */
+    if (pair && studentCloudsDraggable()) attachMemoDragHandles(body, comment.id, pair);
 
     body.addEventListener("pointerdown", (ev) => ev.stopPropagation());
     body.addEventListener("click", (ev) => ev.stopPropagation());
@@ -1089,7 +1104,7 @@
     return typeof comment.x === "number" && typeof comment.y === "number";
   }
 
-  /** Anchor-derived pos in pair review; stored x/y when the memo was dragged. */
+  /** Anchor-derived pos in pair review; stored x/y when the mini/memo was dragged. */
   function resolveCloudPos(comment, mode) {
     if (hasCustomCloudPos(comment)) {
       return { x: comment.x, y: comment.y };
@@ -1133,8 +1148,27 @@
     el.style.top = pos.y + "%";
   }
 
+  /** Student tip positions move until submit; then they stay baked. */
+  function studentCloudsDraggable() {
+    return !config?.readOnly && !config?.studentReviewed && !config?.positionsFrozen;
+  }
+
+  /** Write current tip spots into x/y so submit keeps them. */
+  function bakeCloudPositions() {
+    const now = new Date().toISOString();
+    comments = comments.map((c) => {
+      if (typeof c.x === "number" && typeof c.y === "number") return c;
+      const pos = defaultCloudPos(c);
+      return { ...c, x: pos.x, y: pos.y, updatedAt: now };
+    });
+  }
+
   function updateCloudPos(id, x, y, persist) {
     if (persist === undefined) persist = true;
+    if (persist && (config?.positionsFrozen || (config?.readOnly && !config?.teacherReview))) {
+      /* Submitted / frozen tips stay put — ignore layout nudges that ask to persist. */
+      return;
+    }
     const now = new Date().toISOString();
     comments = comments.map((c) =>
       c.id === id ? { ...c, x: pctClamp(x), y: pctClamp(y), updatedAt: now } : c
@@ -1383,10 +1417,22 @@
     launcherEl?.setAttribute("aria-pressed", armed ? "true" : "false");
     if (armed) {
       global.HwMagnifyingGlass?.setArmed?.(false);
+      void global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+      bindWordPreview();
     } else {
       cancelTouchSelect();
       hideSelectionMenu();
+      clearWordPreview();
+      unbindWordPreview();
+      previewPointerDown = null;
       window.getSelection()?.removeAllRanges();
+    }
+    try {
+      document.dispatchEvent(
+        new CustomEvent("hw-tool-arm-change", { detail: { tool: "cloud", armed } })
+      );
+    } catch {
+      /* ignore */
     }
   }
 
@@ -1856,6 +1902,412 @@
     return { sel, text: sel.toString().trim(), range };
   }
 
+  function shellClientScale() {
+    if (!shellEl) return { x: 1, y: 1 };
+    const r = shellEl.getBoundingClientRect();
+    const w = shellEl.offsetWidth || r.width || 1;
+    const h = shellEl.offsetHeight || r.height || 1;
+    return {
+      x: r.width / w || 1,
+      y: r.height / h || 1,
+    };
+  }
+
+  function flatContainerText(container) {
+    if (!container) return "";
+    let out = "";
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      out += node.textContent || "";
+    }
+    return out;
+  }
+
+  function caretOffsetFromTextNodes(container, endNode, endOffset) {
+    let pos = 0;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      if (node === endNode) return pos + endOffset;
+      pos += (node.textContent || "").length;
+    }
+    return pos;
+  }
+
+  function pointerNearRange(clientX, clientY, range, maxPx) {
+    if (!range) return false;
+    const rects = range.getClientRects();
+    for (const rect of rects) {
+      const dx = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
+      const dy = clientY < rect.top ? rect.top - clientY : clientY > rect.bottom ? clientY - rect.bottom : 0;
+      if (Math.hypot(dx, dy) <= maxPx) return true;
+    }
+    return false;
+  }
+
+  function rangeFromOffsets(container, start, end) {
+    if (!container || start < 0 || end <= start) return null;
+    const range = document.createRange();
+    let pos = 0;
+    let started = false;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      const len = (node.textContent || "").length;
+      if (!started && pos + len > start) {
+        range.setStart(node, Math.max(0, start - pos));
+        started = true;
+      }
+      if (started && pos + len >= end) {
+        range.setEnd(node, Math.max(0, end - pos));
+        return range;
+      }
+      pos += len;
+    }
+    return started ? range : null;
+  }
+
+  function mergeClientRects(rawRects) {
+    const sorted = rawRects
+      .filter((r) => r && r.width > 0 && r.height > 0)
+      .map((r) => ({
+        left: r.left,
+        top: r.top,
+        right: r.right,
+        bottom: r.bottom,
+        width: r.width,
+        height: r.height,
+      }))
+      .sort((a, b) => a.top - b.top || a.left - b.left);
+
+    if (sorted.length <= 1) return sorted;
+
+    const gapX = 3;
+    const gapY = 4;
+    const merged = [];
+    for (const rect of sorted) {
+      const prev = merged[merged.length - 1];
+      if (!prev) {
+        merged.push({ ...rect });
+        continue;
+      }
+      const sameLine =
+        Math.abs(prev.top - rect.top) <= gapY &&
+        Math.abs(prev.bottom - rect.bottom) <= Math.max(gapY, prev.height * 0.45);
+      const near = rect.left <= prev.right + gapX && prev.left <= rect.right + gapX;
+      if (sameLine && near) {
+        prev.left = Math.min(prev.left, rect.left);
+        prev.top = Math.min(prev.top, rect.top);
+        prev.right = Math.max(prev.right, rect.right);
+        prev.bottom = Math.max(prev.bottom, rect.bottom);
+        prev.width = prev.right - prev.left;
+        prev.height = prev.bottom - prev.top;
+      } else {
+        merged.push({ ...rect });
+      }
+    }
+    return merged;
+  }
+
+  function isSanePreviewUnit(unit) {
+    if (!unit?.surface || unit.end <= unit.start) return false;
+    if (unit.end - unit.start > PREVIEW_MAX_CHARS) return false;
+    if (/[。．！？!?\n\r]/.test(unit.surface)) return false;
+    if (global.HwMgLexicon?.isSkipped?.(unit.surface) === true) return false;
+    return true;
+  }
+
+  function previewTextContainerFor(el, clientX, clientY) {
+    const chip = el?.closest?.(".hw-star-block__chip:not(.hw-star-block__chip--placed)");
+    if (chip) return chip;
+    const slotText = el?.closest?.(".hw-star-block__slot-text");
+    if (slotText) return slotText;
+    const fixed = el?.closest?.(".hw-star-block__fixed");
+    if (fixed) return fixed;
+    if (clientX != null && clientY != null && el?.closest?.(".hw-star-block__sentence")) {
+      const stack =
+        typeof document.elementsFromPoint === "function"
+          ? document.elementsFromPoint(clientX, clientY)
+          : [document.elementFromPoint(clientX, clientY)];
+      for (const node of stack) {
+        if (!(node instanceof Element)) continue;
+        const chipHit = node.closest(".hw-star-block__chip:not(.hw-star-block__chip--placed)");
+        if (chipHit) return chipHit;
+        const fixedHit = node.closest(".hw-star-block__fixed");
+        if (fixedHit) return fixedHit;
+        const slotHit = node.closest(".hw-star-block__slot-text");
+        if (slotHit) return slotHit;
+      }
+    }
+    return el?.closest?.(PREVIEW_TEXT_SELECTOR) || null;
+  }
+
+  function previewTargetFromPoint(clientX, clientY) {
+    const stack =
+      typeof document.elementsFromPoint === "function"
+        ? document.elementsFromPoint(clientX, clientY)
+        : [document.elementFromPoint(clientX, clientY)];
+    for (const el of stack) {
+      if (!(el instanceof Element) || !hostEl?.contains(el)) continue;
+      if (el.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA)) continue;
+      if (el.closest(".hw-hc-hover-highlight")) continue;
+      if (previewTextContainerFor(el, clientX, clientY)) return el;
+    }
+    return null;
+  }
+
+  function caretOffsetNearPointer(container, clientX, clientY, maxPx) {
+    const range = caretRangeFromPoint(clientX, clientY);
+    if (!range || !container.contains(range.startContainer)) return -1;
+    if (!pointerNearRange(clientX, clientY, range, maxPx)) return -1;
+    if (range.startContainer.nodeType === Node.TEXT_NODE) {
+      return caretOffsetFromTextNodes(container, range.startContainer, range.startOffset);
+    }
+    const pre = document.createRange();
+    pre.selectNodeContents(container);
+    pre.setEnd(range.startContainer, range.startOffset);
+    return pre.toString().length;
+  }
+
+  function caretOffsetFromStarRect(container, clientX, clientY) {
+    const text = flatContainerText(container);
+    if (!text) return -1;
+    const rect = container.getBoundingClientRect();
+    if (!rect.width || !rect.height) return Math.floor(text.length / 2);
+    const pad = 6;
+    if (
+      clientX < rect.left - pad ||
+      clientX > rect.right + pad ||
+      clientY < rect.top - pad ||
+      clientY > rect.bottom + pad
+    ) {
+      return -1;
+    }
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.max(0, Math.min(text.length - 1, Math.round(ratio * Math.max(0, text.length - 1))));
+  }
+
+  function caretOffsetForPreview(container, clientX, clientY) {
+    const caret = caretOffsetNearPointer(container, clientX, clientY, PREVIEW_POINTER_MAX_PX);
+    if (caret >= 0) return caret;
+    if (container?.closest?.(".hw-star-block__chip, .hw-star-block__slot-text, .hw-star-block__fixed")) {
+      return caretOffsetFromStarRect(container, clientX, clientY);
+    }
+    return -1;
+  }
+
+  function lexiconUnitRangeAt(container, clientX, clientY) {
+    if (!container) return null;
+    const text = flatContainerText(container);
+    if (!text.trim()) return null;
+    const offset = caretOffsetForPreview(container, clientX, clientY);
+    if (offset < 0) return null;
+
+    const forced = global.HwMgLexicon?.pickForceUnit?.(text, offset);
+    if (forced && isSanePreviewUnit(forced)) {
+      const range = rangeFromOffsets(container, forced.start, forced.end);
+      if (range && pointerNearRange(clientX, clientY, range, PREVIEW_POINTER_MAX_PX + 6)) {
+        return { range, surface: forced.surface, start: forced.start, end: forced.end };
+      }
+    }
+
+    const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
+    if (!unit || !isSanePreviewUnit(unit)) return null;
+    const range = rangeFromOffsets(container, unit.start, unit.end);
+    if (!range || !pointerNearRange(clientX, clientY, range, PREVIEW_POINTER_MAX_PX + 6)) return null;
+    return { range, surface: unit.surface, start: unit.start, end: unit.end };
+  }
+
+  function clearWordPreview() {
+    pendingPreviewPoint = null;
+    wordPreview = null;
+    if (wordPreviewRaf) {
+      cancelAnimationFrame(wordPreviewRaf);
+      wordPreviewRaf = null;
+    }
+    wordPreviewEl?.remove();
+    wordPreviewEl = null;
+  }
+
+  function renderWordPreview(range) {
+    if (!shellEl || !hostEl || !range) {
+      clearWordPreview();
+      return;
+    }
+
+    const shellRect = shellEl.getBoundingClientRect();
+    const scale = shellClientScale();
+    if (!wordPreviewEl) {
+      wordPreviewEl = document.createElement("div");
+      wordPreviewEl.className = "hw-hc-hover-highlight";
+      wordPreviewEl.setAttribute("aria-hidden", "true");
+      shellEl.appendChild(wordPreviewEl);
+    }
+
+    wordPreviewEl.replaceChildren();
+    const rects = mergeClientRects(Array.from(range.getClientRects()));
+    for (const rect of rects) {
+      if (!rect.width || !rect.height) continue;
+      const box = document.createElement("span");
+      box.className = "hw-hc-hover-highlight__rect";
+      box.style.left = (rect.left - shellRect.left) / scale.x + "px";
+      box.style.top = (rect.top - shellRect.top) / scale.y + "px";
+      box.style.width = rect.width / scale.x + "px";
+      box.style.height = rect.height / scale.y + "px";
+      wordPreviewEl.appendChild(box);
+    }
+
+    if (!wordPreviewEl.childElementCount) {
+      clearWordPreview();
+    }
+  }
+
+  async function refreshWordPreview(clientX, clientY) {
+    if (!armed || config?.readOnly || !hostEl) {
+      clearWordPreview();
+      return;
+    }
+    if (touchSelect?.active) {
+      clearWordPreview();
+      return;
+    }
+
+    const seq = ++wordPreviewSeq;
+    const target = previewTargetFromPoint(clientX, clientY);
+    if (!target) {
+      clearWordPreview();
+      return;
+    }
+
+    await global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
+    if (seq !== wordPreviewSeq) return;
+
+    const container = previewTextContainerFor(target, clientX, clientY);
+    const hit = lexiconUnitRangeAt(container, clientX, clientY);
+    if (!hit || seq !== wordPreviewSeq) {
+      if (seq === wordPreviewSeq) clearWordPreview();
+      return;
+    }
+
+    wordPreview = {
+      range: hit.range,
+      surface: hit.surface,
+      x: clientX,
+      y: clientY,
+    };
+    renderWordPreview(hit.range);
+  }
+
+  function scheduleWordPreview(clientX, clientY) {
+    if (!armed || config?.readOnly) {
+      clearWordPreview();
+      return;
+    }
+    pendingPreviewPoint = { x: clientX, y: clientY };
+    if (wordPreviewRaf) return;
+    wordPreviewRaf = requestAnimationFrame(() => {
+      wordPreviewRaf = null;
+      const point = pendingPreviewPoint;
+      if (!point) return;
+      void refreshWordPreview(point.x, point.y);
+    });
+  }
+
+  function selectPreviewRange(range) {
+    if (!range) return false;
+    const sel = window.getSelection();
+    if (!sel) return false;
+    try {
+      const next = range.cloneRange();
+      sel.removeAllRanges();
+      sel.addRange(next);
+    } catch (_) {
+      return false;
+    }
+    return !sel.isCollapsed && sel.toString().trim().length > 0;
+  }
+
+  /** Commit path helper: turn the soft preview into a real selection (does not auto-expand). */
+  function adoptWordPreviewSelection(clientX, clientY) {
+    let hit = wordPreview;
+    if ((!hit?.range || !hit.surface) && clientX != null && clientY != null) {
+      const target = previewTargetFromPoint(clientX, clientY);
+      const container = previewTextContainerFor(target, clientX, clientY);
+      hit = lexiconUnitRangeAt(container, clientX, clientY);
+    }
+    if (!hit?.range || !isSanePreviewUnit({
+      surface: hit.surface,
+      start: hit.start ?? 0,
+      end: hit.end ?? (hit.surface ? hit.surface.length : 0),
+    })) {
+      return false;
+    }
+    if (!selectPreviewRange(hit.range)) {
+      if (clientX == null || clientY == null) return false;
+      const target = previewTargetFromPoint(clientX, clientY);
+      const fresh = lexiconUnitRangeAt(previewTextContainerFor(target, clientX, clientY), clientX, clientY);
+      if (!fresh || !selectPreviewRange(fresh.range)) return false;
+    }
+    return !!getHostSelection();
+  }
+
+  function pointerMovedBeyond(start, clientX, clientY, threshold) {
+    if (!start) return false;
+    return Math.hypot(clientX - start.x, clientY - start.y) > threshold;
+  }
+
+  function onWordPreviewPointerMove(ev) {
+    if (!armed || config?.readOnly) return;
+    if (ev.buttons === 1) {
+      clearWordPreview();
+      return;
+    }
+    if (touchSelect?.active) {
+      clearWordPreview();
+      return;
+    }
+    if (ev.target?.closest?.(SKIP_SELECTOR)) {
+      clearWordPreview();
+      return;
+    }
+    scheduleWordPreview(ev.clientX, ev.clientY);
+  }
+
+  function onWordPreviewPointerLeave() {
+    if (touchSelect?.active) return;
+    clearWordPreview();
+  }
+
+  function onWordPreviewPointerDown(ev) {
+    if (!armed || config?.readOnly) return;
+    if (ev.button != null && ev.button !== 0) return;
+    if (shouldSkipTouchTarget(ev.target)) return;
+    if (!hostEl?.contains(ev.target)) return;
+    previewPointerDown = { x: ev.clientX, y: ev.clientY, pointerId: ev.pointerId };
+    scheduleWordPreview(ev.clientX, ev.clientY);
+  }
+
+  function bindWordPreview() {
+    if (wordPreviewBound || !hostEl) return;
+    wordPreviewBound = true;
+    hostEl.addEventListener("pointermove", onWordPreviewPointerMove);
+    hostEl.addEventListener("pointerdown", onWordPreviewPointerDown);
+    hostEl.addEventListener("pointerleave", onWordPreviewPointerLeave);
+    hostEl.addEventListener("mouseleave", onWordPreviewPointerLeave);
+  }
+
+  function unbindWordPreview() {
+    if (hostEl && wordPreviewBound) {
+      hostEl.removeEventListener("pointermove", onWordPreviewPointerMove);
+      hostEl.removeEventListener("pointerdown", onWordPreviewPointerDown);
+      hostEl.removeEventListener("pointerleave", onWordPreviewPointerLeave);
+      hostEl.removeEventListener("mouseleave", onWordPreviewPointerLeave);
+    }
+    wordPreviewBound = false;
+    clearWordPreview();
+  }
+
   function commitSelectionToMemo() {
     const picked = getHostSelection();
     if (!picked) return false;
@@ -2078,6 +2530,7 @@
     setSelectionBetweenPoints(touchSelect.startX, touchSelect.startY, clientX, clientY);
     const picked = getHostSelection();
     cancelTouchSelect();
+    clearWordPreview();
     if (picked) {
       showSelectionMenu(picked.range.getBoundingClientRect());
     }
@@ -2092,6 +2545,7 @@
 
     cancelTouchSelect();
     hideSelectionMenu();
+    scheduleWordPreview(ev.clientX, ev.clientY);
 
     touchSelect = {
       pointerId: ev.pointerId,
@@ -2101,12 +2555,13 @@
       holdTimer: setTimeout(() => {
         if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
         touchSelect.active = true;
+        clearWordPreview();
         hostEl?.classList.add("hw-hc-touch-selecting");
         setSelectionBetweenPoints(ev.clientX, ev.clientY, ev.clientX, ev.clientY);
       }, TOUCH_HOLD_MS),
     };
     try {
-      hostEl.setPointerCapture(ev.pointerId);
+      hostEl.setPointerCapture(touchSelect.pointerId);
     } catch (_) {}
   }
 
@@ -2115,10 +2570,12 @@
     const dx = ev.clientX - touchSelect.startX;
     const dy = ev.clientY - touchSelect.startY;
     if (!touchSelect.active) {
+      scheduleWordPreview(ev.clientX, ev.clientY);
       if (Math.hypot(dx, dy) > TOUCH_MOVE_CANCEL) cancelTouchSelect();
       return;
     }
     ev.preventDefault();
+    clearWordPreview();
     setSelectionBetweenPoints(touchSelect.startX, touchSelect.startY, ev.clientX, ev.clientY);
   }
 
@@ -2128,10 +2585,22 @@
       ev.preventDefault();
       finishTouchSelect(ev.clientX, ev.clientY);
     } else if (armed && !config?.readOnly) {
-      offerStarUnitSelection(ev.target);
+      const start = touchSelect;
       cancelTouchSelect();
+      /* Tap / light release: take the soft-previewed lexicon word (not a long drag). */
+      if (
+        !pointerMovedBeyond(start, ev.clientX, ev.clientY, PREVIEW_DRAG_PX) &&
+        (adoptWordPreviewSelection(ev.clientX, ev.clientY) || offerStarUnitSelection(ev.target))
+      ) {
+        const picked = getHostSelection();
+        clearWordPreview();
+        if (picked) showSelectionMenu(picked.range.getBoundingClientRect());
+      } else {
+        clearWordPreview();
+      }
     } else {
       cancelTouchSelect();
+      clearWordPreview();
     }
     try {
       hostEl.releasePointerCapture(ev.pointerId);
@@ -2141,12 +2610,16 @@
   function onTouchSelectPointerCancel(ev) {
     if (!touchSelect || touchSelect.pointerId !== ev.pointerId) return;
     cancelTouchSelect();
+    clearWordPreview();
   }
 
   function onSelectionChange() {
     if (!armed || !isCoarsePointer() || touchSelect?.active) return;
     const picked = getHostSelection();
-    if (picked) showSelectionMenu(picked.range.getBoundingClientRect());
+    if (picked) {
+      clearWordPreview();
+      showSelectionMenu(picked.range.getBoundingClientRect());
+    }
   }
 
   function onHostContextMenu(ev) {
@@ -2207,18 +2680,47 @@
     if (isCoarsePointer()) return;
     if (ev.target.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA)) return;
 
+    const down = previewPointerDown;
+    previewPointerDown = null;
+    const dragged = pointerMovedBeyond(down, ev.clientX, ev.clientY, PREVIEW_DRAG_PX);
+
     let picked = getHostSelection();
-    if (!picked) {
-      if (offerStarUnitSelection(ev.target)) {
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
+
+    /* Drag expanded a real selection — prefer the user's range over the soft preview. */
+    if (picked && dragged) {
+      clearWordPreview();
+      commitSelectionToMemo();
+      ev.preventDefault();
+      ev.stopPropagation();
       return;
     }
 
-    commitSelectionToMemo();
-    ev.preventDefault();
-    ev.stopPropagation();
+    /* Tap / click with little or no drag: adopt the soft-previewed lexicon word. */
+    if (!dragged && adoptWordPreviewSelection(ev.clientX, ev.clientY)) {
+      clearWordPreview();
+      commitSelectionToMemo();
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+
+    picked = getHostSelection();
+    if (picked) {
+      clearWordPreview();
+      commitSelectionToMemo();
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+
+    if (offerStarUnitSelection(ev.target)) {
+      clearWordPreview();
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
+
+    clearWordPreview();
   }
 
   function onKeyDown(ev) {
@@ -2299,14 +2801,21 @@
   }
 
   function onCloudDragStart(ev, commentId, mode, el, handleEl) {
-    if ((config?.readOnly && !isPairReviewMode()) || ev.button !== 0) return;
+    if (ev.button !== 0) return;
+    const comment = comments.find((c) => c.id === commentId);
+    if (!comment) return;
+
+    if (comment.author === "teacher") {
+      if (!(teacherNotesDraggable() && (!config?.readOnly || isPairReviewMode()))) return;
+    } else if (!studentCloudsDraggable()) {
+      return;
+    }
+
     /* Mini tips are <button>s — memo exclusion would block all mini drag. */
     if (mode !== "mini" && isMemoDragExcludedTarget(ev.target)) return;
 
     ev.stopPropagation();
 
-    const comment = comments.find((c) => c.id === commentId);
-    if (!comment) return;
     const pos = resolveCloudPos(comment, mode);
 
     dragState = {
@@ -2355,6 +2864,10 @@
       const x = parseFloat(state.el.style.left) || 0;
       const y = parseFloat(state.el.style.top) || 0;
       updateCloudPos(state.commentId, x, y);
+      /* Persist tip spot right away so a quick submit still has the new place. */
+      if (!config?.teacherReview && !config?.readOnly && !config?.positionsFrozen) {
+        void flushDraftSave();
+      }
       if (state.mode === "mini") suppressMiniClickUntil = Date.now() + 300;
       renderAll();
       if (state.mode === "memo") {
@@ -2982,11 +3495,11 @@
       expandComment(comment.id);
     });
     /* Standalone tips (incl. teacher/JD green) are free-draggable; paired review minis use renderReviewMiniPair.
-       Student reviewed: JD green tips open only — no drag. */
+       Student tips move until submit, then stay stuck. JD green tips: open only when reviewed. */
     const canDragMini =
       comment.author === "teacher"
         ? teacherNotesDraggable() && (!config?.readOnly || isPairReviewMode())
-        : !config?.readOnly || isPairReviewMode();
+        : studentCloudsDraggable();
     if (canDragMini) {
       btn.classList.add("hw-hc-mini--draggable");
       btn.title = "Drag to move";
@@ -3038,7 +3551,7 @@
     const canDragMemo =
       isTeacherNote
         ? teacherNotesDraggable() && (!config?.readOnly || isPairReviewMode())
-        : !config?.readOnly || isPairReviewMode();
+        : studentCloudsDraggable();
     if (canDragMemo) body.title = "Drag to move";
 
     const studentReadonlyView = !!config?.readOnly && !config?.teacherReview;
@@ -3278,6 +3791,7 @@
     reviewResizeObserver = null;
     dismissOnboarding({ persist: false });
     unbindTouchSelection();
+    unbindWordPreview();
     unbindDocPointer();
     unbindKeyDown();
     if (hostEl) {
@@ -3380,8 +3894,9 @@
     }
 
     if (config.studentReviewed) {
+      config.positionsFrozen = true;
       seedStudentReviewedOpen();
-      hostEl.classList.add("hw-hc-student-reviewed");
+      hostEl.classList.add("hw-hc-student-reviewed", "hw-hc-host--positions-baked");
       ensureStudentReviewedChrome();
       bindReviewResize();
       renderAll();
@@ -3390,6 +3905,8 @@
     }
 
     if (config.readOnly) {
+      config.positionsFrozen = true;
+      hostEl.classList.add("hw-hc-host--positions-baked");
       renderAll();
       return true;
     }
@@ -3510,14 +4027,19 @@
   }
 
   function getCommentsForSubmit() {
+    bakeCloudPositions();
     return normalizeComments(comments, true);
   }
 
   function freezeAfterSubmit() {
     if (!config) return;
+    bakeCloudPositions();
     config.readOnly = true;
+    config.positionsFrozen = true;
     setArmed(false);
     minimizeActive();
+    hostEl?.classList.add("hw-hc-host--positions-baked");
+    renderAll();
   }
 
   async function clearDraftStorage() {

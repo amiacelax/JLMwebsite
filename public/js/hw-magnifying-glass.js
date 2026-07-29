@@ -128,7 +128,21 @@
   }
 
   function supportsHoverHighlight() {
-    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    /* Always on while Glass is armed — touch phones need the green word boxes too
+     * (hover/fine-pointer media queries are false on mobile). */
+    return true;
+  }
+
+  /** Visual size ÷ layout size — corrects highlight boxes under Focus CSS zoom. */
+  function shellClientScale() {
+    if (!shellEl) return { x: 1, y: 1 };
+    const r = shellEl.getBoundingClientRect();
+    const w = shellEl.offsetWidth || r.width || 1;
+    const h = shellEl.offsetHeight || r.height || 1;
+    return {
+      x: r.width / w || 1,
+      y: r.height / h || 1,
+    };
   }
 
   function enabled() {
@@ -532,6 +546,13 @@
       }
     } else {
       clearHoverHighlight();
+    }
+    try {
+      document.dispatchEvent(
+        new CustomEvent("hw-tool-arm-change", { detail: { tool: "glass", armed } })
+      );
+    } catch {
+      /* ignore */
     }
   }
 
@@ -1287,6 +1308,7 @@
     }
 
     const shellRect = shellEl.getBoundingClientRect();
+    const scale = shellClientScale();
     if (!hoverHighlightEl) {
       hoverHighlightEl = document.createElement("div");
       hoverHighlightEl.className = "hw-mg-hover-highlight";
@@ -1300,10 +1322,10 @@
       if (!rect.width || !rect.height) continue;
       const box = document.createElement("span");
       box.className = "hw-mg-hover-highlight__rect";
-      box.style.left = rect.left - shellRect.left + "px";
-      box.style.top = rect.top - shellRect.top + "px";
-      box.style.width = rect.width + "px";
-      box.style.height = rect.height + "px";
+      box.style.left = (rect.left - shellRect.left) / scale.x + "px";
+      box.style.top = (rect.top - shellRect.top) / scale.y + "px";
+      box.style.width = rect.width / scale.x + "px";
+      box.style.height = rect.height / scale.y + "px";
       hoverHighlightEl.appendChild(box);
     }
 
@@ -1459,10 +1481,12 @@
   }
 
   async function refreshHoverHighlight(clientX, clientY) {
-    if (!armed || !supportsHoverHighlight() || lookupBusy || !hostEl) {
+    if (!armed || !supportsHoverHighlight() || !hostEl) {
       clearHoverHighlight();
       return;
     }
+    /* Keep the green box while a lookup popup is loading/open. */
+    if (lookupBusy) return;
 
     const seq = ++hoverHighlightSeq;
     const target = lookupTargetFromPoint(clientX, clientY);
@@ -2095,7 +2119,10 @@
     e.stopPropagation();
     e.stopImmediatePropagation();
 
-    clearHoverHighlight();
+    /* Paint the green word box before lookupBusy blocks hover updates. */
+    const preTarget = e.target;
+    const preRange = hoverRangeQuick(preTarget, e.clientX, e.clientY);
+    if (preRange) renderHoverHighlight(preRange);
     closePopup();
 
     const local = clientToLocal(e.clientX, e.clientY);
@@ -2122,15 +2149,23 @@
       const data = await resolveLookup(e.target, e.clientX, e.clientY, { maxPointerPx: 36 });
       if (!data?.surface || lookupSurfaceBlocked(data.surface, null)) {
         closePopup();
+        clearHoverHighlight();
         showToast("No Japanese word here — try again");
         return;
       }
       const container = lookupContainerFor(e.target, e.clientX, e.clientY);
+      if (container && Number.isFinite(data.start) && Number.isFinite(data.end)) {
+        const hitRange = rangeFromOffsets(container, data.start, data.end);
+        if (hitRange) renderHoverHighlight(hitRange);
+      } else {
+        scheduleHoverHighlight(e.clientX, e.clientY);
+      }
       const lookup = (await fetchLookup(data)) || {};
       const ctx = buildPopupContext(data, lookup, container);
       renderPopup(ctx, local.x, local.y);
     } catch {
       closePopup();
+      clearHoverHighlight();
       showToast("Lookup failed — try again");
     } finally {
       clearTimeout(lookupTimeout);

@@ -80,7 +80,7 @@ Publish: save JSON under `public/homework/assignments/`, add catalog entry, `npm
 
 - `students` — usernames (lowercase) allowed to see the assignment
 - `youtubeUrl` — latest lesson for that student
-- `lessonPlaylistUrl` — per-student YouTube lesson playlist; Worker reads the public RSS feed and sets `latestLessonUrl` to the last video in the feed (newest at bottom of playlist, ~1h cache)
+- `lessonPlaylistUrl` — per-student YouTube lesson playlist; Worker reads the public RSS feed and sets `latestLessonUrl` to the video with the newest YouTube upload date (`<published>`), not playlist order (~1h cache)
 - `playlistUrl` — all lessons (top-level in catalog)
 - `forSale` / `salePrice` — future PayPal `$0.99` archive for non-subscribers
 

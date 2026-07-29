@@ -111,6 +111,7 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
 /* ── Hub v6 tab bar (only inside this shell — not main teacher tabs) ── */
 
 .hw-hub-v6-tabs {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -120,7 +121,29 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   background: color-mix(in srgb, #0e1524 70%, transparent);
 }
 
+/* Sliding selected pill — same motion idea as video/audio-only switch. */
+.hw-hub-v6-tabs__slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 0.55rem;
+  background: var(--color-green, var(--hw-v6-green));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  transition:
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hw-hub-v6-tabs:not(.is-slider-ready) .hw-hub-v6-tabs__slider {
+  transition: none;
+}
+
 .hw-hub-v6-tabs__btn {
+  position: relative;
+  z-index: 1;
   appearance: none;
   border: 1px solid transparent;
   border-radius: 0.55rem;
@@ -132,6 +155,7 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   font-weight: 600;
   cursor: pointer;
   line-height: 1.2;
+  transition: color 0.2s ease;
 }
 
 .hw-hub-v6-tabs__btn:hover,
@@ -144,8 +168,15 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
 .hw-hub-v6-tabs__btn.is-active,
 .hw-hub-v6-tabs__btn[aria-selected="true"] {
   color: #0b1220;
-  background: var(--hw-v6-accent);
-  border-color: color-mix(in srgb, var(--hw-v6-accent) 70%, #fff);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Before slider JS runs: keep green selected look. */
+.hw-hub-v6-tabs:not(.is-slider-ready) .hw-hub-v6-tabs__btn.is-active,
+.hw-hub-v6-tabs:not(.is-slider-ready) .hw-hub-v6-tabs__btn[aria-selected="true"] {
+  background: var(--color-green, var(--hw-v6-green));
+  border-color: color-mix(in srgb, var(--color-green, var(--hw-v6-green)) 70%, #fff);
 }
 
 .hw-hub-v6-pane[hidden] {

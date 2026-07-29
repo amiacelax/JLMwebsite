@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Article text crawl preview — prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="article-crawl.css">
+</head>
+<body>
+  <header class="ac-header">
+    <p class="ac-kicker">Prototype · TN / article cards</p>
+    <h1>Article text preview (Star Wars crawl)</h1>
+    <p class="ac-lede">
+      Same idea as the image thumbnail on a story card — but for the <em>words</em>.
+      Hover or focus a card (or press <kbd>Peek text</kbd>) to open a dark panel where the article body scrolls up in perspective.
+    </p>
+    <p class="ac-note">
+      Not wired into News-Herald CMS yet — that project isn’t in this workspace.
+      Portable pattern for when you open the TN repo.
+    </p>
+  </header>
+
+  <main class="ac-grid" id="ac-grid" aria-label="Article cards"></main>
+
+  <div class="ac-crawl" id="ac-crawl" hidden>
+    <div class="ac-crawl__scrim" data-ac-close tabindex="-1" aria-hidden="true"></div>
+    <div
+      class="ac-crawl__stage"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ac-crawl-title"
+      aria-describedby="ac-crawl-body"
+    >
+      <button type="button" class="ac-crawl__close" data-ac-close aria-label="Close text preview">×</button>
+      <div class="ac-crawl__fade ac-crawl__fade--top" aria-hidden="true"></div>
+      <div class="ac-crawl__viewport">
+        <div class="ac-crawl__perspective">
+          <div class="ac-crawl__scroll" id="ac-crawl-scroll">
+            <p class="ac-crawl__episode" id="ac-crawl-title"></p>
+            <div class="ac-crawl__body" id="ac-crawl-body"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ac-crawl__fade ac-crawl__fade--bottom" aria-hidden="true"></div>
+      <p class="ac-crawl__hint">Esc or click outside to close</p>
+    </div>
+  </div>
+
+  <script src="article-crawl.js"></script>
+</body>
+</html>

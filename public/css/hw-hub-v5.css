@@ -1006,19 +1006,86 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   display: none !important;
 }
 
+/* Notebook picker — pill tabs above the big page. */
+.hw-hub-v5-notebook-books {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.hw-hub-v5-notebook-books__btn {
+  appearance: none;
+  margin: 0;
+  padding: 0.38rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 32%, #b7c9b8);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 14%, #fff);
+  color: #1f4632;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.hw-hub-v5-notebook-books__btn:hover,
+.hw-hub-v5-notebook-books__btn:focus-visible {
+  color: #0d1b2a;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 24%, #fff);
+  border-color: color-mix(in srgb, var(--color-green, #4ade80) 55%, #8a7460);
+  outline: none;
+}
+
+.hw-hub-v5-notebook-books__btn.is-active {
+  background: var(--color-green, #4ade80);
+  border-color: color-mix(in srgb, var(--color-green, #4ade80) 70%, #fff);
+  color: #0d1b2a;
+}
+
+.hw-hub-v5-notebook-books__btn--add {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 8%, transparent);
+  color: #2f5f45;
+}
+
+.hw-hub-v5-notebook-books__btn--add:hover,
+.hw-hub-v5-notebook-books__btn--add:focus-visible {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 18%, transparent);
+  color: #0d1b2a;
+}
+
 .hw-hub-v5-notebook-diary__chrome {
   --hw-diary-paper: #f1e6d0;
   --hw-diary-paper-deep: #e4d6b8;
   --hw-diary-ink: #1f2a22;
-  --hw-diary-rule: rgba(92, 72, 48, 0.22);
+  --hw-diary-rule: rgba(92, 72, 48, 0.2);
   --hw-diary-spine: #3d5c48;
+  --hw-diary-line-gap: 1.85rem;
+  --hw-diary-kanji-cell: 2.05rem;
+  /* Daily write origin — custom notebooks can override later. */
+  --hw-diary-write-left: 1.05rem;
+  --hw-diary-write-top: 137.4px;
+  --hw-diary-write-right: 1.15rem;
+  --hw-diary-write-bottom: 4.85rem;
+  --hw-diary-font-latin: Verdana, Geneva, sans-serif;
+  --hw-diary-font-jp: "Yu Gothic", "YuGothic", "Hiragino Sans", Meiryo, sans-serif;
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 18rem;
-  max-height: min(68vh, 34rem);
-  padding: 0.85rem 1rem 0.75rem;
-  border-radius: 0.28rem 0.75rem 0.75rem 0.28rem;
+  min-height: min(88vh, 52rem);
+  max-height: none;
+  padding: 0.85rem 1rem 0.85rem;
+  border-radius: 0.28rem 0.85rem 0.85rem 0.28rem;
   border: 1px solid color-mix(in srgb, #b9a888 70%, #2a342c);
   background:
     linear-gradient(90deg, var(--hw-diary-spine) 0 0.42rem, transparent 0.42rem),
@@ -1042,7 +1109,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.15rem 0.15rem 0.6rem 0.95rem;
+  padding: 0.15rem 0.15rem 0.65rem 0.95rem;
   border-bottom: 1px solid var(--hw-diary-rule);
 }
 
@@ -1051,17 +1118,31 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   min-width: 0;
 }
 
-.hw-hub-v5-notebook-diary__header .hw-hub-v5-status-ping-host--diary {
-  flex: 0 0 auto;
+/*
+ * Hub-wide status ping — host-local center on the panels shell (same space as
+ * Glass/Cloud when the worksheet top aligns with the panel stack). Visible on
+ * every major tab; not clipped by inactive panel visibility:hidden.
+ */
+.hw-hub-v5-panels > .hw-hub-v5-status-ping-host--diary,
+.hw-hub-v5-panels > .hw-hub-v5-status-ping-host--hub {
+  position: absolute;
+  left: 49.5px;
+  top: 41.4px;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Room for the expanding hub ring pulse (same as status card ping). */
   width: 3.35rem;
   height: 3.35rem;
-  margin: -0.35rem -0.2rem 0 0;
+  margin: 0;
+  transform: translate(-50%, -50%);
   overflow: visible;
-  z-index: 4;
+  pointer-events: auto;
+}
+
+.hw-hub-v5-panels > .hw-hub-v5-status-ping-host--diary[hidden],
+.hw-hub-v5-panels > .hw-hub-v5-status-ping-host--hub[hidden] {
+  display: none !important;
 }
 
 .hw-hub-v5-notebook-diary__date {
@@ -1074,6 +1155,13 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   line-height: 1.25;
 }
 
+.hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__date {
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
 .hw-hub-v5-notebook-diary__lesson {
   margin: 0.22rem 0 0;
   font-size: 0.82rem;
@@ -1081,15 +1169,241 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   line-height: 1.35;
 }
 
+.hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__lesson {
+  margin-top: 0.28rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #5a4e3d;
+}
+
+.hw-hub-v5-notebook-diary__search {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.35rem 0.55rem 0.95rem;
+  border-bottom: 1px solid var(--hw-diary-rule);
+}
+
+.hw-hub-v5-notebook-diary__search[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-notebook-diary__search-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid color-mix(in srgb, #8a7460 40%, transparent);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, #fffaf0 82%, var(--hw-diary-paper-deep));
+  color: var(--hw-diary-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.hw-hub-v5-notebook-diary__search-input::placeholder {
+  color: #8a7a66;
+}
+
+.hw-hub-v5-notebook-diary__search-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--hw-diary-spine) 55%, #8a7460);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 2px color-mix(in srgb, var(--hw-diary-spine) 18%, transparent);
+}
+
+.hw-hub-v5-notebook-diary__write-status {
+  margin: 0 0 0.35rem;
+  min-height: 1.1em;
+  font-size: 0.75rem;
+  color: #6a5d4a;
+  letter-spacing: 0.02em;
+}
+
+/* Daily “Saved” — host-local center, same space as Glass/Cloud (non-focus). */
+.hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__write-status {
+  position: absolute;
+  left: 190.5px;
+  top: 850.4px;
+  z-index: 5;
+  margin: 0;
+  min-height: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hw-hub-v5-notebook-diary__write {
+  display: block;
+  width: 100%;
+  min-height: 26rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: #1f3f68;
+  caret-color: #1f3f68;
+  /* Latin → Verdana; Japanese falls through to Yu Gothic. */
+  font-family: var(--hw-diary-font-latin), var(--hw-diary-font-jp);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: var(--hw-diary-line-gap, 1.85rem);
+  letter-spacing: 0.01em;
+  outline: none;
+  box-shadow: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Daily: text starts at host-local point; lines live on the write surface. */
+.hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__page {
+  padding: 0;
+  background-image: none;
+  overflow: visible;
+  min-height: calc(var(--hw-diary-write-top) + 26rem);
+}
+
+.hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__write {
+  position: absolute;
+  left: var(--hw-diary-write-left);
+  top: var(--hw-diary-write-top);
+  right: var(--hw-diary-write-right);
+  bottom: var(--hw-diary-write-bottom);
+  z-index: 2;
+  width: auto;
+  min-height: 0;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  /* Ruled lines locked to line-height so glyphs sit on the notebook lines. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--hw-diary-line-gap) - 1px),
+    var(--hw-diary-rule) calc(var(--hw-diary-line-gap) - 1px),
+    var(--hw-diary-rule) var(--hw-diary-line-gap)
+  );
+  background-attachment: local;
+}
+
+.hw-hub-v5-notebook-diary__write::placeholder {
+  color: color-mix(in srgb, #1f3f68 35%, transparent);
+  font-family: inherit;
+}
+
+.hw-hub-v5-notebook-diary__write:disabled {
+  opacity: 0.7;
+}
+
 .hw-hub-v5-notebook-diary__page {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 28rem;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0.7rem 0.35rem 0.55rem 0.95rem;
+  padding: 0.55rem 0.55rem 1.25rem 1.05rem;
   outline: none;
   -webkit-overflow-scrolling: touch;
+  background-color: transparent;
+}
+
+.hw-hub-v5-notebook-diary__page--lined {
+  /* Faint ruled lines — real notebook paper. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--hw-diary-line-gap) - 1px),
+    var(--hw-diary-rule) calc(var(--hw-diary-line-gap) - 1px),
+    var(--hw-diary-rule) var(--hw-diary-line-gap)
+  );
+  background-attachment: local;
+  line-height: var(--hw-diary-line-gap);
+}
+
+.hw-hub-v5-notebook-diary__page--kanji {
+  /* Genkouyoushi-style kanji boxes (geometry paper) — static paper when empty. */
+  background-image:
+    linear-gradient(to right, var(--hw-diary-rule) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hw-diary-rule) 1px, transparent 1px);
+  background-size: var(--hw-diary-kanji-cell) var(--hw-diary-kanji-cell);
+  background-attachment: local;
+}
+
+.hw-hub-v5-notebook-diary__page--kanji:has(.hw-hub-v5-notebook-kanji-grid) {
+  /* Interactive grid draws its own boxes — avoid double lines. */
+  background-image: none;
+  padding: 0.45rem 0.55rem 0.95rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.hw-hub-v5-notebook-kanji-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--hw-kanji-cols, 4), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--hw-kanji-rows, 5), minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  max-width: min(100%, 32rem);
+  /* Keep squares: 4 wide × 5 tall. */
+  aspect-ratio: var(--hw-kanji-cols, 4) / var(--hw-kanji-rows, 5);
+  max-height: min(82vh, 40rem);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook-kanji-cell {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--hw-diary-rule);
+  border-right-width: 0;
+  border-bottom-width: 0;
+  background: transparent;
+  color: var(--hw-diary-ink);
+  caret-color: var(--hw-diary-ink);
+  font-family: "APJapanese", "APJapanesefont", sans-serif;
+  font-size: clamp(2.1rem, 9vw, 4rem);
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.hw-hub-v5-notebook-kanji-cell[data-kanji-edge-right="1"] {
+  border-right-width: 1px;
+}
+
+.hw-hub-v5-notebook-kanji-cell[data-kanji-edge-bottom="1"] {
+  border-bottom-width: 1px;
+}
+
+.hw-hub-v5-notebook-kanji-cell:focus {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--hw-diary-spine) 55%, transparent);
+  background-color: color-mix(in srgb, #fff8ec 55%, transparent);
+}
+
+.hw-hub-v5-notebook-kanji-cell:disabled {
+  opacity: 0.7;
+}
+
+.hw-hub-v5-notebook-kanji-cell--search-miss {
+  opacity: 0.28;
+}
+
+.hw-hub-v5-notebook-kanji-cell--search-hit {
+  background-color: color-mix(in srgb, var(--hw-diary-spine) 14%, transparent);
 }
 
 .hw-hub-v5-notebook-diary__page:focus-visible {
@@ -1103,6 +1417,10 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   justify-content: center;
   padding: 0.5rem 0.35rem 0.1rem 0.95rem;
   border-top: 1px solid var(--hw-diary-rule);
+}
+
+.hw-hub-v5-notebook-diary__pager-row[hidden] {
+  display: none !important;
 }
 
 .hw-hub-v5-notebook-diary__pager {
@@ -1150,9 +1468,8 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 }
 
 /*
- * Status ping on cream paper: dark disc + punchy signal colors.
- * Ring pulse must match hub status (`hw-hub-v5-bubble-ring` / `-acked`) ?
- * do not swap to separate diary keyframes (layout/color pass lost the pulse).
+ * Hub-wide status ping: dark disc only (no outer ring / edge color).
+ * Pulse ring must match hub status (`hw-hub-v5-bubble-ring` / `-acked`).
  */
 .hw-hub-v5-notebook-diary__chrome,
 .hw-hub-v5-notebook-diary__header {
@@ -1170,11 +1487,8 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   height: 2.5rem !important;
   transform: none;
   overflow: visible;
-  background: #1b2420;
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, #f6ecda 88%, #1b2420),
-    0 0 0 3px color-mix(in srgb, #1b2420 55%, transparent),
-    0 3px 10px rgba(0, 0, 0, 0.35);
+  background: #15202b;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
 }
 
 .hw-hub-v5-status-bubble--in-diary:hover {
@@ -1275,22 +1589,13 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__empty {
   margin: 0.35rem 0 0;
   color: #6a5d4a;
+  background: color-mix(in srgb, var(--hw-diary-paper, #f1e6d0) 82%, transparent);
+  padding: 0.15rem 0.25rem;
+  border-radius: 0.2rem;
+  max-width: 28rem;
 }
 
-body.hw-hub-v5-notebook-open #hw-v5-complete-card,
-body.hw-hub-v5-notebook-open #hw-v5-sellup-frame,
-body.hw-hub-v5-notebook-open #hw-v5-noplan-sellup-frame,
-body.hw-hub-v5-notebook-open #hw-v5-no-hw-sellup-frame,
-body.hw-hub-v5-notebook-open #hw-v5-no-hw-empty,
-body.hw-hub-v5-notebook-open #hw-v5-noplan-welcome,
-body.hw-hub-v5-notebook-open #hw-current-assignment-card,
-body.hw-hub-v5-notebook-open #hw-offline-tools-card,
-body.hw-hub-v5-notebook-open .hw-hub-v2-worksheet,
-body.hw-hub-v5-notebook-open .hw-submission-view-banner {
-  display: none !important;
-}
-
-/* Past HW stays clickable beside View notebook; opening it closes the diary. */
+/* Past HW entry under the complete card; notebook lives in the Notebook tab. */
 
 .hw-hub-v5-notebook {
   max-width: none;
@@ -2030,14 +2335,239 @@ body.hw-hub-v5-notebook-open .hw-submission-view-banner {
   }
 }
 
-/* Mobile app-style tabs (Hub v5) */
+/* Hub section tabs — PC + mobile (one panel at a time). */
 body.hw-hub-v5-page .hw-hub-v5-app {
   max-width: 52rem;
   margin: 0 auto;
 }
 
+.hw-hub-v5-tabs-wrap {
+  position: relative;
+  z-index: 24;
+  max-width: 52rem;
+  margin: 0 auto 0.85rem;
+  padding: 0;
+}
+
+/* Teacher Hub-style track + sliding green selected pill (like video/audio switch). */
 .hw-hub-v5-tabs {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: visible;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--color-bg-card) 78%, transparent);
+}
+
+.hw-hub-v5-tabs__slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 0.55rem;
+  background: var(--color-green);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  transition:
+    transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hw-hub-v5-tabs:not(.is-slider-ready) .hw-hub-v5-tabs__slider {
+  transition: none;
+}
+
+.hw-hub-v5-tabs__btn {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  appearance: none;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease;
+}
+
+.hw-hub-v5-tabs__btn:hover,
+.hw-hub-v5-tabs__btn:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+/* Optional full/short label swap (unused while all tabs use a single label). */
+.hw-hub-v5-tabs__label--short {
   display: none;
+}
+
+.hw-hub-v5-tabs__label--full {
+  display: inline;
+}
+
+.hw-hub-v5-tabs__btn.is-active {
+  color: #0d1b2a;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Before slider JS runs: keep green selected look. */
+.hw-hub-v5-tabs:not(.is-slider-ready) .hw-hub-v5-tabs__btn.is-active {
+  background: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-green) 70%, #fff);
+}
+
+.hw-hub-v5-tabs__btn:active {
+  transform: none;
+}
+
+/* Stack tab panels in one grid cell — tallest panel sets height so scroll/clouds stay put. */
+.hw-hub-v5-panels {
+  display: grid;
+  position: relative;
+  margin-bottom: 1rem;
+  min-height: var(--hw-hub-panels-min-h, 0);
+}
+
+#hw-v5-app {
+  overflow-anchor: none;
+}
+
+.hw-hub-v5-panels > .hw-hub-v5-panel--homework,
+.hw-hub-v5-panels > .hw-hub-v5-below {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.hw-hub-v5-below {
+  display: grid;
+  margin-bottom: 0;
+}
+
+.hw-hub-v5-below > .hw-hub-v5-panel {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+#hw-v5-panel-notebook .hw-hub-v5-notebook-diary {
+  margin-bottom: 0;
+}
+
+.hw-hub-v5-games-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.hw-hub-v5-lessons-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.hw-hub-v5-lesson-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.hw-hub-v5-lesson-tabs__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.38rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 32%, #b7c9b8);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 14%, #fff);
+  color: #1f4632;
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+a.hw-hub-v5-lesson-tabs__btn:hover,
+a.hw-hub-v5-lesson-tabs__btn:focus-visible {
+  color: #0d1b2a;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 55%, #fff);
+  border-color: var(--color-green, #4ade80);
+  outline: none;
+}
+
+a.hw-hub-v5-lesson-tabs__btn[aria-disabled="true"] {
+  opacity: 0.62;
+  cursor: default;
+  pointer-events: none;
+}
+
+.hw-hub-v5-lesson-tabs__btn:hover,
+.hw-hub-v5-lesson-tabs__btn:focus-visible {
+  color: #0d1b2a;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 55%, #fff);
+  border-color: var(--color-green, #4ade80);
+  outline: none;
+}
+
+.hw-hub-v5-lesson-tabs__btn.is-active {
+  background: var(--color-green, #4ade80);
+  border-color: color-mix(in srgb, var(--color-green, #4ade80) 70%, #fff);
+  color: #0d1b2a;
+}
+
+.hw-hub-v5-lesson-pane[hidden] {
+  display: none !important;
+}
+
+/* [hidden] keeps a11y — override UA display:none so grid still measures inactive panels. */
+.hw-hub-v5-panel--homework[hidden],
+.hw-hub-v5-below .hw-hub-v5-panel[hidden] {
+  display: block !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hw-hub-v5-panel--homework.is-active,
+.hw-hub-v5-below .hw-hub-v5-panel.is-active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.hw-hub-v5-panels > .hw-hub-v5-panel--homework.is-active {
+  z-index: 2;
+}
+
+.hw-hub-v5-panels > .hw-hub-v5-below:has(.hw-hub-v5-panel.is-active) {
+  z-index: 2;
 }
 
 @media (max-width: 767px) {
@@ -2045,83 +2575,60 @@ body.hw-hub-v5-page .hw-hub-v5-app {
     padding-top: 1.25rem;
   }
 
+  /*
+   * True student hides .hw-platform-bar (the bar that normally clears the fixed
+   * header). Keep header clearance here — do not let the 1.25rem rule above win.
+   */
+  body.hw-role-student.hw-hub-v5-page.subpage--platform .subpage__main > .section:first-child {
+    padding-top: calc(var(--header-height) + 0.75rem);
+  }
+
   body.hw-hub-v5-page .section__header--platform {
     margin-bottom: 0.55rem;
   }
 
-  /*
-   * Student platform bar is hidden ? sticky offset is header only.
-   * Opaque sticky bg (no backdrop-filter) avoids white hairline artifacts
-   * that showed in the gaps between pills on mobile Safari/Chrome.
-   */
-  .hw-hub-v5-tabs {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0 0 0.55rem;
-    padding: 0.2rem 0.15rem 0.4rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-    scroll-padding-inline: 0.35rem;
-    position: sticky;
-    top: calc(var(--header-height) + env(safe-area-inset-top, 0));
-    z-index: 24;
-    background: var(--color-bg);
-    isolation: isolate;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+  /* True student: quiet title, leave room for the pill row (teacher view-as has a banner). */
+  body.hw-role-student.hw-hub-v5-page .section__header--platform {
+    margin-bottom: 0.35rem;
   }
 
-  .hw-hub-v5-tabs::-webkit-scrollbar {
-    display: none;
+  .hw-hub-v5-tabs-wrap {
+    margin-bottom: 0.85rem;
+  }
+
+  .hw-hub-v5-tabs {
+    gap: 0.28rem;
+    padding: 0.28rem;
   }
 
   .hw-hub-v5-tabs__btn {
-    flex: 0 0 auto;
-    padding: 0.4rem 0.75rem;
-    border: 1.5px solid var(--color-border-strong);
-    border-radius: 999px;
-    background: var(--color-bg-card);
-    color: var(--color-text);
-    font-family: Inter, sans-serif;
-    font-size: 0.72rem;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition:
-      background var(--transition),
-      border-color var(--transition),
-      color var(--transition),
-      transform 0.15s ease;
+    padding: 0.38rem 0.35rem;
+    font-size: 0.68rem;
   }
 
-  .hw-hub-v5-tabs__btn:last-child {
-    margin-right: 0.25rem;
+  .hw-hub-v5-tabs__slider {
+    border-radius: 0.45rem;
   }
 
-  .hw-hub-v5-tabs__btn.is-active {
-    background: var(--color-green);
-    border-color: var(--color-green);
-    color: #0d1b2a;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-green) 35%, transparent);
+  .hw-hub-v5-tabs__label--short {
+    display: inline;
   }
 
-  .hw-hub-v5-tabs__btn:active {
-    transform: scale(0.97);
+  .hw-hub-v5-tabs__label--full {
+    display: none;
   }
 
-  /* Clip card chrome cleanly ? overflow:hidden + 2px border caused light fringe */
+  /* Clip card chrome cleanly — overflow:hidden + 2px border caused light fringe.
+   * Keep overflow visible so top radius isn’t squared by sticky tab overlap. */
   body.hw-hub-v5-page .hw-hub-worksheet-card {
     border-width: 1px;
+    border-radius: var(--radius-lg);
     background-clip: padding-box;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+    overflow: visible;
   }
 
   body.hw-hub-v5-page .hw-hub-v4-homework {
@@ -2137,62 +2644,29 @@ body.hw-hub-v5-page .hw-hub-v5-app {
     gap: 0.55rem;
   }
 
-  .hw-hub-v5-panel--homework[hidden],
-  .hw-hub-v5-below .hw-hub-v5-panel[hidden] {
-    display: none !important;
-  }
-
-  .hw-hub-v5-panel--homework.is-active {
-    display: block;
-  }
-
-  .hw-hub-v5-below {
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  .hw-hub-v5-below .hw-hub-v5-panel.is-active {
-    display: block;
-  }
-
-  .hw-hub-v5-complete {
+  body.hw-hub-v5-page .hw-hub-v5-complete {
     margin-bottom: 1rem;
     padding: 1.35rem 1rem 1.15rem;
+  }
+
+  body.hw-hw-focus-mode .hw-worksheet__slide-sticky-head {
+    padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
   }
 }
 
 @media (min-width: 640px) {
-  /* Override .hw-platform-grid--student (assignments/stack row 2) so columns top-align */
-  .hw-hub-v5-below {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "lessons mistakes"
-      "lessons games"
-      "notifs notifs";
-    align-items: start;
+  /* Single active below-panel — no multi-column dashboard under tabs. */
+  .hw-hub-v5-below.hw-platform-grid {
+    display: grid;
+    grid-template-columns: none;
+    grid-template-areas: none;
+    max-width: 52rem;
+    margin-left: auto;
+    margin-right: auto;
   }
 
-  .hw-hub-v5-below #hw-v5-panel-lessons {
-    grid-area: lessons;
-    align-self: start;
-  }
-
-  .hw-hub-v5-below #hw-v5-panel-mistakes {
-    grid-area: mistakes;
-    align-self: start;
-  }
-
-  .hw-hub-v5-below #hw-v5-panel-games {
-    grid-area: games;
-    align-self: start;
-  }
-
-  .hw-hub-v5-below #hw-v5-panel-notifications {
-    grid-area: notifs;
-  }
-
+  .hw-hub-v5-below #hw-v5-panel-lessons .hw-hub-v5-lessons-stack,
   .hw-hub-v5-below #hw-v5-panel-lessons .hw-grid-stack {
-    grid-area: unset;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -2386,6 +2860,26 @@ body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-review-zone {
   display: none !important;
 }
 
+/* Empty HW status pages — kill leftover worksheet chrome + floating tools */
+body.hw-hub-v5-noplan-view #hw-current-assignment-card,
+body.hw-hub-v5-no-hw-view #hw-current-assignment-card,
+body.hw-hub-v5-noplan-view .hw-hub-v2-worksheet,
+body.hw-hub-v5-no-hw-view .hw-hub-v2-worksheet,
+body.hw-hub-v5-noplan-view #hw-toolbar-bar,
+body.hw-hub-v5-no-hw-view #hw-toolbar-bar,
+body.hw-hub-v5-noplan-view #hw-print-menu,
+body.hw-hub-v5-no-hw-view #hw-print-menu,
+body.hw-hub-v5-noplan-view .hw-mg-widget,
+body.hw-hub-v5-no-hw-view .hw-mg-widget,
+body.hw-hub-v5-noplan-view .hw-hc-launcher,
+body.hw-hub-v5-no-hw-view .hw-hc-launcher,
+body.hw-hub-no-linked-assignment #hw-current-assignment-card,
+body.hw-hub-no-linked-assignment #hw-toolbar-bar,
+body.hw-hub-no-linked-assignment .hw-mg-widget,
+body.hw-hub-no-linked-assignment .hw-hc-launcher {
+  display: none !important;
+}
+
 .hw-hub-v5-price-compare {
   margin-right: 0.35rem;
   font-size: 0.85em;
@@ -2427,9 +2921,9 @@ html.hw-ws-toolbar .hw-worksheet__status {
 }
 
 /*
- * Layout: HW box → toolbar → existing .hw-worksheet__section bottom border.
- * Toolbar is appended inside the active section (see placeToolbarUnderHwBox).
- * Do not invent new borders — only use the section rule from styles.css.
+ * Layout: HW box → toolbar under the card (sibling).
+ * Kill the section bottom rule — slide mode keeps multiple sections in the DOM,
+ * so :last-of-type alone still leaves a white line on the active (non-last) section.
  */
 html.hw-hub-v5-toolbar-embed .hw-worksheet__actions,
 html.hw-ws-toolbar .hw-worksheet__actions {
@@ -2447,18 +2941,46 @@ html.hw-ws-toolbar .hw-worksheet__actions-primary {
   border: none !important;
 }
 
-/* Keep the normal section bottom border even when the active section is last-of-type. */
-html.hw-hub-v5-toolbar-embed .hw-worksheet__section:last-of-type,
-html.hw-ws-toolbar .hw-worksheet__section:last-of-type {
-  border-bottom: 1px solid var(--color-border);
+html.hw-hub-v5-toolbar-embed .hw-worksheet__section,
+html.hw-ws-toolbar .hw-worksheet__section {
+  border-bottom: none !important;
   margin-bottom: 0;
-  padding-bottom: 1.25rem;
+  padding-bottom: 0;
 }
 
 html.hw-hub-v5-toolbar-embed,
 html.hw-ws-toolbar {
   --hw-toolbar-clearance: 0;
+  --hw-tb-gap: 0.85rem; /* equal air above + below the pill inside the blue box */
   scroll-padding-bottom: 0;
+}
+
+/* HW panel → bar and bar → blue-box bottom use the same gap. */
+html.hw-hub-v5-toolbar-embed .hw-video-prompt,
+html.hw-hub-v5-toolbar-embed .hw-listen-card,
+html.hw-ws-toolbar .hw-video-prompt,
+html.hw-ws-toolbar .hw-listen-card,
+html.hw-hub-v5-toolbar-embed
+  .hw-worksheet--slide-mode
+  .hw-worksheet__line:not(.hw-worksheet__line--listen):not(.hw-worksheet__line--audio-prompt):not(
+    .hw-worksheet__line--audio-mimic
+  ):not(.hw-worksheet__line--video)
+  > .hw-worksheet__content,
+html.hw-ws-toolbar
+  .hw-worksheet--slide-mode
+  .hw-worksheet__line:not(.hw-worksheet__line--listen):not(.hw-worksheet__line--audio-prompt):not(
+    .hw-worksheet__line--audio-mimic
+  ):not(.hw-worksheet__line--video)
+  > .hw-worksheet__content {
+  margin-bottom: 0 !important;
+}
+
+html.hw-hub-v5-toolbar-embed .hw-hub-worksheet-card .hw-worksheet,
+html.hw-ws-toolbar .hw-hub-worksheet-card .hw-worksheet,
+html.hw-hub-v5-toolbar-embed #hw-v2-worksheet-mount,
+html.hw-ws-toolbar #hw-v2-worksheet-mount {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 html.hw-hub-v5-toolbar-embed .hw-toolbar-bar,
@@ -2467,9 +2989,13 @@ html.hw-ws-toolbar .hw-toolbar-bar {
   left: auto;
   right: auto;
   bottom: auto;
-  /* Clearance between HW box and toolbar — pad only, do not shrink icons */
-  margin: 1.35rem auto 1rem;
+  margin: var(--hw-tb-gap) auto 0;
   transform: none;
+}
+
+html.hw-ws-toolbar .hw-hub-v2-worksheet.hw-hub-worksheet-card,
+html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card.hw-hub-worksheet-card {
+  padding-bottom: var(--hw-tb-gap);
 }
 
 /*
@@ -2618,8 +3144,8 @@ html.hw-hub-v5-toolbar-embed .container--wide {
 }
 
 /*
- * Desktop theater size � zoom the worksheet mount only (not the toolbar).
- * Toolbar is a sibling under the mount inside #hw-v5-worksheet-card.
+ * Desktop theater size — zoom the worksheet mount only (not the toolbar).
+ * Toolbar sits under the mount inside the blue card, so it stays un-zoomed.
  * Mobile (<900px) unchanged.
  */
 @media (min-width: 900px) {
@@ -2653,7 +3179,8 @@ html.hw-hub-v5-toolbar-embed .hw-hub-v2-fold,
 html.hw-hub-v5-toolbar-embed #hw-v5-past-fold,
 html.hw-hub-v5-toolbar-embed #hw-v5-complete-card,
 html.hw-hub-v5-toolbar-embed #hw-v5-below,
-html.hw-hub-v5-toolbar-embed .hw-hub-v5-tabs {
+html.hw-hub-v5-toolbar-embed .hw-hub-v5-tabs,
+html.hw-hub-v5-toolbar-embed .hw-hub-v5-tabs-wrap {
   display: none !important;
 }
 
@@ -2770,6 +3297,7 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-worksheet-intro {
  * Include live Past HW / View notebook entry row (ids differ from preview).
  */
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-tabs,
+html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-tabs-wrap,
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-top,
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v2-fold,
 html.hw-ws-toolbar body.hw-hw-focus-mode #hw-v5-past-fold,
@@ -2786,6 +3314,7 @@ html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-notebook-entry,
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-hub-v5-past-box,
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-submission-view-banner,
 body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-tabs,
+body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v5-tabs-wrap,
 body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-top,
 body.hw-ws-toolbar.hw-hw-focus-mode .hw-hub-v2-fold,
 body.hw-ws-toolbar.hw-hw-focus-mode #hw-v5-past-fold,
@@ -2932,20 +3461,60 @@ body.hw-hw-focus-mode:has(.hw-toolbar-bar:not([hidden])) .hw-worksheet {
   margin: 0;
 }
 
+/* Exit focus pill removed — Focus exit is the toolbar Focus button only. */
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-focus-bar,
 html.hw-hub-v5-toolbar-embed body.hw-hw-focus-mode .hw-focus-bar,
 body.hw-ws-toolbar.hw-hw-focus-mode .hw-focus-bar,
-body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-focus-bar {
-  /* Overlay exit chrome — do not push the HW card / tools down */
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 460;
-  margin: 0;
-  border-bottom: none;
-  background: transparent;
-  backdrop-filter: none;
+body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-focus-bar,
+html.hw-ws-toolbar .hw-focus-bar,
+html.hw-hub-v5-toolbar-embed .hw-focus-bar {
+  display: none !important;
+}
+
+/*
+ * Mobile (<768px): never park floating Glass/Cloud on the sheet.
+ * Toolbar taps arm tools directly (see hw-student-toolbar.js).
+ */
+@media (max-width: 767px) {
+  html.hw-ws-toolbar .hw-mg-widget,
+  html.hw-hub-v5-toolbar-embed .hw-mg-widget,
+  html.hw-ws-toolbar .hw-hc-launcher,
+  html.hw-hub-v5-toolbar-embed .hw-hc-launcher {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /*
+   * Homework mobile: no blue tap flash on touch.
+   * :focus-visible still shows keyboard focus on desktop at wider widths.
+   */
+  .subpage--homework :is(
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    summary,
+    [role="button"],
+    .hw-blank,
+    .hw-hub-v5-tabs__btn
+  ) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .subpage--homework :is(
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    summary,
+    [role="button"],
+    .hw-blank
+  ):focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 html.hw-ws-toolbar body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]),
@@ -3014,6 +3583,11 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   border-color: rgba(212, 138, 56, 0.45);
 }
 
+.hw-tool-layout-tools__btn.is-active {
+  border-color: rgba(212, 138, 56, 0.9);
+  background: rgba(212, 138, 56, 0.28);
+}
+
 .hw-tool-layout-tools__hint {
   margin: 0.45rem 0 0;
   font-size: 0.65rem;
@@ -3035,4 +3609,26 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   font: 600 0.8rem/1.2 var(--font-sans, system-ui, sans-serif);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+}
+
+/* Pick-any-element overlay for Tool positions */
+html.hw-tool-pick-mode,
+html.hw-tool-pick-mode body {
+  cursor: crosshair !important;
+}
+
+html.hw-tool-pick-mode #hw-tool-layout-tools,
+html.hw-tool-pick-mode #hw-tool-layout-tools * {
+  cursor: pointer !important;
+}
+
+.hw-tool-pick-highlight {
+  position: fixed;
+  z-index: 4999;
+  box-sizing: border-box;
+  border: 2px solid rgba(212, 138, 56, 0.95);
+  background: rgba(212, 138, 56, 0.12);
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(26, 39, 68, 0.35);
 }

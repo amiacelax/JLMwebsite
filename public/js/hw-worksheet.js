@@ -500,7 +500,7 @@
   ];
 
   const SUBMISSION_TIP_LINES = [
-    "Don\u2019t plan everything out. Try to speak based on what you currently know. You should feel the pressure of just having to speak on the spot.",
+    "Don\u2019t plan everything out. Try to speak based on what you currently know. You should feel the pressure of just having to speak on the spot. Recordings can be up to 3 minutes long",
   ];
 
   function renderRecordingTip(itemId, options) {
@@ -995,26 +995,17 @@
     question.textContent = promptText;
     wrap.appendChild(question);
 
-    if (!renderOptions.readOnly) {
+    if (!renderOptions.readOnly && !renderOptions.preview) {
       const head = document.createElement("div");
       head.className = "hw-video-prompt__head";
-
-      const instruction = document.createElement("p");
-      instruction.className = "hw-video-prompt__instruction";
-      instruction.textContent =
-        "Choose video or audio-only, record your answer in Japanese, then save it.";
-      head.appendChild(instruction);
-
-      if (!renderOptions.preview) {
-        head.appendChild(
-          renderRecordingTip(item.id || "vid-" + (index + 1), {
-            label: "IMPORTANT",
-            important: true,
-            lines: SUBMISSION_TIP_LINES,
-            ariaLabel: "Show important recording guidance",
-          })
-        );
-      }
+      head.appendChild(
+        renderRecordingTip(item.id || "vid-" + (index + 1), {
+          label: "IMPORTANT",
+          important: true,
+          lines: SUBMISSION_TIP_LINES,
+          ariaLabel: "Show important recording guidance",
+        })
+      );
       wrap.appendChild(head);
     }
 
@@ -1273,13 +1264,29 @@
 
   function shufflePieces(list) {
     const arr = list.slice();
-    for (let i = arr.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = arr[i];
-      arr[i] = arr[j];
-      arr[j] = tmp;
+    if (arr.length < 2) return arr;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+      const sameOrder = arr.every((item, i) => item === list[i]);
+      if (!sameOrder) return arr;
     }
+    /* Last resort: swap first two so it is never identical to the answer order. */
+    const tmp = arr[0];
+    arr[0] = arr[1];
+    arr[1] = tmp;
     return arr;
+  }
+
+  /** Chip colors must not map to answer-slot order (that leaks the solution). */
+  function starChipColors(count) {
+    const colors = [];
+    for (let i = 0; i < count; i += 1) colors.push((i % 4) + 1);
+    return shufflePieces(colors);
   }
 
   function renderTranslationLine(item, lineOptions) {
@@ -1547,9 +1554,10 @@
     pool.className = "hw-star-block__pool";
     pool.setAttribute("role", "list");
     pool.setAttribute("aria-label", "Sentence pieces");
-    shufflePieces(pieces).forEach((piece) => {
-      const origIndex = pieces.indexOf(piece);
-      const colorNum = ((origIndex >= 0 ? origIndex : 0) % 4) + 1;
+    const shuffled = shufflePieces(pieces);
+    const colors = starChipColors(shuffled.length);
+    shuffled.forEach((piece, poolIndex) => {
+      const colorNum = colors[poolIndex] || (poolIndex % 4) + 1;
       const chip = document.createElement("div");
       chip.className = "hw-star-block__chip hw-star-block__chip--" + colorNum;
       chip.dataset.piece = piece;
@@ -1891,10 +1899,11 @@
    */
   function renderTopicBrief(assignment) {
     const explanation = String(assignment?.topicExplanation || "").trim();
+    const audioUrl = String(assignment?.topicExplanationAudioUrl || "").trim();
     const videos = (Array.isArray(assignment?.topicVideos) ? assignment.topicVideos : [])
       .map((url) => String(url || "").trim())
       .filter((url) => url && /youtube\.com|youtu\.be/i.test(url));
-    if (!explanation && !videos.length) return null;
+    if (!explanation && !audioUrl && !videos.length) return null;
 
     const wrap = document.createElement("details");
     wrap.className = "hw-worksheet__topic-brief";
@@ -1907,6 +1916,12 @@
     heading.textContent = "Grammar description";
 
     summary.appendChild(heading);
+    if (audioUrl) {
+      const audioHint = document.createElement("span");
+      audioHint.className = "hw-worksheet__topic-brief-audio-hint";
+      audioHint.textContent = "(audio available!)";
+      summary.appendChild(audioHint);
+    }
     wrap.appendChild(summary);
 
     const body = document.createElement("div");
@@ -1917,6 +1932,38 @@
       p.className = "hw-worksheet__topic-explanation";
       p.textContent = explanation;
       body.appendChild(p);
+    }
+
+    if (audioUrl) {
+      const audioSlot = document.createElement("div");
+      audioSlot.className = "hw-worksheet__topic-audio";
+      if (typeof renderListenSlideAudio === "function") {
+        audioSlot.appendChild(
+          renderListenSlideAudio(audioUrl, {
+            ariaLabel: "Grammar description audio",
+          })
+        );
+      } else if (typeof renderAudioPlayer === "function") {
+        audioSlot.appendChild(
+          renderAudioPlayer(audioUrl, {
+            inline: true,
+            listenCard: true,
+          })
+        );
+        audioSlot
+          .querySelector(".hw-audio-player__el")
+          ?.setAttribute("aria-label", "Grammar description audio");
+      } else {
+        const audio = document.createElement("audio");
+        audio.className = "hw-worksheet__topic-audio-el";
+        audio.controls = true;
+        audio.preload = "metadata";
+        audio.setAttribute("playsinline", "");
+        audio.setAttribute("aria-label", "Grammar description audio");
+        audio.src = audioUrl;
+        audioSlot.appendChild(audio);
+      }
+      body.appendChild(audioSlot);
     }
 
     if (videos.length) {
@@ -1935,7 +1982,7 @@
         list.appendChild(li);
       });
       body.appendChild(list);
-    } else if (explanation) {
+    } else if (explanation || audioUrl) {
       const soon = document.createElement("p");
       soon.className = "hw-worksheet__topic-video-soon";
       soon.textContent = "Video explanation — coming soon";
@@ -2718,7 +2765,9 @@
       updateTitle();
       global.HwWorksheetToolLayout?.beginFocusToolSwitch?.();
       document.body.classList.add("hw-hw-focus-mode");
-      focusBar.hidden = false;
+      /* No Exit focus pill — leave Focus via the toolbar Focus button. */
+      focusBar.hidden = true;
+      focusBar.setAttribute("hidden", "");
       focusBtn.hidden = true;
       section.scrollTop = 0;
       /*

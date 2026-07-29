@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jem-appraisals.com/sitemap.xml

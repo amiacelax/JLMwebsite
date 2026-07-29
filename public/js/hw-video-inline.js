@@ -193,7 +193,6 @@
       ICON_MIC +
       "</span>" +
       '<p class="hw-video-inline__idle-label">Record your spoken answer</p>' +
-      '<p class="hw-video-inline__idle-hint">Camera + mic · up to 3 minutes</p>' +
       "</div>" +
       '<button type="button" class="btn btn--primary hw-video-inline__start">Start recording</button>' +
       "</div>" +
@@ -243,7 +242,6 @@
     const playbackVideo = mount.querySelector(".hw-video-inline__playback");
     const timerEl = mount.querySelector(".hw-video-inline__timer");
     const audioTimerEl = mount.querySelector(".hw-video-inline__audio-timer");
-    const idleHintEl = mount.querySelector(".hw-video-inline__idle-hint");
     const saveBtn = mount.querySelector(".hw-video-inline__save");
     const savedTitleEl = mount.querySelector(".hw-video-inline__saved-title");
     const previewLabelEl = mount.querySelector(".hw-video-inline__preview-label");
@@ -280,11 +278,6 @@
     }
 
     function updateIdleCopy() {
-      if (idleHintEl) {
-        idleHintEl.textContent = isAudioMode()
-          ? "Microphone only · up to 3 minutes"
-          : "Camera + mic · up to 3 minutes";
-      }
       if (saveBtn) saveBtn.textContent = saveButtonLabel();
     }
 

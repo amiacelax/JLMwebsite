@@ -74,7 +74,7 @@ OBS lesson recording
 ## Phase 4 — Discord notifications
 
 - **#hw-review** — incoming drafts (existing webhook pattern in `src/index.ts`).
-- **Student DMs** — Discord Bot (not webhook) with OAuth bot token; map `discordUserId` in D1.
+- **Student DMs** — Discord Bot (not webhook) with bot token; map `discordUserId` in **KV student profile** for now (Teacher Hub → Student info). D1 later if needed.
 - Message template: “Homework ready” + link to `/homework/assignments/{id}` + YouTube lesson link.
 
 ## Phase 5 — Extra homework allowances / $0.99 overage
