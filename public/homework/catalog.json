@@ -16,13 +16,172 @@
   },
   "assignments": [
     {
+      "id": "sheet-u1dhaiqs",
+      "title": "以（以降・以外・以上・以内・以下）＋未満",
+      "date": "2026-07-31",
+      "lessonName": "以（以降・以外・以上・以内・以下）＋未満",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "以",
+        "以降",
+        "以外",
+        "以上",
+        "以内",
+        "以下",
+        "未満",
+        "grammar",
+        "draft"
+      ],
+      "summary": "あとにしよう — empty 以 sheet (ignore 上記・下記). Seeds: 以降 — 6月以降。 (June and later) | 以外 — 明日以外は行けます。 (except for / other than) | 以上 — 20歳以上じゃないとダメ。 / これ以上ある。 | 以内 — 5分以内に完食。 | 以下 — 5歳以下のお子様は無料。 (5 and under free) | 未満 — 5歳未満のお子様は無料。 (under 5 free)"
+    },
+    {
+      "id": "sheet-u1sgburc",
+      "title": "もう・まだ",
+      "date": "2026-07-31",
+      "lessonName": "もう・まだ",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty もう・まだ"
+    },
+    {
+      "id": "sheet-u5n0zm8",
+      "title": "なに・なん",
+      "date": "2026-07-31",
+      "lessonName": "なに・なん",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty なに・なん. what"
+    },
+    {
+      "id": "sheet-u1tqbi2x",
+      "title": "だれ",
+      "date": "2026-07-31",
+      "lessonName": "だれ",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty だれ. who"
+    },
+    {
+      "id": "sheet-ut7gow3",
+      "title": "いつ・何時・何年",
+      "date": "2026-07-31",
+      "lessonName": "いつ・何時・何年",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty いつ・何時・何年. when in Japanese"
+    },
+    {
+      "id": "sheet-unsr8ol",
+      "title": "どこ",
+      "date": "2026-07-31",
+      "lessonName": "どこ",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty どこ. where"
+    },
+    {
+      "id": "sheet-u1y4x1hq",
+      "title": "なんで・どうして",
+      "date": "2026-07-31",
+      "lessonName": "なんで・どうして",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty なんで・どうして. why"
+    },
+    {
+      "id": "sheet-u1crf7ln",
+      "title": "どう？",
+      "date": "2026-07-31",
+      "lessonName": "どう？",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar",
+        "draft",
+        "question-words"
+      ],
+      "summary": "あとにしよう — empty どう？. include どうだった？"
+    },
+    {
+      "id": "sheet-uio97at",
+      "title": "前・前に",
+      "date": "2026-07-31",
+      "lessonName": "前・前に",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "前",
+        "前に",
+        "grammar",
+        "draft"
+      ],
+      "summary": "あとにしよう — empty 前・前に. Seed: このシャツを3年前に買った"
+    },
+    {
+      "id": "sheet-u1vj998q",
+      "title": "～にする",
+      "date": "2026-07-31",
+      "lessonName": "～にする",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "にする",
+        "grammar",
+        "draft"
+      ],
+      "summary": "あとにしよう — empty ～にする worksheet (6 blanks)."
+    },
+    {
       "id": "2026-06-05-ben-m",
       "title": "形容詞の過去・否定 ＋ ほしい · どうだった？",
       "date": "2026-06-05",
       "level": "Low-Intermediate",
       "studentLabel": "Ben M",
       "lessonName": "2026-06-05 — Lesson 25",
-      "students": ["benm"],
+      "students": [
+        "benm"
+      ],
       "forSale": false,
       "salePrice": 0.99,
       "tags": [
@@ -44,7 +203,9 @@
       "level": "Low-Intermediate",
       "studentLabel": "Ben M",
       "lessonName": "2026-05-22 — Lesson 24",
-      "students": ["benm"],
+      "students": [
+        "benm"
+      ],
       "youtubeUrl": "https://youtu.be/0LaGZZttAK0",
       "forSale": false,
       "salePrice": 0.99,
@@ -66,7 +227,9 @@
       "level": "Low-Intermediate",
       "studentLabel": "Deme",
       "lessonName": "2026-05-22 — Lesson",
-      "students": ["deme"],
+      "students": [
+        "deme"
+      ],
       "youtubeUrl": "https://youtu.be/q3WRBr1LHm0",
       "forSale": false,
       "salePrice": 0.99,
@@ -88,7 +251,9 @@
       "level": "Low-Intermediate",
       "studentLabel": "Josh S",
       "lessonName": "2026-05-27 — Lesson",
-      "students": ["joshs"],
+      "students": [
+        "joshs"
+      ],
       "youtubeUrl": "https://youtu.be/J1RsLT9TOKU",
       "forSale": false,
       "salePrice": 0.99,

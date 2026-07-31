@@ -1,0 +1,171 @@
+{
+  "id": "sheet-ut7gow3",
+  "title": "いつ・何時・何年",
+  "youtubeUrl": "",
+  "register": "casual",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "sections": [
+    {
+      "id": "grammar",
+      "title": "Section 1 — Grammar point",
+      "instructions": "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
+      "mode": "grammar-blank",
+      "items": [
+        {
+          "id": "s1-1",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-1",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        },
+        {
+          "id": "s1-2",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-2",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        },
+        {
+          "id": "s1-3",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-3",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        },
+        {
+          "id": "s1-4",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-4",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        },
+        {
+          "id": "s1-5",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-5",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        },
+        {
+          "id": "s1-6",
+          "parts": [
+            {
+              "type": "text",
+              "value": ""
+            },
+            {
+              "type": "blank",
+              "name": "s1-6",
+              "wide": true,
+              "answer": "",
+              "hint": {
+                "dictionary": "",
+                "conjugation": "Now-later"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "context",
+      "title": "Section 2 — Your words",
+      "instructions": "Write your own sentences using this grammar in the boxes below.",
+      "mode": "context-blank",
+      "items": [
+        {
+          "id": "s2-1",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-1",
+              "wide": true
+            }
+          ]
+        },
+        {
+          "id": "s2-2",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-2",
+              "wide": true
+            }
+          ]
+        },
+        {
+          "id": "s2-3",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "s2-3",
+              "wide": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

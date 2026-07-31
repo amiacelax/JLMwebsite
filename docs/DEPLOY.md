@@ -133,6 +133,13 @@ npx.cmd wrangler secret put DISCORD_TEACHER_USER_ID
 
 4. Local: add both to `.dev.vars` (see `.dev.vars.example`).
 5. Teacher Hub → Student info → paste each student’s Discord user ID → Save.
+6. **Health check** (no homework publish needed): Teacher Hub → Student info → **Check Discord bot**, or:
+
+```powershell
+curl.exe "https://japaneselanguagementor.com/api/discord-bot-status?teacherUsername=jlm"
+```
+
+Expect `"ok": true` and a `botUsername`. If you see **401**, reset the token in the Developer Portal and run `secret put` again (paste only the token — never into chat).
 
 Without `DISCORD_BOT_TOKEN` / `DISCORD_TEACHER_USER_ID`, publish and review still succeed; notify falls back to `DISCORD_HOMEWORK_WEBHOOK_URL` (or site webhook).
 
@@ -158,6 +165,7 @@ Without `DISCORD_BOT_TOKEN` / `DISCORD_TEACHER_USER_ID`, publish and review stil
 
 - **PowerShell blocks `npx`:** use `npx.cmd wrangler deploy`  
 - **Contact form 503:** webhook missing, wrong channel, or bad URL — see **Discord webhook → #website-inquiries** above; check Worker logs for `Discord webhook is not pointed at`  
+- **Publish OK but “student DM failed — bot token unauthorized (401)”:** homework saved; Discord rejected the bot login. Reset the token in [Discord Developer Portal](https://discord.com/developers/applications) → your app → **Bot** → **Reset Token**, then `npx.cmd wrangler secret put DISCORD_BOT_TOKEN` (paste only the token, no `Bot ` prefix). Do not paste the token into chat. Redeploy is not required after `secret put` alone on Workers, but run `npx.cmd wrangler deploy` if unsure. Confirm secret exists with `npx.cmd wrangler secret list` (names only).  
 - **Old Squarespace still shows:** DNS cache — wait or flush; confirm nameservers point to Cloudflare
 
 ### Wrangler `Authentication error [code: 10000]` / `Failed to retrieve account IDs`

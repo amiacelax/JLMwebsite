@@ -2,5 +2,13 @@
 videos/
 *.mov
 *.mp4
-!media/hw-login-bg.mp4
-!media/hw-login-bg-poster.jpg
+# Unused login loop (CSS sets .hw-login-hero__bg { display: none })
+media/hw-login-bg.mp4
+media/hw-login-bg-poster.jpg
+# Prefer WOFF2 (~2.4 MB) over the 5.4 MB TTF source
+fonts/APJapanesefont.ttf
+# Local scratch / compare artifacts — never ship
+tmp-*
+**/tmp-*
+*.local.norm
+*.norm

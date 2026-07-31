@@ -17,8 +17,8 @@
 
   /** Keep versions in sync with former platform.html cache-busts. */
   const V = {
-    builder: "20260729c",
-    editor: "20260729c",
+    builder: "20260731c",
+    editor: "20260731d",
     studentList: "20260725",
     ideas: "20260610",
     mistakeFeed: "20260674",

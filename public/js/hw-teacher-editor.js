@@ -158,7 +158,7 @@
           instructions:
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
           mode: "grammar-blank",
-          items: [1, 2, 3, 4, 5].map(grammarItem),
+          items: [1, 2, 3, 4, 5, 6].map(grammarItem),
         },
         {
           id: "context",
@@ -435,9 +435,7 @@
   }
 
   function worksheetOptionLabel(entry) {
-    const students = (entry.students || []).filter(Boolean);
-    const who = students.length ? students.join(", ") : "any student";
-    return (entry.title || entry.id) + " (" + entry.id + ") — " + who;
+    return String(entry.title || entry.id || "Worksheet").trim();
   }
 
   function populateWorksheetSelect(selectEl, keepId) {
@@ -606,16 +604,26 @@
       return;
     }
 
-    function setMakerStatus(msg, isError) {
+    function setMakerStatus(msg, isError, opts) {
       if (!makerStatusEl) return;
-      makerStatusEl.textContent = msg;
       makerStatusEl.classList.toggle("hw-maker-status--error", !!isError);
+      if (opts && opts.waiting && global.HwLoading?.showInlineWait) {
+        global.HwLoading.showInlineWait(makerStatusEl, { message: msg || "Working…" });
+        return;
+      }
+      global.HwLoading?.clearInlineWait?.(makerStatusEl);
+      makerStatusEl.textContent = msg || "";
     }
 
-    function setPublishStatus(msg, isError) {
+    function setPublishStatus(msg, isError, opts) {
       if (!publishStatusEl) return;
-      publishStatusEl.textContent = msg;
       publishStatusEl.classList.toggle("hw-maker-status--error", !!isError);
+      if (opts && opts.waiting && global.HwLoading?.showInlineWait) {
+        global.HwLoading.showInlineWait(publishStatusEl, { message: msg || "Working…" });
+        return;
+      }
+      global.HwLoading?.clearInlineWait?.(publishStatusEl);
+      publishStatusEl.textContent = msg || "";
     }
 
     function setAccountStatus(msg, isError) {
@@ -624,10 +632,15 @@
       accountStatusEl.classList.toggle("hw-maker-status--error", !!isError);
     }
 
-    function setMakerDockStatus(msg, isError) {
+    function setMakerDockStatus(msg, isError, opts) {
       if (!makerDockStatusEl) return;
-      makerDockStatusEl.textContent = msg;
       makerDockStatusEl.classList.toggle("hw-maker-status--error", !!isError);
+      if (opts && opts.waiting && global.HwLoading?.showInlineWait) {
+        global.HwLoading.showInlineWait(makerDockStatusEl, { message: msg || "Working…" });
+        return;
+      }
+      global.HwLoading?.clearInlineWait?.(makerDockStatusEl);
+      makerDockStatusEl.textContent = msg || "";
     }
 
     function getMakerWorksheetId() {
@@ -930,7 +943,7 @@
         setMakerStatus("New blank sheet — add a title and blocks, then send to save.");
         return;
       }
-      setMakerStatus("Loading " + id + "…");
+      setMakerStatus("Loading " + id + "…", false, { waiting: true });
       try {
         const assignment = await fetchAssignmentWithFallback(id);
         const entryFn = options.getCatalogEntry || getCatalogEntry;
@@ -1017,7 +1030,7 @@
       assignment.title = meta.grammarPoint;
       assignment.status = "draft";
 
-      setMakerStatus("Adding hover readings…");
+      setMakerStatus("Adding hover readings…", false, { waiting: true });
       await applyAutoReadings(assignment);
 
       if (!validateWorksheet(assignment)) {
@@ -1039,7 +1052,9 @@
       };
 
       if (makerUpdateBtn) makerUpdateBtn.disabled = true;
-      setMakerStatus((isNew ? "Saving “" : "Updating “") + assignment.id + "”…");
+      setMakerStatus((isNew ? "Saving “" : "Updating “") + assignment.id + "”…", false, {
+        waiting: true,
+      });
 
       try {
         const res = await fetch("/api/homework-save-worksheet", {
@@ -1127,7 +1142,7 @@
       if (!ok) return;
 
       if (makerDeleteBtn) makerDeleteBtn.disabled = true;
-      setMakerStatus("Deleting “" + id + "”…");
+      setMakerStatus("Deleting “" + id + "”…", false, { waiting: true });
 
       try {
         const res = await fetch("/api/homework-delete-worksheet", {
@@ -1261,7 +1276,7 @@
 
       const media = readAccountMedia(accountForm);
       if (activeSendBtn) activeSendBtn.disabled = true;
-      setStatus("Sending “" + worksheetId + "” to " + student + "…");
+      setStatus("Sending “" + worksheetId + "” to " + student + "…", false, { waiting: true });
 
       try {
         const resolved = await resolveAssignmentForPublish(worksheetId);
@@ -1279,7 +1294,9 @@
         }
 
         if (resolved.usedLiveBuilder) {
-          setStatus("Saving to library, then sending to " + student + "…");
+          setStatus("Saving to library, then sending to " + student + "…", false, {
+            waiting: true,
+          });
           assignment.status = "draft";
           await persistAssignmentDraft(session, assignment, entry);
           afterWorksheetSavedLocally(worksheetId);
@@ -1340,7 +1357,28 @@
           (data.message || "Sent to " + student + "!") +
             " This is now their current homework on the hub."
         );
-        showToast("Current homework set for " + student);
+        const notify = data.discordNotify;
+        if (notify?.ok && notify.mode === "student_dm") {
+          showToast("Current homework set — Discord DM sent (copy to you too)");
+        } else if (notify?.ok && notify.mode === "teacher_dm") {
+          showToast("Current homework set — Discord pinged you (no student ID)");
+        } else if (notify?.ok && notify.mode === "teacher_dm_after_student_fail") {
+          showToast(
+            "Homework set — student DM failed (" +
+              (notify.detail || "see Discord") +
+              ")"
+          );
+        } else if (notify?.ok && notify.mode === "webhook") {
+          showToast("Current homework set — Discord channel notified");
+        } else if (notify && !notify.ok) {
+          showToast(
+            "Homework set — Discord notify failed (" +
+              (notify.detail || notify.mode || "unknown") +
+              ")"
+          );
+        } else {
+          showToast("Current homework set for " + student);
+        }
         populateWorksheetSelect(makerEditSelect, worksheetId);
         updatePublishHint();
         updateMakerDockHint();
@@ -1465,6 +1503,42 @@
       accountSaveBtn?.addEventListener("click", (e) => {
         e.preventDefault();
         saveAccountProfile();
+      });
+
+      const discordBotCheckBtn = document.getElementById("hw-teacher-discord-bot-check-btn");
+      discordBotCheckBtn?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const session = getTeacherSession();
+        if (!session || session.role !== "teacher") {
+          setAccountStatus("Teacher login required.", true);
+          return;
+        }
+        discordBotCheckBtn.disabled = true;
+        setAccountStatus("Checking Discord bot…");
+        try {
+          const res = await fetch(
+            "/api/discord-bot-status?teacherUsername=" + encodeURIComponent(session.username)
+          );
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Check failed.");
+          if (data.ok) {
+            const who = data.botUsername ? "@" + data.botUsername : "bot";
+            const bits = [who + " OK"];
+            if (!data.teacherIdConfigured) bits.push("teacher ID missing");
+            if (!data.hasHomeworkWebhook) bits.push("homework webhook missing");
+            if (data.hint) bits.push(data.hint);
+            setAccountStatus(bits.join(" — "));
+            showToast("Discord bot OK (" + who + ")");
+          } else {
+            setAccountStatus(data.hint || "Discord bot not working.", true);
+            showToast("Discord bot failed");
+          }
+        } catch (err) {
+          setAccountStatus((err && err.message) || "Could not check Discord bot.", true);
+          showToast("Discord bot check failed");
+        } finally {
+          discordBotCheckBtn.disabled = false;
+        }
       });
 
       const wipeBtn = document.getElementById("hw-teacher-account-wipe-btn");

@@ -93,6 +93,7 @@ c:\JLM Website\
 - Embeds: contact = red “new message”; promo = blue “promo email signup”.
 - **Do not commit** webhook URLs; rotate if leaked.
 - **Student DMs (publish / review ready):** `src/discord-notify.ts` uses bot token `DISCORD_BOT_TOKEN` + optional `DISCORD_TEACHER_USER_ID`. Discord user IDs live in KV (`student:{user}:discord-user-id`), set in Teacher Hub → Student info. Missing ID or DM failure → teacher DM, else homework webhook fallback. Never fails the HTTP publish/review response.
+- **Bot health check:** `GET /api/discord-bot-status?teacherUsername=jlm` (teacher-only) probes `GET /users/@me` and returns `{ ok, botUsername?, hint }` without leaking the token. Teacher Hub → Student info → **Check Discord bot**.
 
 ---
 

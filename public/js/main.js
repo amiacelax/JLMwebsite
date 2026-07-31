@@ -739,4 +739,30 @@
       submitBtn.textContent = "Send Message";
     }
   });
+
+  /* Defer YouTube embeds until near viewport — avoids early third-party JS on first paint. */
+  (function lazyYoutubeEmbeds() {
+    const frames = document.querySelectorAll("iframe[data-src*='youtube']");
+    if (!frames.length) return;
+    const activate = (el) => {
+      if (el.dataset.src && !el.getAttribute("src")) {
+        el.setAttribute("src", el.dataset.src);
+      }
+    };
+    if (!("IntersectionObserver" in window)) {
+      frames.forEach(activate);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          activate(entry.target);
+          io.unobserve(entry.target);
+        });
+      },
+      { rootMargin: "200px 0px" }
+    );
+    frames.forEach((el) => io.observe(el));
+  })();
 })();

@@ -3049,7 +3049,9 @@ body.subpage--platform .subpage__main > .section {
 
 .hw-subscribe-cta-wrap {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
   margin-bottom: 2rem;
 }
 
@@ -3266,36 +3268,30 @@ body.subpage--platform .subpage__main > .section {
     0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-.hw-auth-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+.hw-login-inlay__switch {
+  margin: 0.85rem 0 0;
+  text-align: center;
 }
 
-.hw-auth-tabs__btn {
+.hw-login-inlay__switch-link {
   appearance: none;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--color-text-muted);
   font: inherit;
   font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.45rem 0.95rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.hw-auth-tabs__btn:hover {
+.hw-login-inlay__switch-link:hover,
+.hw-login-inlay__switch-link:focus-visible {
   color: var(--color-text);
-  border-color: var(--color-accent);
-}
-
-.hw-auth-tabs__btn.is-active {
-  background: var(--color-accent-soft, rgba(232, 93, 44, 0.12));
-  border-color: var(--color-accent);
-  color: var(--color-text);
+  outline: none;
 }
 
 .hw-login-inlay__optional {
@@ -5117,6 +5113,39 @@ body.hw-role-student .subpage-back {
   font-size: 0.72rem;
   line-height: 1.4;
   color: var(--color-text-muted);
+}
+
+.hw-builder__dock-status.hw-status-wait,
+.hw-maker-status.hw-status-wait {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.hw-status-wait__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.hw-hourglass--inline {
+  width: 12px;
+  height: 17px;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.hw-hourglass--inline::before,
+.hw-hourglass--inline::after {
+  border-left-width: 6px;
+  border-right-width: 6px;
+}
+
+.hw-hourglass--inline::before {
+  border-bottom-width: 8px;
+}
+
+.hw-hourglass--inline::after {
+  border-top-width: 8px;
 }
 
 .hw-builder__dock-status.hw-maker-status--error {
@@ -10399,11 +10428,40 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
 }
 
 .hw-plans-note {
-  margin: 1rem 0 0;
+  margin: 0;
   text-align: center;
   color: var(--color-text-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+  max-width: 28rem;
+}
+
+.hw-plans-extras {
+  max-width: 34rem;
+  margin: 0 auto 1.35rem;
+  padding: 0.85rem 1.1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-bg-card) 55%, transparent);
+}
+
+.hw-plans-extras__label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-plans-extras--modal {
+  margin: 1.15rem auto 0;
+  max-width: 40rem;
 }
 
 .hw-plans-note a {
@@ -10592,15 +10650,10 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
 }
 
 .hw-plans {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1.25rem;
   margin-bottom: 2rem;
-}
-
-@media (min-width: 768px) {
-  .hw-plans {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .hw-plan {
@@ -11679,7 +11732,7 @@ button.hw-register__pill {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: var(--color-brand-blue);
+  color: var(--color-green);
   white-space: nowrap;
 }
 

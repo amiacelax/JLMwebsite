@@ -18,7 +18,10 @@ import {
   generateHomeworkWithAi,
   type HomeworkGenerateRequest,
 } from "./homework-generate";
-import { notifyStudentWithTeacherFallback } from "./discord-notify";
+import {
+  getDiscordBotStatus,
+  notifyStudentWithTeacherFallback,
+} from "./discord-notify";
 import {
   mergeCatalog,
   publishToStudentHub,
@@ -2075,8 +2078,18 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
     const title = String(
       data.assignment?.title || data.catalogEntry?.title || result.id || "Homework"
     ).trim();
-    const hubUrl = origin + "/homework/platform.html";
-    const sheetUrl = origin + result.studentUrl;
+    const loginUrl =
+      origin +
+      "/homework.html?user=" +
+      encodeURIComponent(studentUsername || "");
+    const loginLink = "[Click to see your homework](" + loginUrl + ")";
+    const publishDm = [
+      "宿題を送りました！",
+      title ? "【" + title + "】" : null,
+      loginLink,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     let discordNotify = null;
     if (env.HOMEWORK_KV && studentUsername) {
@@ -2085,18 +2098,17 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
         discordNotify = await notifyStudentWithTeacherFallback(env, {
           studentUsername,
           discordUserId,
-          studentContent: [
-            "New homework is ready on your Homework Hub.",
-            title ? `“${title}”` : null,
-            sheetUrl,
-            "",
-            "Open Homework Hub: " + hubUrl,
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          studentContent: publishDm,
           teacherContent: discordUserId
-            ? `Published homework for ${studentUsername}: ${title}`
-            : `Published homework for ${studentUsername} (${title}) — no Discord user ID linked. Add it in Student info so they get DMs.`,
+            ? "（→ " + studentUsername + "）\n" + publishDm
+            : "宿題を送れませんでした（Discord user ID 未設定）: " +
+              studentUsername +
+              "\n【" +
+              title +
+              "】\n" +
+              loginLink,
+          copyTeacherOnStudentDm: true,
+          teacherCopyContent: "（→ " + studentUsername + "）\n" + publishDm,
         });
       } catch (err) {
         console.error("homework-publish discord notify:", err);
@@ -2669,6 +2681,39 @@ async function handleTeacherIdeaDelete(request: Request, env: Env): Promise<Resp
   }
 }
 
+/** Teacher-only: probe Discord bot token without leaking it. */
+async function handleDiscordBotStatus(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const status = await getDiscordBotStatus(env);
+    return jsonResponse(status);
+  } catch (err) {
+    console.error("discord-bot-status failed:", err);
+    return jsonResponse({
+      ok: false,
+      tokenConfigured: Boolean(String(env.DISCORD_BOT_TOKEN || "").trim()),
+      teacherIdConfigured: Boolean(String(env.DISCORD_TEACHER_USER_ID || "").trim()),
+      hasHomeworkWebhook: Boolean(
+        String(env.DISCORD_HOMEWORK_WEBHOOK_URL || env.DISCORD_WEBHOOK_URL || "").trim()
+      ),
+      hint: "Could not reach Discord API",
+    });
+  }
+}
+
 async function handleStudentMistakes(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3169,6 +3214,10 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
         const studentUsername = String(submission.username || "").trim().toLowerCase();
         const origin = new URL(request.url).origin;
         const hubUrl = origin + "/homework/platform.html";
+        const loginUrl =
+          origin +
+          "/homework.html?user=" +
+          encodeURIComponent(studentUsername);
         const lesson = String(submission.lessonName || submission.assignmentId || "Homework").trim();
         if (studentUsername) {
           const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
@@ -3179,13 +3228,14 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
               "JD finished reviewing your homework.",
               lesson ? `“${lesson}”` : null,
               "",
+              "Homework login: " + loginUrl,
               "Open Homework Hub to see the review: " + hubUrl,
             ]
               .filter(Boolean)
               .join("\n"),
             teacherContent: discordUserId
-              ? `Review ready for ${studentUsername}: ${lesson}`
-              : `Review ready for ${studentUsername} (${lesson}) — no Discord user ID linked. Add it in Student info so they get DMs.`,
+              ? `Review ready for ${studentUsername}: ${lesson}\nHomework login: ${loginUrl}`
+              : `Review ready for ${studentUsername} (${lesson}) — no Discord user ID linked. Add it in Student info so they get DMs.\nHomework login: ${loginUrl}`,
           });
         }
       } catch (err) {
@@ -4312,6 +4362,10 @@ export default {
 
     if (url.pathname === "/api/teacher-ideas/delete") {
       return handleTeacherIdeaDelete(request, env);
+    }
+
+    if (url.pathname === "/api/discord-bot-status") {
+      return handleDiscordBotStatus(request, env);
     }
 
     if (url.pathname === "/api/mg-lexicon") {

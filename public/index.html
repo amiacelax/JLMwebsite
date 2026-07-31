@@ -9,24 +9,22 @@
   <link rel="canonical" href="https://japaneselanguagementor.com/">
   <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/images/favicon-16.png" type="image/png" sizes="16x16">
-  <link rel="icon" href="/images/icon-192.png" type="image/png" sizes="192x192">
-  <link rel="icon" href="/images/icon-512.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://japaneselanguagementor.com/">
   <meta property="og:title" content="Japanese Language Mentor — Learn Japanese with JD">
   <meta property="og:description" content="Trustworthy Japanese for people tired of searching for answers. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
-  <meta property="og:image" content="https://japaneselanguagementor.com/images/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Japanese Language Mentor logo">
+  <meta property="og:image" content="https://japaneselanguagementor.com/images/jd-hero.png">
+  <meta property="og:image:width" content="480">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="JD — Japanese Language Mentor">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Japanese Language Mentor — Learn Japanese with JD">
   <meta name="twitter:description" content="Trustworthy Japanese for people tired of searching for answers. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
-  <meta name="twitter:image" content="https://japaneselanguagementor.com/images/og-image.png">
+  <meta name="twitter:image" content="https://japaneselanguagementor.com/images/jd-hero.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@400;600&family=Yomogi&family=Klee+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Yomogi&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
   <script>
     (function () {
@@ -122,8 +120,11 @@
           </div>
         </div>
         <div class="hero__visual">
-          <div class="hero__photo-wrap hero__photo-wrap--torn" aria-hidden="true">
-            <img class="hero__photo" src="/images/jd-hero.png" alt="" width="480" height="640" loading="eager" decoding="async">
+          <div class="hero__photo-wrap hero__photo-wrap--torn">
+            <picture>
+              <source srcset="/images/jd-hero.webp" type="image/webp">
+              <img class="hero__photo" src="/images/jd-hero.png" alt="JD — Japanese Language Mentor" width="480" height="640" loading="eager" decoding="async" fetchpriority="high">
+            </picture>
           </div>
           <p class="hero__greeting">はじめまして、JDです！</p>
           <p class="hero__proof">10+ years in Japan · 1500+ lessons · N1 Certified</p>
@@ -142,7 +143,7 @@
           <div class="meet__video" id="about-video">
             <div class="video-wrapper">
               <iframe
-                src="https://www.youtube.com/embed/KFWN-OthX_Q"
+                data-src="https://www.youtube-nocookie.com/embed/KFWN-OthX_Q"
                 title="Hi, I'm JD! I teach Japanese."
                 loading="lazy"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -267,7 +268,7 @@
               <p class="service-column__extra-label">Watch a lesson clip</p>
               <div class="video-wrapper video-wrapper--lesson">
                 <iframe
-                  src="https://www.youtube.com/embed/T9n5U0L6tYk"
+                  data-src="https://www.youtube-nocookie.com/embed/T9n5U0L6tYk"
                   title="Watch a lesson"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowfullscreen
@@ -399,10 +400,9 @@
             <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
             <h3>Basic</h3>
             <ul class="hw-breakdown-card__list">
-              <li>HW assignment once per month</li>
-              <li>General written feedback/advice</li>
-              <li>Phone or print — works either way</li>
-              <li>Full learning game access</li>
+              <li>One HW assignment each month</li>
+              <li>Kept at $5 so anyone can take part</li>
+              <li>Written notes when you turn it in</li>
             </ul>
           </article>
         </div>
@@ -412,12 +412,9 @@
             <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
             <h3>Premium</h3>
             <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments per month</li>
-              <li><u>Written</u> feedback and advice from JD</li>
-              <li>AI study tutor for hints and grammar help</li>
-              <li>Phone or print — works either way</li>
-              <li>Full learning game access</li>
-              <li>Private Discord access</li>
+              <li><u>Four</u> HW assignments each month</li>
+              <li>Fun and creative — shaped around your real stuck spots, not a generic site</li>
+              <li><u>Written</u> notes and advice from JD</li>
             </ul>
           </article>
         </div>
@@ -427,15 +424,19 @@
             <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
             <h3>Ultra</h3>
             <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments per month</li>
-              <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
-              <li>Everything in Premium (AI tutor, games, Discord)</li>
-              <li>Priority review queue</li>
-              <li>Phone or print — works either way</li>
+              <li><u>Four</u> HW assignments each month</li>
+              <li>A personal <u>video</u> from JD on <u>each</u> assignment</li>
+              <li>Hearing and seeing the feedback helps it settle in</li>
+              <li>Made so you feel walked with — not left alone with a worksheet</li>
             </ul>
           </article>
         </div>
       </div>
+      <p class="hw-plans-extras hw-plans-extras--modal">
+        <span class="hw-plans-extras__label">Also on Premium &amp; Ultra</span>
+        Learning games, a quiet Discord space, and a little hint help when you want it.
+        Every plan works on your phone or on paper.
+      </p>
       <div class="hw-breakdown-modal__actions">
         <a class="btn btn--primary" href="/homework.html" data-hw-breakdown-close>Join Homework Hub</a>
         <button class="btn btn--ghost" type="button" data-hw-breakdown-close>Close</button>
@@ -559,7 +560,7 @@
         <a href="/courses.html">Courses</a>
         <a href="https://www.youtube.com/@JapaneseLanguageMentor" target="_blank" rel="noopener noreferrer">YouTube</a>
       </nav>
-      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor. All rights reserved.</p>
+      <p class="site-footer__copy">&copy; 2021&ndash;2026 Japanese Language Mentor. All rights reserved.</p>
     </div>
   </footer>
 

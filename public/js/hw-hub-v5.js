@@ -18,7 +18,7 @@
     basic: {
       title: "Basic",
       price: 5,
-      tip: "Homework once per month with written feedback.",
+      tip: "One HW assignment a month — so anyone can join in — with written notes when you send it.",
       detail: "basic",
       featured: false,
       video: false,
@@ -26,7 +26,7 @@
     premium: {
       title: "Premium",
       price: 20,
-      tip: "Four assignments per month, written feedback, AI tutor, and full game access.",
+      tip: "Four HW assignments a month — shaped around your stuck spots, with careful written notes from JD.",
       detail: "premium",
       featured: true,
       badge: "Popular",
@@ -35,7 +35,7 @@
     ultra: {
       title: "Ultra",
       price: 49,
-      tip: "Four assignments per month with personal video feedback from JD on each.",
+      tip: "Four HW assignments a month, plus a personal video from JD on each one so more of it can stick.",
       detail: "ultra",
       featured: false,
       badge: "Video",

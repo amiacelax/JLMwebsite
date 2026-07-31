@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260729a">
+  <link rel="stylesheet" href="/css/styles.css?v=20260731-hg">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=15">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=8">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=93">
@@ -21,6 +21,23 @@
   <script src="/js/hw-feature-flags.js?v=14"></script>
   <script>
     (function () {
+      function loadStudentHandwritingFont() {
+        function attachFontStylesheet() {
+          if (document.querySelector('link[data-hw-fonts="1"]')) return;
+          var link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = '/css/hw-hub-fonts.css?v=1';
+          link.setAttribute('data-hw-fonts', '1');
+          document.head.appendChild(link);
+        }
+
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(attachFontStylesheet, { timeout: 4000 });
+          return;
+        }
+        window.setTimeout(attachFontStylesheet, 1800);
+      }
+
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       else document.documentElement.setAttribute('data-theme', 'dark');
@@ -41,7 +58,9 @@
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=136">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=137">');
+        if (document.readyState === 'complete') loadStudentHandwritingFont();
+        else window.addEventListener('load', loadStudentHandwritingFont, { once: true });
       }
       if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
         document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=16">');
@@ -206,7 +225,7 @@
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
                 </span>
                 <h2 class="course-card__title">Basic</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Homework once per month with written feedback.</p>
+                <p class="hw-hub-tier-tip" role="tooltip">One HW assignment a month — so anyone can join in — with written notes when you send it.</p>
                 <div class="course-card__footer">
                   <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="basic" aria-label="View Basic plan details">
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
@@ -222,7 +241,7 @@
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
                 </span>
                 <h2 class="course-card__title">Premium</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month, written feedback, AI tutor, and full game access.</p>
+                <p class="hw-hub-tier-tip" role="tooltip">Four HW assignments a month — shaped around your stuck spots, with careful written notes from JD.</p>
                 <div class="course-card__footer">
                   <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="premium" aria-label="View Premium plan details">
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
@@ -238,7 +257,7 @@
                   <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
                 </span>
                 <h2 class="course-card__title">Ultra</h2>
-                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month with personal video feedback from JD on each.</p>
+                <p class="hw-hub-tier-tip" role="tooltip">Four HW assignments a month, plus a personal video from JD on each one so more of it can stick.</p>
                 <div class="course-card__footer">
                   <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="ultra" aria-label="View Ultra plan details">
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
@@ -424,6 +443,7 @@
               <div class="hw-teacher-meta__actions">
                 <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
                 <button type="button" class="btn btn--ghost" id="hw-teacher-account-wipe-btn">Wipe student…</button>
+                <button type="button" class="btn btn--ghost" id="hw-teacher-discord-bot-check-btn">Check Discord bot</button>
               </div>
               <p class="hw-maker-status" id="hw-teacher-account-status" role="status" aria-live="polite">
                 Pick a student, paste links, then save.
@@ -1162,10 +1182,9 @@
         <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
         <h3>Basic</h3>
         <ul class="hw-breakdown-card__list">
-          <li>HW assignment once per month</li>
-          <li>General written feedback/advice</li>
-          <li>Phone or print — works either way</li>
-          <li>Full learning game access</li>
+          <li>One HW assignment each month</li>
+          <li>Kept at $5 so anyone can take part</li>
+          <li>Written notes when you turn it in</li>
         </ul>
       </article>
 
@@ -1174,12 +1193,9 @@
         <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
         <h3>Premium</h3>
         <ul class="hw-breakdown-card__list">
-          <li><u>Four</u> HW assignments per month</li>
-          <li><u>Written</u> feedback and advice from JD</li>
-          <li>AI study tutor for hints and grammar help</li>
-          <li>Phone or print — works either way</li>
-          <li>Full learning game access</li>
-          <li>Private Discord access</li>
+          <li><u>Four</u> HW assignments each month</li>
+          <li>Fun and creative — shaped around your real stuck spots, not a generic site</li>
+          <li><u>Written</u> notes and advice from JD</li>
         </ul>
       </article>
 
@@ -1188,14 +1204,18 @@
         <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
         <h3>Ultra</h3>
         <ul class="hw-breakdown-card__list">
-          <li><u>Four</u> HW assignments per month</li>
-          <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
-          <li>Everything in Premium (AI tutor, games, Discord)</li>
-          <li>Priority review queue</li>
-          <li>Phone or print — works either way</li>
+          <li><u>Four</u> HW assignments each month</li>
+          <li>A personal <u>video</u> from JD on <u>each</u> assignment</li>
+          <li>Hearing and seeing the feedback helps it settle in</li>
+          <li>Made so you feel walked with — not left alone with a worksheet</li>
         </ul>
-        <p class="hw-platform-card__desc hw-platform-card__desc--tight">Video feedback is only on Ultra — not available as a separate add-on.</p>
+        <p class="hw-platform-card__desc hw-platform-card__desc--tight">The video walk-through is only on Ultra — not sold separately.</p>
       </article>
+      <p class="hw-plans-extras hw-plans-extras--modal">
+        <span class="hw-plans-extras__label">Also on Premium &amp; Ultra</span>
+        Learning games, a quiet Discord space, and a little hint help when you want it.
+        Every plan works on your phone or on paper.
+      </p>
     </div>
   </div>
 
@@ -1238,14 +1258,14 @@
 
   <footer class="site-footer">
     <div class="container site-footer__inner">
-      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
+      <p class="site-footer__copy">&copy; 2021&ndash;2026 Japanese Language Mentor</p>
     </div>
   </footer>
 
   <!-- Shared worksheet/media stack (both roles). Role-specific bundles load via hw-platform-boot.js. -->
   <script src="/js/kumo-wallpaper.js?v=20260727r" defer></script>
   <script src="/js/subpage.js?v=20260727r" defer></script>
-  <script src="/js/hw-loading.js?v=4" defer></script>
+  <script src="/js/hw-loading.js?v=5" defer></script>
   <script src="/js/hw-audio-player.js?v=20260786" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260771" defer></script>
@@ -1264,7 +1284,7 @@
   <script src="/js/hw-toolbar-q-icons.js?v=5" defer></script>
   <script src="/js/hw-student-toolbar.js?v=11" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
-  <script src="/js/hw-platform-boot.js?v=52" defer></script>
+  <script src="/js/hw-platform-boot.js?v=55" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {

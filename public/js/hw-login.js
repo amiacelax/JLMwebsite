@@ -32,7 +32,6 @@
 
   function showLoggedIn(session) {
     if (loginFields) loginFields.hidden = true;
-    document.querySelector(".hw-auth-tabs")?.setAttribute("hidden", "true");
     if (loggedInBar) loggedInBar.hidden = false;
     if (loggedInName) {
       loggedInName.textContent = session.displayName || session.username;
@@ -45,11 +44,6 @@
   }
 
   function activateAuthTab(name) {
-    authTabs.forEach((tab) => {
-      const on = tab.getAttribute("data-auth-tab") === name;
-      tab.classList.toggle("is-active", on);
-      tab.setAttribute("aria-selected", on ? "true" : "false");
-    });
     const loginPanel = document.getElementById("hw-auth-panel-login");
     const signupPanel = document.getElementById("hw-auth-panel-signup");
     if (loginPanel) loginPanel.hidden = name !== "login";
@@ -66,6 +60,21 @@
 
   const params = new URLSearchParams(window.location.search);
   if (params.get("signup") === "1") activateAuthTab("signup");
+
+  // Discord DMs (and other deep links) can prefill username: ?user=benm
+  const prefillUser = String(params.get("user") || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 32);
+  if (prefillUser) {
+    const userInput = document.getElementById("hw-username");
+    if (userInput && !userInput.value) {
+      userInput.value = prefillUser;
+      const passInput = document.getElementById("hw-password");
+      if (passInput) passInput.focus();
+    }
+  }
 
   const existing = HwAuth.getSession();
   if (existing) {

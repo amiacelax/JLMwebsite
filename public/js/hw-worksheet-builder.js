@@ -32,7 +32,7 @@
           title: "Section 1 — Grammar point",
           instructions:
             "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
-          items: [1, 2, 3, 4, 5].map((n) => grammarItem(n)),
+          items: [1, 2, 3, 4, 5, 6].map((n) => grammarItem(n)),
         },
       ],
     },
@@ -2010,9 +2010,14 @@
     function loadAssignment(assignment) {
       const data = assignment || {};
       canvasAssignmentId = data.id || null;
+      const blocks = sectionsToBlocks(data.sections || [], data.register);
+      // Loaded sheets start collapsed so you can scan the list first.
+      blocks.forEach((b) => {
+        b.collapsed = true;
+      });
       state = {
         templateType: data.templateType || "custom",
-        blocks: sectionsToBlocks(data.sections || [], data.register),
+        blocks,
         topicExplanation: data.topicExplanation || "",
         topicExplanationAudioUrl: data.topicExplanationAudioUrl || "",
         topicExplanationMediaId: data.topicExplanationMediaId || "",

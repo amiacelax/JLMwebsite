@@ -6,10 +6,10 @@
   if (!el) return;
 
   const WORDS = [
-    { kana: "モチベーション", kanji: null },
+    { kana: "しゅくだい", kanji: "宿題" },
     { kana: "どりょく", kanji: "努力" },
     { kana: "べんきょう", kanji: "勉強" },
-    { kana: "しゅくだい", kanji: "宿題" },
+    { kana: "モチベーション", kanji: null },
     { kana: "たのしい", kanji: "楽しい" },
   ];
 
