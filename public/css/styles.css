@@ -1201,6 +1201,14 @@ body.is-nav-open {
   margin-bottom: 0.75rem;
 }
 
+.service-card__schedule {
+  margin: -0.35rem 0 0.85rem;
+  color: var(--color-gold);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .service-card__badge {
   display: inline-block;
   margin-left: 0.35rem;
@@ -1743,6 +1751,18 @@ body.is-modal-open {
   margin: 0 0 1.25rem;
   color: var(--color-text-muted);
   line-height: 1.5;
+}
+
+.jumpstart-modal__schedule {
+  margin: -0.5rem 0 1.25rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--color-text);
+  background: var(--color-gold-soft);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 45%, transparent);
+  border-radius: var(--radius-lg);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .jumpstart-day-grid {
