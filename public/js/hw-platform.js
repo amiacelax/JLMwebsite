@@ -1593,13 +1593,20 @@
       inputs.forEach((inp) => {
         if (inp.name) data[inp.name] = inp.value;
       });
+      form.querySelectorAll("input[data-student-open-image]").forEach((inp) => {
+        if (inp.name) data[inp.name] = inp.value || "";
+      });
       return data;
     }
 
     function applyAnswersToForm(saved) {
-      inputs.forEach((inp) => {
-        if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
-      });
+      if (global.HwWorksheet?.applyAnswersMap) {
+        global.HwWorksheet.applyAnswersMap(form, saved);
+      } else {
+        inputs.forEach((inp) => {
+          if (inp.name && saved[inp.name] != null) inp.value = saved[inp.name];
+        });
+      }
       if (global.HwWorksheet?.updateSubmitButtonState) {
         global.HwWorksheet.updateSubmitButtonState(form);
       }
@@ -3450,10 +3457,27 @@
       }
 
       showToast("Notes sent — student can see your feedback.");
+      const kept = {
+        ...teacherReviewSubmission,
+        ...(data.submission || {}),
+        reviewStatus: "reviewed",
+        comments:
+          data.submission?.comments ||
+          comments ||
+          teacherReviewSubmission.comments ||
+          [],
+      };
       await closeTeacherWorksheetReview();
       if (global.HwTeacherSubmissions?.reload) {
         await global.HwTeacherSubmissions.reload();
       }
+      try {
+        await global.HwHubV6?.refresh?.();
+      } catch {
+        /* ignore */
+      }
+      /* Re-open so “View submission” stays on the sheet + submitted notes. */
+      await openTeacherWorksheetReview(kept);
     } catch (err) {
       setTeacherReviewStatus((err && err.message) || "Could not submit notes.", true);
       if (submitBtn) submitBtn.disabled = false;

@@ -25,7 +25,10 @@
   }
 
   function signupSearchText(entry) {
-    return [entry.name, entry.email, entry.page].filter(Boolean).join(" ").toLowerCase();
+    return [entry.name, entry.email, entry.page, ...(entry.interests || []), entry.interestOther]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
   }
 
   function setComposeStatus(message) {
@@ -174,6 +177,22 @@
         main.append(top, title, sub);
       } else {
         main.append(top, title);
+      }
+
+      if (entry.interests?.length || entry.interestOther) {
+        const interestLabels = {
+          "lesson-discounts": "Lesson discounts",
+          "new-learning-games": "New learning games",
+          other: entry.interestOther
+            ? "Other: " + entry.interestOther
+            : "Other",
+        };
+        const interestLine = document.createElement("p");
+        interestLine.className = "hw-submissions-item__sub";
+        interestLine.textContent = (entry.interests || [])
+          .map((k) => interestLabels[k] || k)
+          .join(" · ");
+        main.append(interestLine);
       }
 
       const actions = document.createElement("div");

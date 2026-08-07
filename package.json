@@ -7,7 +7,8 @@
     "dev": "wrangler dev --live-reload",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev --remote",
-    "sync:kv": "node scripts/sync-kv-prod-to-local.mjs"
+    "sync:kv": "node scripts/sync-kv-prod-to-local.mjs",
+    "arm:social": "node scripts/arm-social-reminder.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250508.0",

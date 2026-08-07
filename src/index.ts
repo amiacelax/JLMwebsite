@@ -1,5 +1,13 @@
 import { runBirthdayReminders } from "./birthday-reminders";
 import {
+  armSocialReminder,
+  assertTeacherArm,
+  cancelSocialReminder,
+  listPendingSocialReminders,
+  runSocialReminders,
+  type SocialReminderArmPayload,
+} from "./social-reminders";
+import {
   isHarrisPreviewAuthorized,
   isHarrisPreviewPath,
   harrisPreviewUnauthorized,
@@ -40,6 +48,9 @@ import {
   deleteTeacherIdeaImage,
   listCustomTeacherIdeaTags,
   uploadTeacherIdeaImage,
+  saveWorksheetPromptImage,
+  saveStudentWorksheetImage,
+  loadWorksheetPromptImage,
   loadTeacherIdeaImage,
   type CatalogFile,
   type PublishPayload,
@@ -133,7 +144,7 @@ interface Env {
   ASSETS: Fetcher;
   HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
-  /** website-inquiries — used to verify the webhook posts to the right channel */
+  /** Discord notify channel — used to verify the webhook posts to the right place */
   DISCORD_CHANNEL_ID?: string;
   DISCORD_HOMEWORK_WEBHOOK_URL?: string;
   DISCORD_HOMEWORK_CHANNEL_ID?: string;
@@ -208,6 +219,8 @@ interface ContactPayload {
 interface PromoPayload {
   email?: string;
   page?: string;
+  interests?: string[];
+  interestOther?: string;
 }
 
 const CORS_HEADERS = {
@@ -320,34 +333,63 @@ async function getWebhookChannelMismatch(
   );
 }
 
+/** Wrap plain Discord text in a code block (monospace “code text” look). */
+function wrapDiscordCodeBlock(text: string): string {
+  const body = String(text || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/```/g, "'''")
+    .trim();
+  // Reserve room for fences: ```\n ... \n```
+  const clipped = clip(body, 1980);
+  return "```\n" + clipped + "\n```";
+}
+
 function fieldMaxLen(fieldName: string): number {
-  if (fieldName === "Message" || fieldName.startsWith("Section ")) return 1024;
-  return 256;
+  if (fieldName === "Message" || fieldName.startsWith("Section ")) return 1800;
+  return 500;
+}
+
+/** Plain Discord text: title, then one Label: value per line (no embed / no timestamp). */
+function formatDiscordPlainLines(
+  title: string,
+  fields: { name: string; value: string }[]
+): string {
+  const lines = [title.trim()];
+  for (const f of fields) {
+    const name = String(f.name || "").trim();
+    const value = String(f.value ?? "").trim();
+    if (!name && !value) continue;
+    if (!name) {
+      lines.push(value);
+      continue;
+    }
+    const valueLines = value.split(/\r?\n/);
+    lines.push(`${name}: ${valueLines[0] || ""}`);
+    for (let i = 1; i < valueLines.length; i++) {
+      lines.push(valueLines[i]);
+    }
+  }
+  return lines.join("\n").trim();
 }
 
 async function notifyDiscord(
   webhookUrl: string,
-  payload: { title: string; color: number; fields: { name: string; value: string; inline?: boolean }[] }
+  payload: {
+    title: string;
+    color?: number;
+    fields: { name: string; value: string; inline?: boolean }[];
+  }
 ): Promise<{ ok: true } | { ok: false; status: number; detail: string }> {
-  const body = {
-    embeds: [
-      {
-        title: payload.title,
-        color: payload.color,
-        fields: payload.fields.map((f) => ({
-          name: f.name,
-          value: clip(f.value, fieldMaxLen(f.name)),
-          inline: f.inline ?? false,
-        })),
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  };
+  const fields = payload.fields.map((f) => ({
+    name: f.name,
+    value: clip(f.value, fieldMaxLen(f.name)),
+  }));
+  const content = wrapDiscordCodeBlock(formatDiscordPlainLines(payload.title, fields));
 
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ content }),
   });
 
   if (res.ok) return { ok: true };
@@ -369,7 +411,44 @@ function validateContact(data: ContactPayload): string | null {
 function validatePromoEmail(data: PromoPayload): string | null {
   if (!data.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
     return "A valid email is required.";
+  const interests = Array.isArray(data.interests)
+    ? data.interests.map((v) => String(v || "").trim()).filter(Boolean)
+    : [];
+  const allowed = new Set(["lesson-discounts", "new-learning-games", "other"]);
+  if (interests.some((v) => !allowed.has(v))) {
+    return "Pick a valid interest option.";
+  }
+  if (interests.includes("other")) {
+    const other = String(data.interestOther || "").trim();
+    if (other.length < 3) {
+      return "Please say a bit more for Other (at least 3 characters).";
+    }
+  }
   return null;
+}
+
+function formatPromoInterestLabel(key: string): string {
+  if (key === "lesson-discounts") return "Lesson discounts";
+  if (key === "new-learning-games") return "New learning games";
+  if (key === "other") return "Other";
+  return key;
+}
+
+function formatPromoInterestsForDiscord(
+  interests: string[] | undefined,
+  interestOther: string | undefined
+): string {
+  const keys = Array.isArray(interests) ? interests : [];
+  if (!keys.length) return "Not specified";
+  return keys
+    .map((k) => {
+      if (k === "other") {
+        const note = String(interestOther || "").trim();
+        return note ? `Other: ${note}` : "Other";
+      }
+      return formatPromoInterestLabel(k);
+    })
+    .join("\n");
 }
 
 async function handleContact(request: Request, env: Env): Promise<Response> {
@@ -401,7 +480,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   const channelError = await getWebhookChannelMismatch(
     webhookUrl,
     env.DISCORD_CHANNEL_ID,
-    "#website-inquiries"
+    "Discord notify channel"
   );
   if (channelError) {
     console.error(channelError);
@@ -468,7 +547,7 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   const channelError = await getWebhookChannelMismatch(
     webhookUrl,
     env.DISCORD_CHANNEL_ID,
-    "#website-inquiries"
+    "Discord notify channel"
   );
   if (channelError) {
     console.error(channelError);
@@ -480,11 +559,18 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
 
   const page = data.page?.trim() || "Unknown page";
   const email = data.email!.trim();
+  const interests = Array.isArray(data.interests)
+    ? data.interests.map((v) => String(v || "").trim()).filter(Boolean)
+    : [];
+  const interestOther = String(data.interestOther || "").trim();
 
   let kvSaved = false;
   let duplicate = false;
   try {
-    const saved = await savePromoSignup({ email, page }, env);
+    const saved = await savePromoSignup(
+      { email, page, interests, interestOther },
+      env
+    );
     kvSaved = true;
     duplicate = saved.duplicate;
   } catch (err) {
@@ -502,6 +588,11 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
     fields: [
       { name: "Email", value: email, inline: true },
       { name: "Page", value: page, inline: true },
+      {
+        name: "Interests",
+        value: formatPromoInterestsForDiscord(interests, interestOther),
+        inline: false,
+      },
       {
         name: "Type",
         value: "Limited promotions & discounts list",
@@ -560,7 +651,7 @@ async function handleFeatureReport(request: Request, env: Env): Promise<Response
       return jsonResponse({ error: "Reports are not configured on this server yet." }, 503);
     }
     if (code === "KIND_REQUIRED") {
-      return jsonResponse({ error: "Choose Feature request or Bug report." }, 400);
+      return jsonResponse({ error: "Choose Feature request, Bug report, or reminder." }, 400);
     }
     if (code === "MESSAGE_REQUIRED") {
       return jsonResponse({ error: "Write a short message before sending." }, 400);
@@ -599,6 +690,100 @@ async function handleFeatureReports(request: Request, env: Env): Promise<Respons
     }
     console.error("feature-reports list failed:", err);
     return jsonResponse({ error: "Could not load reports." }, 500);
+  }
+}
+
+async function handleSocialReminders(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+    if (teacherUsername.trim().toLowerCase() !== allowed) {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    try {
+      const reminders = await listPendingSocialReminders(env);
+      return jsonResponse({ reminders });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Reminder storage is not configured on this server." }, 503);
+      }
+      console.error("social-reminders list failed:", err);
+      return jsonResponse({ error: "Could not load reminders." }, 500);
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const url = new URL(request.url);
+    const teacherUsername = url.searchParams.get("teacherUsername") || "";
+    const id = (url.searchParams.get("id") || "").trim();
+    const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+    if (teacherUsername.trim().toLowerCase() !== allowed) {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (!id) return jsonResponse({ error: "Reminder id is required." }, 400);
+    try {
+      const ok = await cancelSocialReminder(id, env);
+      if (!ok) return jsonResponse({ error: "Reminder not found (already fired or cancelled)." }, 404);
+      return jsonResponse({ success: true, cancelled: id });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Reminder storage is not configured on this server." }, 503);
+      }
+      console.error("social-reminders cancel failed:", err);
+      return jsonResponse({ error: "Could not cancel reminder." }, 500);
+    }
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let data: SocialReminderArmPayload;
+  try {
+    data = (await request.json()) as SocialReminderArmPayload;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  if (!assertTeacherArm(env, data)) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const job = await armSocialReminder(data, env);
+    return jsonResponse({
+      success: true,
+      reminder: job,
+      message: `Armed for ${job.fireAtUtc}`,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Reminder storage is not configured on this server." }, 503);
+    }
+    if (code === "FIRE_AT_REQUIRED") {
+      return jsonResponse({ error: "fireAtUtc is required (ISO datetime)." }, 400);
+    }
+    if (code === "TITLES_REQUIRED") {
+      return jsonResponse({ error: "clipTitles is required." }, 400);
+    }
+    if (
+      code === "TITLES_TOO_LONG" ||
+      code === "PIN_TOO_LONG" ||
+      code === "STORY_TOO_LONG" ||
+      code === "LINK_TOO_LONG"
+    ) {
+      return jsonResponse({ error: "One of the fields is too long." }, 400);
+    }
+    console.error("social-reminders arm failed:", err);
+    return jsonResponse({ error: "Could not arm reminder." }, 500);
   }
 }
 
@@ -680,7 +865,7 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
       const channelError = await getWebhookChannelMismatch(
         webhookUrl,
         env.DISCORD_CHANNEL_ID,
-        "#website-inquiries"
+        "Discord notify channel"
       );
       if (channelError) {
         console.error("auth signup discord:", channelError);
@@ -1106,36 +1291,58 @@ function formatHomeworkAnswerDiscord(
   index: number,
   request?: Request,
   env?: Env
-): string {
+): { line: string; links: string[] } {
   const fmt = normalizeSubmissionRow(row, index);
-  const lines = [`${fmt.num}`];
-  const top = fmt.question?.trim() || fmt.piecesLine?.trim() || "";
-
-  if (top) {
-    lines.push(`   ${top}`);
-  }
+  const num = String(fmt.num).replace(/[^\d]/g, "") || String(index + 1);
 
   if (fmt.mediaLabel) {
-    lines.push(`   【${fmt.mediaLabel}】`);
+    const links: string[] = [];
     if (fmt.mediaId && request) {
       const listen = homeworkShortMediaUrl(request, fmt.mediaId, false);
       const download = homeworkShortMediaUrl(request, fmt.mediaId, true);
-      lines.push(`   [Listen](${listen}) · [Download](${download})`);
+      // Keep URLs outside the code block so Discord makes them clickable.
+      links.push(`[Listen](${listen}) · [Download](${download})`);
     }
-  } else {
-    lines.push(`   【${fmt.answer?.trim() || "(blank)"}】`);
+    return { line: `${num}. ${fmt.mediaLabel}`, links };
   }
 
-  return lines.join("\n");
+  return { line: `${num}. ${fmt.answer?.trim() || "(blank)"}`, links: [] };
 }
 
 function formatOrderedAnswersDiscord(
   rows: HomeworkOrderedAnswerRow[] | undefined,
   request?: Request,
   env?: Env
+): { body: string; links: string[] } {
+  if (!rows?.length) return { body: "(none)", links: [] };
+  const lines: string[] = [];
+  const links: string[] = [];
+  rows.forEach((row, index) => {
+    const part = formatHomeworkAnswerDiscord(row, index, request, env);
+    lines.push(part.line);
+    links.push(...part.links);
+  });
+  return { body: lines.join("\n"), links };
+}
+
+/** Code-block body + clickable audio/video URLs after the fence. */
+function composeHomeworkDiscordMessage(plainBody: string, links: string[] = []): string {
+  const code = wrapDiscordCodeBlock(plainBody);
+  const cleanLinks = links.map((l) => String(l || "").trim()).filter(Boolean);
+  if (!cleanLinks.length) return code;
+  const joined = `${code}\n${cleanLinks.join("\n")}`;
+  return clip(joined, 2000);
+}
+
+function homeworkNotifyHeadline(
+  kind: string,
+  displayName: string,
+  username: string,
+  lesson: string
 ): string {
-  if (!rows?.length) return "(none)";
-  return rows.map((row, index) => formatHomeworkAnswerDiscord(row, index, request, env)).join("\n\n");
+  const who = `${displayName.trim() || username.trim()} (${username.trim()})`;
+  const lessonBit = lesson.trim() ? `  — ${lesson.trim()}` : "";
+  return `${kind} — ${who}${lessonBit}`;
 }
 
 function section2BlockType(row: HomeworkAnswerRow): string {
@@ -1178,18 +1385,12 @@ function legacyAnswersInWorksheetOrder(
 
 function buildHomeworkDiscordDescription(
   ordered: HomeworkOrderedAnswerRow[],
-  student: string,
-  lesson: string,
+  _student: string,
+  _lesson: string,
   request?: Request,
   env?: Env
-): string {
-  const lines = [
-    `Student: ${student}`,
-    `Lesson: ${lesson}`,
-    "",
-    formatOrderedAnswersDiscord(ordered, request, env),
-  ];
-  return lines.filter((line) => line != null).join("\n");
+): { body: string; links: string[] } {
+  return formatOrderedAnswersDiscord(ordered, request, env);
 }
 
 async function buildHomeworkDiscordDescriptionForSubmit(
@@ -1199,7 +1400,7 @@ async function buildHomeworkDiscordDescriptionForSubmit(
   request: Request,
   env: Env,
   videoRow?: HomeworkOrderedAnswerRow
-): Promise<{ body: string; title: string }> {
+): Promise<{ body: string; title: string; links: string[] }> {
   let ordered: HomeworkOrderedAnswerRow[] = data.answers?.length
     ? videoRow
       ? [...data.answers, { ...videoRow, progress: String(data.answers.length + 1) }]
@@ -1213,18 +1414,16 @@ async function buildHomeworkDiscordDescriptionForSubmit(
     }
   }
 
-  const titleLine = data.title?.trim() ? `Worksheet: ${data.title.trim()}` : null;
-  const body = [
-    `Student: ${student}`,
-    `Lesson: ${lesson}`,
-    titleLine,
-    "",
-    formatOrderedAnswersDiscord(ordered, request, env),
-  ]
-    .filter((line) => line != null)
-    .join("\n");
+  const headline = homeworkNotifyHeadline(
+    "Homework submitted",
+    student,
+    data.username!.trim(),
+    lesson
+  );
+  const formatted = formatOrderedAnswersDiscord(ordered, request, env);
+  const body = [headline, "", formatted.body].join("\n");
 
-  return { body, title: titleLine || "" };
+  return { body, title: headline, links: formatted.links };
 }
 
 function safeKeyPart(value: string | undefined, fallback: string): string {
@@ -1318,36 +1517,33 @@ const DISCORD_SUPPRESS_EMBEDS = 4;
 
 async function notifyHomeworkDiscord(
   webhookUrl: string,
-  text: string
+  text: string,
+  links: string[] = []
 ): Promise<{ ok: true } | { ok: false; status: number; detail: string }> {
+  const content = composeHomeworkDiscordMessage(text, links);
   const result = await postDiscordWebhook(webhookUrl, {
-    content: clip(text, 2000),
+    content,
     flags: DISCORD_SUPPRESS_EMBEDS,
   });
   if (result.ok) return result;
   return postDiscordWebhook(webhookUrl, {
     flags: DISCORD_SUPPRESS_EMBEDS,
-    embeds: [
-      {
-        title: "Homework submitted",
-        description: clip(text, 4096),
-        color: 0xf1c40f,
-        timestamp: new Date().toISOString(),
-      },
-    ],
+    content,
   });
 }
 
 async function notifyHomeworkDiscordWithFile(
   webhookUrl: string,
   text: string,
-  file: File
+  file: File,
+  links: string[] = []
 ): Promise<{ ok: true } | { ok: false; status: number; detail: string }> {
   const form = new FormData();
   form.append(
     "payload_json",
     JSON.stringify({
-      content: clip(text, 1800),
+      content: composeHomeworkDiscordMessage(text, links),
+      flags: DISCORD_SUPPRESS_EMBEDS,
     })
   );
   form.append("files[0]", file, safeKeyPart(file.name, "homework-photo.jpg"));
@@ -1426,14 +1622,14 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
   if (webhook) {
   if (webhook.usedFallback) {
     console.warn(
-      "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (#website-inquiries)"
+      "homework-submit: DISCORD_HOMEWORK_WEBHOOK_URL missing — using DISCORD_WEBHOOK_URL (site notify channel)"
     );
   }
 
   const channelError = await getWebhookChannelMismatch(
     webhook.url,
     webhook.channelId,
-    webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+    webhook.usedFallback ? "notify channel (homework fallback)" : "homework submissions"
   );
   if (channelError) {
     console.warn("homework-submit channel check:", channelError);
@@ -1441,7 +1637,8 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
 
   const student = data.displayName?.trim() || data.username!.trim();
   const lesson = data.lessonName?.trim() || data.assignmentId!.trim();
-    const { body: descriptionBody } = await buildHomeworkDiscordDescriptionForSubmit(
+    const { body: descriptionBody, links: mediaLinks } =
+      await buildHomeworkDiscordDescriptionForSubmit(
       data,
       student,
       lesson,
@@ -1450,14 +1647,12 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
     );
   const bodyText = [
     webhook.usedFallback ? "[Homework — posted via site webhook until HW webhook is set]" : null,
-    `Homework submitted — ${student} (${data.username!.trim()})`,
-    "",
       descriptionBody,
   ]
     .filter((line) => line != null)
     .join("\n");
 
-  const result = await notifyHomeworkDiscord(webhook.url, bodyText);
+  const result = await notifyHomeworkDiscord(webhook.url, bodyText, mediaLinks);
     discordOk = result.ok;
   if (!result.ok) {
     console.error("Homework Discord error", result.status, result.detail);
@@ -1557,7 +1752,7 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       const channelError = await getWebhookChannelMismatch(
         webhook.url,
         webhook.channelId,
-        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+        webhook.usedFallback ? "notify channel (homework fallback)" : "homework submissions"
       );
       if (channelError) {
         console.warn("homework-photo channel check:", channelError);
@@ -1567,10 +1762,7 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
         webhook.usedFallback
           ? "[Homework photo — posted via site webhook until HW webhook is set]"
           : null,
-        `Printed homework photo — ${displayName}`,
-        "",
-        `Student: ${displayName} (${username})`,
-        `Assignment: ${lessonName}`,
+        homeworkNotifyHeadline("Printed homework photo", displayName, username, lessonName),
         `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
       ]
         .filter((line) => line != null)
@@ -1701,7 +1893,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     const channelError = await getWebhookChannelMismatch(
       webhook.url,
       webhook.channelId,
-      webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+      webhook.usedFallback ? "notify channel (homework fallback)" : "homework submissions"
     );
     if (channelError) {
         console.warn("homework-video channel check:", channelError);
@@ -1711,19 +1903,18 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
       webhook.usedFallback
           ? "[Homework video — posted via site webhook until HW webhook is set]"
         : null,
-        `Video homework — ${displayName}`,
-      "",
-      `Student: ${displayName} (${username})`,
-      `Assignment: ${lessonName}`,
+        homeworkNotifyHeadline("Video homework", displayName, username, lessonName),
         promptLabel ? `Prompt: ${promptLabel}` : null,
       `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
-        saveResult
-          ? `Phone download (open in VLC if needed): ${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)}`
-          : null,
     ]
       .filter((line) => line != null)
       .join("\n");
-    const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+    const mediaLinks = saveResult
+      ? [
+          `[Listen](${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, false)}) · [Download](${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)})`,
+        ]
+      : [];
+    const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file, mediaLinks);
       discordOk = result.ok;
     if (!result.ok) {
         console.error("Homework video Discord error", result.status, result.detail);
@@ -1851,7 +2042,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
       const channelError = await getWebhookChannelMismatch(
         webhook.url,
         webhook.channelId,
-        webhook.usedFallback ? "website-inquiries (homework fallback)" : "homework submissions"
+        webhook.usedFallback ? "notify channel (homework fallback)" : "homework submissions"
       );
       if (channelError) {
         console.warn("homework-audio channel check:", channelError);
@@ -1861,19 +2052,18 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
         webhook.usedFallback
           ? "[Homework audio — posted via site webhook until HW webhook is set]"
           : null,
-        `Audio homework — ${displayName}`,
-        "",
-        `Student: ${displayName} (${username})`,
-        `Assignment: ${lessonName}`,
+        homeworkNotifyHeadline("Audio homework", displayName, username, lessonName),
         promptLabel ? `Prompt: ${promptLabel}` : null,
         `File: ${file.name || safeName} (${Math.round(file.size / 1024)} KB)`,
-        saveResult
-          ? `Phone download (open in VLC if needed): ${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)}`
-          : null,
       ]
         .filter((line) => line != null)
         .join("\n");
-      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file);
+      const mediaLinks = saveResult
+        ? [
+            `[Listen](${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, false)}) · [Download](${homeworkSubmissionMediaUrl(request, env, saveResult.videoId, true)})`,
+          ]
+        : [];
+      const result = await notifyHomeworkDiscordWithFile(webhook.url, text, file, mediaLinks);
       discordOk = result.ok;
       if (!result.ok) {
         console.error("Homework audio Discord error", result.status, result.detail);
@@ -1960,6 +2150,89 @@ async function handleHomeworkReviewMediaUpload(request: Request, env: Env): Prom
     }
     console.error("homework-review-media-upload failed:", err);
     return jsonResponse({ error: "Could not save review clip." }, 500);
+  }
+}
+
+async function handleHomeworkWorksheetImageUpload(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const form = await request.formData();
+    const teacherUsername = String(form.get("teacherUsername") || "").trim();
+    const studentUsername = String(form.get("username") || form.get("studentUsername") || "").trim();
+    const file = form.get("image") || form.get("file");
+    if (!isUploadedFile(file)) {
+      return jsonResponse({ error: "Please upload an image file." }, 400);
+    }
+
+    const saved = teacherUsername
+      ? await saveWorksheetPromptImage(teacherUsername, file, env)
+      : await saveStudentWorksheetImage(studentUsername, file, env);
+
+    return jsonResponse({
+      success: true,
+      id: saved.id,
+      mimeType: saved.mimeType,
+      url: saved.urlPath,
+      message: "Image saved.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Image storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "STUDENT_REQUIRED" || code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 400);
+    }
+    if (code === "IMAGE_TYPE") {
+      return jsonResponse({ error: "Use a JPEG, PNG, GIF, or WebP image." }, 400);
+    }
+    if (code === "IMAGE_TOO_LARGE") {
+      return jsonResponse({ error: "Image must be under 4 MB." }, 400);
+    }
+    console.error("homework-worksheet-image-upload failed:", err);
+    return jsonResponse({ error: "Could not save image." }, 500);
+  }
+}
+
+async function handleHomeworkWorksheetImage(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const url = new URL(request.url);
+    const match = url.pathname.match(/^\/api\/hw-img\/([^/]+)$/);
+    const id = match ? decodeURIComponent(match[1]) : url.searchParams.get("id") || "";
+    const loaded = await loadWorksheetPromptImage(id, env);
+    if (!loaded) return jsonResponse({ error: "Image not found." }, 404);
+
+    return new Response(loaded.body, {
+      status: 200,
+      headers: {
+        "Content-Type": loaded.mimeType,
+        "Cache-Control": "public, max-age=86400",
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Image storage is not configured on this server." }, 503);
+    }
+    console.error("homework-worksheet-image load failed:", err);
+    return jsonResponse({ error: "Could not load image." }, 500);
   }
 }
 
@@ -2947,7 +3220,8 @@ async function handleHomeworkSubmissionDiscordPreview(
       answers: submission.answers,
     };
 
-    const { body: descriptionBody } = await buildHomeworkDiscordDescriptionForSubmit(
+    const { body: descriptionBody, links: mediaLinks } =
+      await buildHomeworkDiscordDescriptionForSubmit(
       payload,
       student,
       lesson,
@@ -2958,8 +3232,6 @@ async function handleHomeworkSubmissionDiscordPreview(
 
     const bodyText = [
       "[TEST — new submission format preview]",
-      `Homework submitted — ${student} (${submission.username})`,
-      "",
       descriptionBody,
     ].join("\n");
 
@@ -2968,7 +3240,8 @@ async function handleHomeworkSubmissionDiscordPreview(
       return jsonResponse({ error: "Homework Discord webhook is not configured." }, 503);
     }
 
-    const result = await notifyHomeworkDiscord(webhook.url, bodyText.slice(0, 2000));
+    const composed = composeHomeworkDiscordMessage(bodyText, mediaLinks);
+    const result = await notifyHomeworkDiscord(webhook.url, bodyText, mediaLinks);
     if (!result.ok) {
       return jsonResponse({ error: "Could not post to Discord.", detail: result.detail }, 502);
     }
@@ -2976,7 +3249,7 @@ async function handleHomeworkSubmissionDiscordPreview(
     return jsonResponse({
       success: true,
       message: "Test preview posted to Discord.",
-      preview: bodyText,
+      preview: composed,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -3508,12 +3781,14 @@ async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Resp
       const lesson =
         submission.lessonName || submission.title || submission.assignmentId || "Homework";
       const result = await notifyDiscord(webhook.url, {
-        title: "Student finished reviewing notes",
+        title: homeworkNotifyHeadline(
+          "Student finished reviewing notes",
+          name,
+          submission.username,
+          lesson
+        ),
         color: 0x2d6a4f,
         fields: [
-          { name: "Student", value: name, inline: true },
-          { name: "Username", value: submission.username, inline: true },
-          { name: "Assignment", value: lesson, inline: false },
           {
             name: "Next",
             value: "Ready for new homework (notes acknowledged).",
@@ -4176,6 +4451,15 @@ export default {
       return handleHomeworkSubmissionVideo(new Request(target.toString(), request), env);
     }
 
+    const hwImgMatch = url.pathname.match(/^\/api\/hw-img\/([^/]+)$/);
+    if (hwImgMatch) {
+      return handleHomeworkWorksheetImage(request, env);
+    }
+
+    if (url.pathname === "/api/homework-worksheet-image-upload") {
+      return handleHomeworkWorksheetImageUpload(request, env);
+    }
+
     if (url.pathname === "/api/ja-lookup") {
       return handleJaLookup(request, env);
     }
@@ -4206,6 +4490,10 @@ export default {
 
     if (url.pathname === "/api/feature-reports") {
       return handleFeatureReports(request, env);
+    }
+
+    if (url.pathname === "/api/social-reminders") {
+      return handleSocialReminders(request, env);
     }
 
     if (url.pathname === "/api/promo-signups") {
@@ -4439,10 +4727,15 @@ export default {
   },
 
   async scheduled(
-    _event: ScheduledEvent,
+    event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(runBirthdayReminders(env));
+    if (event.cron === "0 0 * * *") {
+      ctx.waitUntil(runBirthdayReminders(env));
+    }
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(runSocialReminders(env));
+    }
   },
 };

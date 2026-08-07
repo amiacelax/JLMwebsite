@@ -207,6 +207,20 @@
     return { minX, maxX };
   }
 
+  /** In-flow toolbar lives inside the tool host — keep Glass clear of its hit box. */
+  function toolbarBottomClearance() {
+    const root = document.documentElement;
+    if (
+      !root.classList.contains("hw-ws-toolbar") &&
+      !root.classList.contains("hw-hub-v5-toolbar-embed")
+    ) {
+      return 0;
+    }
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (!bar || bar.hidden || !hostEl || !hostEl.contains(bar)) return 0;
+    return Math.max(72, bar.offsetHeight || 0) + 16;
+  }
+
   function snapPoints() {
     const box = hostEl;
     const pad = 12;
@@ -214,15 +228,16 @@
     const w = box?.clientWidth || 320;
     const h = box?.clientHeight || 480;
     const midY = h * 0.5;
+    const bottomY = Math.max(pad + half, h - pad - half - toolbarBottomClearance());
     return {
       tl: { x: half + pad, y: pad + half },
       tc: { x: w * 0.5, y: pad + half },
       tr: { x: w - pad - half, y: pad + half },
       ml: { x: half + pad, y: midY },
       mr: { x: w - pad - half, y: midY },
-      bl: { x: half + pad, y: h - pad - half },
-      bc: { x: w * 0.5, y: h - pad - half },
-      br: { x: w - pad - half, y: h - pad - half },
+      bl: { x: half + pad, y: bottomY },
+      bc: { x: w * 0.5, y: bottomY },
+      br: { x: w - pad - half, y: bottomY },
     };
   }
 
@@ -230,10 +245,11 @@
     const pad = 8;
     const half = TOOL_HALF;
     const h = hostEl?.clientHeight || 0;
+    const bottomClear = toolbarBottomClearance();
     const { minX, maxX } = horizontalClampRange(half, pad);
     return {
       x: Math.max(minX, Math.min(x, maxX)),
-      y: Math.max(half + pad, Math.min(y, h - half - pad)),
+      y: Math.max(half + pad, Math.min(y, h - half - pad - bottomClear)),
     };
   }
 

@@ -1,0 +1,186 @@
+﻿{
+  "base": "https://japanese-language-mentor.jplang.workers.dev",
+  "shell": {
+    "url": "https://japanese-language-mentor.jplang.workers.dev/homework/platform?cb=1784785883092",
+    "body": "subpage subpage--homework subpage--platform hw-role-teacher hw-hub-v6-enabled hw-hub-v6-primary",
+    "hasToolbarPanel": true,
+    "hasIframe": true,
+    "hasHubVersions": true,
+    "v6": true,
+    "session": "{\"username\":\"jlm\",\"displayName\":\"JLM\",\"role\":\"teacher\",\"loggedInAt\":178478588337"
+  },
+  "shell2": {
+    "url": "https://japanese-language-mentor.jplang.workers.dev/homework/platform?cb=1784785883092",
+    "body": "subpage subpage--homework subpage--platform hw-role-teacher hw-hub-v6-enabled hw-hub-v6-primary",
+    "hasToolbarPanel": true,
+    "hasIframe": true,
+    "text": "Skip to content\nJapanese\nLanguage Mentor\nAbout\nServices\nContact\nGames\nHomework Hub\nCourses\n\nLogged in as JLM ┬╖ Teacher\n\nLog out\n\nHOMEWORK HUB\n\nView as student\nΓÇö Teacher hub ΓÇö\nbenc\nBen M (benm)\ndaiki\nDeme (deme)\nDemo (demo)\ndrew\nfaye\nIvan (ivan)\njkae\nJosh S (joshs)\nkaetherjk\nNo Plan (noplan)\nsgtjamjar\nTeacher's hub\nTeacher Hub\n\nHome notifications, maker, students, and tools ΓÇö classic layout is Hub "
+  },
+  "fbox": {
+    "x": 0,
+    "y": 0,
+    "width": 1440,
+    "height": 900
+  },
+  "diag": {
+    "focus": false,
+    "zoom": "1",
+    "html": "hw-hub-v5-toolbar-embed",
+    "fullscreen": false,
+    "playStack": [
+      "svg#.[object SVGAnimatedStrin[pe=auto,z=auto]",
+      "BUTTON#.hw-audio-chrome__play[pe=auto,z=auto]",
+      "DIV#.hw-audio-chrome__bar[pe=auto,z=auto]",
+      "DIV#.hw-audio-chrome[pe=auto,z=auto]",
+      "DIV#.hw-audio-player hw-audio[pe=auto,z=auto]",
+      "DIV#.hw-listen-card[pe=auto,z=auto]",
+      "DIV#.hw-worksheet__content[pe=auto,z=auto]",
+      "DIV#.hw-worksheet__line hw-wo[pe=auto,z=auto]",
+      "DIV#.hw-worksheet__section[pe=auto,z=auto]",
+      "FORM#hw-worksheet-form.hw-worksheet hw-workshee[pe=auto,z=auto]",
+      "DIV#hw-v2-worksheet-mount.[pe=auto,z=auto]",
+      "SECTION#hw-v5-worksheet-card.hw-hub-v2-worksheet hw-h[pe=auto,z=2]"
+    ]
+  },
+  "clicks": {
+    "play": {
+      "sel": ".hw-audio-chrome__play",
+      "prep": {
+        "x": 393.84375,
+        "y": 777.875,
+        "hitOk": true,
+        "top": "path.[object SVGAnimatedString]",
+        "stack": [
+          "path.[object SVGAnimatedString]#",
+          "svg.[object SVGAnimatedString]#",
+          "BUTTON.hw-audio-chrome__play#",
+          "DIV.hw-audio-chrome__bar#",
+          "DIV.hw-audio-chrome#",
+          "DIV.hw-audio-player hw-audio-playe#",
+          "DIV.hw-listen-card#",
+          "DIV.hw-worksheet__content#",
+          "DIV.hw-worksheet__line hw-workshee#",
+          "DIV.hw-worksheet__section#"
+        ]
+      },
+      "after": {
+        "got": ".hw-audio-chrome__play",
+        "state": {
+          "label": "Pause"
+        }
+      },
+      "clickOk": true
+    },
+    "tip": {
+      "sel": ".hw-recording-tip__trigger",
+      "prep": {
+        "x": 737.5859375,
+        "y": 497.34375,
+        "hitOk": true,
+        "top": "SPAN.hw-recording-tip__label",
+        "stack": [
+          "SPAN.hw-recording-tip__label#",
+          "BUTTON.hw-recording-tip__trigger#",
+          "DIV.hw-listen-card__head#",
+          "DIV.hw-listen-card#",
+          "DIV.hw-worksheet__content#",
+          "DIV.hw-worksheet__line hw-workshee#",
+          "DIV.hw-worksheet__section#",
+          "FORM.hw-worksheet hw-worksheet--hub#hw-worksheet-form",
+          "DIV.#hw-v2-worksheet-mount",
+          "SECTION.hw-hub-v2-worksheet hw-hub-wor#hw-v5-worksheet-card"
+        ]
+      },
+      "after": {
+        "got": ".hw-recording-tip__trigger",
+        "state": {}
+      },
+      "clickOk": true
+    },
+    "blank": {
+      "sel": ".hw-blank",
+      "prep": {
+        "x": 745.09375,
+        "y": 772.078125,
+        "hitOk": true,
+        "top": "INPUT.hw-blank hw-blank--wide hw-blank--listen",
+        "stack": [
+          "INPUT.hw-blank hw-blank--wide hw-bla#",
+          "SPAN.hw-blank-wrap hw-blank-wrap--l#",
+          "DIV.hw-listen-card#",
+          "DIV.hw-worksheet__content#",
+          "DIV.hw-worksheet__line hw-workshee#",
+          "DIV.hw-worksheet__section#",
+          "FORM.hw-worksheet hw-worksheet--hub#hw-worksheet-form",
+          "DIV.#hw-v2-worksheet-mount",
+          "SECTION.hw-hub-v2-worksheet hw-hub-wor#hw-v5-worksheet-card",
+          "DIV.hw-hub-v4-homework#hw-v5-homework-zone"
+        ]
+      },
+      "after": {
+        "got": ".hw-blank",
+        "state": {
+          "active": true
+        }
+      },
+      "clickOk": true
+    },
+    "glass": {
+      "sel": "[data-tb-tool=\"glass\"]",
+      "prep": {
+        "x": 660.796875,
+        "y": 728.359375,
+        "hitOk": true,
+        "top": "svg.[object SVGAnimatedString]",
+        "stack": [
+          "svg.[object SVGAnimatedString]#",
+          "SPAN.hw-toolbar-bar__icon hw-toolba#",
+          "BUTTON.hw-toolbar-bar__btn#",
+          "NAV.hw-toolbar-bar#hw-toolbar-bar",
+          "DIV.hw-worksheet__section#",
+          "FORM.hw-worksheet hw-worksheet--hub#hw-worksheet-form",
+          "DIV.#hw-v2-worksheet-mount",
+          "SECTION.hw-hub-v2-worksheet hw-hub-wor#hw-v5-worksheet-card",
+          "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+          "HTML.hw-hub-v5-toolbar-embed#"
+        ]
+      },
+      "after": {
+        "got": "[data-tb-tool=\"glass\"]",
+        "state": {
+          "pressed": "false",
+          "glassOut": false
+        }
+      },
+      "clickOk": true
+    },
+    "exit": {
+      "sel": ".hw-focus-bar__exit",
+      "prep": {
+        "x": 57.1796875,
+        "y": 22,
+        "hitOk": true,
+        "top": "BUTTON.hw-focus-bar__exit",
+        "stack": [
+          "BUTTON.hw-focus-bar__exit#",
+          "FORM.hw-worksheet hw-worksheet--hub#hw-worksheet-form",
+          "DIV.#hw-v2-worksheet-mount",
+          "SECTION.hw-hub-v2-worksheet hw-hub-wor#hw-v5-worksheet-card",
+          "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+          "SECTION.section#",
+          "MAIN.subpage__main#main",
+          "BODY.subpage subpage--homework subp#",
+          "HTML.hw-hub-v5-toolbar-embed#"
+        ]
+      },
+      "after": {
+        "got": ".hw-focus-bar__exit",
+        "state": {
+          "focus": false
+        }
+      },
+      "clickOk": true
+    },
+    "blankVal": ""
+  }
+}

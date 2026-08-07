@@ -411,6 +411,8 @@ body.hw-hub-v6-enabled:has(#hw-hub-v6-panel:not([hidden])) .subpage-back {
 }
 
 .hw-hub-v6__main-body {
+  white-space: pre-wrap;
+
   margin: 0 0 0.85rem;
   font-size: 0.9rem;
   line-height: 1.4;

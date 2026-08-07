@@ -86,6 +86,10 @@
         }
       }
 
+      if (mode === "multiple-choice" && item.prompt?.trim()) {
+        enriched.question = String(item.prompt).trim();
+      }
+
       if (mode === "translation" && item.japanese?.trim()) {
         enriched.question = item.japanese.trim();
       }

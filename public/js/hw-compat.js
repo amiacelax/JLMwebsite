@@ -110,6 +110,89 @@
     return audio;
   }
 
+  /**
+   * MediaRecorder often writes stereo WebM with signal only on the left and a
+   * silent right channel. Duplicate the mic into L and R before recording so
+   * both ears hear the clip.
+   */
+  async function getStereoUserMedia(constraints) {
+    const base =
+      constraints && typeof constraints === "object" ? constraints : { audio: true };
+    const raw = await navigator.mediaDevices.getUserMedia(base);
+    const micTracks = raw.getAudioTracks();
+    if (!micTracks.length) return raw;
+
+    const AudioCtx = global.AudioContext || global.webkitAudioContext;
+    if (!AudioCtx) return raw;
+
+    try {
+      const ctx = new AudioCtx();
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch {
+          /* ignore */
+        }
+      }
+      const micOnly = new MediaStream(micTracks);
+      const source = ctx.createMediaStreamSource(micOnly);
+      const merger = ctx.createChannelMerger(2);
+      source.connect(merger, 0, 0);
+      source.connect(merger, 0, 1);
+      const dest = ctx.createMediaStreamDestination();
+      merger.connect(dest);
+      const stereoTracks = dest.stream.getAudioTracks();
+      if (!stereoTracks.length) {
+        try {
+          await ctx.close();
+        } catch {
+          /* ignore */
+        }
+        return raw;
+      }
+
+      const out = new MediaStream([...raw.getVideoTracks(), ...stereoTracks]);
+      out._hwStereoCleanup = function () {
+        try {
+          raw.getTracks().forEach((t) => t.stop());
+        } catch {
+          /* ignore */
+        }
+        try {
+          stereoTracks.forEach((t) => t.stop());
+        } catch {
+          /* ignore */
+        }
+        try {
+          ctx.close();
+        } catch {
+          /* ignore */
+        }
+      };
+      return out;
+    } catch {
+      return raw;
+    }
+  }
+
+  function stopMediaStream(stream) {
+    if (!stream) return;
+    if (typeof stream._hwStereoCleanup === "function") {
+      try {
+        stream._hwStereoCleanup();
+      } catch {
+        /* ignore */
+      }
+      stream._hwStereoCleanup = null;
+      return;
+    }
+    try {
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      /* ignore */
+    }
+  }
+
   global.HwCompat = {
     normalizeMediaUrl,
     isAppleWebKit,
@@ -120,5 +203,7 @@
     bindFullscreenChange,
     enhanceAudioElement,
     enhanceVideoElement,
+    getStereoUserMedia,
+    stopMediaStream,
   };
 })(typeof window !== "undefined" ? window : globalThis);

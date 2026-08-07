@@ -1,0 +1,95 @@
+---
+description: Shorts/Reels batch review → paste-ready YT/IG copy → Cloudflare Discord/Hub post reminder. Use when user drops a finished clip path (Batch*yt.mp4 / IG twin), asks for Shorts/Reels captions, or wants a social post reminder.
+alwaysApply: false
+---
+
+# Shorts / Reels post workflow
+
+When the user sends a finished clip path (e.g. `e:\Da Vinci\...\BatchA2yt.mp4` or IG twin):
+
+## 1. Review the clip
+- Prefer `ffprobe` + a few sample frames if tools are available.
+- Suggest improvements **only** if something actually needs changing.
+- Specs preference: **1080×1920 H.264 AAC MP4**.
+- Do **not** “fix” intentional student-mistakes-in-captions (mistake→fix pedagogy).
+- If they send YT-only (or IG-only), lightly ask/remind about the twin export.
+- Clip numbering / filenames: **leave as-is**. The **title alone** is enough to identify which clip — no extra “Batch A2” labels needed in pings unless the user asks.
+
+## 2. Paste-ready copy (separate labeled blocks)
+Offer is **100% free trial lessons** (not Homework Hub unless user says otherwise).
+CTA / Link sticker URL (always this — free trial contact form, **not** availability):
+
+`https://japaneselanguagementor.com/#contact`
+
+| Platform | Block | Notes |
+|----------|--------|--------|
+| YouTube | **Title** | Clear, hooky (identifies the clip) |
+| YouTube | **Description** | Light hashtags + free trial URL. On-screen cue: free trial + japaneselanguagementor.com |
+| YouTube | **Pin comment** | Always include — trial URL; note Shorts description links aren’t reliably clickable |
+| Instagram | **Caption** | CTA = link in bio; hashtags at end. On-screen cue: free trial + link in bio |
+| Instagram | **Story caption** | Always include a **short** Story text. Default: `Free trial ↑` (Link sticker sits above the caption) |
+| Instagram | **Link sticker URL** | Always include the `#contact` URL above for the Story Link sticker |
+
+In chat, always show separate labeled paste blocks for: YT title, YT description, **YT pin comment**, IG caption, **IG Story caption (short)**, and **Link sticker URL**.
+
+## 3. Arm reminder → Cloudflare (not PC sleeper)
+- Default slot: today’s **6:30pm Los Angeles / Pacific** if still ahead; otherwise tomorrow 6:30pm LA — **or** the exact time the user gave (e.g. `8/6 10:30am jp`).
+- Convert to **UTC ISO** carefully (JST = UTC+9; LA PDT = UTC−7 / PST = UTC−8).
+- If multiple clips same day: **one** ping listing all titles — do not Discord-spam.
+- After arming, confirm fire time in user language (JP + LA) + job id.
+- Optional phone alarm backup still fine; **PC does not need to stay awake**.
+- Never echo webhook secrets; never commit `.dev.vars`.
+
+### 3a. How to arm (agent)
+Prefer production API via script (after Worker is deployed):
+
+```bash
+node scripts/arm-social-reminder.mjs --fire 2026-08-06T01:30:00Z --titles "Want Disneyland? hoshii vs -tai" --story "Free trial ↑"
+```
+
+Or `POST https://japaneselanguagementor.com/api/social-reminders` with JSON:
+
+```json
+{
+  "teacherUsername": "jlm",
+  "fireAtUtc": "2026-08-06T01:30:00.000Z",
+  "clipTitles": "...",
+  "ytPinComment": "Free trial Japanese lesson → https://japaneselanguagementor.com/#contact",
+  "igStoryCaption": "Free trial ↑",
+  "linkSticker": "https://japaneselanguagementor.com/#contact"
+}
+```
+
+List / cancel:
+
+```bash
+node scripts/arm-social-reminder.mjs --list
+node scripts/arm-social-reminder.mjs --cancel sr-...
+```
+
+Worker cron `* * * * *` loads `sr-pending:*` from `HOMEWORK_KV` and fires due jobs.
+
+### 3b. Discord + Teacher Hub payload (fired by Worker)
+Discord embed title: **YouTube/Instagram Reminder**
+
+Body:
+
+```
+YT: Write {yt pin comment} for {video title}.
+
+IG: Write this caption {story caption} and sticker {link sticker URL}
+```
+
+Default Story caption: **`Free trial ↑`**. Link sticker: `https://japaneselanguagementor.com/#contact`.
+
+Also saves Teacher Hub `kind: reminder` with the same body.
+
+### 3c. Do not use PC sleepers anymore
+- Do **not** arm `.tmp-ig-reel-discord-ping*.ps1` for new clips once Cloudflare path works.
+- If an old PowerShell sleeper is still running for the same slot, **cancel/stop it** after the Cloudflare job is confirmed, so you don’t get double pings.
+
+## 4. Hard constraints
+- Do **not** auto-deploy the website for *marketing/clip review alone* (copy review + paste blocks).
+- Do **deploy** when Worker/cron/social-reminder code changes (this workflow’s long-term arm path).
+- Do **not** edit unrelated JLM site pages because of clip review.
+- Match user language: clear, concise.

@@ -162,7 +162,11 @@
 
     function stopStream() {
       if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
+        if (global.HwCompat?.stopMediaStream) {
+          global.HwCompat.stopMediaStream(mediaStream);
+        } else {
+          mediaStream.getTracks().forEach((t) => t.stop());
+        }
         mediaStream = null;
       }
     }
@@ -313,7 +317,9 @@
       setStatus("");
 
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStream = global.HwCompat?.getStereoUserMedia
+          ? await global.HwCompat.getStereoUserMedia({ audio: true })
+          : await navigator.mediaDevices.getUserMedia({ audio: true });
 
         recordedMimeType = pickRecorderMimeType() || "audio/webm";
         try {
@@ -479,7 +485,11 @@
 
     function stopStream() {
       if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
+        if (global.HwCompat?.stopMediaStream) {
+          global.HwCompat.stopMediaStream(mediaStream);
+        } else {
+          mediaStream.getTracks().forEach((t) => t.stop());
+        }
         mediaStream = null;
       }
     }
@@ -611,7 +621,9 @@
       clearRecording();
       setStatus("");
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStream = global.HwCompat?.getStereoUserMedia
+          ? await global.HwCompat.getStereoUserMedia({ audio: true })
+          : await navigator.mediaDevices.getUserMedia({ audio: true });
         recordedMimeType = pickRecorderMimeType() || "audio/webm";
         try {
           mediaRecorder = new MediaRecorder(mediaStream, {

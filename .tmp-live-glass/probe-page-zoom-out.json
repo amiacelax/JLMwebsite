@@ -1,0 +1,230 @@
+﻿[
+  {
+    "label": "default",
+    "probe": {
+      "x": 393.84375,
+      "y": 777.875,
+      "rect": {
+        "t": 750.125,
+        "l": 358.59375,
+        "w": 70.5,
+        "h": 55.5
+      },
+      "top": "path.[object SVGAnimatedString]",
+      "hitOk": true,
+      "zoom": "1.875",
+      "dpr": 1,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      },
+      "vv": {
+        "scale": 1,
+        "w": 1440,
+        "h": 900,
+        "offsetTop": 0
+      }
+    },
+    "got": {
+      "clk": "play",
+      "label": "Pause"
+    },
+    "offsetHits": [
+      {
+        "dx": 0,
+        "dy": 0,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 10,
+        "dy": 10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": -10,
+        "dy": -10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 0,
+        "dy": -20,
+        "top": "BUTTON.hw-audio-chrome__play",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "label": "dpr2",
+    "probe": {
+      "x": 393.84375,
+      "y": 777.875,
+      "rect": {
+        "t": 750.125,
+        "l": 358.59375,
+        "w": 70.5,
+        "h": 55.5
+      },
+      "top": "path.[object SVGAnimatedString]",
+      "hitOk": true,
+      "zoom": "1.875",
+      "dpr": 2,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      },
+      "vv": {
+        "scale": 1,
+        "w": 1440,
+        "h": 900,
+        "offsetTop": 0
+      }
+    },
+    "got": {
+      "clk": "play",
+      "label": "Pause"
+    },
+    "offsetHits": [
+      {
+        "dx": 0,
+        "dy": 0,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 10,
+        "dy": 10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": -10,
+        "dy": -10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 0,
+        "dy": -20,
+        "top": "BUTTON.hw-audio-chrome__play",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "label": "pageScale1.25",
+    "probe": {
+      "x": 393.84375,
+      "y": 777.875,
+      "rect": {
+        "t": 750.125,
+        "l": 358.59375,
+        "w": 70.5,
+        "h": 55.5
+      },
+      "top": "path.[object SVGAnimatedString]",
+      "hitOk": true,
+      "zoom": "1.875",
+      "dpr": 1,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      },
+      "vv": {
+        "scale": 1,
+        "w": 1440,
+        "h": 900,
+        "offsetTop": 0
+      }
+    },
+    "got": {
+      "clk": "play",
+      "label": "Pause"
+    },
+    "offsetHits": [
+      {
+        "dx": 0,
+        "dy": 0,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 10,
+        "dy": 10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": -10,
+        "dy": -10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 0,
+        "dy": -20,
+        "top": "BUTTON.hw-audio-chrome__play",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "label": "pageScale1.5",
+    "probe": {
+      "x": 393.84375,
+      "y": 777.875,
+      "rect": {
+        "t": 750.125,
+        "l": 358.59375,
+        "w": 70.5,
+        "h": 55.5
+      },
+      "top": "path.[object SVGAnimatedString]",
+      "hitOk": true,
+      "zoom": "1.875",
+      "dpr": 1,
+      "inner": {
+        "w": 1440,
+        "h": 900
+      },
+      "vv": {
+        "scale": 1,
+        "w": 1440,
+        "h": 900,
+        "offsetTop": 0
+      }
+    },
+    "got": {
+      "clk": "play",
+      "label": "Pause"
+    },
+    "offsetHits": [
+      {
+        "dx": 0,
+        "dy": 0,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 10,
+        "dy": 10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": -10,
+        "dy": -10,
+        "top": "svg.[object SVGAnimatedString]",
+        "ok": true
+      },
+      {
+        "dx": 0,
+        "dy": -20,
+        "top": "BUTTON.hw-audio-chrome__play",
+        "ok": true
+      }
+    ]
+  }
+]

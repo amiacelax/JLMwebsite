@@ -1,0 +1,162 @@
+﻿title: πÇ£πü«πü½πâ╗πÇ£πü¬πü«πü½
+---EXPLAIN---
+πÇ£πü«πü½ or πÇ£πü¬πü«πü½ "even though"
+The major use of πü«πü½ is "even though."
+Even though it's tempting, don't translate it to "even if" in your head.
+There are three main definitions of πü«πü½
+1. Even though (e.g. Φíîπüìπüƒπüäπü«πü½Φíîπüæπü¬πüäπÇé) "Even though I want to go I can't go." 
+2. Tool/"in order to" (πâ⌐πâ╝πâíπâ│πéÆΣ╜£πéïπü«πü½πéüπéôπüîσ┐àΦªüπüºπüÖπÇé)"You need noodles to make ramen."
+3. "Aw man!" "πüêπâ╝πÇüΦªïπüƒπüäπü«πü½∩╝ü" But I wanna see it!"
+---SECTIONS---
+mode: audio-listening title:  items: 2
+{
+  "id": "blk-tp0qpxa",
+  "parts": [
+    {
+      "type": "blank",
+      "name": "blk-tp0qpxa",
+      "wide": true
+    }
+  ]
+}
+---
+{
+  "id": "blk-8re1sdf",
+  "parts": [
+    {
+      "type": "blank",
+      "name": "blk-8re1sdf",
+      "wide": true
+    }
+  ]
+}
+---
+mode: star-order title:  items: 3
+{
+  "id": "blk-wx86qh6",
+  "tokens": [
+    {
+      "text": "Σ╗èµùÑ",
+      "fixed": true
+    },
+    {
+      "text": "πü»",
+      "fixed": false
+    },
+    {
+      "text": "σ¡ªµáí",
+      "fixed": false
+    },
+    {
+      "text": "πü½",
+      "fixed": false
+    },
+    {
+      "text": "Φíîπüìπü╛πüùπüƒ",
+      "fixed": false
+    },
+    {
+      "text": "πÇé",
+      "fixed": true
+    }
+  ],
+  "prefix": "",
+  "suffix": "πÇé",
+  "pieces": [
+    "πü»",
+    "σ¡ªµáí",
+    "πü½",
+    "Φíîπüìπü╛πüùπüƒ"
+  ]
+}
+---
+{
+  "id": "blk-33ra554",
+  "tokens": [
+    {
+      "text": "Σ╗èµùÑ",
+      "fixed": true
+    },
+    {
+      "text": "πü»",
+      "fixed": false
+    },
+    {
+      "text": "σ¡ªµáí",
+      "fixed": false
+    },
+    {
+      "text": "πü½",
+      "fixed": false
+    },
+    {
+      "text": "Φíîπüìπü╛πüùπüƒ",
+      "fixed": false
+    },
+    {
+      "text": "πÇé",
+      "fixed": true
+    }
+  ],
+  "prefix": "",
+  "suffix": "πÇé",
+  "pieces": [
+    "πü»",
+    "σ¡ªµáí",
+    "πü½",
+    "Φíîπüìπü╛πüùπüƒ"
+  ]
+}
+---
+{
+  "id": "blk-xzu55mn",
+  "tokens": [
+    {
+      "text": "Σ╗èµùÑ",
+      "fixed": true
+    },
+    {
+      "text": "πü»",
+      "fixed": false
+    },
+    {
+      "text": "σ¡ªµáí",
+      "fixed": false
+    },
+    {
+      "text": "πü½",
+      "fixed": false
+    },
+    {
+      "text": "Φíîπüìπü╛πüùπüƒ",
+      "fixed": false
+    },
+    {
+      "text": "πÇé",
+      "fixed": true
+    }
+  ],
+  "prefix": "",
+  "suffix": "πÇé",
+  "pieces": [
+    "πü»",
+    "σ¡ªµáí",
+    "πü½",
+    "Φíîπüìπü╛πüùπüƒ"
+  ]
+}
+---
+mode: translation title:  items: 1
+{
+  "id": "blk-sccx4bn",
+  "japanese": "Σ╗èµùÑπü»σ¡ªµáíπü½Φíîπüìπü╛πüùπüƒπÇé",
+  "parts": [
+    {
+      "type": "blank",
+      "name": "blk-sccx4bn",
+      "wide": true,
+      "answer": "I went to school today."
+    }
+  ]
+}
+---

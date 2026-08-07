@@ -243,6 +243,21 @@
           submission: entry,
           openLabel: kind === "online" ? "Open worksheet" : "View in Submissions",
         });
+      } else if (status === "reviewed") {
+        items.push({
+          id: baseId + "-rev",
+          type: "reviewed",
+          at: entry.reviewedAt || entry.teacherNotesSubmittedAt || entry.submittedAt,
+          title: "Reviewed — " + who,
+          body:
+            "Your notes on “" +
+            lesson +
+            "” for " +
+            who +
+            " are submitted. Open to re-check their sheet and your feedback.",
+          submission: entry,
+          openLabel: kind === "online" ? "View submission" : "View in Submissions",
+        });
       }
     });
 
@@ -263,15 +278,21 @@
     reports.forEach((row) => {
       const who =
         row.displayName || row.username || "A student";
-      const isBug = String(row.kind || "").toLowerCase() === "bug";
+      const kind = String(row.kind || "").toLowerCase();
+      const isBug = kind === "bug";
+      const isReminder = kind === "reminder";
       items.push({
         id: "report-" + row.id,
-        type: isBug ? "bug" : "feature",
+        type: isReminder ? "reminder" : isBug ? "bug" : "feature",
         at: row.createdAt,
-        title: isBug ? "Bug report from " + who : "Feature request from " + who,
+        title: isReminder
+          ? row.displayName || row.page || "Shorts / Reels reminder"
+          : isBug
+            ? "Bug report from " + who
+            : "Feature request from " + who,
         body: String(row.message || "").trim(),
         report: row,
-        openLabel: "View message",
+        openLabel: isReminder ? "Copy-ready details" : "View message",
       });
     });
 
@@ -852,8 +873,21 @@
   }
 
   async function openNoteTarget(note) {
-    if (note.submission?.type === "online" && global.HwTeacherReview?.openOnlineSubmission) {
-      await global.HwTeacherReview.openOnlineSubmission(note.submission);
+    if (note.submission?.type === "online") {
+      if (global.HwTeacherReview?.openOnlineSubmission) {
+        await global.HwTeacherReview.openOnlineSubmission(note.submission);
+        return;
+      }
+      /* Fallback: open Submissions with this student filtered if review API missing. */
+      activateV6Tab("students");
+      const fold = document.getElementById("hw-hub-v6-fold-submissions");
+      if (fold) fold.open = true;
+      const studentFilter = document.getElementById("hw-submissions-student");
+      if (studentFilter && note.submission.username) {
+        studentFilter.value = String(note.submission.username);
+        studentFilter.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      global.HwToast?.show?.("Open Review / View submission under Submissions.");
       return;
     }
     if (note.submission) {
@@ -870,8 +904,13 @@
     }
     if (note.report) {
       /* Full message is already on the detail card. */
+      const rk = String(note.report.kind || "").toLowerCase();
+      if (rk === "reminder") {
+        global.HwToast?.show?.("Shorts / Reels reminder — copy text from the card.");
+        return;
+      }
       global.HwToast?.show?.(
-        (note.report.kind === "bug" ? "Bug report" : "Feature request") +
+        (rk === "bug" ? "Bug report" : "Feature request") +
           " from " +
           (note.report.displayName || note.report.username || "student")
       );

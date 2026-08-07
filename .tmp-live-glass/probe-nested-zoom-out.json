@@ -1,0 +1,224 @@
+{
+  "url": "http://127.0.0.1:8787/homework/hub-v5-preview?status=in_progress&toolbar=1&cb=1784817906.66889",
+  "mount": {
+    "t": 28,
+    "l": 18,
+    "r": 1458,
+    "b": 1331,
+    "w": 1440,
+    "h": 1303,
+    "offsetH": 695,
+    "offsetW": 768,
+    "zoom": "1.875",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "1",
+    "pos": "relative"
+  },
+  "zone": {
+    "t": 0,
+    "l": 0,
+    "r": 1440,
+    "b": 900,
+    "w": 1440,
+    "h": 900,
+    "offsetH": 900,
+    "offsetW": 1440,
+    "zoom": "1",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "400",
+    "pos": "fixed"
+  },
+  "zoneScroll": {
+    "top": 0,
+    "sh": 1355,
+    "ch": 900
+  },
+  "card": {
+    "t": 12,
+    "l": 0,
+    "r": 1440,
+    "b": 1331,
+    "w": 1440,
+    "h": 1319,
+    "offsetH": 1319,
+    "offsetW": 1440,
+    "zoom": "1",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "2",
+    "pos": "relative"
+  },
+  "bar": {
+    "t": 1143,
+    "l": 532,
+    "r": 943,
+    "b": 1224,
+    "w": 411,
+    "h": 81,
+    "offsetH": 81,
+    "offsetW": 411,
+    "zoom": "0.533333",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "450",
+    "pos": "relative"
+  },
+  "play": {
+    "t": 750,
+    "l": 359,
+    "r": 429,
+    "b": 806,
+    "w": 71,
+    "h": 56,
+    "offsetH": 30,
+    "offsetW": 38,
+    "zoom": "1",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "auto",
+    "pos": "static"
+  },
+  "glass": {
+    "t": 1151,
+    "l": 551,
+    "r": 617,
+    "b": 1217,
+    "w": 66,
+    "h": 66,
+    "offsetH": 66,
+    "offsetW": 66,
+    "zoom": "1",
+    "transform": "none",
+    "pe": "auto",
+    "zi": "auto",
+    "pos": "static"
+  },
+  "glassDisabled": false,
+  "mg": "function",
+  "flagsMg": true,
+  "playCoveredByBar": false,
+  "playStack": [
+    "path.[object SVGAnimatedStrin",
+    "svg.[object SVGAnimatedStrin",
+    "BUTTON.hw-audio-chrome__play",
+    "DIV.hw-audio-chrome__bar",
+    "DIV.hw-audio-chrome",
+    "DIV.hw-audio-player hw-audio",
+    "DIV.hw-listen-card",
+    "DIV.hw-worksheet__content",
+    "DIV.hw-worksheet__line hw-wo",
+    "DIV.hw-worksheet__section",
+    "FORM#hw-worksheet-form.hw-worksheet hw-workshee",
+    "DIV#hw-v2-worksheet-mount."
+  ],
+  "grid": [],
+  "gridAllMid": [
+    {
+      "x": 720,
+      "y": 40,
+      "top": "FORM#hw-worksheet-form.hw-worksheet.hw-worksheet--h"
+    },
+    {
+      "x": 720,
+      "y": 80,
+      "top": "DIV.hw-worksheet__slide-nav-row"
+    },
+    {
+      "x": 720,
+      "y": 120,
+      "top": "P.hw-worksheet__slide-counter"
+    },
+    {
+      "x": 720,
+      "y": 160,
+      "top": "DIV.hw-worksheet__slide-sticky-h"
+    },
+    {
+      "x": 720,
+      "y": 200,
+      "top": "SUMMARY.hw-worksheet__topic-brief-su"
+    },
+    {
+      "x": 720,
+      "y": 240,
+      "top": "DETAILS.hw-worksheet__topic-brief.hw"
+    },
+    {
+      "x": 720,
+      "y": 280,
+      "top": "DIV.hw-worksheet__section"
+    },
+    {
+      "x": 720,
+      "y": 320,
+      "top": "P.hw-worksheet__submit-tracker"
+    },
+    {
+      "x": 720,
+      "y": 360,
+      "top": "P.hw-worksheet__submit-tracker"
+    },
+    {
+      "x": 720,
+      "y": 400,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 440,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 480,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 520,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 560,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 600,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 640,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 680,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 720,
+      "top": "IMG.hw-listen-card__img"
+    },
+    {
+      "x": 720,
+      "y": 760,
+      "top": "DIV.hw-audio-chrome__seek-wrap"
+    },
+    {
+      "x": 720,
+      "y": 800,
+      "top": "DIV.hw-audio-chrome__seek-wrap"
+    },
+    {
+      "x": 720,
+      "y": 840,
+      "top": "DIV.hw-listen-card"
+    }
+  ]
+}

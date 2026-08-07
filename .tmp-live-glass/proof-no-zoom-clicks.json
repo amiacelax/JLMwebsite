@@ -1,0 +1,152 @@
+{
+  "url": "https://japanese-language-mentor.jplang.workers.dev/homework/hub-v5-preview.html?status=in_progress&toolbar=1&cb=1784786162838",
+  "meta": {
+    "focus": true,
+    "zoom": "1",
+    "transform": "none",
+    "barParent": "hw-v5-worksheet-card",
+    "barIsAfterMount": true,
+    "cssHref": [
+      "styles.css?v=20260723b",
+      "hw-hub-v5.css?v=95",
+      "hw-magnifying-glass.css?v=90"
+    ]
+  },
+  "play": {
+    "sel": ".hw-audio-chrome__play",
+    "prep": {
+      "x": 537.59375,
+      "y": 428.328125,
+      "hitOk": true,
+      "top": "path.[object SVGAnimatedString]",
+      "stack": [
+        "path.[object SVGAnimatedString]#",
+        "svg.[object SVGAnimatedString]#",
+        "BUTTON.hw-audio-chrome__play#",
+        "DIV.hw-audio-chrome__bar#",
+        "DIV.hw-audio-chrome#",
+        "DIV.hw-audio-player hw-audio-pla#",
+        "DIV.hw-listen-card#",
+        "DIV.hw-worksheet__content#"
+      ]
+    },
+    "after": {
+      "got": ".hw-audio-chrome__play",
+      "state": {
+        "label": "Pause",
+        "paused": false
+      }
+    },
+    "clickOk": true
+  },
+  "tip": {
+    "sel": ".hw-recording-tip__trigger",
+    "prep": {
+      "x": 720,
+      "y": 521.8203125,
+      "hitOk": true,
+      "top": "SPAN.hw-recording-tip__label",
+      "stack": [
+        "SPAN.hw-recording-tip__label#",
+        "BUTTON.hw-recording-tip__trigger#",
+        "DIV.hw-listen-card__head#",
+        "DIV.hw-listen-card#",
+        "DIV.hw-worksheet__content#",
+        "DIV.hw-worksheet__line hw-worksh#",
+        "DIV.hw-worksheet__section#",
+        "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form"
+      ]
+    },
+    "after": {
+      "got": ".hw-recording-tip__trigger",
+      "state": {}
+    },
+    "clickOk": true
+  },
+  "blank": {
+    "sel": ".hw-blank",
+    "prep": {
+      "x": 723.984375,
+      "y": 670.171875,
+      "hitOk": true,
+      "top": "INPUT.hw-blank hw-blank--wide hw-blank--listen",
+      "stack": [
+        "INPUT.hw-blank hw-blank--wide hw-b#",
+        "SPAN.hw-blank-wrap hw-blank-wrap-#",
+        "DIV.hw-listen-card#",
+        "DIV.hw-worksheet__content#",
+        "DIV.hw-worksheet__line hw-worksh#",
+        "DIV.hw-worksheet__section#",
+        "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form",
+        "DIV.#hw-v2-worksheet-mount"
+      ]
+    },
+    "after": {
+      "got": ".hw-blank",
+      "state": {
+        "active": true,
+        "value": ""
+      }
+    },
+    "clickOk": true
+  },
+  "blankVal": "probe",
+  "glass": {
+    "sel": "[data-tb-tool=\"glass\"]",
+    "prep": {
+      "x": 643.203125,
+      "y": 846.015625,
+      "hitOk": true,
+      "top": "svg.[object SVGAnimatedString]",
+      "stack": [
+        "svg.[object SVGAnimatedString]#",
+        "SPAN.hw-toolbar-bar__icon hw-tool#",
+        "BUTTON.hw-toolbar-bar__btn#",
+        "NAV.hw-toolbar-bar#hw-toolbar-bar",
+        "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card",
+        "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+        "HTML.hw-hub-v5-toolbar-embed#"
+      ]
+    },
+    "after": {
+      "got": "[data-tb-tool=\"glass\"]",
+      "state": {
+        "pressed": "false",
+        "glassOut": false
+      }
+    },
+    "clickOk": true
+  },
+  "exit": {
+    "sel": ".hw-focus-bar__exit",
+    "prep": {
+      "x": 699.6953125,
+      "y": 22.09375,
+      "hitOk": true,
+      "top": "BUTTON.hw-focus-bar__exit",
+      "stack": [
+        "BUTTON.hw-focus-bar__exit#",
+        "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card",
+        "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+        "SECTION.section#",
+        "MAIN.subpage__main#main",
+        "BODY.subpage subpage--homework su#",
+        "HTML.hw-hub-v5-toolbar-embed#"
+      ]
+    },
+    "after": {
+      "got": ".hw-focus-bar__exit",
+      "state": {
+        "focus": false
+      }
+    },
+    "clickOk": true
+  },
+  "proof": {
+    "zoomIs1": true,
+    "playToggled": true,
+    "blankTyped": true,
+    "exitLeftFocus": true,
+    "toolbarOutsideMount": true
+  }
+}

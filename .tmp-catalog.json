@@ -1,0 +1,325 @@
+﻿{
+    "playlistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+    "reviewPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+    "studentProfiles":  {
+                            "joshs":  {
+                                          "latestLessonUrl":  "https://youtu.be/FJNcyei2ctg",
+                                          "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6BS3IIj7z42egtdStDWeraO",
+                                          "reviewPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6BS3IIj7z42egtdStDWeraO",
+                                          "currentHomeworkId":  "sheet-u1vevjge",
+                                          "youtubeUrl":  "https://youtu.be/FJNcyei2ctg"
+                                      },
+                            "ivan":  {
+                                         "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6CVTw8ihrNSouZXcMha_77T\n",
+                                         "latestLessonUrl":  "https://youtu.be/TooT1-CmqKM\n",
+                                         "youtubeUrl":  "https://youtu.be/TooT1-CmqKM\n",
+                                         "currentHomeworkId":  "sheet-u1vevjge"
+                                     },
+                            "deme":  {
+                                         "latestLessonUrl":  "https://youtu.be/FJNcyei2ctg\n",
+                                         "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY",
+                                         "reviewPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY",
+                                         "youtubeUrl":  "https://youtu.be/FJNcyei2ctg\n",
+                                         "currentHomeworkId":  "sheet-u1st0vtm"
+                                     },
+                            "benc":  {
+                                         "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6BS3IIj7z42egtdStDWeraO",
+                                         "latestLessonUrl":  "https://youtu.be/FJNcyei2ctg",
+                                         "youtubeUrl":  "https://youtu.be/FJNcyei2ctg",
+                                         "currentHomeworkId":  "sheet-u1st0vtm"
+                                     },
+                            "faye":  {
+                                         "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6BbO_6NzbGFlhQnU6sdFY1n\n",
+                                         "latestLessonUrl":  "https://youtu.be/FJNcyei2ctg\n",
+                                         "youtubeUrl":  "https://youtu.be/FJNcyei2ctg\n",
+                                         "currentHomeworkId":  "sheet-u1st0vtm"
+                                     },
+                            "benm":  {
+                                         "lessonPlaylistUrl":  "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X\n",
+                                         "latestLessonUrl":  "https://youtu.be/N_YW0LBOHaQ\n",
+                                         "youtubeUrl":  "https://youtu.be/N_YW0LBOHaQ\n",
+                                         "currentHomeworkId":  "sheet-u1st0vtm"
+                                     },
+                            "sgtjamjar":  {
+                                              "currentHomeworkId":  "sheet-u1vevjge"
+                                          },
+                            "daiki":  {
+                                          "currentHomeworkId":  "daiki-english-2026-06-26"
+                                      },
+                            "jkae":  {
+                                         "currentHomeworkId":  "sheet-u1vevjge"
+                                     }
+                        },
+    "assignments":  [
+                        {
+                            "id":  "2026-06-05-ben-m",
+                            "title":  "å½¢å®¹è©ã®éå»ã»å¦å® ï¼ ã»ãã Â· ã©ãã ã£ãï¼",
+                            "date":  "2026-06-05",
+                            "level":  "Low-Intermediate",
+                            "studentLabel":  "Ben M",
+                            "lessonName":  "2026-06-05 â Lesson 25",
+                            "students":  [
+                                             "benm"
+                                         ],
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "tags":  [
+                                         "ã-adjective",
+                                         "past",
+                                         "negative",
+                                         "ã»ãã",
+                                         "æ¥½ãã¿ã«ãã¦ãã",
+                                         "ã©ãã ã£ã",
+                                         "grammar",
+                                         "low-intermediate"
+                                     ],
+                            "summary":  "Practice ã-adjective past (ãã£ã), negative (ããªã), present contrast, and ã»ãã â plus open answers from the lesson (summer, girlfriend criteria, old vs new job)."
+                        },
+                        {
+                            "id":  "2026-05-22-ben-m",
+                            "title":  "ï½ãã»ãã vs ï½ã«ï½ããã»ï½ããã",
+                            "date":  "2026-05-22",
+                            "level":  "Low-Intermediate",
+                            "studentLabel":  "Ben M",
+                            "lessonName":  "2026-05-22 â Lesson 24",
+                            "students":  [
+                                             "benm"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/0LaGZZttAK0",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "tags":  [
+                                         "ã»ãã",
+                                         "ãã",
+                                         "desire",
+                                         "grammar",
+                                         "negative",
+                                         "verb conjugation",
+                                         "low-intermediate"
+                                     ],
+                            "summary":  "Practice ï½ãã»ãã, ï½ãã, and negative ã»ãããªã / ãããªã in fill-in blanks."
+                        },
+                        {
+                            "id":  "2026-05-22-deme",
+                            "title":  "ï½ãã»ãã vs ï½ã«ï½ããã»ï½ããã",
+                            "date":  "2026-05-22",
+                            "level":  "Low-Intermediate",
+                            "studentLabel":  "Deme",
+                            "lessonName":  "2026-05-22 â Lesson",
+                            "students":  [
+                                             "deme"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/q3WRBr1LHm0",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "tags":  [
+                                         "ã»ãã",
+                                         "ãã",
+                                         "desire",
+                                         "grammar",
+                                         "negative",
+                                         "verb conjugation",
+                                         "low-intermediate"
+                                     ],
+                            "summary":  "Practice ï½ãã»ãã, ï½ãã, and negative ã»ãããªã / ãããªã in fill-in blanks."
+                        },
+                        {
+                            "id":  "joshs-naitoikenai",
+                            "title":  "ï½ãªãã¨ãããªã",
+                            "date":  "2026-05-27",
+                            "level":  "Low-Intermediate",
+                            "studentLabel":  "Josh S",
+                            "lessonName":  "2026-05-27 â Lesson",
+                            "students":  [
+                                             "joshs"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/J1RsLT9TOKU",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "tags":  [
+                                         "ãªãã¨ãããªã",
+                                         "ãªããã°ãªããªã",
+                                         "obligation",
+                                         "grammar",
+                                         "negative",
+                                         "verb conjugation",
+                                         "low-intermediate"
+                                     ],
+                            "summary":  "Practice ï½ãªãã¨ãããªã â must / have to â in fill-in blanks."
+                        },
+                        {
+                            "id":  "sheet-u1st0vtm",
+                            "title":  "ï½ãã",
+                            "lessonName":  "ï½ãã",
+                            "students":  [
+                                             "benc",
+                                             "faye",
+                                             "deme",
+                                             "benm"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/N_YW0LBOHaQ",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Homework: ï½ãã",
+                            "date":  "2026-06-30",
+                            "publishedAt":  "2026-07-10T02:01:42.448Z"
+                        },
+                        {
+                            "id":  "daiki-english-2026-06-26",
+                            "title":  "English Listening â Tatoeba",
+                            "lessonName":  "2026-06-26 â English practice",
+                            "summary":  "Tatoeba English listening clips, Japanese-to-English translation, and free writing.",
+                            "students":  [
+                                             "daiki"
+                                         ],
+                            "forSale":  false,
+                            "date":  "2026-06-26",
+                            "salePrice":  0.99,
+                            "publishedAt":  "2026-06-26T05:50:16.454Z"
+                        },
+                        {
+                            "id":  "sheet-u1vevjge",
+                            "title":  "ãæããã®æ",
+                            "lessonName":  "ãæããã®æ",
+                            "students":  [
+                                             "faye",
+                                             "joshs",
+                                             "ivan",
+                                             "jkae",
+                                             "benc",
+                                             "benm",
+                                             "sgtjamjar"
+                                         ],
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: ãæããã®æ",
+                            "date":  "2026-06-24",
+                            "publishedAt":  "2026-06-26T04:18:52.606Z"
+                        },
+                        {
+                            "id":  "sheet-star-test",
+                            "title":  "Star Test",
+                            "lessonName":  "Star Test",
+                            "students":  [
+                                             "joshs"
+                                         ],
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: Star Test",
+                            "date":  "2026-06-24",
+                            "publishedAt":  "2026-06-24T03:18:13.332Z"
+                        },
+                        {
+                            "id":  "sheet-u12vdf3z",
+                            "title":  "ï½åã«ã»ï½ãã¨ã«",
+                            "lessonName":  "ï½åã«ã»ï½ãã¨ã«",
+                            "students":  [
+                                             "jkae"
+                                         ],
+                            "youtubeUrl":  "",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: ï½åã«ã»ï½ãã¨ã«",
+                            "date":  "2026-06-17",
+                            "publishedAt":  "2026-06-17T06:29:09.804Z"
+                        },
+                        {
+                            "id":  "sheet-uxrsqyd",
+                            "title":  "ããã»ãã¾ã",
+                            "lessonName":  "ããã»ãã¾ã",
+                            "students":  [
+                                             "faye",
+                                             "joshs"
+                                         ],
+                            "youtubeUrl":  "",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: ããã»ãã¾ã",
+                            "date":  "2026-06-17",
+                            "publishedAt":  "2026-06-24T00:50:49.714Z"
+                        },
+                        {
+                            "id":  "sheet-passive-form",
+                            "title":  "Passive Form ï½ããã",
+                            "lessonName":  "Passive Form ï½ããã",
+                            "students":  [
+                                             "jkae"
+                                         ],
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: Passive Form ï½ããã",
+                            "date":  "2026-06-15",
+                            "publishedAt":  "2026-06-15T05:08:58.634Z"
+                        },
+                        {
+                            "id":  "sheet-general-questions-1",
+                            "title":  "General Questions 1",
+                            "lessonName":  "General Questions 1",
+                            "students":  [
+                                             "benm"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/FJNcyei2ctg",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: General Questions 1"
+                        },
+                        {
+                            "id":  "sheet-homework",
+                            "title":  "å½¼å¥³ãã¾ããï¼",
+                            "lessonName":  "å½¼å¥³ãã¾ããï¼",
+                            "students":  [
+                                             "ivan"
+                                         ],
+                            "youtubeUrl":  "https://youtu.be/FJNcyei2ctg",
+                            "forSale":  false,
+                            "salePrice":  0.99,
+                            "summary":  "Worksheet: å½¼å¥³ãã¾ããï¼"
+                        }
+                    ],
+    "students":  [
+                     {
+                         "username":  "benc",
+                         "displayName":  "benc"
+                     },
+                     {
+                         "username":  "benm",
+                         "displayName":  "Ben M"
+                     },
+                     {
+                         "username":  "daiki",
+                         "displayName":  "daiki"
+                     },
+                     {
+                         "username":  "deme",
+                         "displayName":  "Deme"
+                     },
+                     {
+                         "username":  "drew",
+                         "displayName":  "drew"
+                     },
+                     {
+                         "username":  "faye",
+                         "displayName":  "faye"
+                     },
+                     {
+                         "username":  "ivan",
+                         "displayName":  "Ivan"
+                     },
+                     {
+                         "username":  "jkae",
+                         "displayName":  "jkae"
+                     },
+                     {
+                         "username":  "joshs",
+                         "displayName":  "Josh S"
+                     },
+                     {
+                         "username":  "kaetherjk",
+                         "displayName":  "kaetherjk"
+                     },
+                     {
+                         "username":  "sgtjamjar",
+                         "displayName":  "sgtjamjar"
+                     }
+                 ]
+}

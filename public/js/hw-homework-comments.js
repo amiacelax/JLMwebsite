@@ -32,9 +32,9 @@
   const SKIP_SELECTOR =
     "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard, .hw-hc-sel-menu, .hw-toolbar-bar, .hw-mg-widget, .hw-mg-popup";
   const TOUCH_SKIP_EXTRA =
-    ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled)";
+    ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled), .hw-mc-block__reset, .hw-mc-block__slot-clear, .hw-mc-block__slot:not(.hw-mc-block__slot--filled)";
   const PREVIEW_TEXT_SELECTOR =
-    ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-star-block__chip, .hw-star-block__slot-text, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']";
+    ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-star-block__chip, .hw-star-block__slot-text, .hw-mc-block__sentence, .hw-mc-block__text, .hw-mc-block__chip, .hw-mc-block__slot-text, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']";
 
   function openRecordingEraseConfirm(anchorBtn, onConfirm) {
     if (typeof global._hwDeleteConfirmClose === "function") global._hwDeleteConfirmClose();
@@ -709,6 +709,20 @@
     return Math.min(100 - halfBubblePct, Math.max(halfBubblePct, xPct));
   }
 
+  /** In-flow toolbar lives inside the tool host — keep Cloud clear of its hit box. */
+  function toolbarBottomClearance() {
+    const root = document.documentElement;
+    if (
+      !root.classList.contains("hw-ws-toolbar") &&
+      !root.classList.contains("hw-hub-v5-toolbar-embed")
+    ) {
+      return 0;
+    }
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (!bar || bar.hidden || !hostEl || !hostEl.contains(bar)) return 0;
+    return Math.max(72, bar.offsetHeight || 0) + 16;
+  }
+
   function launcherSnapPoints() {
     const pad = 12;
     const broomLane = 76;
@@ -717,15 +731,16 @@
     const half = 36;
     const cloudLeft = broomLane + half;
     const midY = h * 0.5;
+    const bottomY = Math.max(pad + half, h - pad - half - toolbarBottomClearance());
     return {
       tl: { x: cloudLeft, y: pad + half },
       tc: { x: w * 0.5, y: pad + half },
       tr: { x: w - pad - half, y: pad + half },
       ml: { x: cloudLeft, y: midY },
       mr: { x: w - pad - half, y: midY },
-      bl: { x: cloudLeft, y: h - pad - half },
-      bc: { x: w * 0.5, y: h - pad - half },
-      br: { x: w - pad - half, y: h - pad - half },
+      bl: { x: cloudLeft, y: bottomY },
+      bc: { x: w * 0.5, y: bottomY },
+      br: { x: w - pad - half, y: bottomY },
     };
   }
 
@@ -753,10 +768,11 @@
     const pad = 8;
     const half = 36;
     const h = hostEl?.clientHeight || 0;
+    const bottomClear = toolbarBottomClearance();
     const { minX, maxX } = launcherHorizontalClampRange(half, pad);
     return {
       x: Math.max(minX, Math.min(x, maxX)),
-      y: Math.max(half + pad, Math.min(y, h - half - pad)),
+      y: Math.max(half + pad, Math.min(y, h - half - pad - bottomClear)),
     };
   }
 

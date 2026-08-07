@@ -9,6 +9,8 @@
   const emailForm = document.getElementById("coming-soon-email-form");
   const emailStatus = document.getElementById("coming-soon-email-status");
   const emailSubmit = document.getElementById("coming-soon-email-submit");
+  const otherToggle = document.getElementById("coming-soon-interest-other");
+  const otherText = document.getElementById("coming-soon-interest-other-text");
   const SUBSCRIBED_KEY = "jlm-promo-subscribed";
   let lastFocus = null;
 
@@ -19,11 +21,23 @@
     if (type) emailStatus.classList.add("is-" + type);
   }
 
+  function syncOtherInput() {
+    if (!otherText || !otherToggle) return;
+    const on = otherToggle.checked;
+    otherText.hidden = !on;
+    otherText.required = on;
+    if (!on) otherText.value = "";
+    else otherText.focus();
+  }
+
+  otherToggle?.addEventListener("change", syncOtherInput);
+
   function openModal() {
     lastFocus = document.activeElement;
     modal.hidden = false;
     document.body.classList.add("is-modal-open");
     showEmailStatus("");
+    syncOtherInput();
     modal.querySelector("#coming-soon-email")?.focus();
   }
 
@@ -71,6 +85,16 @@
       return;
     }
 
+    const interests = Array.from(
+      emailForm.querySelectorAll('input[name="interest"]:checked')
+    ).map((el) => el.value);
+    const interestOther = String(new FormData(emailForm).get("interestOther") || "").trim();
+    if (interests.includes("other") && interestOther.length < 3) {
+      showEmailStatus("Please say a bit more for Other (at least 3 characters).", "error");
+      otherText?.focus();
+      return;
+    }
+
     if (emailSubmit) {
       emailSubmit.disabled = true;
       emailSubmit.textContent = "Submitting…";
@@ -80,7 +104,12 @@
       const res = await fetch("/api/promo-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, page: "Courses" }),
+        body: JSON.stringify({
+          email,
+          page: "Courses",
+          interests,
+          interestOther: interests.includes("other") ? interestOther : "",
+        }),
       });
       const data = await res.json();
 
@@ -97,6 +126,7 @@
 
       showEmailStatus(data.message || "You're on the list — I'll email you when courses launch.", "success");
       emailForm.reset();
+      syncOtherInput();
       window.setTimeout(closeModal, 2200);
     } catch {
       showEmailStatus("Network error. Please try again.", "error");

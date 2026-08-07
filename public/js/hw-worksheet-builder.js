@@ -7,6 +7,11 @@
     { type: "open-line", label: "Open response", hint: "Written answer box" },
     { type: "translation-line", label: "Translation", hint: "Japanese → English blank" },
     { type: "star-line", label: "Sentence order", hint: "Drag & drop pieces" },
+    {
+      type: "mc-line",
+      label: "Multiple choice",
+      hint: "Click or drag into the blank",
+    },
     { type: "video-prompt", label: "Video prompt", hint: "Student records an answer" },
     { type: "audio-prompt", label: "Audio prompt", hint: "Student records an answer" },
     {
@@ -17,9 +22,37 @@
     { type: "listen-line", label: "Audio listening", hint: "Immersion Kit clip + screenshot" },
   ];
 
-  const TEMPLATE_ORDER = ["blank", "grammar", "application", "listening"];
+  const TEMPLATE_ORDER = ["blank", "grammar", "application", "listening", "multipleChoice", "penPal"];
   const CUSTOM_TEMPLATES_KEY = "jlm-hw-worksheet-templates-v1";
   const CUSTOM_TEMPLATE_PREFIX = "custom:";
+
+  /** Built-in Pen Pal letter body (住田愛子 → フェイさん, 福井県鯖江市). */
+  const PEN_PAL_LETTER_BODY =
+    "初めまして！わたし、住田愛子っていいます。\n" +
+    "福井県の鯖江市に住んでるよ～。中学二年生！\n" +
+    "\n" +
+    "フェイさんも中学生だってきいて、ペンパルしてみたくて手紙書いたネ♡\n" +
+    "ちょっとどきどきしてるｗ\n" +
+    "\n" +
+    "わたしがめっちゃ好きなアニメはフルーツバスケット（略してフルバ）なの！！\n" +
+    "まんがもくりかえしよんでるよ。フェイさんはなにか好きなまんがとかある？\n" +
+    "\n" +
+    "学校では男子サッカー部のマネージャーやってるよ。\n" +
+    "練習見てると時間すぎるの早いネ。マジでつかれる日もあるけど、たのしい～。\n" +
+    "\n" +
+    "フェイさんの町はどんな感じ？学校のこととか、好きなこととか、おしえてほしいな♪\n" +
+    "へんじ、まってるネ！\n" +
+    "\n" +
+    "ばいばい♡";
+
+  function mcTemplateItem(id, prompt, choices, answer) {
+    return {
+      id,
+      prompt,
+      choices: choices.slice(0, 4),
+      answer,
+    };
+  }
 
   const TEMPLATES = {
     blank: { label: "Blank canvas", templateType: "custom", sections: [] },
@@ -59,6 +92,76 @@
           instructions: "Listen to the clip and write down what you think it's saying in Japanese.",
           audioUrl: "",
           items: [1, 2, 3].map((n) => listenItem(n)),
+        },
+      ],
+    },
+    multipleChoice: {
+      label: "Multiple Choice Quiz",
+      templateType: "multiple-choice",
+      sections: [
+        {
+          mode: "multiple-choice",
+          title: "Multiple choice",
+          instructions: "Click or drag the best answer into the blank.",
+          items: [
+            mcTemplateItem(
+              "mc-1",
+              "この甘い匂いを嗅ぐと、ケーキを______。",
+              [
+                "食べずにはいられない",
+                "食べるどころではない",
+                "食べるわけにはいかない",
+                "食べないではおかない",
+              ],
+              "食べずにはいられない"
+            ),
+            mcTemplateItem(
+              "mc-2",
+              "周囲の反対______、彼女は起業を決めた。",
+              ["をよそに", "をめぐって", "を通じて", "をはじめ"],
+              "をよそに"
+            ),
+            mcTemplateItem(
+              "mc-3",
+              "管理職______、私情だけで判断するわけにはいかない。",
+              ["ともなると", "にかかわらず", "といえども", "に限らず"],
+              "ともなると"
+            ),
+            mcTemplateItem(
+              "mc-4",
+              "合格______、彼は遊びを一切やめた。",
+              ["せんがために", "するがゆえに", "するにすぎず", "するばかりに"],
+              "せんがために"
+            ),
+            mcTemplateItem(
+              "mc-5",
+              "目の前でたばこを吸うなんて、______。",
+              ["迷惑極まりない", "迷惑きわめない", "迷惑に過ぎない", "迷惑でならない"],
+              "迷惑極まりない"
+            ),
+          ],
+        },
+      ],
+    },
+    penPal: {
+      label: "Pen Pal",
+      templateType: "pen-pal",
+      sections: [
+        {
+          mode: "context-blank",
+          title: "Pen Pal",
+          instructions: "Read Aiko’s letter, then write your reply.",
+          items: [
+            {
+              id: "penpal-reply-1",
+              topic: "Reply to 愛子",
+              letterTo: "フェイさん",
+              letterFrom: "住田愛子",
+              letterLocation: "福井県鯖江市",
+              letterBody: PEN_PAL_LETTER_BODY,
+              parts: [{ type: "blank", name: "penpal-reply-1", wide: true, multiline: true }],
+            },
+          ],
         },
       ],
     },
@@ -294,7 +397,13 @@
           ],
         });
       case "open-line":
-        return { id, type, topic: "", parts: [{ type: "blank", name: id, wide: true, multiline: true }] };
+        return {
+          id,
+          type,
+          topic: "",
+          imageUrl: "",
+          parts: [{ type: "blank", name: id, wide: true, multiline: true }],
+        };
       case "video-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
       case "audio-prompt":
@@ -337,6 +446,14 @@
           id,
           type,
           tokens: [{ text: "", fixed: false }],
+        };
+      case "mc-line":
+        return {
+          id,
+          type,
+          prompt: "",
+          choices: ["", "", "", ""],
+          answer: "",
         };
       default:
         return null;
@@ -429,12 +546,20 @@
             )
           );
         } else if (sec.mode === "context-blank") {
-          blocks.push({
+          const openBlock = {
             id: item.id || uid("blk"),
             type: "open-line",
             topic: item.topic || "",
+            imageUrl: String(item.imageUrl || "").trim(),
             parts: JSON.parse(JSON.stringify(item.parts || [])),
-          });
+          };
+          if (Object.prototype.hasOwnProperty.call(item, "letterBody")) {
+            openBlock.letterBody = String(item.letterBody || "");
+            openBlock.letterTo = String(item.letterTo || "").trim();
+            openBlock.letterFrom = String(item.letterFrom || "").trim();
+            openBlock.letterLocation = String(item.letterLocation || "").trim();
+          }
+          blocks.push(openBlock);
         } else if (sec.mode === "audio-listening") {
           blocks.push(
             ensureListenBlock({
@@ -477,6 +602,14 @@
             type: "star-line",
             tokens: normalizeStarTokens(item),
           });
+        } else if (sec.mode === "multiple-choice") {
+          blocks.push(normalizeMcBlock({
+            id: item.id || uid("blk"),
+            type: "mc-line",
+            prompt: String(item.prompt || ""),
+            choices: Array.isArray(item.choices) ? item.choices.slice(0, 4) : ["", "", "", ""],
+            answer: String(item.answer || ""),
+          }));
         }
       });
     });
@@ -511,6 +644,10 @@
         while (i < blocks.length && blocks[i].type === "open-line") {
           sec.items.push(blockToOpenItem(blocks[i], sec.items.length));
           i++;
+        }
+        if (sec.items.some((item) => Object.prototype.hasOwnProperty.call(item, "letterBody"))) {
+          sec.title = "Pen Pal";
+          sec.instructions = "Read Aiko’s letter, then write your reply.";
         }
         if (sec.items.length) sections.push(sec);
         continue;
@@ -629,6 +766,23 @@
         continue;
       }
 
+      if (block.type === "mc-line") {
+        const sec = {
+          id: uid("sec"),
+          mode: "multiple-choice",
+          title: "",
+          instructions: "Click or drag the best answer into the blank.",
+          items: [],
+        };
+        while (i < blocks.length && blocks[i].type === "mc-line") {
+          const item = blockToMcItem(blocks[i], sec.items.length);
+          if (item.prompt && item.choices?.length) sec.items.push(item);
+          i++;
+        }
+        if (sec.items.length) sections.push(sec);
+        continue;
+      }
+
       i++;
     }
 
@@ -715,10 +869,58 @@
     };
   }
 
+  function normalizeMcChoices(choices) {
+    const list = Array.isArray(choices) ? choices.map((c) => String(c ?? "")) : [];
+    while (list.length < 4) list.push("");
+    return list.slice(0, 4);
+  }
+
+  function normalizeMcBlock(block) {
+    const choices = normalizeMcChoices(block.choices);
+    const answer = String(block.answer || "").trim();
+    return {
+      id: block.id,
+      type: "mc-line",
+      prompt: String(block.prompt || ""),
+      choices,
+      answer: answer || choices.find((c) => String(c).trim()) || "",
+    };
+  }
+
+  function blockToMcItem(block, index) {
+    const choices = normalizeMcChoices(block.choices)
+      .map((c) => String(c || "").trim())
+      .filter(Boolean)
+      .slice(0, 4);
+    const prompt = String(block.prompt || "").trim();
+    let answer = String(block.answer || "").trim();
+    if (answer && !choices.includes(answer)) {
+      /* Keep teacher answer even if it drifted from the four chips. */
+    }
+    if (!answer && choices.length) answer = choices[0];
+    return {
+      id: block.id || "mc-" + (index + 1),
+      prompt,
+      choices,
+      answer,
+    };
+  }
+
   function blockToOpenItem(block, index) {
     const out = { id: block.id || "open-" + (index + 1), parts: [] };
     const topic = String(block.topic || "").trim();
     if (topic) out.topic = topic;
+    const imageUrl = String(block.imageUrl || "").trim();
+    if (imageUrl) out.imageUrl = imageUrl;
+    if (Object.prototype.hasOwnProperty.call(block, "letterBody")) {
+      out.letterBody = String(block.letterBody || "");
+      const letterTo = String(block.letterTo || "").trim();
+      const letterFrom = String(block.letterFrom || "").trim();
+      const letterLocation = String(block.letterLocation || "").trim();
+      if (letterTo) out.letterTo = letterTo;
+      if (letterFrom) out.letterFrom = letterFrom;
+      if (letterLocation) out.letterLocation = letterLocation;
+    }
     (block.parts || []).forEach((part) => {
       if (part.type === "blank") {
         const blank = { type: "blank", name: part.name || out.id, wide: true, multiline: true };
@@ -1231,7 +1433,13 @@
         return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
       }
       if (block.type === "open-line") {
-        return clip(block.topic) || "Open response";
+        return (
+          clip(block.topic) ||
+          (Object.prototype.hasOwnProperty.call(block, "letterBody")
+            ? "Pen Pal letter"
+            : "") ||
+          (block.imageUrl ? "Open response + image" : "Open response")
+        );
       }
       if (block.type === "grammar-line") {
         return clip(grammarSentenceFromBlock(block)) || "Blank sentence";
@@ -1246,6 +1454,9 @@
           .filter(Boolean)
           .join("");
         return clip(preview) || "Sentence order";
+      }
+      if (block.type === "mc-line") {
+        return clip(block.prompt) || "Multiple choice";
       }
       return "Block";
     }
@@ -1546,13 +1757,86 @@
       }
 
       if (block.type === "open-line") {
+        if (Object.prototype.hasOwnProperty.call(block, "letterBody")) {
+          const letterNote = document.createElement("p");
+          letterNote.className = "hw-builder__penpal-note";
+          letterNote.textContent =
+            "Pen Pal letter — students see this as handwritten letter paper (AP Japanese).";
+          body.appendChild(letterNote);
+
+          const toLabel = document.createElement("label");
+          toLabel.className = "hw-builder__audio-label";
+          toLabel.textContent = "To";
+          const toInput = document.createElement("input");
+          toInput.type = "text";
+          toInput.className = "hw-builder__field";
+          toInput.placeholder = "フェイさん";
+          toInput.value = block.letterTo || "";
+          toInput.addEventListener("input", () => {
+            block.letterTo = toInput.value;
+            notifyChange();
+          });
+          toLabel.appendChild(toInput);
+          body.appendChild(toLabel);
+
+          const fromLabel = document.createElement("label");
+          fromLabel.className = "hw-builder__audio-label";
+          fromLabel.textContent = "From";
+          const fromInput = document.createElement("input");
+          fromInput.type = "text";
+          fromInput.className = "hw-builder__field";
+          fromInput.placeholder = "住田愛子";
+          fromInput.value = block.letterFrom || "";
+          fromInput.addEventListener("input", () => {
+            block.letterFrom = fromInput.value;
+            notifyChange();
+          });
+          fromLabel.appendChild(fromInput);
+          body.appendChild(fromLabel);
+
+          const locLabel = document.createElement("label");
+          locLabel.className = "hw-builder__audio-label";
+          locLabel.textContent = "Location";
+          const locInput = document.createElement("input");
+          locInput.type = "text";
+          locInput.className = "hw-builder__field";
+          locInput.placeholder = "福井県鯖江市";
+          locInput.value = block.letterLocation || "";
+          locInput.addEventListener("input", () => {
+            block.letterLocation = locInput.value;
+            notifyChange();
+          });
+          locLabel.appendChild(locInput);
+          body.appendChild(locLabel);
+
+          const bodyLabel = document.createElement("label");
+          bodyLabel.className = "hw-builder__audio-label";
+          bodyLabel.textContent = "Letter body (Japanese)";
+          const bodyInput = document.createElement("textarea");
+          bodyInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--penpal";
+          bodyInput.rows = 12;
+          bodyInput.placeholder = "Letter text…";
+          bodyInput.value = block.letterBody || "";
+          bodyInput.addEventListener("input", () => {
+            block.letterBody = bodyInput.value;
+            if (block.collapsed) summaryEl.textContent = blockSummary(block);
+            notifyChange();
+          });
+          bodyLabel.appendChild(bodyInput);
+          body.appendChild(bodyLabel);
+        }
+
         const topicLabel = document.createElement("label");
         topicLabel.className = "hw-builder__audio-label";
-        topicLabel.textContent = "Topic / question for the student";
+        topicLabel.textContent = Object.prototype.hasOwnProperty.call(block, "letterBody")
+          ? "Reply prompt for the student"
+          : "Topic / question for the student";
         const topicInput = document.createElement("textarea");
         topicInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
         topicInput.rows = 2;
-        topicInput.placeholder = "e.g. Describe your weekend using ～たことがある";
+        topicInput.placeholder = Object.prototype.hasOwnProperty.call(block, "letterBody")
+          ? "e.g. Reply to 愛子"
+          : "e.g. Describe your weekend using ～たことがある";
         topicInput.value = block.topic || "";
         topicInput.addEventListener("input", () => {
           block.topic = topicInput.value;
@@ -1561,6 +1845,203 @@
         });
         topicLabel.appendChild(topicInput);
         body.appendChild(topicLabel);
+
+        const imageZone = document.createElement("div");
+        imageZone.className = "hw-builder__image-drop";
+        imageZone.tabIndex = 0;
+        imageZone.setAttribute(
+          "aria-label",
+          "Paste or drop an image for this open response"
+        );
+
+        const imageHint = document.createElement("p");
+        imageHint.className = "hw-builder__image-drop-hint";
+        imageHint.textContent = "Paste (Ctrl+V) or drop an image here — no need to save a file first.";
+
+        const thumbWrap = document.createElement("div");
+        thumbWrap.className = "hw-builder__image-drop-thumb-wrap";
+        thumbWrap.hidden = !String(block.imageUrl || "").trim();
+
+        const thumb = document.createElement("img");
+        thumb.className = "hw-builder__image-drop-thumb";
+        thumb.alt = "Open response image";
+        if (block.imageUrl) thumb.src = block.imageUrl;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "btn btn--ghost btn--sm hw-builder__image-drop-remove";
+        removeBtn.textContent = "Remove image";
+
+        const statusEl = document.createElement("p");
+        statusEl.className = "hw-builder__image-drop-status";
+        statusEl.hidden = true;
+
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "image/jpeg,image/png,image/gif,image/webp,image/*";
+        fileInput.hidden = true;
+
+        const pickBtn = document.createElement("button");
+        pickBtn.type = "button";
+        pickBtn.className = "btn btn--ghost btn--sm";
+        pickBtn.textContent = "Choose image…";
+
+        function setImageStatus(msg, isError) {
+          if (!msg) {
+            statusEl.hidden = true;
+            statusEl.textContent = "";
+            statusEl.classList.remove("hw-maker-status--error");
+            return;
+          }
+          statusEl.hidden = false;
+          statusEl.textContent = msg;
+          statusEl.classList.toggle("hw-maker-status--error", !!isError);
+        }
+
+        function refreshImageUi() {
+          const url = String(block.imageUrl || "").trim();
+          thumbWrap.hidden = !url;
+          if (url) thumb.src = url;
+          else thumb.removeAttribute("src");
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+        }
+
+        async function prepareImageFile(file) {
+          if (!file || !String(file.type || "").startsWith("image/")) {
+            throw new Error("Use a JPEG, PNG, GIF, or WebP image.");
+          }
+          if (file.size <= 1.5 * 1024 * 1024 && ["image/jpeg", "image/webp"].includes(file.type)) {
+            return file;
+          }
+          const bitmap = await createImageBitmap(file);
+          const maxSide = 1600;
+          const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+          const width = Math.max(1, Math.round(bitmap.width * scale));
+          const height = Math.max(1, Math.round(bitmap.height * scale));
+          const canvasEl = document.createElement("canvas");
+          canvasEl.width = width;
+          canvasEl.height = height;
+          const ctx = canvasEl.getContext("2d");
+          if (!ctx) return file;
+          ctx.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close();
+          const blob = await new Promise((resolve) => {
+            canvasEl.toBlob(resolve, "image/jpeg", 0.85);
+          });
+          if (!blob) return file;
+          const baseName = String(file.name || "image").replace(/\.[^.]+$/, "") || "image";
+          return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
+        }
+
+        async function uploadOpenImage(file) {
+          const session =
+            options.getTeacherSession?.() ||
+            global.HwAuth?.getTeacherSession?.() ||
+            global.HwAuth?.getSession?.();
+          if (!session || session.role !== "teacher") {
+            throw new Error("Teacher login required.");
+          }
+          const prepared = await prepareImageFile(file);
+          if (prepared.size > 4 * 1024 * 1024) {
+            throw new Error("Image must be under 4 MB.");
+          }
+          setImageStatus("Uploading image…");
+          const body = new FormData();
+          body.append("teacherUsername", session.username);
+          body.append("image", prepared, prepared.name || "image.jpg");
+          const res = await fetch("/api/homework-worksheet-image-upload", {
+            method: "POST",
+            body,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Could not upload image.");
+          block.imageUrl = String(data.url || "").trim();
+          refreshImageUi();
+          notifyChange();
+          setImageStatus("Image attached.");
+        }
+
+        async function takeImageFiles(fileList) {
+          const files = [...(fileList || [])].filter((f) =>
+            String(f.type || "").startsWith("image/")
+          );
+          if (!files.length) {
+            setImageStatus("Only image files can be attached.", true);
+            return;
+          }
+          try {
+            await uploadOpenImage(files[0]);
+          } catch (err) {
+            setImageStatus((err && err.message) || "Upload failed.", true);
+          }
+        }
+
+        removeBtn.addEventListener("click", () => {
+          block.imageUrl = "";
+          refreshImageUi();
+          notifyChange();
+          setImageStatus("");
+        });
+        pickBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", () => {
+          void takeImageFiles(fileInput.files);
+          fileInput.value = "";
+        });
+
+        imageZone.addEventListener("dragenter", (e) => {
+          e.preventDefault();
+          imageZone.classList.add("is-dragover");
+        });
+        imageZone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          imageZone.classList.add("is-dragover");
+        });
+        imageZone.addEventListener("dragleave", (e) => {
+          if (!imageZone.contains(e.relatedTarget)) {
+            imageZone.classList.remove("is-dragover");
+          }
+        });
+        imageZone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          imageZone.classList.remove("is-dragover");
+          void takeImageFiles(e.dataTransfer?.files);
+        });
+        imageZone.addEventListener("paste", (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          const imageFiles = [];
+          for (const item of items) {
+            if (item.type && item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) imageFiles.push(file);
+            }
+          }
+          if (!imageFiles.length) return;
+          e.preventDefault();
+          e.stopPropagation();
+          void takeImageFiles(imageFiles);
+        });
+        // Catch paste while typing in the topic box (clipboard screenshot)
+        topicInput.addEventListener("paste", (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          const imageFiles = [];
+          for (const item of items) {
+            if (item.type && item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) imageFiles.push(file);
+            }
+          }
+          if (!imageFiles.length) return;
+          e.preventDefault();
+          void takeImageFiles(imageFiles);
+        });
+
+        thumbWrap.append(thumb, removeBtn);
+        imageZone.append(imageHint, thumbWrap, pickBtn, statusEl, fileInput);
+        body.appendChild(imageZone);
         return el;
       }
 
@@ -1680,6 +2161,106 @@
           last?.input.focus();
         });
         body.appendChild(addTokenBtn);
+        return el;
+      }
+
+      if (block.type === "mc-line") {
+        const normalized = normalizeMcBlock(block);
+        block.prompt = normalized.prompt;
+        block.choices = normalized.choices;
+        block.answer = normalized.answer;
+
+        const hint = document.createElement("p");
+        hint.className = "hw-builder__mc-hint";
+        hint.textContent =
+          "Put ______ where the blank goes. Add 4 choices, then pick which one is correct.";
+        body.appendChild(hint);
+
+        const promptLabel = document.createElement("label");
+        promptLabel.className = "hw-builder__field-label";
+        promptLabel.textContent = "Prompt";
+        const promptInput = document.createElement("textarea");
+        promptInput.className =
+          "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
+        promptInput.rows = 2;
+        promptInput.placeholder = "この甘い匂いを嗅ぐと、ケーキを______。";
+        promptInput.value = block.prompt || "";
+        promptInput.addEventListener("input", () => {
+          block.prompt = promptInput.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        promptLabel.appendChild(promptInput);
+        body.appendChild(promptLabel);
+
+        const choicesWrap = document.createElement("div");
+        choicesWrap.className = "hw-builder__mc-choices";
+        const choiceInputs = [];
+
+        function syncMcAnswerOptions() {
+          const current = String(block.answer || "").trim();
+          const options = choiceInputs
+            .map((input) => String(input.value || "").trim())
+            .filter(Boolean);
+          answerSelect.replaceChildren();
+          const emptyOpt = document.createElement("option");
+          emptyOpt.value = "";
+          emptyOpt.textContent = "— Correct answer —";
+          answerSelect.appendChild(emptyOpt);
+          options.forEach((opt) => {
+            const o = document.createElement("option");
+            o.value = opt;
+            o.textContent = opt;
+            answerSelect.appendChild(o);
+          });
+          if (current && options.includes(current)) {
+            answerSelect.value = current;
+          } else if (options.length) {
+            answerSelect.value = options[0];
+            block.answer = options[0];
+          } else {
+            answerSelect.value = "";
+            block.answer = "";
+          }
+        }
+
+        function syncMcFromInputs() {
+          block.choices = choiceInputs.map((input) => input.value);
+          syncMcAnswerOptions();
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        }
+
+        for (let ci = 0; ci < 4; ci += 1) {
+          const label = document.createElement("label");
+          label.className = "hw-builder__field-label";
+          label.textContent = "Choice " + (ci + 1);
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "hw-builder__field hw-builder__field--jp hw-builder__field--compact";
+          input.value = block.choices[ci] || "";
+          input.placeholder = "Answer option " + (ci + 1);
+          input.addEventListener("input", syncMcFromInputs);
+          label.appendChild(input);
+          choicesWrap.appendChild(label);
+          choiceInputs.push(input);
+        }
+        body.appendChild(choicesWrap);
+
+        const answerLabel = document.createElement("label");
+        answerLabel.className = "hw-builder__field-label";
+        answerLabel.textContent = "Correct answer";
+        const answerSelect = document.createElement("select");
+        answerSelect.className = "hw-builder__field hw-builder__field--sm";
+        answerSelect.setAttribute("aria-label", "Correct multiple-choice answer");
+        answerSelect.addEventListener("change", () => {
+          block.answer = answerSelect.value;
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          notifyChange();
+        });
+        answerLabel.appendChild(answerSelect);
+        body.appendChild(answerLabel);
+        syncMcAnswerOptions();
         return el;
       }
 

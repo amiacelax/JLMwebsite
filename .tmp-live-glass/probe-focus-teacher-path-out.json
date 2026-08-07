@@ -1,0 +1,439 @@
+{
+  "cb": 1784785323981,
+  "live": "https://japanese-language-mentor.jplang.workers.dev",
+  "directPreview": {
+    "label": "direct-preview",
+    "diag": {
+      "url": "https://japanese-language-mentor.jplang.workers.dev/homework/hub-v5-preview?status=in_progress&toolbar=1&cb=1784785323981",
+      "focus": true,
+      "htmlClasses": "hw-hub-v5-toolbar-embed",
+      "bodyClasses": "subpage subpage--homework subpage--platform hw-hub-v3-page hw-hub-v4-page hw-hub-v5-page hw-hub-v5-toolbar-embed hw-hw-focus-mode",
+      "fullscreen": true,
+      "zoom": "1.875",
+      "transform": "none",
+      "zoneOverflow": "hidden/auto",
+      "zonePe": "auto",
+      "zoneDisplay": "block",
+      "zoneZ": "400",
+      "overlays": [
+        "div#hw-v5-homework-zone.hw-hub-v4-homework[pe=auto,z=400,pos=fixed,zoom=1]"
+      ],
+      "hits": {
+        "play": {
+          "rect": {
+            "t": 750,
+            "l": 359,
+            "w": 71,
+            "h": 56
+          },
+          "pe": "auto",
+          "x": 394,
+          "y": 778,
+          "top": "path[pe=auto,z=auto,pos=static,zoom=1]",
+          "stack": [
+            "path[pe=auto,z=auto,pos=static,zoom=1]",
+            "svg[pe=auto,z=auto,pos=static,zoom=1]",
+            "button.hw-audio-chrome__play[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-audio-chrome__bar[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-audio-chrome[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-audio-player.hw-audio-player--inline[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-listen-card[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-worksheet__content[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-worksheet__line.hw-worksheet__line--listen[pe=auto,z=auto,pos=static,zoom=1]",
+            "div.hw-worksheet__section[pe=auto,z=auto,pos=static,zoom=1]",
+            "form#hw-worksheet-form.hw-worksheet.hw-worksheet--hub-chromeless.hw-worksheet--slide-mode.hw-worksheet--hide-line-nums[pe=auto,z=auto,pos=relative,zoom=1]",
+            "div#hw-v2-worksheet-mount[pe=auto,z=1,pos=relative,zoom=1.875]",
+            "section#hw-v5-worksheet-card.hw-hub-v2-worksheet.hw-hub-worksheet-card.hw-hc-host.hw-mg-host[pe=auto,z=2,pos=relative,zoom=1]",
+            "div#hw-v5-homework-zone.hw-hub-v4-homework[pe=auto,z=400,pos=fixed,zoom=1]"
+          ],
+          "targetIsTop": true,
+          "expected": "button.hw-audio-chrome__play[pe=auto,z=auto,pos=static,zoom=1]"
+        },
+        "tip": {
+          "rect": {
+            "t": 933,
+            "l": 687,
+            "w": 100,
+            "h": 39
+          },
+          "pe": "auto",
+          "x": 738,
+          "y": 952,
+          "top": null,
+          "stack": [],
+          "targetIsTop": false,
+          "expected": "button.hw-recording-tip__trigger[pe=auto,z=auto,pos=static,zoom=1]"
+        },
+        "blank": {
+          "rect": {
+            "t": 987,
+            "l": 349,
+            "w": 793,
+            "h": 73
+          },
+          "pe": "auto",
+          "x": 745,
+          "y": 1023,
+          "top": null,
+          "stack": [],
+          "targetIsTop": false,
+          "expected": "input.hw-blank.hw-blank--wide.hw-blank--listen[pe=auto,z=auto,pos=static,zoom=1]"
+        },
+        "glass": {
+          "rect": {
+            "t": 1151,
+            "l": 628,
+            "w": 66,
+            "h": 66
+          },
+          "pe": "auto",
+          "x": 661,
+          "y": 1184,
+          "top": null,
+          "stack": [],
+          "targetIsTop": false,
+          "expected": "button.hw-toolbar-bar__btn[pe=auto,z=auto,pos=static,zoom=1]"
+        },
+        "exit": {
+          "rect": {
+            "t": 8,
+            "l": 16,
+            "w": 82,
+            "h": 28
+          },
+          "pe": "auto",
+          "x": 57,
+          "y": 22,
+          "top": "button.hw-focus-bar__exit[pe=auto,z=auto,pos=absolute,zoom=1]",
+          "stack": [
+            "button.hw-focus-bar__exit[pe=auto,z=auto,pos=absolute,zoom=1]",
+            "section#hw-v5-worksheet-card.hw-hub-v2-worksheet.hw-hub-worksheet-card.hw-hc-host.hw-mg-host[pe=auto,z=2,pos=relative,zoom=1]",
+            "div#hw-v5-homework-zone.hw-hub-v4-homework[pe=auto,z=400,pos=fixed,zoom=1]",
+            "section.section[pe=auto,z=auto,pos=relative,zoom=1]",
+            "main#main.subpage__main[pe=auto,z=auto,pos=static,zoom=1]",
+            "body.subpage.subpage--homework.subpage--platform.hw-hub-v3-page[pe=auto,z=auto,pos=static,zoom=1]",
+            "html.hw-hub-v5-toolbar-embed[pe=auto,z=auto,pos=static,zoom=1]"
+          ],
+          "targetIsTop": true,
+          "expected": "button.hw-focus-bar__exit[pe=auto,z=auto,pos=absolute,zoom=1]"
+        }
+      },
+      "playAncestors": [
+        {
+          "d": "button.hw-audio-chrome__play[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-audio-chrome__bar[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-audio-chrome[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-audio-player.hw-audio-player--inline[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-listen-card[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-worksheet__content[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-worksheet__line.hw-worksheet__line--listen[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.hw-worksheet__section[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "form#hw-worksheet-form.hw-worksheet.hw-worksheet--hub-chromeless.hw-worksheet--slide-mode.hw-worksheet--hide-line-nums[pe=auto,z=auto,pos=relative,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div#hw-v2-worksheet-mount[pe=auto,z=1,pos=relative,zoom=1.875]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1.875",
+          "transform": "none"
+        },
+        {
+          "d": "section#hw-v5-worksheet-card.hw-hub-v2-worksheet.hw-hub-worksheet-card.hw-hc-host.hw-mg-host[pe=auto,z=2,pos=relative,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div#hw-v5-homework-zone.hw-hub-v4-homework[pe=auto,z=400,pos=fixed,zoom=1]",
+          "pe": "auto",
+          "overflow": "hidden/auto",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div#hw-v5-panel-homework.hw-hub-v5-panel.hw-hub-v5-panel--homework.is-active[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div#hw-v5-app.hw-hub-v5-app[pe=auto,z=auto,pos=static,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "div.container.container--wide[pe=auto,z=1,pos=relative,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        },
+        {
+          "d": "section.section[pe=auto,z=auto,pos=relative,zoom=1]",
+          "pe": "auto",
+          "overflow": "visible/visible",
+          "zoom": "1",
+          "transform": "none"
+        }
+      ]
+    },
+    "clicks": {
+      "play": {
+        "name": "play",
+        "sel": ".hw-audio-chrome__play",
+        "info": {
+          "x": 393.84375,
+          "y": 777.875,
+          "top": "path.[object SVGAnimatedString]#",
+          "hitOk": true,
+          "stack": [
+            "path.[object SVGAnimatedString]#",
+            "svg.[object SVGAnimatedString]#",
+            "BUTTON.hw-audio-chrome__play#",
+            "DIV.hw-audio-chrome__bar#",
+            "DIV.hw-audio-chrome#",
+            "DIV.hw-audio-player hw-audio-pla#",
+            "DIV.hw-listen-card#",
+            "DIV.hw-worksheet__content#",
+            "DIV.hw-worksheet__line hw-worksh#",
+            "DIV.hw-worksheet__section#"
+          ]
+        },
+        "beforeState": {
+          "ariaPressed": null,
+          "label": "Play",
+          "paused": true,
+          "className": "hw-audio-chrome__play"
+        },
+        "after": {
+          "got": ".hw-audio-chrome__play",
+          "state": {
+            "ariaPressed": null,
+            "label": "Pause",
+            "paused": false,
+            "className": "hw-audio-chrome__play"
+          }
+        },
+        "clickListenerFired": true,
+        "behaviorChanged": true
+      },
+      "tip": {
+        "name": "tip",
+        "sel": ".hw-recording-tip__trigger",
+        "info": {
+          "x": 737.5859375,
+          "y": 497.34375,
+          "top": "SPAN.hw-recording-tip__label#",
+          "hitOk": true,
+          "stack": [
+            "SPAN.hw-recording-tip__label#",
+            "BUTTON.hw-recording-tip__trigger#",
+            "DIV.hw-listen-card__head#",
+            "DIV.hw-listen-card#",
+            "DIV.hw-worksheet__content#",
+            "DIV.hw-worksheet__line hw-worksh#",
+            "DIV.hw-worksheet__section#",
+            "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form",
+            "DIV.#hw-v2-worksheet-mount",
+            "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card"
+          ]
+        },
+        "beforeState": {
+          "pressed": null,
+          "tipOpen": false
+        },
+        "after": {
+          "got": ".hw-recording-tip__trigger",
+          "state": {
+            "pressed": null,
+            "tipOpen": false,
+            "glassOut": false
+          }
+        },
+        "clickListenerFired": true,
+        "behaviorChanged": true
+      },
+      "blank": {
+        "name": "blank",
+        "sel": ".hw-blank",
+        "info": {
+          "x": 745.09375,
+          "y": 772.078125,
+          "top": "INPUT.hw-blank hw-blank--wide hw-blank--listen#",
+          "hitOk": true,
+          "stack": [
+            "INPUT.hw-blank hw-blank--wide hw-b#",
+            "SPAN.hw-blank-wrap hw-blank-wrap-#",
+            "DIV.hw-listen-card#",
+            "DIV.hw-worksheet__content#",
+            "DIV.hw-worksheet__line hw-worksh#",
+            "DIV.hw-worksheet__section#",
+            "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form",
+            "DIV.#hw-v2-worksheet-mount",
+            "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card",
+            "DIV.hw-hub-v4-homework#hw-v5-homework-zone"
+          ]
+        },
+        "beforeState": {
+          "active": false,
+          "value": ""
+        },
+        "after": {
+          "got": ".hw-blank",
+          "state": {
+            "active": true,
+            "value": ""
+          }
+        },
+        "clickListenerFired": true,
+        "behaviorChanged": true
+      },
+      "glass": {
+        "name": "glass",
+        "sel": "[data-tb-tool=\"glass\"]",
+        "info": {
+          "x": 660.796875,
+          "y": 728.359375,
+          "top": "svg.[object SVGAnimatedString]#",
+          "hitOk": true,
+          "stack": [
+            "svg.[object SVGAnimatedString]#",
+            "SPAN.hw-toolbar-bar__icon hw-tool#",
+            "BUTTON.hw-toolbar-bar__btn#",
+            "NAV.hw-toolbar-bar#hw-toolbar-bar",
+            "DIV.hw-worksheet__section#",
+            "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form",
+            "DIV.#hw-v2-worksheet-mount",
+            "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card",
+            "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+            "HTML.hw-hub-v5-toolbar-embed#"
+          ]
+        },
+        "beforeState": {
+          "pressed": "false",
+          "tipOpen": false
+        },
+        "after": {
+          "got": "[data-tb-tool=\"glass\"]",
+          "state": {
+            "pressed": "false",
+            "tipOpen": false,
+            "glassOut": false
+          }
+        },
+        "clickListenerFired": true,
+        "behaviorChanged": true
+      },
+      "exit": {
+        "name": "exit",
+        "sel": ".hw-focus-bar__exit",
+        "info": {
+          "x": 57.1796875,
+          "y": 22,
+          "top": "BUTTON.hw-focus-bar__exit#",
+          "hitOk": true,
+          "stack": [
+            "BUTTON.hw-focus-bar__exit#",
+            "FORM.hw-worksheet hw-worksheet--h#hw-worksheet-form",
+            "DIV.#hw-v2-worksheet-mount",
+            "SECTION.hw-hub-v2-worksheet hw-hub-w#hw-v5-worksheet-card",
+            "DIV.hw-hub-v4-homework#hw-v5-homework-zone",
+            "SECTION.section#",
+            "MAIN.subpage__main#main",
+            "BODY.subpage subpage--homework su#",
+            "HTML.hw-hub-v5-toolbar-embed#"
+          ]
+        },
+        "beforeState": {
+          "pressed": null,
+          "tipOpen": false
+        },
+        "after": {
+          "got": ".hw-focus-bar__exit",
+          "state": {
+            "pressed": null,
+            "tipOpen": false,
+            "glassOut": true
+          }
+        },
+        "clickListenerFired": true,
+        "behaviorChanged": true
+      },
+      "blankVal": ""
+    },
+    "iframeOffset": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "teacherToolbar": {
+    "label": "teacher-toolbar-iframe",
+    "error": "iframe-not-found",
+    "frames": [
+      "https://japanese-language-mentor.jplang.workers.dev/homework?next=%2Fhomework%2Fplatform%3Fcb%3D1784785323981"
+    ]
+  },
+  "studentPlatform": {
+    "label": "student-platform",
+    "error": "no-worksheet",
+    "url": "https://japanese-language-mentor.jplang.workers.dev/homework/platform?hubv5=1&cb=1784785323981",
+    "htmlClasses": "",
+    "text": "Skip to content\nJapanese\nLanguage Mentor\nAbout\nServices\nContact\nGames\nHomework Hub\nCourses\nBEN M'S HUB\nAll caught up for now\n\nWaiting for your next assignment.\n\nJD got your “done reviewing” ping — new homework will show up here when it’s ready.\n\nHomework between lessons — Student Special pricing\n\nWeekly homework\n\nFour interactive assignments per month with written feedback from JD — priced for lesson students.\n\nLOCKED\nUNLOCK?\n$20$10/mo\nOpen reviewed worksheet\nBrowse past homework\nPast homework\nNotebook\nView notebook\n1 assignment with notes\nYour most recent lesson\n\n～たい\n\nWatch your latest lesson\nLesson playlist on YouTube\nCOMING SOON\nTalk to Sachiko\n\nSpeak with a chatbot designed after my actual host mom :)\n\nComing soon\nRecent mistakes\n\nFrom your lessons — tap to select, then copy or delete."
+  }
+}

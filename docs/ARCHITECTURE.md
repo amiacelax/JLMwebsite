@@ -88,9 +88,10 @@ c:\JLM Website\
 ## Discord notifications
 
 - **Secret:** `DISCORD_WEBHOOK_URL` (production + `.dev.vars` local).
-- **Channel:** `#website-inquiries` — ID `1507209734095241266` (`DISCORD_CHANNEL_ID` in `wrangler.toml`).
-- Worker **GETs webhook metadata** before send; wrong channel → 503 (no silent post to #rules).
+- **Channel:** Discord notify channel ID `1534083802102501539` (`DISCORD_CHANNEL_ID` / `DISCORD_HOMEWORK_CHANNEL_ID` in `wrangler.toml`). Contact, promo, birthdays, social reminders, homework, and video upload pings all target this channel.
+- Worker **GETs webhook metadata** before send; wrong channel → 503 (no silent post to the wrong place).
 - Embeds: contact = red “new message”; promo = blue “promo email signup”.
+- **Shorts/Reels social reminders:** cron `* * * * *` runs `runSocialReminders` (`src/social-reminders.ts`). Jobs live in `HOMEWORK_KV` (`sr-pending:*`). Arm with `POST /api/social-reminders` or `npm run arm:social -- --fire … --titles …`. Fires Discord + Teacher Hub `kind: reminder`. Default Story caption: `Free trial ↑`.
 - **Do not commit** webhook URLs; rotate if leaked.
 - **Student DMs (publish / review ready):** `src/discord-notify.ts` uses bot token `DISCORD_BOT_TOKEN` + optional `DISCORD_TEACHER_USER_ID`. Discord user IDs live in KV (`student:{user}:discord-user-id`), set in Teacher Hub → Student info. Missing ID or DM failure → teacher DM, else homework webhook fallback. Never fails the HTTP publish/review response.
 - **Bot health check:** `GET /api/discord-bot-status?teacherUsername=jlm` (teacher-only) probes `GET /users/@me` and returns `{ ok, botUsername?, hint }` without leaking the token. Teacher Hub → Student info → **Check Discord bot**.

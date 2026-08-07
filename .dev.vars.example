@@ -1,14 +1,15 @@
 # Copy to .dev.vars (gitignored) for local wrangler dev:
 #   copy .dev.vars.example .dev.vars
 #
-# Create a webhook in #website-inquiries (channel ID 1507209734095241266):
+# Create a webhook in your Discord notify channel (ID 1534083802102501539):
 #   Edit Channel → Integrations → Webhooks → New Webhook
+# Contact, promo, birthdays, social reminders, homework, and video uploads all use this channel.
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN
-DISCORD_CHANNEL_ID=1507209734095241266
+DISCORD_CHANNEL_ID=1534083802102501539
 
-# Homework submissions — create webhook in channel 1507650471836258404
+# Same channel by default (can match DISCORD_WEBHOOK_URL)
 DISCORD_HOMEWORK_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_HW_ID/YOUR_HW_TOKEN
-DISCORD_HOMEWORK_CHANNEL_ID=1507650471836258404
+DISCORD_HOMEWORK_CHANNEL_ID=1534083802102501539
 
 # Student DMs on publish / review-ready (bot). Without these, notify falls back to homework webhook.
 # DISCORD_BOT_TOKEN=your-bot-token

@@ -649,9 +649,24 @@
       }
 
       options?.showToast?.("Notes sent — student can see your feedback.");
+      const kept = {
+        ...submission,
+        ...(data.submission || {}),
+        reviewStatus: "reviewed",
+        comments: data.submission?.comments || workingComments,
+      };
       await close();
       if (global.HwTeacherSubmissions?.reload) {
         await global.HwTeacherSubmissions.reload();
+      }
+      try {
+        await global.HwHubV6?.refresh?.();
+      } catch {
+        /* ignore */
+      }
+      const openSheet = options?.openWorksheetReview;
+      if (openSheet) {
+        await openSheet(kept);
       }
     } catch (err) {
       setStatus((err && err.message) || "Could not submit notes.", true);

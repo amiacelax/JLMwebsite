@@ -340,6 +340,55 @@
     let lastDisplayedCentiseconds = -1;
     let pipRestore = null;
     let pipArrowDoc = null;
+    let stereoGraph = null;
+
+    /**
+     * Fold L+R into both ears. Fixes stored clips that are “stereo” but only
+     * have signal on the left channel (silent right = left-ear-only headphones).
+     */
+    function ensureStereoBothEars() {
+      if (stereoGraph || audio.dataset.hwStereoWired === "1") return;
+      const AudioCtx = global.AudioContext || global.webkitAudioContext;
+      if (!AudioCtx) return;
+      try {
+        const ctx = new AudioCtx();
+        const src = ctx.createMediaElementSource(audio);
+        const splitter = ctx.createChannelSplitter(2);
+        const gainL = ctx.createGain();
+        const gainR = ctx.createGain();
+        gainL.gain.value = 0.5;
+        gainR.gain.value = 0.5;
+        const merger = ctx.createChannelMerger(2);
+        src.connect(splitter);
+        splitter.connect(gainL, 0);
+        splitter.connect(gainR, 1);
+        gainL.connect(merger, 0, 0);
+        gainL.connect(merger, 0, 1);
+        gainR.connect(merger, 0, 0);
+        gainR.connect(merger, 0, 1);
+        merger.connect(ctx.destination);
+        audio.dataset.hwStereoWired = "1";
+        stereoGraph = { ctx };
+      } catch {
+        /* Already connected, CORS, or unsupported — keep element output. */
+      }
+    }
+
+    function rewindIfEnded() {
+      const dur = Number(audio.duration);
+      const atEnd =
+        audio.ended ||
+        (Number.isFinite(dur) &&
+          dur > 0 &&
+          Number.isFinite(audio.currentTime) &&
+          audio.currentTime >= dur - 0.05);
+      if (!atEnd) return;
+      try {
+        audio.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+    }
 
     function refreshDurationEstimate() {
       const buffered = bufferedEndSeconds(audio);
@@ -594,8 +643,16 @@
     });
 
     playBtn.addEventListener("click", () => {
-      if (audio.paused || audio.ended) void audio.play();
-      else audio.pause();
+      if (audio.paused || audio.ended) {
+        ensureStereoBothEars();
+        if (stereoGraph?.ctx?.state === "suspended") {
+          void stereoGraph.ctx.resume();
+        }
+        rewindIfEnded();
+        void audio.play();
+      } else {
+        audio.pause();
+      }
     });
 
     audio.addEventListener("play", () => {

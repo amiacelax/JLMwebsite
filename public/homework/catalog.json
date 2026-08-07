@@ -16,6 +16,24 @@
   },
   "assignments": [
     {
+      "id": "sheet-uq0x0d3e",
+      "title": "もし・～たら",
+      "date": "2026-08-07",
+      "lessonName": "もし・～たら",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "もし",
+        "たら",
+        "if",
+        "when",
+        "grammar",
+        "draft"
+      ],
+      "summary": "Library draft — もし・～たら only (if / when / after / once). Conjugation practice (新しかったら, 見上げたら, …) + 3 open sentences. No ～なら / ～れば."
+    },
+    {
       "id": "sheet-u1dhaiqs",
       "title": "以（以降・以外・以上・以内・以下）＋未満",
       "date": "2026-07-31",
@@ -267,6 +285,30 @@
         "low-intermediate"
       ],
       "summary": "Practice ～ないといけない — must / have to — in fill-in blanks."
+    },
+    {
+      "id": "drew-multiple-choice-quiz",
+      "title": "Multiple Choice Quiz",
+      "date": "2026-08-05",
+      "studentLabel": "Drew",
+      "lessonName": "〜ずにはいられない / 〜をよそに / 〜ともなると / 〜んがために / 〜極まりない",
+      "students": [
+        "drew"
+      ],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "multiple-choice",
+        "N1",
+        "grammar",
+        "draft",
+        "ずにはいられない",
+        "をよそに",
+        "ともなると",
+        "んがために",
+        "極まりない"
+      ],
+      "summary": "Five multiple-choice blanks for advanced grammar: 〜ずにはいられない, 〜をよそに, 〜ともなると, 〜んがために, 〜極まりない."
     }
   ]
 }

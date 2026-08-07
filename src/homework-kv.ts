@@ -1292,6 +1292,96 @@ export async function deleteTeacherIdeaImage(
   return { id };
 }
 
+/** Worksheet prompt images (open-response screenshots, etc.) — public read by id. */
+
+const worksheetImageKey = (id: string) => `worksheet-image:${id}`;
+const worksheetImageMetaKey = (id: string) => `worksheet-image-meta:${id}`;
+const WORKSHEET_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+const WORKSHEET_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+function makeWorksheetImageId(): string {
+  return "wimg-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+export async function saveWorksheetPromptImage(
+  teacherUsername: string | undefined,
+  file: File,
+  env: KvEnv
+): Promise<{ id: string; mimeType: string; name?: string; urlPath: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(teacherUsername, env)) throw new Error("TEACHER_ONLY");
+  return storeWorksheetPromptImage(kv, file);
+}
+
+/** Student (or teacher) worksheet image upload — known account required. */
+export async function saveStudentWorksheetImage(
+  studentUsername: string | undefined,
+  file: File,
+  env: KvEnv
+): Promise<{ id: string; mimeType: string; name?: string; urlPath: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const username = String(studentUsername || "")
+    .trim()
+    .toLowerCase();
+  if (!username) throw new Error("STUDENT_REQUIRED");
+  if (!(await isKnownStudentInKv(username, kv)) && !isTeacher(username, env)) {
+    throw new Error("UNKNOWN_STUDENT");
+  }
+  return storeWorksheetPromptImage(kv, file);
+}
+
+async function storeWorksheetPromptImage(
+  kv: KVNamespace,
+  file: File
+): Promise<{ id: string; mimeType: string; name?: string; urlPath: string }> {
+  const mimeType = String(file.type || "").trim().toLowerCase();
+  if (!WORKSHEET_IMAGE_TYPES.has(mimeType)) throw new Error("IMAGE_TYPE");
+  if (file.size > WORKSHEET_IMAGE_MAX_BYTES) throw new Error("IMAGE_TOO_LARGE");
+
+  const id = makeWorksheetImageId();
+  const buffer = await file.arrayBuffer();
+  const meta = {
+    mimeType,
+    name: String(file.name || "").trim() || undefined,
+    size: buffer.byteLength,
+    createdAt: new Date().toISOString(),
+  };
+
+  await kv.put(worksheetImageKey(id), buffer);
+  await kv.put(worksheetImageMetaKey(id), JSON.stringify(meta));
+
+  return {
+    id,
+    mimeType,
+    name: meta.name,
+    urlPath: "/api/hw-img/" + encodeURIComponent(id),
+  };
+}
+
+export async function loadWorksheetPromptImage(
+  imageId: string,
+  env: KvEnv
+): Promise<{ body: ArrayBuffer; mimeType: string } | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const id = String(imageId || "").trim();
+  if (!id) return null;
+
+  const metaRaw = await kv.get(worksheetImageMetaKey(id));
+  const body = await kv.get(worksheetImageKey(id), "arrayBuffer");
+  if (!metaRaw || !body) return null;
+
+  try {
+    const meta = JSON.parse(metaRaw) as { mimeType?: string };
+    return { body, mimeType: meta.mimeType || "application/octet-stream" };
+  } catch {
+    return null;
+  }
+}
+
 export async function listTeacherIdeas(env: KvEnv): Promise<TeacherIdea[]> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
@@ -1456,7 +1546,9 @@ export interface HomeworkAnswerRow {
   prefix?: string;
   suffix?: string;
   mediaId?: string;
-  mediaKind?: "video" | "audio";
+  mediaKind?: "video" | "audio" | "image";
+  /** Student- or teacher-attached image URL (e.g. /api/hw-img/…). */
+  imageUrl?: string;
 }
 
 export interface HomeworkSubmissionPhoto {
@@ -2904,6 +2996,10 @@ export interface PromoSignup {
   name?: string;
   email: string;
   page: string;
+  /** Selected interest keys: lesson-discounts | new-learning-games | other */
+  interests?: string[];
+  /** Free text when interests includes "other" */
+  interestOther?: string;
   signedUpAt: string;
 }
 
@@ -2933,7 +3029,13 @@ async function writePromoIndex(kv: KVNamespace, ids: string[]): Promise<void> {
 }
 
 export async function savePromoSignup(
-  data: { email: string; name?: string; page?: string },
+  data: {
+    email: string;
+    name?: string;
+    page?: string;
+    interests?: string[];
+    interestOther?: string;
+  },
   env: KvEnv
 ): Promise<{ id: string; duplicate: boolean }> {
   const kv = env.HOMEWORK_KV;
@@ -2944,21 +3046,42 @@ export async function savePromoSignup(
   if (!normalized) throw new Error("EMAIL_REQUIRED");
 
   const name = String(data.name || "").trim();
+  const interests = Array.isArray(data.interests)
+    ? data.interests.map((v) => String(v || "").trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const interestOther = String(data.interestOther || "").trim().slice(0, 200);
+
   const existingId = await kv.get(promoEmailLookupKey(normalized));
   if (existingId) {
-    if (name) {
-      const raw = await kv.get(promoSignupKey(existingId));
-      if (raw) {
-        try {
-          const record = JSON.parse(raw) as PromoSignup;
+    const raw = await kv.get(promoSignupKey(existingId));
+    if (raw) {
+      try {
+        const record = JSON.parse(raw) as PromoSignup;
+        let changed = false;
+        if (name) {
           const merged = [record.name, name].filter(Boolean).join("; ");
           if (merged && merged !== record.name) {
             record.name = merged;
-            await kv.put(promoSignupKey(existingId), JSON.stringify(record));
+            changed = true;
           }
-        } catch {
-          /* ignore corrupt entry */
         }
+        if (interests.length) {
+          const prev = Array.isArray(record.interests) ? record.interests : [];
+          const mergedInterests = [...new Set([...prev, ...interests])].slice(0, 8);
+          if (mergedInterests.join("|") !== prev.join("|")) {
+            record.interests = mergedInterests;
+            changed = true;
+          }
+        }
+        if (interestOther && interestOther !== record.interestOther) {
+          record.interestOther = interestOther;
+          changed = true;
+        }
+        if (changed) {
+          await kv.put(promoSignupKey(existingId), JSON.stringify(record));
+        }
+      } catch {
+        /* ignore corrupt entry */
       }
     }
     return { id: existingId, duplicate: true };
@@ -2972,6 +3095,8 @@ export async function savePromoSignup(
     page: String(data.page || "").trim() || "Unknown",
     signedUpAt: new Date().toISOString(),
   };
+  if (interests.length) record.interests = interests;
+  if (interestOther) record.interestOther = interestOther;
 
   await kv.put(promoSignupKey(id), JSON.stringify(record));
   await kv.put(promoEmailLookupKey(normalized), id);
@@ -3010,7 +3135,7 @@ export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
 const FEATURE_REPORT_INDEX = "feature-reports-index";
 const featureReportKey = (id: string) => `feature-report:${id}`;
 
-export type FeatureReportKind = "feature" | "bug";
+export type FeatureReportKind = "feature" | "bug" | "reminder";
 
 export interface FeatureReport {
   id: string;
@@ -3041,6 +3166,7 @@ function normalizeFeatureReportKind(raw: string | undefined): FeatureReportKind 
     .toLowerCase();
   if (k === "feature" || k === "feature-request" || k === "feature_request") return "feature";
   if (k === "bug" || k === "bug-report" || k === "bug_report") return "bug";
+  if (k === "reminder" || k === "social" || k === "social-reminder") return "reminder";
   return null;
 }
 

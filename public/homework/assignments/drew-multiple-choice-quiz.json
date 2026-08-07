@@ -1,0 +1,57 @@
+{
+  "id": "drew-multiple-choice-quiz",
+  "title": "Multiple Choice Quiz",
+  "date": "2026-08-05",
+  "register": "casual",
+  "studentLabel": "Drew",
+  "lessonName": "〜ずにはいられない / 〜をよそに / 〜ともなると / 〜んがために / 〜極まりない",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "students": ["drew"],
+  "sections": [
+    {
+      "id": "mc-sec",
+      "mode": "multiple-choice",
+      "title": "Multiple choice",
+      "instructions": "Click or drag the best answer into the blank.",
+      "items": [
+        {
+          "id": "mc-1",
+          "prompt": "この甘い匂いを嗅ぐと、ケーキを______。",
+          "choices": [
+            "食べずにはいられない",
+            "食べるどころではない",
+            "食べるわけにはいかない",
+            "食べないではおかない"
+          ],
+          "answer": "食べずにはいられない"
+        },
+        {
+          "id": "mc-2",
+          "prompt": "周囲の反対______、彼女は起業を決めた。",
+          "choices": ["をよそに", "をめぐって", "を通じて", "をはじめ"],
+          "answer": "をよそに"
+        },
+        {
+          "id": "mc-3",
+          "prompt": "管理職______、私情だけで判断するわけにはいかない。",
+          "choices": ["ともなると", "にかかわらず", "といえども", "に限らず"],
+          "answer": "ともなると"
+        },
+        {
+          "id": "mc-4",
+          "prompt": "合格______、彼は遊びを一切やめた。",
+          "choices": ["せんがために", "するがゆえに", "するにすぎず", "するばかりに"],
+          "answer": "せんがために"
+        },
+        {
+          "id": "mc-5",
+          "prompt": "目の前でたばこを吸うなんて、______。",
+          "choices": ["迷惑極まりない", "迷惑きわめない", "迷惑に過ぎない", "迷惑でならない"],
+          "answer": "迷惑極まりない"
+        }
+      ]
+    }
+  ]
+}

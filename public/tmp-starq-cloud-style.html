@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Starq cloud style — old circle vs pill</title>
+  <link rel="stylesheet" href="/css/styles.css?v=20260790" />
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260798" />
+  <style>
+    :root {
+      --hw-hc-blue: #67c4eb;
+      --hw-hc-ink: #1a2744;
+      --color-green: #2d6a4f;
+      --hw-hc-green: #2d6a4f;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
+      background: linear-gradient(160deg, #0f1728 0%, #1a2744 45%, #243552 100%);
+      color: #e8eef7;
+      padding: 2rem 1.5rem 3rem;
+    }
+    h1 {
+      font-family: "Josefin Sans", sans-serif;
+      font-weight: 600;
+      font-size: 1.45rem;
+      margin: 0 0 0.35rem;
+    }
+    .lead {
+      margin: 0 0 1.75rem;
+      opacity: 0.85;
+      max-width: 40rem;
+      line-height: 1.45;
+    }
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: 1fr;
+      max-width: 52rem;
+    }
+    @media (min-width: 720px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    .panel {
+      background: color-mix(in srgb, #fff 6%, transparent);
+      border: 1px solid color-mix(in srgb, #fff 14%, transparent);
+      border-radius: 1rem;
+      padding: 1.1rem 1.15rem 1.35rem;
+    }
+    .panel h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+    .panel p {
+      margin: 0 0 1rem;
+      font-size: 0.82rem;
+      opacity: 0.75;
+      line-height: 1.35;
+    }
+    .stage {
+      position: relative;
+      min-height: 7.5rem;
+      border-radius: 0.75rem;
+      background: color-mix(in srgb, #fff 4%, #152033);
+      border: 1px dashed color-mix(in srgb, #fff 16%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.85rem;
+      padding: 1.5rem;
+    }
+    /* Freeze worksheet absolute positioning for the demo */
+    .stage .hw-hc-mini,
+    .stage .hw-hc-review-mini-pair {
+      position: relative;
+      left: auto;
+      top: auto;
+      transform: none;
+    }
+    /* OLD circle style (what was live before Jul 15 pill pass) */
+    .hw-hc-mini--old-circle {
+      width: 1.65rem;
+      height: 1.65rem;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border-radius: 999px;
+      display: flex;
+      color: var(--hw-hc-blue);
+      background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-hc-blue));
+      border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue) 35%, transparent);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    }
+    .hw-hc-mini--old-circle.hw-hc-mini--teacher {
+      color: var(--color-green, #2d6a4f);
+      background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
+      border: 1.5px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+    }
+    .memo-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      width: 100%;
+      max-width: 17rem;
+    }
+    .starq-ref {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.4rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 0.75rem;
+      border: 2.5px solid #3dce7a;
+      background: color-mix(in srgb, #3dce7a 18%, #1a2744);
+      color: #f4f7fb;
+      font-family: "Noto Sans JP", sans-serif;
+      font-size: 1.15rem;
+      font-weight: 500;
+    }
+    .note {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      opacity: 0.7;
+      max-width: 52rem;
+      line-height: 1.4;
+    }
+    code { font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Cloud style: old circles vs starq pills</h1>
+  <p class="lead">
+    Jul 10: open review memos restyled like starQ chips (you said “ooo i likey”).
+    Jul 15: collapsed minis got the same pill look (were still round circles before).
+  </p>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>1. Reference — starQ chip</h2>
+      <p>The look you pointed at (green border, dark tinted fill).</p>
+      <div class="stage">
+        <span class="starq-ref" aria-label="starq ni chip">に</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2. OLD — circle minis (pre–Jul 15)</h2>
+      <p>What collapsed clouds looked like on production before the pill pass.</p>
+      <div class="stage">
+        <button type="button" class="hw-hc-mini hw-hc-mini--old-circle" aria-label="old student mini">
+          <svg class="hw-hc-mini__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true"><g fill="currentColor"><circle cx="22" cy="28" r="13"/><circle cx="40" cy="21" r="16"/><circle cx="58" cy="28" r="12"/><rect x="12" y="26" width="56" height="15" rx="7.5"/></g></svg>
+        </button>
+        <button type="button" class="hw-hc-mini hw-hc-mini--old-circle hw-hc-mini--teacher" aria-label="old JD mini">
+          <svg class="hw-hc-mini__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true"><g fill="currentColor"><circle cx="22" cy="28" r="13"/><circle cx="40" cy="21" r="16"/><circle cx="58" cy="28" r="12"/><rect x="12" y="26" width="56" height="15" rx="7.5"/></g></svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3. NEW — pill minis (live CSS)</h2>
+      <p>Current <code>.hw-hc-mini</code> + student/JD modifiers — starq-style pills.</p>
+      <div class="stage">
+        <div class="hw-hc-review-mini-pair">
+          <button type="button" class="hw-hc-mini hw-hc-mini--review-student hw-hc-mini--in-pair" aria-label="student mini">
+            <svg class="hw-hc-mini__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true"><g fill="currentColor"><circle cx="22" cy="28" r="13"/><circle cx="40" cy="21" r="16"/><circle cx="58" cy="28" r="12"/><rect x="12" y="26" width="56" height="15" rx="7.5"/></g></svg>
+          </button>
+          <button type="button" class="hw-hc-mini hw-hc-mini--teacher hw-hc-mini--jd-reply hw-hc-mini--has-remark hw-hc-mini--in-pair" aria-label="JD mini">
+            <svg class="hw-hc-mini__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true"><g fill="currentColor"><circle cx="22" cy="28" r="13"/><circle cx="40" cy="21" r="16"/><circle cx="58" cy="28" r="12"/><rect x="12" y="26" width="56" height="15" rx="7.5"/></g></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Open review memos (Jul 10 starq chips)</h2>
+      <p>Expanded student (blue) + JD (green) — the style you liked with tinted opacity.</p>
+      <div class="stage" style="flex-direction: column; align-items: stretch;">
+        <div class="hw-hc-review-pair">
+          <div class="hw-hc-memo hw-hc-memo--review-student">
+            <div class="hw-hc-memo__body">
+              <div class="hw-hc-memo__remark" style="color:#f4f7fb;font-size:0.9rem;line-height:1.35;">学生メモ — starq blue chip</div>
+            </div>
+          </div>
+        </div>
+        <div class="hw-hc-review-pair">
+          <div class="hw-hc-memo hw-hc-memo--review-teacher">
+            <div class="hw-hc-memo__body hw-hc-memo__body--teacher-reply">
+              <div class="hw-hc-memo__remark" style="color:#f4f7fb;font-size:0.9rem;line-height:1.35;">JD note — starq green chip</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="note">
+    Fixture only (not linked from the hub). If student homework still shows pale round tips, hard-refresh with
+    <code>hw-homework-comments.css?v=20260798</code>. Open memos without the review-pair wrappers still use the older speech-bubble note chrome.
+  </p>
+</body>
+</html>

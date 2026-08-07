@@ -202,7 +202,11 @@
       if (liveVideo) liveVideo.srcObject = null;
       if (liveViewportEl) liveViewportEl.hidden = true;
       if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
+        if (global.HwCompat?.stopMediaStream) {
+          global.HwCompat.stopMediaStream(mediaStream);
+        } else {
+          mediaStream.getTracks().forEach((t) => t.stop());
+        }
         mediaStream = null;
       }
     }
@@ -484,7 +488,9 @@
           mode === "audio" ? { audio: true } : { audio: true, video: { facingMode: "user" } };
 
         try {
-          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          mediaStream = global.HwCompat?.getStereoUserMedia
+            ? await global.HwCompat.getStereoUserMedia(constraints)
+            : await navigator.mediaDevices.getUserMedia(constraints);
           if (mode === "video" && liveVideo) {
             liveVideo.srcObject = mediaStream;
             try {

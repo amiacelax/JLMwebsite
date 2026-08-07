@@ -110,7 +110,64 @@
     if (mode === "audio-mimic") return "Mimic";
     if (mode === "translation") return "Translation";
     if (mode === "star-order") return "Order";
+    if (mode === "multiple-choice") return "Multiple choice";
+    if (mode === "pen-pal") return "Pen Pal";
     return "Block";
+  }
+
+  /**
+   * Handwritten letter paper for Pen Pal worksheets (AP Japanese font via CSS).
+   * @param {{ letterTo?: string, letterFrom?: string, letterLocation?: string, letterBody?: string }} item
+   * @returns {HTMLElement|null}
+   */
+  function renderPenPalLetter(item) {
+    const bodyText = String(item?.letterBody || "");
+    if (!Object.prototype.hasOwnProperty.call(item || {}, "letterBody") && !bodyText.trim()) {
+      return null;
+    }
+    if (!bodyText.trim() && !String(item?.letterTo || "").trim() && !String(item?.letterFrom || "").trim()) {
+      return null;
+    }
+
+    const article = document.createElement("article");
+    article.className = "hw-penpal-letter";
+    article.setAttribute("aria-label", "Pen pal letter");
+
+    const meta = document.createElement("header");
+    meta.className = "hw-penpal-letter__meta";
+
+    const toText = String(item.letterTo || "").trim();
+    if (toText) {
+      const toEl = document.createElement("p");
+      toEl.className = "hw-penpal-letter__to";
+      toEl.textContent = /[へに]$/.test(toText) || /さんへ$/.test(toText) ? toText : toText + "へ";
+      meta.appendChild(toEl);
+    }
+
+    const locText = String(item.letterLocation || "").trim();
+    if (locText) {
+      const locEl = document.createElement("p");
+      locEl.className = "hw-penpal-letter__loc";
+      locEl.textContent = locText;
+      meta.appendChild(locEl);
+    }
+
+    if (meta.childNodes.length) article.appendChild(meta);
+
+    const body = document.createElement("div");
+    body.className = "hw-penpal-letter__body";
+    body.textContent = bodyText;
+    article.appendChild(body);
+
+    const fromText = String(item.letterFrom || "").trim();
+    if (fromText) {
+      const footer = document.createElement("footer");
+      footer.className = "hw-penpal-letter__from";
+      footer.textContent = fromText + "より";
+      article.appendChild(footer);
+    }
+
+    return article;
   }
 
   function enrichAssignmentMedia(assignment) {
@@ -147,7 +204,11 @@
     if (mode === "audio-listening") return "Listen " + num;
     if (mode === "audio-prompt") return "Audio " + num;
     if (mode === "audio-mimic") return "Mimic " + num;
-    if (mode === "context-blank") return "Question " + num;
+    if (mode === "context-blank") {
+      if (line?.querySelector(".hw-penpal-letter")) return "Reply " + num;
+      return "Question " + num;
+    }
+    if (mode === "pen-pal") return "Reply " + num;
     return num;
   }
 
@@ -1448,7 +1509,123 @@
   function scheduleFitStarLine(line) {
     if (!line) return;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => fitStarLine(line));
+      requestAnimationFrame(() => {
+        fitStarLine(line);
+        fitMcLine(line);
+      });
+    });
+  }
+
+  /**
+   * MC quiz: keep choice chips + prompt sentence on one line by stepping font-size down.
+   * Fallback wrap uses Japanese kinsoku (no line-start punctuation).
+   */
+  const MC_CHIP_SIZES = [1.05, 0.95, 0.88, 0.8, 0.72, 0.64];
+  const MC_SENTENCE_SIZES = [1.15, 1.05, 0.95, 0.86, 0.78, 0.7];
+  const MC_SLOT_SIZES = [1, 0.92, 0.84, 0.76, 0.68, 0.6];
+
+  function mcElOverflows(el) {
+    return el.scrollWidth > el.clientWidth + 1;
+  }
+
+  function applyMcChipSize(chip, step) {
+    const size = MC_CHIP_SIZES[Math.min(Math.max(step, 0), MC_CHIP_SIZES.length - 1)];
+    chip.style.setProperty("--mc-chip-size", size + "rem");
+  }
+
+  function fitMcChip(chip) {
+    if (!chip || !chip.isConnected) return;
+    if (chip.classList.contains("hw-mc-block__chip--placed")) return;
+    if (chip.classList.contains("hw-mc-block__chip--drag-ghost")) return;
+    if (chip.clientWidth < 8) return;
+
+    applyMcChipSize(chip, 0);
+    void chip.offsetWidth;
+    if (!mcElOverflows(chip)) return;
+
+    for (let s = 1; s < MC_CHIP_SIZES.length; s++) {
+      applyMcChipSize(chip, s);
+      void chip.offsetWidth;
+      if (!mcElOverflows(chip)) return;
+    }
+  }
+
+  function applyMcSlotSize(el, step) {
+    const size = MC_SLOT_SIZES[Math.min(Math.max(step, 0), MC_SLOT_SIZES.length - 1)];
+    el.style.setProperty("--mc-slot-size", size + "em");
+  }
+
+  function fitMcSlotText(el) {
+    if (!el || !el.isConnected) return;
+    if (el.clientWidth < 4) return;
+
+    applyMcSlotSize(el, 0);
+    void el.offsetWidth;
+    if (!mcElOverflows(el)) return;
+
+    for (let s = 1; s < MC_SLOT_SIZES.length; s++) {
+      applyMcSlotSize(el, s);
+      void el.offsetWidth;
+      if (!mcElOverflows(el)) return;
+    }
+  }
+
+  function applyMcSentenceSize(sentence, step) {
+    const size = MC_SENTENCE_SIZES[Math.min(Math.max(step, 0), MC_SENTENCE_SIZES.length - 1)];
+    sentence.style.setProperty("--mc-sentence-size", size + "rem");
+  }
+
+  function fitMcSentence(sentence) {
+    if (!sentence || !sentence.isConnected) return;
+    if (sentence.clientWidth < 8) return;
+
+    sentence.classList.remove("is-mc-sentence-wrap");
+    sentence.style.removeProperty("overflow-x");
+    applyMcSentenceSize(sentence, 0);
+    void sentence.offsetWidth;
+    if (!mcElOverflows(sentence)) return;
+
+    for (let s = 1; s < MC_SENTENCE_SIZES.length; s++) {
+      applyMcSentenceSize(sentence, s);
+      void sentence.offsetWidth;
+      if (!mcElOverflows(sentence)) return;
+    }
+
+    /* Prefer one-line + gentle scroll over flex-wrapping (avoids orphaned 、). */
+    if (sentence.clientWidth >= 220) {
+      sentence.style.overflowX = "auto";
+      return;
+    }
+
+    /* Tiny screens only: allow wrap with kinsoku; blank-group keeps 、 with the slot. */
+    sentence.classList.add("is-mc-sentence-wrap");
+  }
+
+  function fitMcLine(line) {
+    if (!line || !line.querySelector) return;
+    const sentence = line.querySelector(".hw-mc-block__sentence");
+    const slotText = line.querySelector(".hw-mc-block__slot-text");
+    if (sentence) fitMcSentence(sentence);
+    if (slotText) {
+      fitMcSlotText(slotText);
+      if (sentence) fitMcSentence(sentence);
+    }
+    line.querySelectorAll(".hw-mc-block__chip").forEach(fitMcChip);
+  }
+
+  function scheduleFitMcLine(line) {
+    if (!line) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => fitMcLine(line));
+    });
+  }
+
+  function scheduleFitAllMcLines(root) {
+    const scope = root || document;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scope.querySelectorAll(".hw-worksheet__line--mc").forEach(fitMcLine);
+      });
     });
   }
 
@@ -1458,6 +1635,7 @@
       requestAnimationFrame(() => {
         scope.querySelectorAll(".hw-star-block__sentence").forEach(fitStarSentence);
         scope.querySelectorAll(".hw-translation-block__japanese").forEach(fitJpPrompt);
+        scope.querySelectorAll(".hw-worksheet__line--mc").forEach(fitMcLine);
       });
     });
   }
@@ -1476,6 +1654,7 @@
           fitQueued = false;
           form.querySelectorAll(".hw-star-block__sentence").forEach(fitStarSentence);
           form.querySelectorAll(".hw-translation-block__japanese").forEach(fitJpPrompt);
+          form.querySelectorAll(".hw-worksheet__line--mc").forEach(fitMcLine);
         });
       });
     };
@@ -1490,7 +1669,9 @@
     if (typeof ResizeObserver !== "undefined") {
       const ro = new ResizeObserver(queueFit);
       form
-        .querySelectorAll(".hw-star-block__sentence, .hw-translation-block__japanese")
+        .querySelectorAll(
+          ".hw-star-block__sentence, .hw-translation-block__japanese, .hw-mc-block__sentence, .hw-mc-block__chip, .hw-mc-block__slot-text"
+        )
         .forEach((el) => {
           ro.observe(el);
         });
@@ -1590,6 +1771,147 @@
     return line;
   }
 
+  function splitMcPrompt(prompt) {
+    const raw = String(prompt || "");
+    const blankRe = /_{3,}|｛空白｝|\{blank\}|\{answer\}/i;
+    const match = raw.match(blankRe);
+    let before = raw;
+    let after = "";
+    if (match) {
+      before = raw.slice(0, match.index);
+      after = raw.slice(match.index + match[0].length);
+    }
+    /* Glue leading punctuation to the blank so `、` never orphans onto the next line. */
+    const punctMatch = after.match(/^[、。，．！？!?）\)\]」』】〉》]+/);
+    const leadingPunct = punctMatch ? punctMatch[0] : "";
+    if (leadingPunct) after = after.slice(leadingPunct.length);
+    return { before, after, leadingPunct };
+  }
+
+  function normalizeMcChoices(item) {
+    const list = Array.isArray(item?.choices)
+      ? item.choices.map((c) => String(c || "").trim()).filter(Boolean)
+      : [];
+    return list.slice(0, 4);
+  }
+
+  function shuffleMcChoices(choices) {
+    const arr = choices.slice();
+    if (arr.length < 2) return arr;
+    const original = arr.slice();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+      if (!arr.every((v, i) => v === original[i])) return arr;
+    }
+    const tmp = arr[0];
+    arr[0] = arr[1];
+    arr[1] = tmp;
+    return arr;
+  }
+
+  function renderMcLine(item, lineOptions) {
+    lineOptions = lineOptions || {};
+    const line = document.createElement("div");
+    line.className = "hw-worksheet__line hw-worksheet__line--mc";
+    line.dataset.itemId = item.id || "";
+
+    const choices = normalizeMcChoices(item);
+    line.dataset.choices = JSON.stringify(choices);
+
+    if (lineOptions.itemNum) appendLineNumber(line, lineOptions.itemNum);
+
+    const content = document.createElement("div");
+    content.className = "hw-worksheet__content";
+
+    const mcInstruction = String(lineOptions.mcInstruction || "").trim();
+    if (mcInstruction) {
+      const hint = document.createElement("p");
+      hint.className = "hw-mc-block__hint";
+      hint.textContent = mcInstruction;
+      content.appendChild(hint);
+    }
+
+    const sentence = document.createElement("div");
+    sentence.className = "hw-mc-block__sentence";
+    sentence.setAttribute("lang", "ja");
+
+    const { before, after, leadingPunct } = splitMcPrompt(item.prompt || "");
+    if (before) {
+      const beforeEl = document.createElement("span");
+      beforeEl.className = "hw-mc-block__text";
+      beforeEl.textContent = before;
+      sentence.appendChild(beforeEl);
+    }
+
+    const blankGroup = document.createElement("span");
+    blankGroup.className = "hw-mc-block__blank-group";
+
+    const slot = document.createElement("span");
+    slot.className = "hw-mc-block__slot";
+    slot.setAttribute("aria-label", "Answer blank");
+    blankGroup.appendChild(slot);
+
+    if (leadingPunct) {
+      const glue = document.createElement("span");
+      glue.className = "hw-mc-block__glue";
+      glue.textContent = leadingPunct;
+      blankGroup.appendChild(glue);
+    }
+    sentence.appendChild(blankGroup);
+
+    if (after) {
+      const afterEl = document.createElement("span");
+      afterEl.className = "hw-mc-block__text";
+      afterEl.textContent = after;
+      sentence.appendChild(afterEl);
+    }
+
+    content.appendChild(sentence);
+
+    const pool = document.createElement("div");
+    pool.className = "hw-mc-block__pool";
+    pool.setAttribute("role", "list");
+    pool.setAttribute("aria-label", "Multiple choice answers");
+    const shuffled = shuffleMcChoices(choices);
+    shuffled.forEach((choice, index) => {
+      const colorNum = (index % 4) + 1;
+      const chip = document.createElement("div");
+      chip.className = "hw-mc-block__chip hw-mc-block__chip--" + colorNum;
+      chip.dataset.choice = choice;
+      chip.dataset.color = String(colorNum);
+      chip.textContent = choice;
+      chip.draggable = true;
+      chip.setAttribute("role", "button");
+      chip.tabIndex = 0;
+      chip.setAttribute("aria-label", "Choose " + choice);
+      pool.appendChild(chip);
+    });
+    content.appendChild(pool);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.type = "button";
+    resetBtn.className = "btn btn--ghost btn--sm hw-mc-block__reset";
+    resetBtn.textContent = "Clear answer";
+    resetBtn.disabled = true;
+    content.appendChild(resetBtn);
+
+    line.appendChild(content);
+
+    const hidden = document.createElement("input");
+    hidden.type = "hidden";
+    hidden.className = "hw-blank hw-mc-block__answer";
+    hidden.name = item.id || "mc-" + lineOptions.itemNum;
+    hidden.dataset.answer = String(item.answer || "").trim();
+    line.appendChild(hidden);
+
+    return line;
+  }
+
   function renderLine(item, index, sectionMode, lineOptions) {
     lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
@@ -1639,12 +1961,211 @@
       content.appendChild(listenCard);
     }
 
+    if (openBlock && Object.prototype.hasOwnProperty.call(item, "letterBody")) {
+      const letterEl = renderPenPalLetter(item);
+      if (letterEl) content.appendChild(letterEl);
+    }
+
     if (openBlock && item.topic) {
       const topicEl = document.createElement("p");
-      topicEl.className = "hw-open-topic";
+      topicEl.className =
+        "hw-open-topic" +
+        (Object.prototype.hasOwnProperty.call(item, "letterBody") ? " hw-open-topic--penpal-reply" : "");
       topicEl.textContent = item.topic;
       content.appendChild(topicEl);
       content.dataset.topic = item.topic;
+    }
+
+    if (openBlock) {
+      const blankName =
+        (item.parts || []).find((p) => p.type === "blank")?.name || item.id || "open";
+      const teacherImageUrl = String(item.imageUrl || "").trim();
+      const canEditImage =
+        !lineOptions.authoring && !lineOptions.preview && !lineOptions.readOnly;
+
+      const imageSlot = document.createElement("div");
+      imageSlot.className = "hw-open-image-slot";
+      imageSlot.dataset.openImageBlank = blankName;
+
+      const teacherFig = renderListenScreenshot(teacherImageUrl);
+      if (teacherFig) {
+        teacherFig.classList.add("hw-open-prompt-image");
+        const img = teacherFig.querySelector("img");
+        if (img) img.alt = "Question image";
+        imageSlot.appendChild(teacherFig);
+      }
+
+      const studentFig = document.createElement("figure");
+      studentFig.className = "hw-open-student-image";
+      studentFig.hidden = true;
+      const studentImg = document.createElement("img");
+      studentImg.className = "hw-listen-card__img";
+      studentImg.alt = "Your image";
+      studentFig.appendChild(studentImg);
+      imageSlot.appendChild(studentFig);
+
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = blankName + "__img";
+      hidden.setAttribute("data-student-open-image", blankName);
+      imageSlot.appendChild(hidden);
+
+      function syncOpenImageVisibility() {
+        const studentUrl = String(hidden.value || "").trim();
+        const hasStudent = Boolean(studentUrl);
+        studentFig.hidden = !hasStudent;
+        if (hasStudent) studentImg.src = studentUrl;
+        else studentImg.removeAttribute("src");
+        if (teacherFig) teacherFig.hidden = hasStudent;
+        if (removeBtn) removeBtn.hidden = !hasStudent || !canEditImage;
+        if (dropHint) dropHint.hidden = hasStudent;
+      }
+
+      let removeBtn = null;
+      let dropHint = null;
+
+      if (canEditImage) {
+        dropHint = document.createElement("p");
+        dropHint.className = "hw-open-image-drop-hint";
+        dropHint.textContent =
+          "Paste or drop your own image here (replaces JD’s until you remove it).";
+        imageSlot.appendChild(dropHint);
+
+        removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "btn btn--ghost btn--sm hw-open-image-remove";
+        removeBtn.textContent = "Remove my image";
+        removeBtn.hidden = true;
+        removeBtn.addEventListener("click", () => {
+          hidden.value = "";
+          syncOpenImageVisibility();
+          line
+            .closest("form")
+            ?.dispatchEvent?.(new CustomEvent("hw-worksheet-answer", { bubbles: true }));
+        });
+        imageSlot.appendChild(removeBtn);
+
+        const statusEl = document.createElement("p");
+        statusEl.className = "hw-open-image-status";
+        statusEl.hidden = true;
+        imageSlot.appendChild(statusEl);
+
+        function setStatus(msg, isError) {
+          if (!msg) {
+            statusEl.hidden = true;
+            statusEl.textContent = "";
+            return;
+          }
+          statusEl.hidden = false;
+          statusEl.textContent = msg;
+          statusEl.classList.toggle("hw-maker-status--error", !!isError);
+        }
+
+        async function prepareImageFile(file) {
+          if (!file || !String(file.type || "").startsWith("image/")) {
+            throw new Error("Use a JPEG, PNG, GIF, or WebP image.");
+          }
+          if (file.size <= 1.5 * 1024 * 1024 && ["image/jpeg", "image/webp"].includes(file.type)) {
+            return file;
+          }
+          const bitmap = await createImageBitmap(file);
+          const maxSide = 1600;
+          const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+          const width = Math.max(1, Math.round(bitmap.width * scale));
+          const height = Math.max(1, Math.round(bitmap.height * scale));
+          const canvasEl = document.createElement("canvas");
+          canvasEl.width = width;
+          canvasEl.height = height;
+          const ctx = canvasEl.getContext("2d");
+          if (!ctx) return file;
+          ctx.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close();
+          const blob = await new Promise((resolve) => {
+            canvasEl.toBlob(resolve, "image/jpeg", 0.85);
+          });
+          if (!blob) return file;
+          const baseName = String(file.name || "image").replace(/\.[^.]+$/, "") || "image";
+          return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
+        }
+
+        async function uploadStudentImage(file) {
+          const session = global.HwAuth?.getSession?.();
+          if (!session?.username) throw new Error("Log in to attach an image.");
+          const prepared = await prepareImageFile(file);
+          if (prepared.size > 4 * 1024 * 1024) {
+            throw new Error("Image must be under 4 MB.");
+          }
+          setStatus("Uploading…");
+          const body = new FormData();
+          body.append("username", session.username);
+          body.append("image", prepared, prepared.name || "image.jpg");
+          const res = await fetch("/api/homework-worksheet-image-upload", {
+            method: "POST",
+            body,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Could not upload image.");
+          hidden.value = String(data.url || "").trim();
+          syncOpenImageVisibility();
+          setStatus("");
+          line.dispatchEvent(new CustomEvent("hw-worksheet-answer", { bubbles: true }));
+        }
+
+        async function takeFiles(fileList) {
+          const files = [...(fileList || [])].filter((f) =>
+            String(f.type || "").startsWith("image/")
+          );
+          if (!files.length) {
+            setStatus("Only image files can be attached.", true);
+            return;
+          }
+          try {
+            await uploadStudentImage(files[0]);
+          } catch (err) {
+            setStatus((err && err.message) || "Upload failed.", true);
+          }
+        }
+        imageSlot._takeOpenImageFiles = takeFiles;
+
+        imageSlot.tabIndex = 0;
+        imageSlot.addEventListener("dragenter", (e) => {
+          e.preventDefault();
+          imageSlot.classList.add("is-dragover");
+        });
+        imageSlot.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          imageSlot.classList.add("is-dragover");
+        });
+        imageSlot.addEventListener("dragleave", (e) => {
+          if (!imageSlot.contains(e.relatedTarget)) {
+            imageSlot.classList.remove("is-dragover");
+          }
+        });
+        imageSlot.addEventListener("drop", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          imageSlot.classList.remove("is-dragover");
+          void takeFiles(e.dataTransfer?.files);
+        });
+        imageSlot.addEventListener("paste", (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          const imageFiles = [];
+          for (const item of items) {
+            if (item.type && item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) imageFiles.push(file);
+            }
+          }
+          if (!imageFiles.length) return;
+          e.preventDefault();
+          void takeFiles(imageFiles);
+        });
+      }
+
+      syncOpenImageVisibility();
+      if (teacherFig || canEditImage) content.appendChild(imageSlot);
     }
 
     (item.parts || []).forEach((part) => {
@@ -1670,6 +2191,26 @@
       }
     });
 
+    if (openBlock) {
+      const slot = content.querySelector(".hw-open-image-slot");
+      content.querySelectorAll("textarea.hw-blank").forEach((ta) => {
+        ta.addEventListener("paste", (e) => {
+          const items = e.clipboardData?.items;
+          if (!items || !slot?._takeOpenImageFiles) return;
+          const imageFiles = [];
+          for (const item of items) {
+            if (item.type && item.type.startsWith("image/")) {
+              const file = item.getAsFile();
+              if (file) imageFiles.push(file);
+            }
+          }
+          if (!imageFiles.length) return;
+          e.preventDefault();
+          void slot._takeOpenImageFiles(imageFiles);
+        });
+      });
+    }
+
     if (item.question) {
       content.appendChild(renderQuestionBadge());
     }
@@ -1693,19 +2234,27 @@
     heading.textContent = section.title;
     head.appendChild(heading);
 
-    wrap.appendChild(head);
+    /* Students already see the question card; skip the green mode/type label for MC. */
+    if (authoring || section.mode !== "multiple-choice") {
+      wrap.appendChild(head);
+    }
 
     const sectionIntro =
       section.mode === "star-order"
         ? "Drag/drop the words to form the best answer!"
-        : String(section.instructions || "").trim() ||
-          (section.mode === "audio-listening"
-            ? "Listen to the clip and write down what you think it's saying in Japanese."
-            : "");
-    /* Listen + star: instruction lives inside the question card (not above it). */
+        : section.mode === "multiple-choice"
+          ? "Click or drag the best answer into the blank."
+          : String(section.instructions || "").trim() ||
+            (section.mode === "audio-listening"
+              ? "Listen to the clip and write down what you think it's saying in Japanese."
+              : "");
+    /* Listen + star + MC: instruction lives inside the question card (not above it). */
     if (
       sectionIntro &&
-      (authoring || (section.mode !== "audio-listening" && section.mode !== "star-order"))
+      (authoring ||
+        (section.mode !== "audio-listening" &&
+          section.mode !== "star-order" &&
+          section.mode !== "multiple-choice"))
     ) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";
@@ -1719,6 +2268,8 @@
       !authoring && section.mode === "audio-listening" ? sectionIntro : "";
     const starInstruction =
       !authoring && section.mode === "star-order" ? sectionIntro : "";
+    const mcInstruction =
+      !authoring && section.mode === "multiple-choice" ? sectionIntro : "";
 
     (section.items || []).forEach((item, i) => {
       const itemCounter = renderOptions.itemCounter;
@@ -1729,8 +2280,10 @@
         itemNum,
         listenInstruction,
         starInstruction,
+        mcInstruction,
         authoring,
         preview: renderOptions.preview,
+        readOnly: renderOptions.readOnly,
       };
 
       if (section.mode === "video-response") {
@@ -1753,6 +2306,10 @@
       }
       if (section.mode === "star-order") {
         wrap.appendChild(renderStarLine(item, lineOpts));
+        return;
+      }
+      if (section.mode === "multiple-choice") {
+        wrap.appendChild(renderMcLine(item, lineOpts));
         return;
       }
       if (authoring) {
@@ -2108,6 +2665,9 @@
     if (!authoring && global.HwStarBlock?.initForm) {
       global.HwStarBlock.initForm(form);
     }
+    if (!authoring && global.HwMcBlock?.initForm) {
+      global.HwMcBlock.initForm(form);
+    }
     if (!authoring) {
       initStarSentenceFit(form);
     }
@@ -2135,12 +2695,22 @@
         return;
       }
       if (
+        btn.closest(".hw-audio-chrome") ||
+        btn.closest(".hw-listen-card") ||
+        btn.closest(".hw-listen-replay-slot") ||
+        btn.closest(".hw-video-chrome") ||
+        btn.closest(".hw-video-replay-slot")
+      ) {
+        return;
+      }
+      if (
         btn.type === "submit" ||
         btn.hasAttribute("data-hw-photo-take") ||
         btn.hasAttribute("data-hw-photo-choose") ||
         btn.closest(".hw-video-inline") ||
         btn.closest(".hw-audio-inline") ||
-        btn.closest(".hw-star-block")
+        btn.closest(".hw-worksheet__line--star") ||
+        btn.closest(".hw-worksheet__line--mc")
       ) {
         btn.disabled = true;
         btn.hidden = true;
@@ -2168,6 +2738,24 @@
         slot.querySelector(".hw-star-block__slot-clear")?.remove();
       });
     });
+    form.querySelectorAll(".hw-worksheet__line--mc").forEach((line) => {
+      const pool = line.querySelector(".hw-mc-block__pool");
+      const reset = line.querySelector(".hw-mc-block__reset");
+      if (pool) {
+        if (line.classList.contains("hw-mc-block--replay")) {
+          pool.hidden = true;
+        } else {
+          pool.setAttribute("aria-hidden", "true");
+          pool.style.opacity = "0.45";
+        }
+        pool.style.pointerEvents = "none";
+      }
+      if (reset) reset.hidden = true;
+      line.querySelectorAll(".hw-mc-block__slot").forEach((slot) => {
+        slot.draggable = false;
+        slot.querySelector(".hw-mc-block__slot-clear")?.remove();
+      });
+    });
     form.querySelectorAll(".hw-star-block__pool, .hw-star-block__answer-zone").forEach((el) => {
       if (el.closest(".hw-star-block--replay")) return;
       el.setAttribute("aria-hidden", "true");
@@ -2183,8 +2771,33 @@
         inp.value = String(answersMap[inp.name]);
       }
     });
+    form.querySelectorAll("input[data-student-open-image]").forEach((inp) => {
+      if (!inp.name) return;
+      if (answersMap[inp.name] != null) {
+        inp.value = String(answersMap[inp.name] || "");
+      }
+      const slot = inp.closest(".hw-open-image-slot");
+      if (!slot) return;
+      const studentUrl = String(inp.value || "").trim();
+      const studentFig = slot.querySelector(".hw-open-student-image");
+      const studentImg = studentFig?.querySelector("img");
+      const teacherFig = slot.querySelector(".hw-open-prompt-image");
+      const removeBtn = slot.querySelector(".hw-open-image-remove");
+      const dropHint = slot.querySelector(".hw-open-image-drop-hint");
+      if (studentFig) studentFig.hidden = !studentUrl;
+      if (studentImg) {
+        if (studentUrl) studentImg.src = studentUrl;
+        else studentImg.removeAttribute("src");
+      }
+      if (teacherFig) teacherFig.hidden = Boolean(studentUrl);
+      if (removeBtn) removeBtn.hidden = !studentUrl;
+      if (dropHint) dropHint.hidden = Boolean(studentUrl);
+    });
     if (global.HwWorksheet?.updateSubmitButtonState) {
       global.HwWorksheet.updateSubmitButtonState(form);
+    }
+    if (global.HwMcBlock?.syncFormFromAnswers) {
+      global.HwMcBlock.syncFormFromAnswers(form);
     }
   }
 
@@ -2251,16 +2864,57 @@
         if (recorder) recorder.hidden = true;
       }
 
-      /* Prefer real Content-Type — mediaKind can disagree with the stored blob. */
-      fetch(url, { method: "GET", headers: { Range: "bytes=0-0" }, cache: "no-store" })
+      /* Prefer declared mediaKind — probing with GET+Range can download the
+         whole blob when the server ignores Range, delaying the player. */
+      if (declared) {
+        mountKind(declared);
+        return;
+      }
+
+      const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+      fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-0" },
+        cache: "no-store",
+        signal: ac?.signal,
+      })
         .then((res) => {
           const ct = String(res.headers.get("content-type") || "").toLowerCase();
+          try {
+            ac?.abort();
+          } catch {
+            /* ignore */
+          }
+          try {
+            res.body?.cancel?.();
+          } catch {
+            /* ignore */
+          }
           if (ct.startsWith("video/")) return "video";
           if (ct.startsWith("audio/")) return "audio";
-          return declared || (isVideoLine ? "video" : "audio");
+          return isVideoLine ? "video" : "audio";
         })
-        .catch(() => declared || (isVideoLine ? "video" : "audio"))
+        .catch(() => (isVideoLine ? "video" : "audio"))
         .then((kind) => mountKind(kind));
+    }
+
+    function applyOpenStudentImageReplay(lineEl, row) {
+      const imageUrl = String(row?.imageUrl || "").trim();
+      if (!imageUrl || !lineEl) return;
+      const hidden = lineEl.querySelector("input[data-student-open-image]");
+      const slot = lineEl.querySelector(".hw-open-image-slot");
+      if (!hidden || !slot) return;
+      hidden.value = imageUrl;
+      const studentFig = slot.querySelector(".hw-open-student-image");
+      const studentImg = studentFig?.querySelector("img");
+      const teacherFig = slot.querySelector(".hw-open-prompt-image");
+      const removeBtn = slot.querySelector(".hw-open-image-remove");
+      const dropHint = slot.querySelector(".hw-open-image-drop-hint");
+      if (studentFig) studentFig.hidden = false;
+      if (studentImg) studentImg.src = imageUrl;
+      if (teacherFig) teacherFig.hidden = true;
+      if (removeBtn) removeBtn.hidden = true;
+      if (dropHint) dropHint.hidden = true;
     }
 
     const ordered =
@@ -2303,10 +2957,19 @@
             }
             return;
           }
+          if (mode === "multiple-choice") {
+            if (global.HwMcBlock?.restoreLineFromSubmission) {
+              global.HwMcBlock.restoreLineFromSubmission(lineEl, row);
+            } else {
+              applyReplayNote(lineEl, row);
+            }
+            return;
+          }
           const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
           if (input && row.student != null) {
             input.value = row.student === "(blank)" ? "" : String(row.student);
           }
+          applyOpenStudentImageReplay(lineEl, row);
         });
       });
       return;
@@ -2352,6 +3015,7 @@
         if (row?.student != null) {
           el.value = row.student === "(blank)" ? "" : String(row.student);
         }
+        applyOpenStudentImageReplay(el.closest(".hw-worksheet__line"), row);
       });
     });
   }
@@ -3024,6 +3688,14 @@
           student,
           completed: completedSentenceForBlank(form, el.name, student),
         };
+        const lineEl = el.closest(".hw-worksheet__line");
+        const studentImgUrl = lineEl
+          ?.querySelector("input[data-student-open-image]")
+          ?.value?.trim();
+        if (studentImgUrl) {
+          row.imageUrl = studentImgUrl;
+          row.mediaKind = "image";
+        }
         if (mode === "grammar-blank") {
           section1.push(row);
           idx += 1;
@@ -3241,6 +3913,20 @@
             slotOrder: slotOrder || undefined,
           };
         }
+        if (mode === "multiple-choice") {
+          const input = lineEl.querySelector(".hw-mc-block__answer");
+          const prompt =
+            lineEl.querySelector(".hw-mc-block__sentence")?.textContent?.replace(/\s+/g, " ").trim() ||
+            "";
+          const student = input?.value?.trim() || "";
+          return {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            question: prompt || undefined,
+            student: student || "(blank)",
+          };
+        }
         if (mode === "translation") {
           const input = lineEl.querySelector("textarea.hw-blank, .hw-blank");
           const jp =
@@ -3334,6 +4020,10 @@
         return false;
       }
     }
+    if (lineEl.classList.contains("hw-worksheet__line--mc")) {
+      const hidden = lineEl.querySelector(".hw-mc-block__answer");
+      return hasMeaningfulStudentAnswer(hidden?.value);
+    }
     const blanks = lineEl.querySelectorAll(STUDENT_BLANK_SELECTOR);
     if (!blanks.length) return false;
     return Array.from(blanks).every((el) => hasMeaningfulStudentAnswer(el.value));
@@ -3420,6 +4110,9 @@
     fitStarLine,
     scheduleFitStarLine,
     scheduleFitAllStarSentences,
+    fitMcLine,
+    scheduleFitMcLine,
+    scheduleFitAllMcLines,
     assignmentFromAuthoringForm,
     buildRegisterVariants,
     enrichGrammarVariants,

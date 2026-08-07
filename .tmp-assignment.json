@@ -1,0 +1,130 @@
+﻿{
+    "id":  "sheet-u1st0vtm",
+    "title":  "ï½ãã",
+    "youtubeUrl":  "https://youtu.be/N_YW0LBOHaQ",
+    "templateType":  "custom",
+    "status":  "published",
+    "forSale":  false,
+    "salePrice":  0.99,
+    "sections":  [
+                     {
+                         "id":  "sec-npr5wpr",
+                         "mode":  "audio-listening",
+                         "title":  "",
+                         "instructions":  "Listen to the clip and write down what you think it\u0027s saying in Japanese.",
+                         "audioUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I\u0027m%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP02_720p_HDTV_x264_AAC-KUY_0.50.23.200-0.50.25.936.mp3",
+                         "items":  [
+                                       {
+                                           "id":  "blk-71sz7vt",
+                                           "parts":  [
+                                                         {
+                                                             "type":  "blank",
+                                                             "name":  "blk-71sz7vt",
+                                                             "wide":  true,
+                                                             "answer":  "ãããé£ã¹ããã§ãã"
+                                                         }
+                                                     ],
+                                           "audioUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I\u0027m%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP02_720p_HDTV_x264_AAC-KUY_0.50.23.200-0.50.25.936.mp3",
+                                           "imageUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I\u0027m%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP02_720p_HDTV_x264_AAC-KUY_0.50.23.200-0.50.25.936.jpg",
+                                           "englishAnswer":  "Yeah, I want to eat [it]."
+                                       },
+                                       {
+                                           "id":  "blk-iijijqv",
+                                           "parts":  [
+                                                         {
+                                                             "type":  "blank",
+                                                             "name":  "blk-iijijqv",
+                                                             "wide":  true,
+                                                             "answer":  "ã¯ããè¡ãããã§ãã"
+                                                         }
+                                                     ],
+                                           "audioUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Smoking/media/Smoking_Ep8_0.11.54.031-0.11.57.117.mp3",
+                                           "imageUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Smoking/media/Smoking_Ep8_0.11.54.031-0.11.57.117.jpg",
+                                           "englishAnswer":  "Yes, I want to go."
+                                       }
+                                   ],
+                         "imageUrl":  "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I\u0027m%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP02_720p_HDTV_x264_AAC-KUY_0.50.23.200-0.50.25.936.jpg"
+                     },
+                     {
+                         "id":  "sec-xa06g16",
+                         "mode":  "star-order",
+                         "title":  "",
+                         "instructions":  "Drag/drop the words to form the best answer!",
+                         "items":  [
+                                       {
+                                           "id":  "blk-as2b5i2",
+                                           "tokens":  [
+                                                          {
+                                                              "text":  "ä»æ¥",
+                                                              "fixed":  true
+                                                          },
+                                                          {
+                                                              "text":  "ã¯",
+                                                              "fixed":  false
+                                                          },
+                                                          {
+                                                              "text":  "æä¼",
+                                                              "fixed":  false
+                                                          },
+                                                          {
+                                                              "text":  "ã«",
+                                                              "fixed":  false
+                                                          },
+                                                          {
+                                                              "text":  "è¡ããã",
+                                                              "fixed":  false
+                                                          },
+                                                          {
+                                                              "text":  "ã",
+                                                              "fixed":  true
+                                                          }
+                                                      ],
+                                           "prefix":  "",
+                                           "suffix":  "ã",
+                                           "pieces":  [
+                                                          "ã¯",
+                                                          "æä¼",
+                                                          "ã«",
+                                                          "è¡ããã"
+                                                      ]
+                                       }
+                                   ]
+                     },
+                     {
+                         "id":  "sec-i9ivay6",
+                         "mode":  "translation",
+                         "title":  "",
+                         "instructions":  "",
+                         "items":  [
+                                       {
+                                           "id":  "blk-7haue14",
+                                           "japanese":  "ææ¥æµ·ã«è¡ãããã",
+                                           "parts":  [
+                                                         {
+                                                             "type":  "blank",
+                                                             "name":  "blk-7haue14",
+                                                             "wide":  true,
+                                                             "answer":  "I want to go to the beach tomorrow."
+                                                         }
+                                                     ]
+                                       }
+                                   ]
+                     },
+                     {
+                         "id":  "sec-0qut0b1",
+                         "mode":  "video-response",
+                         "title":  "",
+                         "instructions":  "",
+                         "items":  [
+                                       {
+                                           "id":  "blk-k6tppin",
+                                           "prompt":  "æ¥æ¬ã§ä½ããããï¼ã©ãã«è¡ãããï¼",
+                                           "recordLabel":  "Record your answer"
+                                       }
+                                   ]
+                     }
+                 ],
+    "topicExplanation":  "ï½ãã = want\n\nTake a verb. Think of the polite now-later tense. For example, è¡ãã¾ã (\"I\u0027m going to go/I will go.\"\n\nUse è¡ã, add ãã. è¡ã+ãã = è¡ããã = I want to go.",
+    "register":  "casual",
+    "date":  "2026-06-30"
+}

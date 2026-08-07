@@ -17,24 +17,24 @@
 
   /** Keep versions in sync with former platform.html cache-busts. */
   const V = {
-    builder: "20260731c",
+    builder: "20260805-penpal",
     editor: "20260731d",
     studentList: "20260725",
     ideas: "20260610",
     mistakeFeed: "20260674",
-    submissions: "20260789",
+    submissions: "20260807a",
     teacherMistakes: "20260675",
     studentMistakes: "20260728",
     promo: "20260609",
-    birthdays: "20260729",
+    birthdays: "20260805",
     lanternFormat: "20260650",
     lanternWords: "20260650",
     lookup: "24",
     checkout: "20260611",
     sachiko: "20260694",
-    hubV5: "108",
-    platform: "20260826",
-    hubV6: "22",
+    hubV5: "109",
+    platform: "20260807a",
+    hubV6: "23",
     feedback: "1",
   };
 

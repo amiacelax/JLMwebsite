@@ -8,6 +8,8 @@
   const form = document.getElementById("promo-form");
   const statusEl = document.getElementById("promo-status");
   const submitBtn = document.getElementById("promo-submit");
+  const otherToggle = document.getElementById("promo-interest-other");
+  const otherText = document.getElementById("promo-interest-other-text");
   const SUBSCRIBED_KEY = "jlm-promo-subscribed";
   const DISMISSED_KEY = "jlm-promo-dismissed";
   const SESSION_SHOWN_KEY = "jlm-promo-shown-session";
@@ -88,9 +90,36 @@
     }
   }
 
+  function syncOtherInput() {
+    if (!otherText || !otherToggle) return;
+    const on = otherToggle.checked;
+    otherText.hidden = !on;
+    otherText.required = on;
+    if (!on) otherText.value = "";
+    else otherText.focus();
+  }
+
+  otherToggle?.addEventListener("change", syncOtherInput);
+
+  function collectInterests(formEl) {
+    const interests = Array.from(formEl.querySelectorAll('input[name="interest"]:checked')).map(
+      (el) => el.value
+    );
+    const otherRaw = String(new FormData(formEl).get("interestOther") || "").trim();
+    return { interests, interestOther: otherRaw };
+  }
+
+  function validateInterests(interests, interestOther) {
+    if (interests.includes("other") && interestOther.length < 3) {
+      return "Please say a bit more for Other (at least 3 characters).";
+    }
+    return null;
+  }
+
   function openModal() {
     modal.hidden = false;
     document.body.classList.add("promo-modal-open");
+    syncOtherInput();
     modal.querySelector("input[type=email]")?.focus();
   }
 
@@ -154,6 +183,14 @@
       return;
     }
 
+    const { interests, interestOther } = collectInterests(form);
+    const interestError = validateInterests(interests, interestOther);
+    if (interestError) {
+      showStatus(interestError, "error");
+      otherText?.focus();
+      return;
+    }
+
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting…";
@@ -163,7 +200,12 @@
       const res = await fetch("/api/promo-signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, page: pageName }),
+        body: JSON.stringify({
+          email,
+          page: pageName,
+          interests,
+          interestOther: interests.includes("other") ? interestOther : "",
+        }),
       });
       const data = await res.json();
 
@@ -175,6 +217,7 @@
       markSubscribed();
       showStatus(data.message, "success");
       form.reset();
+      syncOtherInput();
       setTimeout(() => closeModal(false), 2200);
     } catch {
       showStatus("Network error. Please try again.", "error");

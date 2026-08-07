@@ -12,11 +12,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260731-hg">
+  <link rel="stylesheet" href="/css/styles.css?v=20260807-grammar-pad">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=15">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=8">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=93">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260809" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=94">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260807b" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=1" data-hw-fonts="1">
   <script src="/js/hw-auth.js?v=20260729a"></script>
   <script src="/js/hw-feature-flags.js?v=14"></script>
   <script>
@@ -58,7 +59,7 @@
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=137">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=138">');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
         else window.addEventListener('load', loadStudentHandwritingFont, { once: true });
       }
@@ -1266,25 +1267,26 @@
   <script src="/js/kumo-wallpaper.js?v=20260727r" defer></script>
   <script src="/js/subpage.js?v=20260727r" defer></script>
   <script src="/js/hw-loading.js?v=5" defer></script>
-  <script src="/js/hw-audio-player.js?v=20260786" defer></script>
+  <script src="/js/hw-audio-player.js?v=20260807a" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
-  <script src="/js/hw-compat.js?v=20260771" defer></script>
-  <script src="/js/hw-video-inline.js?v=20260774" defer></script>
-  <script src="/js/hw-audio-inline.js?v=20260728a" defer></script>
-  <script src="/js/hw-submit-format.js?v=20260619" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260728a" defer></script>
+  <script src="/js/hw-compat.js?v=20260807a" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260807a" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260807a" defer></script>
+  <script src="/js/hw-submit-format.js?v=20260805" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260807a" defer></script>
   <script src="/js/hw-star-block.js?v=20260728" defer></script>
+  <script src="/js/hw-mc-block.js?v=20260805-mc-fit" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=20" defer></script>
-  <script src="/js/hw-mg-lexicon-suggest.js?v=4" defer></script>
-  <script src="/js/hw-worksheet-tools-layout.js?v=60" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=85" defer></script>
-  <script src="/js/hw-review-media.js?v=20260781" defer></script>
-  <script src="/js/hw-homework-comments.js?v=101" defer></script>
+  <script src="/js/hw-mg-lexicon-suggest.js?v=5" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=61" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=86" defer></script>
+  <script src="/js/hw-review-media.js?v=20260807a" defer></script>
+  <script src="/js/hw-homework-comments.js?v=103" defer></script>
   <script src="/js/hw-toolbar-q-icons.js?v=5" defer></script>
   <script src="/js/hw-student-toolbar.js?v=11" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
-  <script src="/js/hw-platform-boot.js?v=55" defer></script>
+  <script src="/js/hw-platform-boot.js?v=61" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {

@@ -88,6 +88,12 @@
           return;
         }
 
+        if (section.mode === "multiple-choice") {
+          pushText(texts, item.prompt);
+          (item.choices || []).forEach((c) => pushText(texts, c));
+          return;
+        }
+
         if (section.mode === "context-blank") {
           pushText(texts, item.topic);
           (item.parts || []).forEach((part) => {

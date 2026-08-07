@@ -570,8 +570,14 @@
       const viewBtn = document.createElement("button");
       viewBtn.type = "button";
       viewBtn.className = "btn btn--primary btn--sm";
-      viewBtn.textContent = "Review";
+      const alreadyReviewed = entry.reviewStatus === "reviewed";
+      viewBtn.textContent =
+        entry.type === "online" && alreadyReviewed ? "View submission" : "Review";
       viewBtn.addEventListener("click", () => {
+        if (entry.type === "online" && alreadyReviewed && options?.openWorksheetReview) {
+          options.openWorksheetReview(entry);
+          return;
+        }
         if (entry.type === "online" && options?.openFlashcardReview) {
           options.openFlashcardReview(entry);
           return;
@@ -590,7 +596,7 @@
         const sheetBtn = document.createElement("button");
         sheetBtn.type = "button";
         sheetBtn.className = "btn btn--ghost btn--sm";
-        sheetBtn.textContent = "Full sheet";
+        sheetBtn.textContent = alreadyReviewed ? "Open notes sheet" : "Full sheet";
         sheetBtn.addEventListener("click", () => {
           options.openWorksheetReview(entry);
         });

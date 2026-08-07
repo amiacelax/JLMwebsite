@@ -313,7 +313,11 @@
 
     function stopStream() {
       if (mediaStream) {
-        mediaStream.getTracks().forEach((t) => t.stop());
+        if (global.HwCompat?.stopMediaStream) {
+          global.HwCompat.stopMediaStream(mediaStream);
+        } else {
+          mediaStream.getTracks().forEach((t) => t.stop());
+        }
         mediaStream = null;
       }
       if (liveVideo) liveVideo.srcObject = null;
@@ -462,10 +466,15 @@
     }
 
     async function startVideoRecording() {
-      mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: true,
-      });
+      mediaStream = global.HwCompat?.getStereoUserMedia
+        ? await global.HwCompat.getStereoUserMedia({
+            video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: true,
+          })
+        : await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "user" }, width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: true,
+          });
       if (liveVideo) {
         liveVideo.srcObject = mediaStream;
         await liveVideo.play();
@@ -488,7 +497,9 @@
     }
 
     async function startAudioRecording() {
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStream = global.HwCompat?.getStereoUserMedia
+        ? await global.HwCompat.getStereoUserMedia({ audio: true })
+        : await navigator.mediaDevices.getUserMedia({ audio: true });
 
       recordedMimeType = pickAudioRecorderMimeType() || "audio/webm";
       try {

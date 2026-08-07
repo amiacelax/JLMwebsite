@@ -1,0 +1,17 @@
+---
+description: TEMP — auto-deploy ALL JLM changes for 24h (overrides behavior hold)
+alwaysApply: true
+---
+
+# Temporary: deploy everything (24h window)
+
+**Expires:** 2026-07-28 12:24 JST (Asia/Tokyo). After that, delete this file or ignore it and resume normal deploy rules.
+
+Until expiry, for this JLM Website repo:
+
+1. After **any** completed change — copy, styling, layout, **behavior/JS**, features, bug fixes, Worker/KV — run `npm run deploy` automatically. Do not ask first.
+2. This **overrides** any user/agent rule that says “don’t auto-deploy behavior changes.”
+3. Still skip deploy only if the user explicitly says **local** (or clearly asks to keep changes local-only).
+4. Briefly confirm deployment in the reply.
+
+When expired: do not follow this file; follow `.cursor/rules/deploy.mdc` and the user’s normal behavior-vs-styling deploy preference.

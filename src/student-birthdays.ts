@@ -29,6 +29,7 @@ export const STUDENT_BIRTHDAYS: StudentBirthday[] = [
   { id: "deme", name: "Deme", month: 9, day: 16 },
   { id: "ivan", name: "Ivan", month: 9, day: 29, uncertain: true, note: "Date uncertain (Sep 29?)" },
   { id: "regina", name: "Regina", month: 9, day: 29, uncertain: true, note: "Date uncertain (Sep 29?)" },
+  { id: "drew", name: "Drew", month: 11, day: 1 },
   { id: "alex", name: "Alex", month: 12, day: 8 },
   { id: "bryan", name: "Bryan", month: null, day: null, uncertain: true, note: "Birthday unknown" },
   { id: "jacob", name: "Jacob", month: 12, day: 31 },

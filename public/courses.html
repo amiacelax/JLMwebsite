@@ -200,6 +200,23 @@
       <form id="coming-soon-email-form" class="coming-soon-modal__form" novalidate>
         <label class="visually-hidden" for="coming-soon-email">Email</label>
         <input type="email" id="coming-soon-email" name="email" required placeholder="you@example.com" autocomplete="email">
+        <fieldset class="promo-modal__interests">
+          <legend class="promo-modal__interests-legend">What are you most interested in? <span class="promo-modal__optional">(pick any)</span></legend>
+          <label class="promo-modal__check">
+            <input type="checkbox" name="interest" value="lesson-discounts">
+            <span>Lesson discounts</span>
+          </label>
+          <label class="promo-modal__check">
+            <input type="checkbox" name="interest" value="new-learning-games">
+            <span>New learning games</span>
+          </label>
+          <label class="promo-modal__check">
+            <input type="checkbox" name="interest" value="other" id="coming-soon-interest-other">
+            <span>Other</span>
+          </label>
+          <label class="visually-hidden" for="coming-soon-interest-other-text">Other interest</label>
+          <input type="text" id="coming-soon-interest-other-text" name="interestOther" class="promo-modal__other-input" hidden placeholder="Tell me what (min 3 characters)" maxlength="200" autocomplete="off">
+        </fieldset>
         <button class="btn btn--primary btn--full" type="submit" id="coming-soon-email-submit">Get notified</button>
       </form>
       <p id="coming-soon-email-status" class="coming-soon-modal__status" role="status" aria-live="polite"></p>

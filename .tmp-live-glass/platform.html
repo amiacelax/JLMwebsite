@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1a2744">
+  <title>Homework Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css?v=20260815">
+  <link rel="stylesheet" href="/css/hw-hub-v3.css?v=14">
+  <link rel="stylesheet" href="/css/hw-hub-v4.css?v=7">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=90">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260807" data-hw-comments-css="1">
+  <script src="/js/hw-auth.js?v=20260708b"></script>
+  <script src="/js/hw-feature-flags.js?v=11"></script>
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      else document.documentElement.setAttribute('data-theme', 'dark');
+      HwAuth.requireAuth('/homework.html');
+      var s = HwAuth.getSession();
+      var teacher = HwAuth.getTeacherSession && HwAuth.getTeacherSession();
+      var viewAs = HwAuth.isViewingAsStudent && HwAuth.isViewingAsStudent();
+      var pureTeacher = Boolean(teacher) && !viewAs;
+      if (s && s.role === 'teacher') {
+        document.documentElement.classList.add('hw-is-teacher');
+      }
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get('v6full') === '1' || q.get('v6full') === 'true') {
+          document.documentElement.classList.add('hw-hub-v6-fullpage-root');
+        }
+      } catch (e) { /* ignore */ }
+      /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
+      if (!pureTeacher) {
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=88">');
+      }
+      if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=14">');
+      }
+    })();
+  </script>
+</head>
+<body class="subpage subpage--homework subpage--platform">
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(location.search);
+        if (q.get('v6full') === '1' || q.get('v6full') === 'true') {
+          document.body.classList.add('hw-hub-v6-fullpage', 'hw-hub-v6-enabled');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="hw-hub-v2-banner" id="hw-v5-live-banner" hidden role="status">
+    Hub v5 demo · Simulate / Account toggles are local-only
+  </div>
+
+  <div class="hw-hub-v2-demo-bar" id="hw-v5-live-demo-bar" hidden aria-label="Hub v5 preview controls">
+    <span class="hw-hub-v2-demo-bar__label">Simulate:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn is-active" data-v5-demo-status="in_progress">Working on HW</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="submitted">Just submitted</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-status="reviewed">JD reviewed</button>
+    <span class="hw-hub-v2-demo-bar__label">Account:</span>
+    <button type="button" class="hw-hub-v2-demo-bar__btn is-active" data-v5-demo-account="noplan">No plan</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_basic">HW Basic</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_premium">HW Premium</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_ultra">HW Ultra</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_no_hw">Student no HW</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_lessons">Student</button>
+    <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html" style="text-decoration:none">← Normal hub</a>
+  </div>
+
+  <header class="site-header">
+    <nav class="nav container" aria-label="Main navigation">
+      <a class="nav__brand" href="/">
+        <img class="nav__brand-logo" src="/images/logo.png" alt="" width="36" height="36">
+        <span class="nav__brand-text brand-wordmark">
+          <span class="brand-wordmark__line brand-wordmark__line--primary">Japanese</span>
+          <span class="brand-wordmark__line brand-wordmark__line--secondary">Language Mentor</span>
+        </span>
+      </a>
+      <div class="nav__toolbar">
+        <button class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+          <span class="nav__toggle-bar"></span>
+        </button>
+      </div>
+      <div class="nav__menu" id="nav-menu">
+        <div class="nav__links-wrap">
+          <ul class="nav__links">
+            <li><a href="/#about">About</a></li>
+            <li><a href="/#services">Services</a></li>
+            <li><a href="/#contact">Contact</a></li>
+          </ul>
+          <ul class="nav__links nav__links--secondary">
+            <li><a href="/games.html">Games</a></li>
+            <li><a href="/homework.html">Homework Hub</a></li>
+            <li><a href="/courses.html">Courses</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <div class="hw-platform-bar">
+    <div class="container hw-platform-bar__inner">
+      <div class="hw-platform-bar__identity">
+        <p class="hw-platform-bar__user">Logged in as <strong id="hw-platform-greet">—</strong></p>
+        <p class="hw-platform-bar__badges" id="hw-platform-badges" hidden></p>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" id="hw-platform-logout">Log out</button>
+    </div>
+  </div>
+
+  <main id="main" class="subpage__main">
+    <section class="section">
+      <div class="container container--wide">
+        <div class="section__header section__header--platform">
+          <p class="section__eyebrow" id="hw-hub-eyebrow">Homework Hub</p>
+          <div class="hw-viewas-banner" id="hw-viewas-banner" hidden>
+            <label class="hw-viewas-banner__pick" for="hw-teacher-viewas-select">
+              <span class="hw-viewas-banner__label">View as student</span>
+              <select class="hw-viewas-banner__select" id="hw-teacher-viewas-select" aria-label="View student hub as">
+                <option value="">— Teacher hub —</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn--ghost btn--sm" id="hw-viewas-banner-exit" hidden>Back to teacher hub</button>
+          </div>
+          <h1 class="section__title" id="hw-hub-title">Your hub</h1>
+          <p class="section__desc" id="hw-hub-desc" hidden></p>
+          <div class="hw-hub-tier-pick" id="hw-hub-tier-pick" hidden>
+            <div class="hw-hub-tier-grid" role="group" aria-label="Choose a homework plan">
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--featured" data-hw-tier-plan="basic" data-hw-tier-detail="basic" tabindex="0">
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Basic</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Homework once per month with written feedback.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="basic" aria-label="View Basic plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: five dollars per month">$5<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+              <article class="course-card course-card--locked hw-hub-tier-plan" data-hw-tier-plan="premium" data-hw-tier-detail="premium" tabindex="0">
+                <p class="hw-hub-tier-plan__badge">Popular</p>
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Premium</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month, written feedback, AI tutor, and full game access.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="premium" aria-label="View Premium plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: twenty dollars per month">$20<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+              <article class="course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--video" data-hw-tier-plan="ultra" data-hw-tier-detail="ultra" tabindex="0">
+                <p class="hw-hub-tier-plan__badge hw-hub-tier-plan__badge--video">Video</p>
+                <span class="course-card__lock" aria-hidden="true">
+                  <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                  <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+                </span>
+                <h2 class="course-card__title">Ultra</h2>
+                <p class="hw-hub-tier-tip" role="tooltip">Four assignments per month with personal video feedback from JD on each.</p>
+                <div class="course-card__footer">
+                  <button type="button" class="course-card__status" data-hw-tier-plan-status data-hw-tier-detail="ultra" aria-label="View Ultra plan details">
+                    <span class="course-card__status-text course-card__status-text--locked">Locked</span>
+                    <span class="course-card__status-text course-card__status-text--unlock">Details</span>
+                  </button>
+                  <span class="course-card__price" aria-label="Price: forty-nine dollars per month">$49<span class="course-card__price-suffix">/mo</span></span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teacher hub: Hub v6 primary shell + classic panels (Hub v1 under Hub Preview) -->
+        <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
+          <div class="hw-hub-v6" id="hw-hub-v6-panel" hidden>
+              <div class="hw-hub-v6__banner">
+                <div>
+                  <h2>Teacher Hub</h2>
+                  <p>Home notifications, maker, students, and tools — classic layout is Hub Preview → Hub v1.</p>
+                </div>
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-refresh">Refresh</button>
+              </div>
+
+              <div class="hw-hub-v6-tabs" role="tablist" aria-label="Teacher Hub sections">
+                <button type="button" class="hw-hub-v6-tabs__btn is-active" role="tab" id="hw-hub-v6-tab-preview" data-hub-v6-tab="preview" aria-selected="true" aria-controls="hw-hub-v6-pane-preview">Home</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-maker" data-hub-v6-tab="maker" aria-selected="false" aria-controls="hw-hub-v6-pane-maker">Worksheet Maker</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-students" data-hub-v6-tab="students" aria-selected="false" aria-controls="hw-hub-v6-pane-students">Student/Email List</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-websites" data-hub-v6-tab="websites" aria-selected="false" aria-controls="hw-hub-v6-pane-websites">Websites</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-gamelab" data-hub-v6-tab="gamelab" aria-selected="false" aria-controls="hw-hub-v6-pane-gamelab">Game Lab</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-ideas" data-hub-v6-tab="ideas" aria-selected="false" aria-controls="hw-hub-v6-pane-ideas">Ideas &amp; Memos</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-hubpreview" data-hub-v6-tab="hubpreview" aria-selected="false" aria-controls="hw-hub-v6-pane-hubpreview">Hub Preview</button>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-preview" role="tabpanel" data-hub-v6-pane="preview" aria-labelledby="hw-hub-v6-tab-preview">
+                <div class="hw-hub-v6-bday-ticker" id="hw-hub-v6-bday-ticker" aria-label="Upcoming birthdays">
+                  <div class="hw-hub-v6-bday-ticker__track" id="hw-hub-v6-bday-ticker-track"></div>
+                </div>
+                <div class="hw-hub-v6__main" id="hw-hub-v6-main" aria-live="polite">
+                  <div class="hw-hub-v6__stage-feed" id="hw-hub-v6-stage-feed">
+                    <div class="hw-hub-v6__feed-head">
+                      <h3>Notifications</h3>
+                      <p class="hw-hub-v6__feed-meta" id="hw-hub-v6-feed-meta"></p>
+                    </div>
+                    <ul class="hw-hub-v6__list" id="hw-hub-v6-list"></ul>
+                  </div>
+                  <div class="hw-hub-v6__stage-detail" id="hw-hub-v6-stage-detail" hidden></div>
+                </div>
+                <p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-maker" role="tabpanel" data-hub-v6-pane="maker" aria-labelledby="hw-hub-v6-tab-maker" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="maker"></div>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-library">
+                  <summary>Worksheet library</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="library"></div>
+                </details>
+                <div class="hw-hub-v6-maker-footer">
+                  <button type="button" class="btn btn--primary" id="hw-hub-v6-maker-download">Download</button>
+                </div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-students" role="tabpanel" data-hub-v6-pane="students" aria-labelledby="hw-hub-v6-tab-students" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="account"></div>
+                <section class="hw-hub-v6-section">
+                  <h3 class="hw-hub-v6-section__title">Birthdays</h3>
+                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
+                </section>
+                <section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">
+                  <h3 class="hw-hub-v6-section__title">Email list</h3>
+                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
+                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
+                </section>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">
+                  <summary>Submissions</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>
+                </details>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">
+                  <summary>Mistakes</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>
+                </details>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-websites" role="tabpanel" data-hub-v6-pane="websites" aria-labelledby="hw-hub-v6-tab-websites" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="websites"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-gamelab" role="tabpanel" data-hub-v6-pane="gamelab" aria-labelledby="hw-hub-v6-tab-gamelab" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="gamelab"></div>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-ideas" role="tabpanel" data-hub-v6-pane="ideas" aria-labelledby="hw-hub-v6-tab-ideas" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="ideas"></div>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-lookup">
+                  <summary>Lookup Lexicon</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="lookup-lexicon"></div>
+                </details>
+              </div>
+
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-hubpreview" role="tabpanel" data-hub-v6-pane="hubpreview" aria-labelledby="hw-hub-v6-tab-hubpreview" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>
+              </div>
+          </div>
+
+          <div class="hw-teacher-classic" id="hw-teacher-classic">
+          <div class="hw-teacher-tabs" role="tablist" aria-label="Classic teacher hub sections">
+            <button type="button" class="hw-teacher-tabs__btn is-active" role="tab" id="hw-teacher-tab-maker" aria-selected="true" aria-controls="hw-teacher-maker" data-teacher-tab="maker">Worksheet maker</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-submissions" aria-selected="false" aria-controls="hw-teacher-submissions" data-teacher-tab="submissions">Submissions</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-mistakes" aria-selected="false" aria-controls="hw-teacher-mistakes" data-teacher-tab="mistakes">Mistakes</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-birthdays" aria-selected="false" aria-controls="hw-teacher-birthdays" data-teacher-tab="birthdays">Birthdays</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-harris" aria-selected="false" aria-controls="hw-teacher-harris" data-teacher-tab="harris">Harris Firm</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-jem" aria-selected="false" aria-controls="hw-teacher-jem" data-teacher-tab="jem">JEM Appraisals</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-lookup-lexicon" aria-selected="false" aria-controls="hw-teacher-lookup-lexicon" data-teacher-tab="lookup-lexicon">Lookup Lexicon</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-gamelab" aria-selected="false" aria-controls="hw-teacher-gamelab" data-teacher-tab="gamelab">Game lab</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-hubv2" aria-selected="false" aria-controls="hw-teacher-hubv2" data-teacher-tab="hubv2" hidden>Hub preview</button>
+          </div>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
+            <h2 class="hw-platform-card__title">Worksheet maker</h2>
+            <p class="hw-platform-card__desc">Build a worksheet, then send to students from the panel below the blocks list — sending saves it to your library.</p>
+
+            <form class="hw-teacher-meta" id="hw-teacher-maker-form">
+              <p class="hw-maker-status" id="hw-teacher-maker-status" role="status" aria-live="polite">
+                Fill in the worksheet below, then send to a student to save it.
+              </p>
+            </form>
+
+            <div class="hw-teacher-worksheet" id="hw-teacher-maker-mount" aria-label="Worksheet builder"></div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-account" role="tabpanel" aria-labelledby="hw-teacher-tab-account" hidden>
+            <h2 class="hw-platform-card__title">Student info</h2>
+            <p class="hw-platform-card__desc" id="hw-teacher-account-desc" data-default-desc="Lesson links, account type, and current homework for each student’s hub.">Lesson links, account type, and current homework for each student’s hub.</p>
+
+            <form class="hw-teacher-meta" id="hw-teacher-account-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field">
+                  Student id
+                  <select name="studentUsername" id="hw-teacher-account-student" required>
+                    <option value="">— Choose student —</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field">
+                  Account type
+                  <select name="accountLabel" id="hw-teacher-account-label">
+                    <option value="current_student">Current Student</option>
+                    <option value="homework_only">Homework Only</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field">
+                  Plan tier
+                  <select name="accountTier" id="hw-teacher-account-tier">
+                    <option value="pending">No plan yet</option>
+                    <option value="student_special">Student Special</option>
+                    <option value="tier1">Basic</option>
+                    <option value="tier2">Premium</option>
+                    <option value="tier3">Ultra</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide hw-teacher-current-hw">
+                  Current homework
+                  <select name="currentHomeworkId" id="hw-teacher-current-hw" disabled>
+                    <option value="">No homework assigned yet.</option>
+                  </select>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Lesson playlist
+                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=…" required>
+                </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Latest lesson — YouTube (optional override)
+                  <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
+                </label>
+                <p class="hw-teacher-account-note">Pick a saved worksheet above to assign it, or send a new sheet from the Worksheet maker dock — either way it becomes their current homework on the hub.</p>
+                <p class="hw-teacher-account-note">Account type and plan tier apply when the student logs in again. Signup accounts (e.g. Faye) update immediately in storage; demo accounts in hw-auth.js use saved overrides when they sign in via the website.</p>
+                <p class="hw-teacher-account-note">The <strong>last</strong> video in the playlist becomes the student’s “Watch lesson” link (refreshes about every hour). Add each new lesson at the <strong>bottom</strong> of the playlist. Override only if the feed can’t read a private playlist.</p>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
+              </div>
+              <p class="hw-maker-status" id="hw-teacher-account-status" role="status" aria-live="polite">
+                Pick a student, paste links, then save.
+              </p>
+            </form>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-library" id="hw-teacher-library" role="tabpanel" aria-labelledby="hw-teacher-tab-library" hidden>
+            <h2 class="hw-platform-card__title">Worksheet library</h2>
+            <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from the maker dock.</p>
+            <label class="hw-library-search-label" for="hw-library-search">Search</label>
+            <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
+            <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
+            <ul class="hw-library-list" id="hw-library-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-ideas" id="hw-teacher-ideas" role="tabpanel" aria-labelledby="hw-teacher-tab-ideas" hidden>
+            <h2 class="hw-platform-card__title">Ideas &amp; memos</h2>
+            <p class="hw-platform-card__desc">Quick notes so ideas don’t get lost in Discord. Tag them, then search later.</p>
+
+            <form class="hw-ideas-compose" id="hw-ideas-compose-form">
+              <div class="hw-ideas-compose-drop" id="hw-ideas-compose-drop">
+                <label class="hw-maker-field hw-maker-field--wide" for="hw-ideas-text">
+                  New idea
+                  <textarea id="hw-ideas-text" name="text" rows="4" placeholder="Lesson tweak, site idea, game mechanic, homework note… Paste or drop images here too."></textarea>
+                </label>
+                <p class="hw-ideas-drop-hint">Paste from clipboard, drag &amp; drop images, or <button type="button" class="hw-ideas-attach-link" id="hw-ideas-attach-btn">attach files</button>.</p>
+                <input type="file" id="hw-ideas-file-input" class="hw-ideas-file-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+                <ul class="hw-ideas-image-grid" id="hw-ideas-image-grid" hidden></ul>
+              </div>
+              <fieldset class="hw-ideas-tag-fieldset">
+                <legend class="hw-ideas-tag-legend">Tags</legend>
+                <div class="hw-ideas-tag-picks" id="hw-ideas-tag-picks"></div>
+                <div class="hw-ideas-new-tag-row">
+                  <label class="hw-ideas-new-tag-label" for="hw-ideas-new-tag">Add your own tag</label>
+                  <div class="hw-ideas-new-tag-controls">
+                    <input type="text" class="hw-ideas-new-tag-input" id="hw-ideas-new-tag" placeholder="e.g. discord, podcast…" maxlength="24" autocomplete="off">
+                    <button type="button" class="btn btn--ghost btn--sm" id="hw-ideas-add-tag">Add tag</button>
+                  </div>
+                </div>
+              </fieldset>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--ghost" id="hw-ideas-cancel-edit" hidden>Cancel edit</button>
+                <button type="submit" class="btn btn--primary" id="hw-ideas-save-btn">Save idea</button>
+              </div>
+              <p class="hw-maker-status" id="hw-ideas-compose-status" role="status" aria-live="polite">Jot something down and save it here.</p>
+            </form>
+
+            <div class="hw-ideas-search-block">
+              <label class="hw-library-search-label" for="hw-ideas-search">Search ideas</label>
+              <input type="search" class="hw-library-search" id="hw-ideas-search" placeholder="keywords, tags…" autocomplete="off">
+              <div class="hw-ideas-length-sort" role="group" aria-label="Sort by length">
+                <button type="button" class="hw-ideas-length-sort__btn" id="hw-ideas-sort-longest" data-idea-length-sort="longest">↓ Longest</button>
+                <button type="button" class="hw-ideas-length-sort__btn" id="hw-ideas-sort-shortest" data-idea-length-sort="shortest">↑ Shortest</button>
+              </div>
+              <div class="hw-ideas-filter-tags" id="hw-ideas-filter-tags" aria-label="Filter by tag"></div>
+            </div>
+            <p class="hw-library-meta" id="hw-ideas-meta" aria-live="polite"></p>
+            <ul class="hw-ideas-list" id="hw-ideas-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-mistakes" id="hw-teacher-mistakes" role="tabpanel" aria-labelledby="hw-teacher-tab-mistakes" hidden>
+            <h2 class="hw-platform-card__title">Mistakes</h2>
+            <p class="hw-platform-card__desc">Recent active entries — same view students see. Log new ones from your lesson bookmark.</p>
+
+            <div class="hw-mistakes-feed-toolbar">
+              <label class="hw-maker-field" for="hw-mistakes-feed-student">
+                Student
+                <select id="hw-mistakes-feed-student">
+                  <option value="">All students</option>
+                </select>
+              </label>
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-mistakes-feed-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-mistakes-feed-meta" aria-live="polite"></p>
+            <ul class="hw-mistake-feed" id="hw-mistakes-feed-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-submissions" id="hw-teacher-submissions" role="tabpanel" aria-labelledby="hw-teacher-tab-submissions" hidden>
+            <h2 class="hw-platform-card__title">Student submissions</h2>
+            <p class="hw-platform-card__desc">Review homework in worksheet order — same layout as Discord. Use Previous / Next to flip through students. New submits store full answer lists here.</p>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-maker-field" for="hw-submissions-student">
+                Student
+                <select id="hw-submissions-student">
+                  <option value="">All students</option>
+                </select>
+              </label>
+              <label class="hw-library-search-label" for="hw-submissions-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-submissions-search" placeholder="student, lesson, assignment id…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-submissions-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-submissions-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-submissions-list"></ul>
+          </section>
+
+          <section class="hw-teacher-review-overlay" id="hw-teacher-review-overlay" hidden>
+            <div class="hw-teacher-review-overlay__chrome">
+              <div class="hw-teacher-review-overlay__head">
+                <button type="button" class="btn btn--ghost btn--sm hw-teacher-review-overlay__leave" id="hw-teacher-review-back">← Done reviewing</button>
+                <div class="hw-teacher-review-overlay__meta">
+                  <h2 class="hw-teacher-review-overlay__title" id="hw-teacher-review-title">Review submission</h2>
+                  <p class="hw-teacher-review-overlay__sub" id="hw-teacher-review-sub"></p>
+                </div>
+                <button type="button" id="hw-teacher-review-submit" hidden>Submit notes</button>
+              </div>
+              <p class="hw-teacher-review-overlay__status" id="hw-teacher-review-status" role="status" aria-live="polite"></p>
+            </div>
+            <div class="hw-teacher-review-overlay__lead" aria-hidden="true"></div>
+            <div class="hw-teacher-review-worksheet hw-hub-worksheet-card" id="hw-teacher-review-mount" lang="ja"></div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-promo" id="hw-teacher-promo" role="tabpanel" aria-labelledby="hw-teacher-tab-promo" hidden>
+            <h2 class="hw-platform-card__title">Email list</h2>
+            <p class="hw-platform-card__desc">Popup signups and manual contacts — add, edit, or remove entries here.</p>
+
+            <form class="hw-teacher-meta hw-promo-compose" id="hw-promo-compose-form">
+              <div class="hw-teacher-meta__grid">
+                <label class="hw-maker-field">
+                  Name
+                  <input type="text" id="hw-promo-compose-name" name="name" placeholder="Student or contact name" autocomplete="off">
+                </label>
+                <label class="hw-maker-field">
+                  Email / contact
+                  <input type="text" id="hw-promo-compose-email" name="email" placeholder="email@example.com or note" required autocomplete="off">
+                </label>
+              </div>
+              <div class="hw-teacher-meta__actions">
+                <button type="button" class="btn btn--ghost" id="hw-promo-compose-cancel" hidden>Cancel edit</button>
+                <button type="submit" class="btn btn--primary" id="hw-promo-compose-save">Add contact</button>
+              </div>
+              <p class="hw-maker-status" id="hw-promo-compose-status" role="status" aria-live="polite">Add a name and email, or click Edit on an existing entry.</p>
+            </form>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-library-search-label" for="hw-promo-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-promo-search" placeholder="name, email, or page…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-copy">Copy emails</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-promo-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-promo-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-promo-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-birthdays" id="hw-teacher-birthdays" role="tabpanel" aria-labelledby="hw-teacher-tab-birthdays" hidden>
+            <h2 class="hw-platform-card__title">Student birthdays</h2>
+            <p class="hw-platform-card__desc">Seed list for now — you can merge with student profiles later. Birthday reminders post to <strong>#website-inquiries</strong> around 9:00 Japan time (same webhook as contact form and promo signups).</p>
+
+            <div class="hw-submissions-toolbar">
+              <label class="hw-library-search-label" for="hw-birthdays-search">Search</label>
+              <input type="search" class="hw-library-search" id="hw-birthdays-search" placeholder="name or date…" autocomplete="off">
+              <button type="button" class="btn btn--ghost btn--sm" id="hw-birthdays-refresh">Refresh</button>
+            </div>
+            <p class="hw-library-meta" id="hw-birthdays-meta" aria-live="polite"></p>
+            <ul class="hw-submissions-list" id="hw-birthdays-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-harris" id="hw-teacher-harris" role="tabpanel" aria-labelledby="hw-teacher-tab-harris" hidden>
+            <h2 class="hw-platform-card__title">Harris Firm — US Notarization</h2>
+            <p class="hw-platform-card__desc">Password-protected client preview — not indexed by search engines. Share the link and login credentials with your client.</p>
+
+            <div class="hw-harris-panel">
+              <p class="hw-harris-panel__url">
+                <a href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">/preview/harris-notarization/</a>
+              </p>
+              <div class="hw-teacher-meta__actions">
+                <a class="btn btn--primary" href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">Open preview</a>
+                <button type="button" class="btn btn--ghost" id="hw-harris-copy-link">Copy link</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-jem" id="hw-teacher-jem" role="tabpanel" aria-labelledby="hw-teacher-tab-jem" hidden>
+            <h2 class="hw-platform-card__title">JEM Appraisals</h2>
+            <p class="hw-platform-card__desc">Client preview — not indexed by search engines. Share the link with your client.</p>
+
+            <div class="hw-harris-panel">
+              <p class="hw-harris-panel__url">
+                <a href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">/preview/jem-appraisals/</a>
+              </p>
+              <div class="hw-teacher-meta__actions">
+                <a class="btn btn--primary" href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">Open preview</a>
+                <button type="button" class="btn btn--ghost" id="hw-jem-copy-link">Copy link</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-lookup-lexicon" id="hw-teacher-lookup-lexicon" role="tabpanel" aria-labelledby="hw-teacher-tab-lookup-lexicon" hidden>
+            <h2 class="hw-platform-card__title">Lookup Lexicon</h2>
+            <p class="hw-lookup-lexicon-progress" id="hw-lookup-lexicon-progress" aria-live="polite"></p>
+
+            <div class="hw-lookup-lexicon-empty" id="hw-lookup-lexicon-empty" hidden>
+              <p>Deck clear.</p>
+            </div>
+
+            <div class="hw-lookup-lexicon-loading" id="hw-lookup-lexicon-loading" hidden>
+              <p>Loading…</p>
+            </div>
+
+            <div class="hw-lookup-lexicon-stage" id="hw-lookup-lexicon-stage" hidden>
+              <div class="hw-lookup-lexicon-card">
+                <div class="hw-lookup-lexicon-word-head">
+                  <p class="hw-lookup-lexicon-word" id="hw-lookup-lexicon-word" lang="ja"></p>
+                  <span class="hw-lookup-lexicon-kind-pill" id="hw-lookup-lexicon-kind"></span>
+                </div>
+                <p class="hw-lookup-lexicon-card__note" id="hw-lookup-lexicon-note" hidden></p>
+
+                <div class="hw-lookup-lexicon-playground" id="hw-lookup-lexicon-playground-host">
+                  <div class="hw-worksheet__content hw-lookup-lexicon-playground__content">
+                    <p class="hw-translation-block__japanese hw-lookup-lexicon-playground__text" lang="ja" id="hw-lookup-lexicon-playground-text"></p>
+                  </div>
+                </div>
+
+                <div class="hw-lookup-lexicon-section">
+                  <p class="hw-lookup-lexicon-section__label">Highlight</p>
+                  <div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Highlight">
+                    <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-highlight" id="hw-lookup-lexicon-highlight-good" value="good" checked> Good</label>
+                    <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-highlight" id="hw-lookup-lexicon-highlight-bad" value="bad"> Bad</label>
+                  </div>
+                </div>
+                <div class="hw-lookup-lexicon-fix hw-lookup-lexicon-split-fix" id="hw-lookup-lexicon-split-wrap" hidden>
+                  <input type="text" class="hw-lookup-lexicon-fix__input" id="hw-lookup-lexicon-split" autocomplete="off" lang="ja" placeholder="やめ＋たい" aria-label="Split">
+                </div>
+
+                <div class="hw-lookup-lexicon-review-block" id="hw-lookup-lexicon-definitions-section">
+                  <p class="hw-lookup-lexicon-review-block__label">Definitions</p>
+                  <div id="hw-lookup-lexicon-definitions-host"></div>
+                </div>
+
+                <div class="hw-lookup-lexicon-review-block" id="hw-lookup-lexicon-readings-section">
+                  <p class="hw-lookup-lexicon-review-block__label">Readings</p>
+                  <div id="hw-lookup-lexicon-readings-host"></div>
+                </div>
+
+                <div class="hw-lookup-lexicon-review-block hw-lookup-lexicon-lemma-block" id="hw-lookup-lexicon-lemma-block" hidden>
+                  <div class="hw-lookup-lexicon-section">
+                    <p class="hw-lookup-lexicon-section__label">Jisho query</p>
+                    <div class="hw-lookup-lexicon-goodbad" role="radiogroup" aria-label="Jisho query">
+                      <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-lemma" id="hw-lookup-lexicon-lemma-good" value="good" checked> Good</label>
+                      <label class="hw-lookup-lexicon-goodbad__opt"><input type="radio" name="hw-lookup-lexicon-lemma" id="hw-lookup-lexicon-lemma-bad" value="bad"> Bad</label>
+                    </div>
+                  </div>
+                  <div class="hw-lookup-lexicon-fix" id="hw-lookup-lexicon-lemma-wrap" hidden>
+                    <input type="text" class="hw-lookup-lexicon-fix__input" id="hw-lookup-lexicon-lemma-query" autocomplete="off" lang="ja" placeholder="やめる" aria-label="Jisho search term">
+                  </div>
+                </div>
+
+                <div class="hw-teacher-meta__actions hw-lookup-lexicon-card__actions">
+                  <button type="button" class="btn btn--primary" id="hw-lookup-lexicon-submit-btn">Save</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-next-btn">Skip</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="hw-lookup-lexicon-add">
+              <div class="hw-teacher-meta__actions hw-lookup-lexicon-add__row">
+                <input type="text" class="hw-lookup-lexicon-add__input" id="hw-lookup-lexicon-add-surface" autocomplete="off" placeholder="Add word…" aria-label="Add word to deck">
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-lookup-lexicon-add-btn">Add</button>
+              </div>
+            </div>
+
+            <p class="hw-maker-status" id="hw-lookup-lexicon-status" role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-gamelab" id="hw-teacher-gamelab" role="tabpanel" aria-labelledby="hw-teacher-tab-gamelab" hidden>
+            <h2 class="hw-platform-card__title">Game lab</h2>
+            <p class="hw-platform-card__desc">Hidden prototypes and game links.</p>
+
+            <ul class="hw-gamelab-list">
+              <li class="hw-gamelab-item">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Lantern Word Hunt</h3>
+                  <p class="hw-gamelab-item__desc">Public game — open Word list to edit study sets.</p>
+                </div>
+                <div class="hw-gamelab-item__actions">
+                  <a class="btn btn--ghost btn--sm" href="/game/lantern-hunt/" target="_blank" rel="noopener noreferrer">Open game</a>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-toggle" aria-expanded="false" aria-controls="hw-lantern-words-editor">Word list</button>
+                </div>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">はじめてのおつかい</h3>
+                  <p class="hw-gamelab-item__desc">Mom gives shopping instructions; child picks the right item. Storybook UI — teacher-only.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/otsukai/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">おばあちゃん Counter Toss</h3>
+                  <p class="hw-gamelab-item__desc">Shelved — counter practice throw game. Teacher-only link.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/obachan-counters/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Yūgen Gatherer — 幽玄の採集者</h3>
+                  <p class="hw-gamelab-item__desc">3D gathering adventure in the Japanese countryside. Locked on the student games hub — preview here only.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+              <li class="hw-gamelab-item hw-gamelab-item--hidden">
+                <div class="hw-gamelab-item__main">
+                  <h3 class="hw-gamelab-item__title">Kanji World</h3>
+                  <p class="hw-gamelab-item__desc">First-person kanji rooms — four season rooms (winter, summer, fall, spring). Teacher-only preview.</p>
+                </div>
+                <a class="btn btn--ghost btn--sm" href="/game/yugen-gatherer/kanji-ray-test-v2.html" target="_blank" rel="noopener noreferrer">Open hidden</a>
+              </li>
+            </ul>
+
+            <div class="hw-lantern-words-editor" id="hw-lantern-words-editor" hidden>
+              <h3 class="hw-teacher-panel-subtitle">Lantern Word Hunt — word lists</h3>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">One word per line: <code>word TAB reading TAB meaning</code>. Saved lists go live in the game immediately.</p>
+
+              <div class="hw-teacher-meta hw-lantern-words-toolbar">
+                <div class="hw-teacher-meta__grid">
+                  <label class="hw-teacher-meta__field">
+                    Study set
+                    <select id="hw-lantern-words-set" aria-label="Choose study set"></select>
+                  </label>
+                  <label class="hw-teacher-meta__field">
+                    Display name
+                    <input type="text" id="hw-lantern-words-label" placeholder="e.g. JLPT N5 words" autocomplete="off">
+                  </label>
+                </div>
+                <div class="hw-teacher-meta__actions hw-lantern-words-actions">
+                  <button type="button" class="btn btn--primary" id="hw-lantern-words-save">Save word list</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-builtin">Load built-in defaults</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-new-set">New study set</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-delete-set" hidden>Delete set</button>
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-lantern-words-preview">Preview game</button>
+                </div>
+                <p class="hw-library-meta" id="hw-lantern-words-meta" aria-live="polite"></p>
+                <p class="hw-maker-status" id="hw-lantern-words-status" role="status" aria-live="polite">Loading…</p>
+              </div>
+
+              <label class="hw-lantern-words-text-label" for="hw-lantern-words-text">Words</label>
+              <textarea class="hw-lantern-words-text" id="hw-lantern-words-text" rows="14" spellcheck="false" placeholder="食べる	たべる	to eat&#10;飲む	のむ	to drink"></textarea>
+            </div>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-hubv2" id="hw-teacher-hubv2" role="tabpanel" aria-labelledby="hw-teacher-tab-hubv2" hidden>
+            <h2 class="hw-platform-card__title" id="hw-hub-preview-title">Hub prototypes</h2>
+            <p class="hw-platform-card__desc" id="hw-hub-preview-desc">Hub v1 is the classic teacher layout. v2–v5 are student hub mocks. Toolbar is a tool-chrome sandbox.</p>
+
+            <div class="hw-teacher-hub-versions" role="tablist" aria-label="Hub prototype version">
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v1" data-hub-version="1" aria-selected="false" aria-controls="hw-hub-v1-classic-note">Hub v1</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v2" data-hub-version="2" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v2</button>
+              <button type="button" class="btn btn--primary hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v3" data-hub-version="3" aria-selected="true" aria-controls="hw-teacher-hubv2-embed">Hub v3</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v4" data-hub-version="4" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v4</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-v5" data-hub-version="5" aria-selected="false" aria-controls="hw-teacher-hubv2-embed">Hub v5</button>
+              <button type="button" class="btn btn--ghost hw-teacher-hub-versions__btn" role="tab" id="hw-hub-version-tab-toolbar" data-hub-version="toolbar" aria-selected="false" aria-controls="hw-toolbar-playtest-panel">Toolbar</button>
+            </div>
+
+            <div class="hw-hub-v1-note" id="hw-hub-v1-classic-note" hidden>
+              <p><strong>Hub v1 — classic teacher layout.</strong> The old tab strip and panels are shown below. Switch to Hub v2–v5 or Toolbar here, or use Teacher Hub tabs above to leave.</p>
+            </div>
+
+            <div class="hw-teacher-meta__actions" id="hw-hub-version-student-actions">
+              <a class="btn btn--primary" id="hw-hub-version-open" href="/homework/hub-v3-preview.html" target="_blank" rel="noopener noreferrer">Open full page</a>
+              <button type="button" class="btn btn--ghost" id="hw-hubv2-reset-onboard">Reset onboarding demo</button>
+            </div>
+
+            <div class="hw-teacher-hubv2-embed" id="hw-teacher-hubv2-embed">
+              <iframe id="hw-hub-version-iframe" src="" title="Homework Hub v3 prototype" loading="lazy"></iframe>
+            </div>
+
+            <div class="hw-toolbar-playtest" id="hw-toolbar-playtest-panel" hidden>
+              <div class="hw-toolbar-playtest__banner">
+                <div>
+                  <h2>Toolbar playtest</h2>
+                  <p>Visual tool chrome over a live student hub view (current HW · 〜時、〜の時). Buttons are not wired yet.</p>
+                </div>
+              </div>
+
+              <div class="hw-toolbar-playtest__viewport" id="hw-toolbar-playtest-stage">
+                <iframe
+                  id="hw-toolbar-playtest-iframe"
+                  class="hw-toolbar-playtest__iframe"
+                  title="Student Homework Hub — 〜時、〜の時 worksheet"
+                  loading="lazy"
+                  src=""
+                  data-src="/homework/hub-v5-preview.html?toolbar=1&amp;status=in_progress&amp;account=hw_basic&amp;assignment=sheet-u1vevjge"
+                ></iframe>
+              </div>
+            </div>
+          </section>
+          </div><!-- /#hw-teacher-classic -->
+        </div>
+
+        <!-- Everything below here is student-only (hidden for teachers) -->
+        <div id="hw-platform-student-only">
+          <div class="hw-hub-v4-homework" id="hw-hub-v4-homework" hidden>
+            <section class="hw-hub-v2-worksheet hw-hub-worksheet-card" aria-labelledby="hw-v2-worksheet-heading">
+              <header class="hw-hub-v2-top hw-hub-v2-top--in-card" aria-labelledby="hw-v2-title">
+                <h2 class="hw-hub-v2-top__title" id="hw-v2-title">Loading…</h2>
+                <p class="hw-hub-v2-top__tagline" id="hw-v2-tagline" hidden></p>
+                <p class="hw-hub-v2-top__status" id="hw-v2-status-line" hidden></p>
+              </header>
+              <h3 class="visually-hidden" id="hw-v2-worksheet-heading">This week's homework</h3>
+              <p class="hw-worksheet-intro hw-hub-v4-intro" id="hw-v4-worksheet-intro" hidden>Loading worksheet…</p>
+              <div id="hw-v2-worksheet-mount" lang="ja"></div>
+              <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
+            </section>
+
+            <div class="hw-hub-v5-entry-row" id="hw-hub-v5-entry-row">
+              <details class="hw-platform-card hw-hub-v5-past-box" id="hw-student-past-fold">
+                <summary class="hw-hub-v5-past-box__summary" id="hw-student-past-title">Past homework</summary>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight">Submitted work — open to review answers and JD’s notes (read-only).</p>
+                <p class="hw-library-meta" id="hw-student-past-meta" aria-live="polite"></p>
+                <ul class="hw-hub-v2-past-list" id="hw-student-past-list"></ul>
+              </details>
+
+              <section class="hw-platform-card hw-hub-v5-notebook-entry" id="hw-student-notebook" aria-labelledby="hw-student-notebook-title" hidden>
+                <h2 class="visually-hidden" id="hw-student-notebook-title">Notebook</h2>
+                <button type="button" class="hw-hub-v5-notebook-entry__btn" id="hw-notebook-open-btn" aria-controls="hw-notebook-diary">
+                  <span class="hw-hub-v5-notebook-entry__label">View notebook</span>
+                  <span class="hw-hub-v5-notebook-entry__hint" id="hw-notebook-entry-hint">Notes from reviewed homework</span>
+                </button>
+              </section>
+            </div>
+          </div>
+
+          <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
+            <section class="hw-platform-card hw-platform-card--compact hw-grid-assignments" id="hw-current-assignment-card">
+              <h2 class="hw-platform-card__title">Current assignment</h2>
+              <p class="hw-platform-card__desc hw-platform-card__desc--tight">Latest homework from JD.</p>
+              <p class="hw-current-assignment__title" id="hw-current-assignment-title">Loading…</p>
+              <div class="hw-current-assignment__pills" id="hw-current-assignment-pills">
+                <a class="btn btn--primary btn--full hw-current-assignment__pill" id="hw-pill-online" href="#hw-worksheet-section">Start Homework</a>
+              </div>
+            </section>
+
+            <div class="hw-grid-stack" id="hw-grid-stack">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-offline" id="hw-offline-tools-card" hidden>
+                <h2 class="hw-platform-card__title">Print or upload</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight">Photo of your written work.</p>
+                <div class="hw-offline-tools__actions">
+                  <button type="button" class="btn btn--ghost btn--sm" id="hw-offline-print" data-hw-print>Print</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-hw-photo-take>Take Picture</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-hw-photo-choose>Choose file</button>
+                </div>
+                <form class="hw-photo-upload hw-photo-upload--worksheet" id="hw-photo-upload-form" hidden>
+                  <input class="hw-photo-upload__input" type="file" id="hw-photo-file" name="photo" accept="image/*" hidden aria-label="Choose a photo file">
+                  <div class="hw-photo-capture" id="hw-photo-capture" hidden>
+                    <p class="hw-photo-upload__label" id="hw-photo-capture-label" hidden>Camera preview</p>
+                    <div class="hw-photo-capture__live" id="hw-photo-capture-live" hidden>
+                      <video class="hw-photo-capture__video" id="hw-photo-capture-video" playsinline muted autoplay aria-labelledby="hw-photo-capture-label"></video>
+                      <div class="hw-photo-capture__actions hw-photo-capture__actions--row">
+                        <button type="button" class="btn btn--primary btn--sm" id="hw-photo-capture-btn">Capture</button>
+                        <button type="button" class="btn btn--ghost btn--sm" id="hw-photo-cancel-camera">Cancel</button>
+                      </div>
+                    </div>
+                    <div class="hw-photo-capture__preview" id="hw-photo-capture-preview" hidden>
+                      <img class="hw-photo-capture__img" id="hw-photo-capture-img" alt="Captured homework photo preview">
+                    </div>
+                  </div>
+                  <p class="hw-photo-upload__status" id="hw-photo-upload-status" role="status" aria-live="polite"></p>
+                </form>
+              </section>
+
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-lesson">
+                <h2 class="hw-platform-card__title">Your most recent lesson</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-lesson-meta">Full lesson on YouTube.</p>
+                <div class="hw-lesson-actions">
+                  <a class="btn btn--ghost btn--full btn--sm" id="hw-latest-lesson" href="#" target="_blank" rel="noopener noreferrer">Watch lesson (YouTube link coming soon)</a>
+                  <a class="btn btn--ghost btn--sm btn--full hw-lesson-playlist" id="hw-lesson-playlist" href="#" target="_blank" rel="noopener noreferrer" hidden>Lesson playlist on YouTube</a>
+                </div>
+              </section>
+
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-sachiko hw-sachiko-card--soon" id="hw-sachiko-card" aria-label="Talk to Sachiko — coming soon">
+                <span class="hw-sachiko-card__badge">Coming soon</span>
+                <div class="hw-sachiko-card__row">
+                  <div class="hw-sachiko-face-wrap" aria-hidden="true">
+                    <svg class="hw-sachiko-face hw-sachiko-face--card" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+                  </div>
+                  <div class="hw-sachiko-card__text">
+                    <h2 class="hw-platform-card__title">Talk to Sachiko</h2>
+                    <p class="hw-platform-card__desc hw-platform-card__desc--tight">Speak with a chatbot designed after my actual host mom :)</p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn--ghost btn--full btn--sm" id="hw-sachiko-open" disabled>Coming soon</button>
+              </section>
+            </div>
+
+            <div class="hw-grid-upload-col">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+                <h2 class="hw-platform-card__title" id="hw-student-mistakes-title">Recent mistakes</h2>
+                <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-student-mistakes-desc">From your lessons — tap to select, then copy or delete.</p>
+                <p class="hw-library-meta hw-student-mistakes-meta" id="hw-student-mistakes-meta" aria-live="polite"></p>
+
+                <div id="hw-student-mistakes-main">
+                  <div class="hw-mistake-feed-single" id="hw-student-mistakes-single" hidden></div>
+                  <details class="hw-mistake-feed-fold" id="hw-student-mistakes-fold" hidden>
+                    <summary class="hw-mistake-feed-fold__summary">
+                      <span class="hw-mistake-feed-fold__preview" id="hw-student-mistakes-preview"></span>
+                      <span class="hw-mistake-feed-fold__expand" id="hw-student-mistakes-expand-label">Show all</span>
+                    </summary>
+                    <ul class="hw-mistake-feed hw-mistake-feed--selectable" id="hw-student-mistakes-list"></ul>
+                  </details>
+                  <p class="hw-mistake-feed__empty" id="hw-student-mistakes-empty" hidden>No mistakes on your list — nice work!</p>
+                </div>
+
+                <div class="hw-student-mistakes__trash-panel" id="hw-student-mistakes-trash-panel" hidden>
+                  <p class="hw-student-mistakes__trash-heading">Deleted mistakes</p>
+                  <ul class="hw-mistake-feed" id="hw-student-mistakes-trash-list"></ul>
+                  <p class="hw-mistake-feed__empty" id="hw-student-mistakes-trash-empty" hidden>Nothing in the trash.</p>
+                </div>
+
+                <div class="hw-student-mistakes__footer">
+                  <div class="hw-student-mistakes__actions" id="hw-student-mistakes-actions" hidden>
+                    <button type="button" class="btn btn--ghost btn--sm" id="hw-student-mistakes-copy">Copy</button>
+                    <button type="button" class="btn btn--ghost btn--sm hw-student-mistakes__delete-btn" id="hw-student-mistakes-delete">Delete</button>
+                  </div>
+                  <button type="button" class="hw-student-mistakes__trash-btn" id="hw-student-mistakes-trash-btn" aria-label="View deleted mistakes" title="Deleted mistakes">
+                    <svg class="hw-student-mistakes__trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    <span class="hw-student-mistakes__trash-count" id="hw-student-mistakes-trash-count" hidden></span>
+                  </button>
+                </div>
+                <p class="hw-maker-status hw-student-mistakes-status" id="hw-student-mistakes-status" role="status" aria-live="polite"></p>
+              </section>
+
+            <article class="course-card hw-addon-card hw-addon-card--compact hw-grid-games" id="hw-games-hub-card">
+              <div class="hw-games-pixel-scene" aria-hidden="true">
+                <svg class="hw-games-pixel-art" viewBox="0 0 80 52" role="presentation" focusable="false">
+                  <g class="hw-games-pixel-stars">
+                    <rect x="6" y="4" width="2" height="2" rx="0.5"/>
+                    <rect x="58" y="8" width="2" height="2" rx="0.5"/>
+                    <rect x="72" y="18" width="2" height="2" rx="0.5"/>
+                    <rect x="12" y="22" width="2" height="2" rx="0.5"/>
+                    <rect x="68" y="34" width="2" height="2" rx="0.5"/>
+                  </g>
+                  <g class="hw-games-pixel-invader">
+                    <rect x="32" y="6" width="4" height="4"/><rect x="36" y="6" width="4" height="4"/><rect x="40" y="6" width="4" height="4"/><rect x="44" y="6" width="4" height="4"/><rect x="48" y="6" width="4" height="4"/>
+                    <rect x="28" y="10" width="4" height="4"/><rect x="32" y="10" width="4" height="4"/><rect x="36" y="10" width="4" height="4"/><rect x="40" y="10" width="4" height="4"/><rect x="44" y="10" width="4" height="4"/><rect x="48" y="10" width="4" height="4"/><rect x="52" y="10" width="4" height="4"/>
+                    <rect x="24" y="14" width="4" height="4"/><rect x="28" y="14" width="4" height="4"/><rect x="32" y="14" width="4" height="4"/><rect x="36" y="14" width="4" height="4"/><rect x="40" y="14" width="4" height="4"/><rect x="44" y="14" width="4" height="4"/><rect x="48" y="14" width="4" height="4"/><rect x="52" y="14" width="4" height="4"/><rect x="56" y="14" width="4" height="4"/>
+                    <rect x="24" y="18" width="4" height="4"/><rect x="28" y="18" width="4" height="4"/><rect x="32" y="18" width="4" height="4"/><rect x="36" y="18" width="4" height="4"/><rect x="40" y="18" width="4" height="4"/><rect x="44" y="18" width="4" height="4"/><rect x="48" y="18" width="4" height="4"/><rect x="52" y="18" width="4" height="4"/><rect x="56" y="18" width="4" height="4"/>
+                    <rect x="28" y="22" width="4" height="4"/><rect x="32" y="22" width="4" height="4"/><rect x="36" y="22" width="4" height="4"/><rect x="40" y="22" width="4" height="4"/><rect x="44" y="22" width="4" height="4"/><rect x="48" y="22" width="4" height="4"/><rect x="52" y="22" width="4" height="4"/>
+                    <rect x="28" y="26" width="4" height="4"/><rect x="52" y="26" width="4" height="4"/>
+                    <rect x="24" y="30" width="4" height="4"/><rect x="36" y="30" width="4" height="4"/><rect x="48" y="30" width="4" height="4"/><rect x="56" y="30" width="4" height="4"/>
+                  </g>
+                  <g class="hw-games-pixel-missiles">
+                    <rect class="hw-games-pixel-missile hw-games-pixel-missile--1" x="37" y="34" width="2" height="8"/>
+                    <rect class="hw-games-pixel-missile hw-games-pixel-missile--2" x="43" y="36" width="2" height="8"/>
+                    <rect class="hw-games-pixel-missile hw-games-pixel-missile--3" x="49" y="34" width="2" height="8"/>
+                  </g>
+                </svg>
+              </div>
+              <h2 class="course-card__title">Learning Games 👾</h2>
+              <div class="course-card__footer hw-games-hub-links" id="hw-games-hub-footer"></div>
+              <p class="hw-games-hub-soon">…more coming soon</p>
+            </article>
+            </div>
+
+            <article class="course-card course-card--locked hw-addon-card hw-grid-upgrade" id="hw-weekly-upgrade-card" hidden tabindex="0">
+              <span class="course-card__lock" aria-hidden="true">
+                <svg class="course-card__lock-svg course-card__lock-svg--locked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                <svg class="course-card__lock-svg course-card__lock-svg--unlocked" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path class="course-card__lock-shackle" d="M8 11V7a4 4 0 0 1 8 0"/></svg>
+              </span>
+              <h2 class="course-card__title">Weekly homework</h2>
+              <p class="course-card__desc">Student Special add-on for current students.</p>
+              <div class="course-card__footer">
+                <button type="button" class="course-card__status" id="hw-weekly-upgrade-btn" aria-label="Upgrade to weekly homework for ten dollars per month">
+                  <span class="course-card__status-text course-card__status-text--locked">Add-on</span>
+                  <span class="course-card__status-text course-card__status-text--unlock">Upgrade?</span>
+                </button>
+                <span class="course-card__price" aria-label="Price: ten dollars per month">$10</span>
+              </div>
+            </article>
+
+            <section class="hw-platform-card hw-platform-card--notifs hw-grid-notifs">
+              <h2 class="hw-platform-card__title">Notifications</h2>
+              <p class="hw-platform-card__desc">Discord DMs when homework and lesson links are ready (wired in Phase 5).</p>
+              <button type="button" class="btn btn--ghost btn--sm" data-placeholder data-placeholder-msg="Discord notifications are not connected yet.">Discord status (coming soon)</button>
+            </section>
+          </div>
+
+          <div class="hw-worksheet-section" id="hw-worksheet-section">
+            <h2 class="hw-worksheet-heading" id="hw-worksheet-heading">Current homework</h2>
+            <p class="hw-worksheet-intro" id="hw-worksheet-intro">Loading worksheet…</p>
+            <div id="hw-worksheet-mount"></div>
+          </div>
+        </div>
+
+        <p class="subpage-back" id="hw-platform-footer-nav">
+          <a class="btn btn--ghost" id="hw-platform-footer-info" href="/homework.html">← Homework info &amp; plans</a>
+          <button type="button" class="btn btn--ghost" id="hw-platform-logout-footer" hidden>Log out</button>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <svg class="hw-sachiko-sprite" aria-hidden="true" focusable="false">
+    <symbol id="hw-sachiko-face" viewBox="0 0 48 48">
+      <ellipse cx="24" cy="27" rx="17" ry="15" fill="#5c4470"/>
+      <circle cx="24" cy="27" r="13" fill="#f0c9a8"/>
+      <path d="M11 19 Q24 8 37 19 Q33 27 24 24 Q15 27 11 19 Z" fill="#7a5a8f" stroke="#c4a8d8" stroke-width="0.6"/>
+      <ellipse cx="19" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <ellipse cx="29" cy="27" rx="2.2" ry="2.8" fill="#2a2030"/>
+      <circle cx="19.7" cy="26.2" r="0.7" fill="#fff"/>
+      <circle cx="29.7" cy="26.2" r="0.7" fill="#fff"/>
+      <ellipse cx="15.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <ellipse cx="32.5" cy="31" rx="2.8" ry="1.3" fill="#e8a0a0" opacity="0.5"/>
+      <path d="M18 33 Q24 36.5 30 33" fill="none" stroke="#c4846c" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+  </svg>
+
+  <div class="hw-sachiko-modal" id="hw-sachiko-modal" hidden>
+    <div class="hw-sachiko-modal__backdrop" aria-hidden="true"></div>
+    <div class="hw-sachiko-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-sachiko-title">
+      <button class="hw-sachiko-modal__close" type="button" data-sachiko-minimize aria-label="Minimize Sachiko">×</button>
+      <header class="hw-sachiko-modal__head">
+        <svg class="hw-sachiko-face hw-sachiko-face--lg" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+        <div>
+          <h2 class="hw-sachiko-modal__title" id="hw-sachiko-title">Sachiko</h2>
+          <p class="hw-sachiko-modal__sub">Study tutor — hints &amp; grammar</p>
+        </div>
+      </header>
+      <div class="hw-sachiko-modal__msgs" aria-live="polite"></div>
+      <div class="hw-sachiko-modal__suggestions" aria-label="Suggested prompts"></div>
+      <form class="hw-sachiko-modal__form">
+        <input class="hw-sachiko-modal__input" type="text" placeholder="Ask for a hint or grammar help…" autocomplete="off" maxlength="500" />
+        <button class="btn btn--primary btn--sm" type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <button type="button" class="hw-sachiko-dock" id="hw-sachiko-dock" hidden aria-label="Open Sachiko">
+    <svg class="hw-sachiko-face hw-sachiko-face--dock" aria-hidden="true"><use href="#hw-sachiko-face"/></svg>
+    <span class="hw-sachiko-dock__label">Sachiko</span>
+  </button>
+
+  <div class="hw-breakdown-modal hw-tier-detail-modal" id="hw-tier-detail-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-tier-detail-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-tier-detail-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-tier-detail-close aria-label="Close plan details">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-tier-detail-title">Plan details</h2>
+
+      <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+        <h3>Basic</h3>
+        <ul class="hw-breakdown-card__list">
+          <li>HW assignment once per month</li>
+          <li>General written feedback/advice</li>
+          <li>Phone or print — works either way</li>
+          <li>Full learning game access</li>
+        </ul>
+      </article>
+
+      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-premium" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge">Popular</p>
+        <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
+        <h3>Premium</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Four</u> HW assignments per month</li>
+          <li><u>Written</u> feedback and advice from JD</li>
+          <li>AI study tutor for hints and grammar help</li>
+          <li>Phone or print — works either way</li>
+          <li>Full learning game access</li>
+          <li>Private Discord access</li>
+        </ul>
+      </article>
+
+      <article class="hw-breakdown-card hw-breakdown-card--included hw-tier-detail-panel" id="hw-tier-detail-ultra" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
+        <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
+        <h3>Ultra</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Four</u> HW assignments per month</li>
+          <li>Personal <u>video feedback</u> from JD on <u>each</u> assignment</li>
+          <li>Everything in Premium (AI tutor, games, Discord)</li>
+          <li>Priority review queue</li>
+          <li>Phone or print — works either way</li>
+        </ul>
+        <p class="hw-platform-card__desc hw-platform-card__desc--tight">Video feedback is only on Ultra — not available as a separate add-on.</p>
+      </article>
+    </div>
+  </div>
+
+  <div class="hw-breakdown-modal hw-past-assignments-modal" id="hw-past-assignments-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-past-modal-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-past-assignments-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-past-assignments-modal-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-past-modal-close aria-label="Close past assignments">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-past-assignments-modal-title">Past assignments</h2>
+      <p class="hw-past-assignments-modal__intro">Open a submitted worksheet to review your answers (read-only).</p>
+      <p class="hw-library-meta" id="hw-past-assignments-modal-meta" aria-live="polite"></p>
+      <ul class="hw-hub-v2-past-list hw-past-assignments-modal__list" id="hw-past-assignments-modal-list"></ul>
+    </div>
+  </div>
+
+  <div class="hw-breakdown-modal hw-post-submit-next-modal" id="hw-post-submit-next-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-next-modal-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-post-submit-next-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-post-submit-next-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-next-modal-close aria-label="Close">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-post-submit-next-title">Sent to JD — nice work!</h2>
+      <p class="hw-post-submit-next-modal__intro">While you wait for review, keep the momentum going:</p>
+      <div class="hw-post-submit-next-modal__recs">
+        <a class="hw-post-submit-next-card" href="/homework.html">
+          <span class="hw-post-submit-next-card__label">Upgrade your plan</span>
+          <span class="hw-post-submit-next-card__desc">More assignments, deeper feedback, and full game access — see Basic, Premium, and Ultra.</span>
+        </a>
+        <button type="button" class="hw-post-submit-next-card" data-hw-next-games>
+          <span class="hw-post-submit-next-card__label">Play Japanese games</span>
+          <span class="hw-post-submit-next-card__desc">Practice between lessons — open the Games tab or the full games hub.</span>
+        </button>
+      </div>
+      <p class="hw-post-submit-next-modal__past">
+        <button type="button" class="hw-post-submit-next-modal__past-btn" data-hw-next-past>Browse past homework</button>
+      </p>
+    </div>
+  </div>
+
+  <div id="hw-platform-toast" class="hw-platform-toast" role="status" aria-live="polite"></div>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__copy">&copy; <span id="year"></span> Japanese Language Mentor</p>
+    </div>
+  </footer>
+
+  <!-- Shared worksheet/media stack (both roles). Role-specific bundles load via hw-platform-boot.js. -->
+  <script src="/js/kumo-wallpaper.js" defer></script>
+  <script src="/js/subpage.js" defer></script>
+  <script src="/js/hw-loading.js?v=3" defer></script>
+  <script src="/js/hw-audio-player.js?v=20260786" defer></script>
+  <script src="/js/hw-video-player.js?v=20260786" defer></script>
+  <script src="/js/hw-compat.js?v=20260771" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260772" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20260753" defer></script>
+  <script src="/js/hw-submit-format.js?v=20260619" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260794" defer></script>
+  <script src="/js/hw-star-block.js?v=20260717fit" defer></script>
+  <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
+  <script src="/js/hw-mg-lexicon.js?v=19" defer></script>
+  <script src="/js/hw-mg-lexicon-suggest.js?v=3" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=42" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=81" defer></script>
+  <script src="/js/hw-review-media.js?v=20260781" defer></script>
+  <script src="/js/hw-homework-comments.js?v=96" defer></script>
+  <script src="/js/hw-encoding.js?v=2" defer></script>
+  <script src="/js/hw-platform-boot.js?v=7" defer></script>
+</body>
+</html>

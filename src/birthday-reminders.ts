@@ -40,7 +40,7 @@ async function getWebhookChannelMismatch(
   if (wh.channel_id === expected) return null;
 
   return (
-    `Discord webhook is not pointed at #website-inquiries (expected channel ${expected}).`
+    `Discord webhook is not pointed at the notify channel (expected channel ${expected}).`
   );
 }
 
@@ -50,22 +50,17 @@ async function postDiscordBirthday(
   label: string,
   uncertain: boolean
 ): Promise<boolean> {
-  const body = {
-    embeds: [
-      {
-        title: "Website inquiries — student birthday today",
-        color: 0xd4a853,
-        fields: [
-          { name: "Student", value: name, inline: true },
-          { name: "Birthday", value: label, inline: true },
-          ...(uncertain
-            ? [{ name: "Note", value: "Date marked uncertain in your list.", inline: false }]
-            : []),
-        ],
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  };
+  const lines = [
+    "Website inquiries — student birthday today",
+    `Student: ${name}`,
+    `Birthday: ${label}`,
+  ];
+  if (uncertain) {
+    lines.push("Note: Date marked uncertain in your list.");
+  }
+  const plain = lines.join("\n").replace(/```/g, "'''");
+  const content = "```\n" + plain.slice(0, 1980) + "\n```";
+  const body = { content };
 
   const res = await fetch(webhookUrl, {
     method: "POST",

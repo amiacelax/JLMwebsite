@@ -226,6 +226,22 @@
         Array.from({ length: need }, (_, i) => "playtest-" + (i + 1))
       );
     });
+
+    form.querySelectorAll(".hw-worksheet__line--mc").forEach((line) => {
+      const hidden = line.querySelector(".hw-mc-block__answer");
+      if (!hidden) return;
+      if (String(hidden.value || "").trim()) return;
+      let choices = [];
+      try {
+        choices = JSON.parse(line.dataset.choices || "[]");
+      } catch {
+        choices = [];
+      }
+      hidden.value = String(choices[0] || hidden.dataset.answer || "playtest").trim();
+      if (global.HwMcBlock?.placeChoice) {
+        global.HwMcBlock.placeChoice(line, hidden.value);
+      }
+    });
   }
 
   /**

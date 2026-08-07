@@ -3075,6 +3075,26 @@ html.hw-ws-toolbar.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher {
 }
 
 /*
+ * Focus raises the pill toolbar to z-index 450; Glass/Cloud live tools are ~66.
+ * Cloud’s focus home sits just above the bar — without this, taps hit the toolbar
+ * and Cloud never arms (Glass sits higher so it still works).
+ */
+html.hw-ws-toolbar.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget,
+html.hw-ws-toolbar.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher,
+html.hw-ws-toolbar.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget.is-armed,
+html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget.is-armed,
+html.hw-ws-toolbar.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher.is-armed,
+html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher.is-armed,
+html.hw-ws-toolbar.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget.is-dragging,
+html.hw-hub-v5-toolbar-embed.hw-tb-glass-out .hw-hub-v2-worksheet > .hw-mg-widget.is-dragging,
+html.hw-ws-toolbar.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher.is-dragging,
+html.hw-hub-v5-toolbar-embed.hw-tb-cloud-out .hw-hub-v2-worksheet > .hw-hc-launcher.is-dragging {
+  z-index: 460 !important;
+}
+
+/*
  * Focus enter/exit: must beat the popped-out visible!important rules above,
  * or Glass/Cloud stay on-screen and appear to slide while zoom/homes change.
  */
