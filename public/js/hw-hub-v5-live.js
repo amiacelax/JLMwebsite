@@ -88,6 +88,13 @@
       displayName: "Alex",
       role: "student",
       accountLabel: "current_student",
+      tier: "pending",
+    },
+    student_special: {
+      username: "demo",
+      displayName: "Alex",
+      role: "student",
+      accountLabel: "current_student",
       tier: "student_special",
     },
     student_lessons: {
@@ -122,7 +129,31 @@
   ];
 
   const TAB_IDS = ["homework", "notebook", "lessons", "games"];
+  const ACCOUNT_TAB_IDS = ["profile", "subscription", "notifications"];
+  const HUB_TAB_LABELS = {
+    homework: "HW",
+    notebook: "Notebook",
+    lessons: "Lessons/Mistakes",
+    games: "Games",
+  };
+  const ACCOUNT_TAB_LABELS = {
+    profile: "Profile",
+    subscription: "Subscription",
+    notifications: "Notifications",
+  };
+  let accountMode = false;
+  let hubTabBeforeAccount = "homework";
 
+  function gamesAndCoursesEnabled() {
+    return !!global.HwFeatureFlags?.gamesAndCourses?.();
+  }
+
+  function hubTabIds() {
+    if (accountMode) return ACCOUNT_TAB_IDS.slice();
+    return gamesAndCoursesEnabled()
+      ? TAB_IDS
+      : TAB_IDS.filter((id) => id !== "games");
+  }
   let shellBuilt = false;
   let tierDetailBound = false;
   let uiBound = false;
@@ -193,15 +224,27 @@
     }
   }
 
-  function scheduleBubbleHint() {
+  function scheduleBubbleHint(options) {
     clearBubbleHintTimer();
     bubbleHovering = true;
+    const delay = options?.immediate ? 0 : 280;
     bubbleHintTimer = window.setTimeout(() => {
       bubbleHintTimer = null;
-      if (!bubbleHovering) return;
+      if (!bubbleHovering && !options?.force) return;
       placeBubbleHint();
-      document.getElementById("hw-v5-status-bubble-hint")?.classList.add("is-visible");
-    }, 500);
+      const hint = document.getElementById("hw-v5-status-bubble-hint");
+      if (!hint) return;
+      hint.hidden = false;
+      hint.classList.add("is-visible");
+    }, delay);
+  }
+
+  function flashBubbleHint(ms) {
+    bubbleHovering = true;
+    scheduleBubbleHint({ immediate: true, force: true });
+    window.setTimeout(() => {
+      hideBubbleHint();
+    }, ms || 2200);
   }
 
   function bindBubblePointerTrack() {
@@ -295,14 +338,47 @@
     return tier === "pending" || !global.HwAuth?.hasActiveSubscription?.(session);
   }
 
-  /** Lesson student without weekly HW add-on (Student Special / pending special). */
+  /** Lesson student without weekly HW add-on yet (pending Student Special). */
   function isStudentNoHwAccount() {
     const session = getActiveSession();
     return Boolean(
       session &&
         session.accountLabel === "current_student" &&
-        (session.tier === "student_special" || session.tier === "pending")
+        session.tier === "pending"
     );
+  }
+
+  /** Paid HW plan, still waiting for JD to send first/next assignment. */
+  function isPlanWaitingAccount() {
+    const session = getActiveSession();
+    if (!session || session.role !== "student") return false;
+    if (isNoPlanAccount() || isStudentNoHwAccount()) return false;
+    return Boolean(global.HwAuth?.hasActiveSubscription?.(session));
+  }
+
+  function planWaitingCopy() {
+    const session = getActiveSession();
+    const tier = session?.tier || "";
+    const short =
+      tier === "tier1"
+        ? "Basic"
+        : tier === "tier2"
+          ? "Premium"
+          : tier === "tier3"
+            ? "Ultra"
+            : tier === "student_special"
+              ? "Student Special"
+              : String(global.HwAuth?.TIERS?.[tier]?.name || "Your").replace(
+                  /\s+Tier$/i,
+                  ""
+                ) || "Your";
+    return {
+      title: short + " plan — waiting for JD",
+      desc:
+        "You\u2019re on the " +
+        short +
+        " plan. JD will send your homework here when it\u2019s ready — hang tight.",
+    };
   }
 
   function isStudentLessonsAccount() {
@@ -346,6 +422,28 @@
     }
 
     return "";
+  }
+
+  function readWaitingHomeworkCount() {
+    const session = getActiveSession();
+    const user = String(session?.username || "").trim().toLowerCase();
+    if (!user) return 0;
+    try {
+      const raw = sessionStorage.getItem("jlm-hw-catalog-v1");
+      if (!raw) return 0;
+      const cached = JSON.parse(raw);
+      const ids = cached?.data?.studentProfiles?.[user]?.waitingHomeworkIds;
+      if (!Array.isArray(ids)) return 0;
+      return ids.map((id) => String(id || "").trim()).filter(Boolean).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  function waitingHoverBit(count) {
+    if (count <= 0) return "";
+    if (count === 1) return " · 1 waiting";
+    return " · " + count + " waiting";
   }
 
   function getActiveAssignmentId() {
@@ -508,19 +606,74 @@
   }
 
   function getSellupOffers() {
+    let offers;
     if (demoModeEnabled()) {
       const key = getDemoAccountKey();
       if (key === "student_no_hw") {
-        return [{ kind: "weekly_homework", studentSpecial: true }];
-      }
-      if (key === "student_lessons") {
-        return [
+        offers = [{ kind: "weekly_homework", studentSpecial: true }];
+      } else if (key === "student_special") {
+        offers = [
+          { kind: "tier", plan: "ultra", studentUltra: true },
+          { kind: "games" },
+        ];
+      } else if (key === "student_lessons") {
+        offers = [
           { kind: "tier", plan: "ultra" },
           { kind: "games" },
         ];
+      } else {
+        offers = [];
       }
+    } else {
+      offers = global.HwAuth?.getPostSubmitSellupOffers?.(getActiveSession()) || [];
     }
-    return global.HwAuth?.getPostSubmitSellupOffers?.(getActiveSession()) || [];
+    if (!gamesAndCoursesEnabled()) {
+      offers = offers.filter((o) => o.kind !== "games");
+    }
+    /* From Student Special "Already have an account?" -> show the $10 unlock card. */
+    if (wantsStuspecFocus()) {
+      offers = [{ kind: "weekly_homework", studentSpecial: true }];
+    }
+    return offers;
+  }
+
+  function wantsStuspecFocus() {
+    try {
+      if (new URLSearchParams(global.location.search).get("focus") === "stuspec") {
+        try {
+          sessionStorage.setItem("jlm-stuspec-focus", "1");
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+      return sessionStorage.getItem("jlm-stuspec-focus") === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function clearStuspecFocusParam() {
+    try {
+      const params = new URLSearchParams(global.location.search);
+      if (params.get("focus") !== "stuspec") return;
+      params.delete("focus");
+      const clean =
+        global.location.pathname +
+        (params.toString() ? "?" + params.toString() : "") +
+        global.location.hash;
+      global.history.replaceState({}, "", clean);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearStuspecFocusMemory() {
+    try {
+      sessionStorage.removeItem("jlm-stuspec-focus");
+    } catch {
+      /* ignore */
+    }
   }
 
   function getSellupMountTarget() {
@@ -540,18 +693,18 @@
         frame: "hw-v5-sellup-frame",
       };
     }
+    if (wantsStuspecFocus() || isStudentNoHwAccount()) {
+      return {
+        mount: "hw-v5-no-hw-sellup",
+        caption: "hw-v5-no-hw-sellup-caption",
+        frame: "hw-v5-no-hw-sellup-frame",
+      };
+    }
     if (isNoPlanAccount()) {
       return {
         mount: "hw-v5-noplan-sellup",
         caption: "hw-v5-noplan-sellup-caption",
         frame: "hw-v5-noplan-sellup-frame",
-      };
-    }
-    if (isStudentNoHwAccount()) {
-      return {
-        mount: "hw-v5-no-hw-sellup",
-        caption: "hw-v5-no-hw-sellup-caption",
-        frame: "hw-v5-no-hw-sellup-frame",
       };
     }
     return {
@@ -563,6 +716,17 @@
 
   function normalizeTabId(tabId) {
     const key = String(tabId || "").trim().toLowerCase();
+    if (accountMode) {
+      const aliases = {
+        account: "profile",
+        "account-profile": "profile",
+        "account-subscription": "subscription",
+        "account-notifications": "notifications",
+        notifs: "notifications",
+      };
+      const mapped = aliases[key] || key;
+      return ACCOUNT_TAB_IDS.includes(mapped) ? mapped : "profile";
+    }
     const aliases = {
       lesson: "lessons",
       study: "lessons",
@@ -572,7 +736,7 @@
       notifs: "notebook",
     };
     const mapped = aliases[key] || key;
-    return TAB_IDS.includes(mapped) ? mapped : "homework";
+    return hubTabIds().includes(mapped) ? mapped : "homework";
   }
 
   function ensureHubTabSlider(tablist) {
@@ -682,6 +846,13 @@
     });
   }
 
+  /** Run after the browser paints — keeps tab clicks under INP budget. */
+  function afterNextPaint(fn) {
+    window.requestAnimationFrame(() => {
+      window.setTimeout(fn, 0);
+    });
+  }
+
   function hubTabStorageKey() {
     const username = String(getActiveSession()?.username || "")
       .trim()
@@ -694,39 +865,57 @@
   }
 
   function writeSavedHubTab(tabId) {
+    if (accountMode) return;
     writeStorage(hubTabStorageKey(), normalizeTabId(tabId));
   }
 
   function setActiveTab(tabId, options) {
     const app = document.getElementById("hw-v5-app");
     if (!app) return;
+    if (accountMode) {
+      const raw = String(tabId || "")
+        .trim()
+        .toLowerCase();
+      const aliases = {
+        account: "profile",
+        "account-profile": "profile",
+        "account-subscription": "subscription",
+        "account-notifications": "notifications",
+        notifs: "notifications",
+      };
+      const mapped = aliases[raw] || raw;
+      if (!ACCOUNT_TAB_IDS.includes(mapped)) return;
+    }
     const keepViewport = !options?.scrollTop;
     const prevY = keepViewport ? window.scrollY : 0;
 
     const tab = normalizeTabId(tabId);
     app.dataset.v5ActiveTab = tab;
-    if (!options?.skipPersist) writeSavedHubTab(tab);
+    if (accountMode) global.HwAccount?.setHash?.(tab, "replace");
 
+    /* Paint tab chrome first — this is what INP waits on. */
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       const active = btn.getAttribute("data-v5-tab") === tab;
       btn.classList.toggle("is-active", active);
       btn.setAttribute("aria-selected", active ? "true" : "false");
     });
-
     applyTabPanels(tab);
     syncHubTabSlider();
-    syncNotebookWithTab(tab, options);
-    bindHubPanelsHeightLock();
-    lockHubPanelsMinHeight();
-    /* Keep hub ping mapped to worksheet host-local point across tab switches. */
-    if (!isArchiveMode()) {
-      window.requestAnimationFrame(() => mountStatusBubble(getHubStatus()));
-    }
-    if (keepViewport) restoreViewportScroll(prevY);
 
-    if (options?.scrollTop) {
-      app.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    afterNextPaint(() => {
+      if (!options?.skipPersist) writeSavedHubTab(tab);
+      syncNotebookWithTab(tab, options);
+      bindHubPanelsHeightLock();
+      lockHubPanelsMinHeight();
+      /* Full bubble paint (labels + one mount) — keep hover/click feedback working. */
+      if (!isArchiveMode()) {
+        renderStatusBubble(getHubStatus());
+      }
+      if (keepViewport) restoreViewportScroll(prevY);
+      if (options?.scrollTop) {
+        app.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
   }
 
   /** Notebook tab hosts the diary — keep notebookOpen in sync with the active tab. */
@@ -783,7 +972,138 @@
 
   function initHubTabs() {
     ensureHubPanelsWrapper();
+    paintHubTabButtons();
+    ensureAccountPanels();
     setActiveTab(readSavedHubTab(), { skipFocus: true });
+  }
+
+  function paintHubTabButtons() {
+    const tabs = document.getElementById("hw-v5-tabs");
+    if (!tabs) return;
+    const slider = ensureHubTabSlider(tabs);
+    const ids = hubTabIds();
+    const labels = accountMode ? ACCOUNT_TAB_LABELS : HUB_TAB_LABELS;
+    const active = normalizeTabId(
+      document.getElementById("hw-v5-app")?.dataset.v5ActiveTab
+    );
+    tabs.replaceChildren(slider);
+    ids.forEach((id) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v5-tabs__btn" + (id === active ? " is-active" : "");
+      btn.setAttribute("role", "tab");
+      btn.id = "hw-v5-tab-" + id;
+      btn.setAttribute("data-v5-tab", id);
+      btn.setAttribute("aria-selected", id === active ? "true" : "false");
+      btn.setAttribute("aria-controls", "hw-v5-panel-" + id);
+      btn.textContent = labels[id] || id;
+      tabs.appendChild(btn);
+    });
+    tabs.classList.remove("is-slider-ready");
+    tabs.setAttribute("aria-label", accountMode ? "Account Settings" : "Hub sections");
+  }
+
+  function ensureAccountPanels() {
+    const below = document.getElementById("hw-v5-below");
+    if (!below || !global.HwAccount) return;
+    const specs = [
+      ["hw-v5-panel-profile", "profile", "hw-v5-tab-profile", global.HwAccount.profileMarkup],
+      [
+        "hw-v5-panel-subscription",
+        "subscription",
+        "hw-v5-tab-subscription",
+        global.HwAccount.subscriptionMarkup,
+      ],
+      [
+        "hw-v5-panel-notifications",
+        "notifications",
+        "hw-v5-tab-notifications",
+        global.HwAccount.notificationsMarkup,
+      ],
+    ];
+    specs.forEach(([panelId, tabId, labelledBy, htmlFn]) => {
+      if (document.getElementById(panelId)) return;
+      const wrap = document.createElement("div");
+      wrap.innerHTML = typeof htmlFn === "function" ? htmlFn() : "";
+      const node = wrap.firstElementChild;
+      below.appendChild(wrapBelowPanel(panelId, tabId, labelledBy, node));
+    });
+  }
+
+  function enterAccountMode(tabId) {
+    const app = document.getElementById("hw-v5-app");
+    if (!app) return;
+    if (!accountMode) {
+      const current = String(app.dataset.v5ActiveTab || "homework");
+      hubTabBeforeAccount = TAB_IDS.includes(current) ? current : "homework";
+    }
+    accountMode = true;
+    document.body.classList.add("hw-account-mode");
+    app.dataset.v5Mode = "account";
+    ensureAccountPanels();
+    paintHubTabButtons();
+    global.HwAccount?.fillSession?.();
+    global.HwAccount?.fillPlanCopy?.();
+    setActiveTab(tabId || "profile", { skipPersist: true, skipFocus: true });
+    renderAccountSellup();
+    afterNextPaint(() => {
+      syncHubTabSlider();
+      lockHubPanelsMinHeight();
+    });
+  }
+
+  function exitAccountMode() {
+    const app = document.getElementById("hw-v5-app");
+    if (!app || !accountMode) return;
+    accountMode = false;
+    document.body.classList.remove("hw-account-mode");
+    app.dataset.v5Mode = "hub";
+    paintHubTabButtons();
+    setActiveTab(hubTabBeforeAccount || "homework", { skipPersist: true, skipFocus: true });
+    afterNextPaint(() => {
+      syncHubTabSlider();
+      lockHubPanelsMinHeight();
+    });
+  }
+
+  function renderAccountSellup() {
+    const mount = document.getElementById("hw-v5-account-sellup");
+    const caption = document.getElementById("hw-v5-account-sellup-caption");
+    const frame = document.getElementById("hw-v5-account-sellup-frame");
+    const empty = document.getElementById("hw-account-plan-empty");
+    if (!mount) return;
+
+    let offers = global.HwAuth?.getPostSubmitSellupOffers?.(getActiveSession()) || [];
+    if (demoModeEnabled() && !offers.length) {
+      offers = getSellupOffers();
+    }
+    if (!gamesAndCoursesEnabled()) {
+      offers = offers.filter((o) => o.kind !== "games");
+    }
+
+    mount.replaceChildren();
+    const show = offers.length > 0;
+    mount.hidden = !show;
+    if (caption) {
+      caption.hidden = !show;
+      caption.textContent = show ? sellupCaptionText(pickSellupVariant(offers)) : "";
+    }
+    if (frame) frame.hidden = !show;
+    if (empty) empty.hidden = show;
+
+    offers.forEach((offer) => {
+      let node = null;
+      if (offer.kind === "tier" && offer.studentUltra) node = buildStudentUltraCard();
+      else if (offer.kind === "tier") node = buildTierCard(offer.plan);
+      else if (offer.kind === "weekly_homework") {
+        node = buildWeeklyHomeworkCard({ studentSpecial: offer.studentSpecial });
+      } else if (offer.kind === "lessons") node = buildLessonsCard();
+      else if (offer.kind === "games") node = buildGamesCard();
+      if (node) mount.appendChild(node);
+    });
+
+    bindTierDetailModal();
+    global.HwCheckout?.bindCheckoutControls?.(mount);
   }
 
   function escapeHtml(s) {
@@ -837,9 +1157,14 @@
       const trigger = e.target.closest("[data-hw-tier-detail]");
       const sellup = document.getElementById("hw-v5-sellup");
       const noplanSellup = document.getElementById("hw-v5-noplan-sellup");
+      const noHwSellup = document.getElementById("hw-v5-no-hw-sellup");
+      const accountSellup = document.getElementById("hw-v5-account-sellup");
       if (
         !trigger ||
-        (!sellup?.contains(trigger) && !noplanSellup?.contains(trigger))
+        (!sellup?.contains(trigger) &&
+          !noplanSellup?.contains(trigger) &&
+          !noHwSellup?.contains(trigger) &&
+          !accountSellup?.contains(trigger))
       ) {
         return;
       }
@@ -919,8 +1244,13 @@
 
     const article = document.createElement("article");
     article.className =
-      "course-card course-card--locked hw-addon-card hw-hub-v5-sellup-card hw-hub-v5-sellup-card--weekly";
+      "course-card course-card--locked hw-addon-card hw-hub-v5-sellup-card hw-hub-v5-sellup-card--weekly hw-hub-v5-sellup-card--clickable";
     article.tabIndex = 0;
+    article.setAttribute("role", "link");
+    article.setAttribute(
+      "aria-label",
+      "Unlock weekly homework — Student Special $" + price + " per month"
+    );
     article.innerHTML =
       LOCK_SVG +
       "<h3 class=\"course-card__title\">Weekly homework</h3>" +
@@ -928,24 +1258,111 @@
       escapeHtml(desc) +
       "</p>" +
       '<div class="course-card__footer">' +
-      '<button type="button" class="course-card__status" data-hw-v5-weekly-upgrade aria-label="View weekly homework details">' +
+      '<span class="course-card__status" aria-hidden="true">' +
       '<span class="course-card__status-text course-card__status-text--locked">LOCKED</span>' +
       '<span class="course-card__status-text course-card__status-text--unlock">UNLOCK?</span>' +
-      "</button>" +
+      "</span>" +
       '<span class="course-card__price" aria-label="' +
       priceAriaLabel +
       '">' +
       priceInner +
       "</span>" +
       "</div>";
-    article.querySelector("[data-hw-v5-weekly-upgrade]")?.addEventListener("click", () => {
+
+    function goStudentSpecialCheckout() {
+      if (global.HwCheckout?.startCheckout) {
+        global.HwCheckout.startCheckout("student-special", { forcePaypal: true });
+        try {
+          sessionStorage.removeItem("jlm-stuspec-focus");
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
       alert(
         "Weekly homework for lesson students ($" +
           price +
           "/mo; standalone Premium is $" +
           comparePrice +
-          "/mo) — message JD to add it to your plan."
+          "/mo) — open Student Special checkout after login."
       );
+    }
+
+    article.addEventListener("click", (event) => {
+      event.preventDefault();
+      goStudentSpecialCheckout();
+    });
+    article.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      goStudentSpecialCheckout();
+    });
+    return article;
+  }
+
+  function buildStudentUltraCard() {
+    const price = global.HwAuth?.STUDENT_ULTRA_PRICE || 25;
+    const comparePrice = global.HwAuth?.STUDENT_ULTRA_COMPARE_PRICE || 49;
+    const priceInner =
+      '<span class="hw-hub-v5-price-compare" aria-hidden="true">$' +
+      comparePrice +
+      "</span>$" +
+      price +
+      '<span class="course-card__price-suffix">/mo</span>';
+
+    const article = document.createElement("article");
+    article.className =
+      "course-card course-card--locked hw-hub-tier-plan hw-hub-tier-plan--video hw-hub-v5-sellup-card hw-hub-v5-sellup-card--clickable";
+    article.tabIndex = 0;
+    article.setAttribute("role", "link");
+    article.setAttribute(
+      "aria-label",
+      "Unlock Student Ultra — video feedback $" +
+        price +
+        " per month, standalone Ultra is $" +
+        comparePrice
+    );
+    article.innerHTML =
+      '<p class="hw-hub-tier-plan__badge hw-hub-tier-plan__badge--video">Video</p>' +
+      LOCK_SVG +
+      '<h3 class="course-card__title">Ultra</h3>' +
+      '<p class="course-card__desc">Video notes from JD on each assignment — Student Special rate for lesson students.</p>' +
+      '<div class="course-card__footer">' +
+      '<span class="course-card__status" aria-hidden="true">' +
+      '<span class="course-card__status-text course-card__status-text--locked">LOCKED</span>' +
+      '<span class="course-card__status-text course-card__status-text--unlock">UNLOCK?</span>' +
+      "</span>" +
+      '<span class="course-card__price" aria-label="Student Ultra price: ' +
+      price +
+      " dollars per month, standalone Ultra is " +
+      comparePrice +
+      '">' +
+      priceInner +
+      "</span>" +
+      "</div>";
+
+    function goStudentUltraCheckout() {
+      if (global.HwCheckout?.startCheckout) {
+        global.HwCheckout.startCheckout("student-ultra", { forcePaypal: true });
+        return;
+      }
+      alert(
+        "Student Ultra ($" +
+          price +
+          "/mo; standalone Ultra is $" +
+          comparePrice +
+          "/mo) — open checkout after login."
+      );
+    }
+
+    article.addEventListener("click", (event) => {
+      event.preventDefault();
+      goStudentUltraCheckout();
+    });
+    article.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      goStudentUltraCheckout();
     });
     return article;
   }
@@ -973,7 +1390,6 @@
       '<p class="course-card__desc">Live coaching with JD — pairs with Homework Hub or stands on its own.</p>' +
       '<div class="course-card__footer hw-hub-v5-sellup-card__footer">' +
       '<a class="btn btn--primary btn--full btn--sm" href="/#contact" data-service="Private lessons">Ask about lessons</a>' +
-      '<a class="btn btn--ghost btn--full btn--sm" href="/courses.html">Browse courses</a>' +
       "</div>";
     return article;
   }
@@ -987,6 +1403,9 @@
     }
     if (variant === "student_no_hw") {
       return "Weekly homework \u2014 Student Special";
+    }
+    if (variant === "student_ultra") {
+      return "Student Ultra \u2014 video feedback from JD";
     }
     if (variant === "ultra-games") {
       return "Video feedback from JD \u2014 or relax with Japanese games";
@@ -1008,8 +1427,10 @@
     const hasWeekly = offers.some((o) => o.kind === "weekly_homework");
     const hasLessons = offers.some((o) => o.kind === "lessons");
     const hasGames = offers.some((o) => o.kind === "games");
+    const hasStudentUltra = offers.some((o) => o.kind === "tier" && o.studentUltra);
     if (hasWeekly && offers.length === 1 && offers[0].studentSpecial) return "student_no_hw";
     if (hasWeekly) return "weekly";
+    if (hasStudentUltra) return "student_ultra";
     if (hasTiers && hasGames) return "ultra-games";
     if (hasTiers && hasLessons) return "upgrade-lessons";
     if (hasTiers) return "tiers";
@@ -1165,6 +1586,26 @@
     return empty;
   }
 
+  function ensurePlanWaiting() {
+    let card = document.getElementById("hw-v5-plan-waiting");
+    if (card) return card;
+
+    card = document.createElement("section");
+    card.className = "hw-hub-v5-plan-waiting hw-hub-worksheet-card";
+    card.id = "hw-v5-plan-waiting";
+    card.hidden = true;
+    card.setAttribute("aria-labelledby", "hw-v5-plan-waiting-title");
+    card.innerHTML =
+      '<div class="hw-hub-v5-pending hw-hub-v5-pending--plan" id="hw-v5-plan-waiting-note">' +
+      '<p class="hw-hub-v5-pending__line">' +
+      '<span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>' +
+      '<strong id="hw-v5-plan-waiting-title">Waiting for JD</strong></p>' +
+      '<p class="hw-hub-v5-pending__sub" id="hw-v5-plan-waiting-desc">' +
+      "Your plan is active. JD will send your first homework here when it\u2019s ready." +
+      "</p></div>";
+    return card;
+  }
+
   function ensureNoPlanWelcome() {
     let welcome = document.getElementById("hw-v5-noplan-welcome");
     if (welcome) return welcome;
@@ -1296,6 +1737,7 @@
       const completeCard = ensureCompleteCard();
       const noHwEmpty = ensureNoHwEmpty();
       const noPlanWelcome = ensureNoPlanWelcome();
+      const planWaiting = ensurePlanWaiting();
       const notebookDiary = ensureNotebookDiary();
 
       const orphanFeedback = document.getElementById("hw-v2-feedback");
@@ -1308,9 +1750,11 @@
       if (worksheetSection) {
         v4Homework.insertBefore(completeCard, worksheetSection);
         v4Homework.insertBefore(noPlanWelcome, worksheetSection);
+        v4Homework.insertBefore(planWaiting, worksheetSection);
         v4Homework.insertBefore(noHwEmpty, worksheetSection);
       } else {
         v4Homework.prepend(noHwEmpty);
+        v4Homework.prepend(planWaiting);
         v4Homework.prepend(noPlanWelcome);
         v4Homework.prepend(completeCard);
       }
@@ -1340,11 +1784,7 @@
       tabs.setAttribute("role", "tablist");
       tabs.setAttribute("aria-label", "Hub sections");
       tabs.innerHTML =
-        '<span class="hw-hub-v5-tabs__slider" aria-hidden="true"></span>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn is-active" role="tab" id="hw-v5-tab-homework" data-v5-tab="homework" aria-selected="true" aria-controls="hw-v5-panel-homework">HW</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-notebook" data-v5-tab="notebook" aria-selected="false" aria-controls="hw-v5-panel-notebook">Notebook</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-lessons" data-v5-tab="lessons" aria-selected="false" aria-controls="hw-v5-panel-lessons">Lessons/Mistakes</button>' +
-        '<button type="button" class="hw-hub-v5-tabs__btn" role="tab" id="hw-v5-tab-games" data-v5-tab="games" aria-selected="false" aria-controls="hw-v5-panel-games">Games</button>';
+        '<span class="hw-hub-v5-tabs__slider" aria-hidden="true"></span>';
       tabsWrap.appendChild(tabs);
 
       const homeworkPanel = document.createElement("div");
@@ -1371,7 +1811,7 @@
       below.appendChild(
         wrapBelowPanel("hw-v5-panel-notebook", "notebook", "hw-v5-tab-notebook", notebookDiary)
       );
-      if (gamesCard || sachikoCard) {
+      if (gamesAndCoursesEnabled() && (gamesCard || sachikoCard)) {
         const gamesStack = document.createElement("div");
         gamesStack.className = "hw-hub-v5-games-stack";
         if (gamesCard) gamesStack.appendChild(gamesCard);
@@ -1379,6 +1819,9 @@
         below.appendChild(
           wrapBelowPanel("hw-v5-panel-games", "games", "hw-v5-tab-games", gamesStack)
         );
+      } else {
+        if (gamesCard) gamesCard.hidden = true;
+        if (sachikoCard) sachikoCard.hidden = true;
       }
 
       const panels = document.createElement("div");
@@ -1421,9 +1864,8 @@
   }
 
   /**
-   * Persistent ping host on the panels shell so it stays visible on every major
-   * tab (HW / Notebook / Lessons / Games). Position is worksheet host-local
-   * (same space as Glass/Cloud pick tools): center at 49.5, 41.4.
+   * Status ping only on HW — worksheet Glass/Cloud host-local point (49.5, 41.4).
+   * Hidden on Notebook / Lessons / Games.
    */
   function ensureHubStatusPingHost() {
     const panels = document.querySelector(".hw-hub-v5-panels");
@@ -1439,27 +1881,36 @@
       "hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--diary hw-hub-v5-status-ping-host--hub";
     if (host.parentElement !== panels) panels.appendChild(host);
 
-    /* Map worksheet-local center → panels-local (Glass/Cloud host space). */
+    const activeTab =
+      document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework";
+    if (activeTab !== "homework") {
+      host.hidden = true;
+      host.classList.remove("hw-hub-v5-status-ping-host--parked");
+      return null;
+    }
+
+    const PING_X = 49.5;
+    const PING_Y = 41.4;
+    host.classList.remove("hw-hub-v5-status-ping-host--parked");
+    host.style.bottom = "";
+
     const worksheet = document.querySelector(
       "#hw-hub-v4-homework .hw-hub-v2-worksheet"
     );
-    const PING_X = 49.5;
-    const PING_Y = 41.4;
     if (worksheet) {
       const wr = worksheet.getBoundingClientRect();
       const pr = panels.getBoundingClientRect();
-      if (wr.width || wr.height) {
+      /* Only pin to Glass/Cloud when the worksheet is actually laid out —
+         otherwise (49.5, 41.4) lands on the tab row and blocks nav. */
+      if (wr.width > 40 && wr.height > 80 && wr.top >= pr.top - 2) {
+        host.hidden = false;
         host.style.left = wr.left - pr.left + PING_X + "px";
         host.style.top = wr.top - pr.top + PING_Y + "px";
-      } else {
-        host.style.left = PING_X + "px";
-        host.style.top = PING_Y + "px";
+        return host;
       }
-    } else {
-      host.style.left = PING_X + "px";
-      host.style.top = PING_Y + "px";
     }
-    return host;
+    host.hidden = true;
+    return null;
   }
 
   function mountStatusBubble(status) {
@@ -1479,11 +1930,18 @@
     );
 
     const archive = isArchiveMode();
+    const activeTab =
+      document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework";
     const worksheetCard = document.querySelector(
       "#hw-hub-v4-homework .hw-hub-v2-worksheet"
     );
     const stickyHead = worksheetCard?.querySelector(".hw-worksheet__slide-sticky-head");
     const navRow = stickyHead?.querySelector(".hw-worksheet__slide-nav-row");
+    /* Still filling the sheet — ping covers the title; only useful after send. */
+    const workingOnHw =
+      status !== "submitted" &&
+      status !== "reviewed" &&
+      status !== "acknowledged";
 
     /* Hide legacy complete-card ping slots — hub uses the persistent host. */
     const reviewHost = document.getElementById("hw-v5-status-ping-host");
@@ -1511,8 +1969,17 @@
         bubble.classList.add("hw-hub-v5-status-bubble--dock");
         if (bubble.parentElement !== document.body) document.body.appendChild(bubble);
       }
+    } else if (activeTab !== "homework") {
+      ensureHubStatusPingHost();
+      bubble.hidden = true;
+      if (hint) hint.hidden = true;
+    } else if (workingOnHw && !notebookOpen) {
+      /* Active homework sheet — no yellow ping on the title. */
+      const hubHost = document.getElementById("hw-v5-diary-ping-host");
+      if (hubHost) hubHost.hidden = true;
+      bubble.hidden = true;
+      if (hint) hint.hidden = true;
     } else {
-      /* Hub-wide ping at Glass/Cloud host-local point — every major tab. */
       ensureCompleteCard();
       const hubHost = ensureHubStatusPingHost();
       if (hubHost) {
@@ -1572,18 +2039,22 @@
     bubble.dataset.statusBubbleBound = "1";
     bubble.addEventListener("click", (ev) => {
       ev.preventDefault();
+      flashBubbleHint(2200);
       /* Status ping always restores hub status view (closes notebook / archive). */
       if (notebookOpen) closeNotebook();
       if (isArchiveMode()) exitArchiveMode();
       /* Full paint after exit so Past HW / complete card remount reliably. */
       renderAll();
     });
+    bubble.addEventListener("pointerdown", (ev) => {
+      trackBubblePointer(ev);
+    });
     bubble.addEventListener("mouseenter", (ev) => {
       trackBubblePointer(ev);
-      scheduleBubbleHint();
+      scheduleBubbleHint({ immediate: true });
     });
     bubble.addEventListener("mouseleave", hideBubbleHint);
-    bubble.addEventListener("focus", scheduleBubbleHint);
+    bubble.addEventListener("focus", () => scheduleBubbleHint({ immediate: true }));
     bubble.addEventListener("blur", hideBubbleHint);
   }
 
@@ -1658,53 +2129,76 @@
 
   /**
    * Hover / a11y copy for the status ping — plain student language matching
-   * pending-card and complete-card phrasing. Custom hint tooltip (not native
-   * title) already exists in the hub design.
+   * pending-card and complete-card phrasing. Uses the custom blue hint only
+   * (no native title tooltip).
    */
   function statusBubbleLabels(status, homeExit) {
     let aria;
     let hint;
+    const waitingCount = readWaitingHomeworkCount();
+    const waitingBit = waitingHoverBit(waitingCount);
     const noHw =
       !studentHasActiveAssignment() ||
       platformSaysNoLinkedAssignment() ||
       document.body.classList.contains("hw-hub-v5-noplan-view") ||
-      document.body.classList.contains("hw-hub-v5-no-hw-view");
+      document.body.classList.contains("hw-hub-v5-no-hw-view") ||
+      document.body.classList.contains("hw-hub-v5-plan-waiting-view");
 
     if (noHw && status !== "reviewed" && status !== "submitted") {
       /* Empty hub / waiting for first or next assignment */
-      aria = "Waiting for homework";
-      hint = "Waiting for homework";
+      if (waitingCount > 0) {
+        aria = waitingCount === 1 ? "New homework waiting" : waitingCount + " assignments waiting";
+        hint = aria;
+      } else {
+        aria = "Waiting for homework";
+        hint = "Waiting for homework";
+      }
     } else if (status === "reviewed") {
-      aria = "Homework reviewed — JD’s notes are ready";
-      hint = "Homework done — JD’s notes are ready";
+      aria = "Homework reviewed — JD’s notes are ready" + waitingBit;
+      hint = "Homework done — JD’s notes are ready" + waitingBit;
     } else if (status === "acknowledged") {
-      aria = "Waiting for your next homework";
-      hint = "Waiting for JD to send new homework";
+      if (waitingCount > 0) {
+        aria = waitingCount === 1 ? "New homework waiting" : waitingCount + " assignments waiting";
+        hint = aria;
+      } else {
+        aria = "Waiting for your next homework";
+        hint = "Waiting for JD to send new homework";
+      }
     } else if (status === "submitted") {
-      aria = "Homework under review";
-      hint = "JD is reviewing your homework";
+      aria = "Homework under review" + waitingBit;
+      hint = "JD is reviewing your homework" + waitingBit;
     } else {
       /* in_progress / working on assigned HW */
-      aria = "Working on your homework";
-      hint = "Working on your homework";
+      aria = "Working on your homework" + waitingBit;
+      hint = "Working on your homework" + waitingBit;
     }
     if (homeExit) {
       const returnBit = " Click to return to home";
       if (noHw && status !== "reviewed" && status !== "submitted") {
-        aria = "Waiting for homework." + returnBit;
-        hint = "Waiting for homework." + returnBit;
+        aria =
+          (waitingCount > 0
+            ? waitingCount === 1
+              ? "New homework waiting."
+              : waitingCount + " assignments waiting."
+            : "Waiting for homework.") + returnBit;
+        hint = aria;
       } else if (status === "reviewed") {
-        aria = "JD’s notes are ready." + returnBit;
-        hint = "JD’s notes are ready." + returnBit;
+        aria = "JD’s notes are ready" + waitingBit + "." + returnBit;
+        hint = "JD’s notes are ready" + waitingBit + "." + returnBit;
       } else if (status === "acknowledged") {
-        aria = "Waiting for new homework." + returnBit;
-        hint = "Waiting for JD to send new homework." + returnBit;
+        aria =
+          (waitingCount > 0
+            ? waitingCount === 1
+              ? "New homework waiting."
+              : waitingCount + " assignments waiting."
+            : "Waiting for new homework.") + returnBit;
+        hint = aria;
       } else if (status === "submitted") {
-        aria = "HW under review." + returnBit;
-        hint = "HW under review." + returnBit;
+        aria = "HW under review" + waitingBit + "." + returnBit;
+        hint = "HW under review" + waitingBit + "." + returnBit;
       } else {
-        aria = "Working on your homework." + returnBit;
-        hint = "Working on your homework." + returnBit;
+        aria = "Working on your homework" + waitingBit + "." + returnBit;
+        hint = "Working on your homework" + waitingBit + "." + returnBit;
       }
     }
     return { aria: aria, hint: hint };
@@ -1712,16 +2206,14 @@
 
   function renderStatusBubble(status) {
     const archive = isArchiveMode();
-    /* Archive + complete + in-progress: ping stays on every major hub tab. */
     ensureStatusBubble();
     bindStatusBubble();
+    bindBubblePointerTrack();
     mountStatusBubble(status);
+    /* Remount once after layout — avoid stacked 250ms/900ms remount spam. */
     window.requestAnimationFrame(() => mountStatusBubble(status));
-    setTimeout(() => mountStatusBubble(status), 250);
     if (archive && !notebookOpen) {
-      /* Worksheet chrome mounts after the past sheet loads — remount onto it. */
-      setTimeout(() => mountStatusBubble(status), 900);
-      setTimeout(() => mountStatusBubble(status), 1800);
+      window.setTimeout(() => mountStatusBubble(status), 400);
     }
 
     const bubble = document.getElementById("hw-v5-status-bubble");
@@ -1742,12 +2234,16 @@
     } else if (status === "acknowledged") {
       bubble.classList.add("hw-hub-v5-status-bubble--acked");
     } else {
-      /* submitted (JD reviewing) + in_progress (working) share the ping pulse */
       bubble.classList.add("hw-hub-v5-status-bubble--reviewing");
     }
 
     bubble.setAttribute("aria-label", labels.aria);
-    if (hint) hint.textContent = labels.hint;
+    bubble.removeAttribute("title");
+    if (hint) {
+      /* Don't force the tip visible when the ping itself is hidden (active HW). */
+      hint.hidden = !!bubble.hidden;
+      hint.textContent = labels.hint;
+    }
   }
 
   function renderCompleteCard(status) {
@@ -1778,6 +2274,25 @@
     }
     if (acked) {
       acked.hidden = !acknowledged;
+      if (acknowledged) {
+        const waitingCount = readWaitingHomeworkCount();
+        const line = acked.querySelector(".hw-hub-v5-pending__line strong");
+        const sub = acked.querySelector(".hw-hub-v5-pending__sub");
+        if (line) {
+          line.textContent =
+            waitingCount > 0
+              ? waitingCount === 1
+                ? "New homework waiting."
+                : waitingCount + " assignments waiting."
+              : "Waiting for your next assignment.";
+        }
+        if (sub) {
+          sub.textContent =
+            waitingCount > 0
+              ? "Refresh or reopen Homework Hub to load the next sheet."
+              : "JD got your “done reviewing” ping — new homework will show up here when it’s ready.";
+        }
+      }
     }
     const ultra = isUltraTier();
     if (title) {
@@ -1882,7 +2397,8 @@
 
     offers.forEach((offer) => {
       let node = null;
-      if (offer.kind === "tier") node = buildTierCard(offer.plan);
+      if (offer.kind === "tier" && offer.studentUltra) node = buildStudentUltraCard();
+      else if (offer.kind === "tier") node = buildTierCard(offer.plan);
       else if (offer.kind === "weekly_homework") {
         node = buildWeeklyHomeworkCard({ studentSpecial: offer.studentSpecial });
       } else if (offer.kind === "lessons") node = buildLessonsCard();
@@ -2232,6 +2748,21 @@
     const empty = document.getElementById("hw-v5-no-hw-empty");
     if (empty) empty.hidden = !show;
     document.body.classList.toggle("hw-hub-v5-no-hw-view", show);
+  }
+
+  function renderPlanWaiting(show) {
+    const card = document.getElementById("hw-v5-plan-waiting");
+    if (card) {
+      if (show) {
+        const copy = planWaitingCopy();
+        const title = card.querySelector("#hw-v5-plan-waiting-title");
+        const desc = card.querySelector("#hw-v5-plan-waiting-desc");
+        if (title) title.textContent = copy.title;
+        if (desc) desc.textContent = copy.desc;
+      }
+      card.hidden = !show;
+    }
+    document.body.classList.toggle("hw-hub-v5-plan-waiting-view", show);
   }
 
   let notebookRefreshQueued = false;
@@ -3042,7 +3573,6 @@
     }
     const strayDiaryPing = header?.querySelector("#hw-v5-diary-ping-host");
     if (strayDiaryPing) strayDiaryPing.remove();
-    ensureHubStatusPingHost();
 
     let pagerRow = document.getElementById("hw-notebook-pager-row");
     if (!pagerRow) {
@@ -3697,8 +4227,8 @@
 
     dateEl.textContent = "Kanji Notebook";
     if (lessonEl) {
-      lessonEl.hidden = false;
-      lessonEl.textContent = "One character per square — big and clear";
+      lessonEl.hidden = true;
+      lessonEl.textContent = "";
     }
 
     page.replaceChildren();
@@ -3870,8 +4400,7 @@
     if (notebookOpen) {
       renderNotebookDiaryPage(notebookCachePacks || []);
     }
-    /* Remount hub-wide status ping when notebook slot changes. */
-    renderStatusBubble(getHubStatus());
+    /* Status ping remount is owned by setActiveTab / renderHomeworkZone. */
   }
 
   function openNotebook() {
@@ -3938,7 +4467,9 @@
     });
     modal.querySelector("[data-hw-next-games]")?.addEventListener("click", () => {
       closePostSubmitNextModal();
-      setActiveTab("games", { scrollTop: true });
+      if (gamesAndCoursesEnabled()) {
+        setActiveTab("games", { scrollTop: true });
+      }
     });
     modal.querySelector("[data-hw-next-past]")?.addEventListener("click", () => {
       closePostSubmitNextModal();
@@ -4207,6 +4738,20 @@
     document.getElementById("hw-boot-gate-css")?.remove();
   }
 
+  function bindHubBootDismiss() {
+    const boot = document.getElementById("hw-hub-boot");
+    if (!boot || boot.dataset.dismissBound === "1") return;
+    boot.dataset.dismissBound = "1";
+    boot.style.pointerEvents = "auto";
+    boot.addEventListener(
+      "click",
+      () => {
+        clearHubBootGate();
+      },
+      { once: true }
+    );
+  }
+
   function ensureWorksheetLoadingPlaceholder() {
     const mount =
       document.getElementById("hw-v2-worksheet-mount") ||
@@ -4329,6 +4874,7 @@
     /* While the platform is still loading, keep the normal Loading… /
        hourglass worksheet chrome — never flash empty/upsell shells. */
     if (!ready) {
+      bindHubBootDismiss();
       if (worksheetSection) worksheetSection.hidden = false;
       if (completeCard) completeCard.hidden = true;
       if (pastFold) pastFold.hidden = true;
@@ -4336,25 +4882,34 @@
       if (entryBoot) entryBoot.hidden = true;
       renderNoPlanWelcome(false);
       renderNoHwEmpty(false);
+      renderPlanWaiting(false);
       ensureWorksheetLoadingPlaceholder();
       return;
     }
 
     clearHubBootGate();
 
-    /* No linked homework → always use the no-plan / no-HW status pages.
+    /* No linked homework → always use the no-plan / plan-waiting / no-HW status pages.
        Never leave the old Loading… worksheet card + floating tools. */
     const archive = isArchiveMode();
     const emptyStatus =
       !hasAssignment && !isCompleteView(status) && !archive;
-    const showNoPlan = emptyStatus && isNoPlanAccount();
-    const showNoHw = emptyStatus && !showNoPlan;
+    const stuspecFocus = wantsStuspecFocus();
+    const showNoPlan = emptyStatus && isNoPlanAccount() && !stuspecFocus;
+    const showPlanWaiting =
+      emptyStatus && !showNoPlan && isPlanWaitingAccount() && !stuspecFocus;
+    const showNoHw =
+      emptyStatus &&
+      !showNoPlan &&
+      !showPlanWaiting &&
+      (isStudentNoHwAccount() || (stuspecFocus && !isPlanWaitingAccount()));
     const showComplete =
       !archive &&
       isCompleteView(status) &&
       (hasAssignment || status === "reviewed" || status === "acknowledged") &&
       !showNoPlan &&
-      !showNoHw;
+      !showNoHw &&
+      !showPlanWaiting;
     const ultraPractice = isUltraTier();
 
     document.body.classList.toggle("hw-hub-v5-archive-mode", archive);
@@ -4363,11 +4918,15 @@
     if (worksheetSection) {
       worksheetSection.hidden = archive
         ? false
-        : ((!ultraPractice && showComplete) || showNoHw || showNoPlan);
+        : ((!ultraPractice && showComplete) ||
+            showNoHw ||
+            showNoPlan ||
+            showPlanWaiting);
     }
     if (completeCard) completeCard.hidden = !showComplete;
     if (pastFold) {
-      pastFold.hidden = archive || !showComplete || showNoHw || showNoPlan;
+      pastFold.hidden =
+        archive || !showComplete || showNoHw || showNoPlan || showPlanWaiting;
     }
     queueNotebookRefresh();
     const entryRow = document.getElementById("hw-hub-v5-entry-row");
@@ -4383,14 +4942,21 @@
     const printMenu = document.getElementById("hw-print-menu");
     if (printMenu) {
       printMenu.hidden =
-        notebookOpen || archive || showComplete || showNoHw || showNoPlan || !hasAssignment;
+        notebookOpen ||
+        archive ||
+        showComplete ||
+        showNoHw ||
+        showNoPlan ||
+        showPlanWaiting ||
+        !hasAssignment;
     }
 
     renderStatusBubble(status);
 
     renderNoPlanWelcome(showNoPlan);
+    renderPlanWaiting(showPlanWaiting);
     renderNoHwEmpty(showNoHw);
-    if (showNoPlan || showNoHw) {
+    if (showNoPlan || showNoHw || showPlanWaiting) {
       clearLegacyEmptyHwChrome();
     }
 
@@ -4402,6 +4968,7 @@
       !showComplete &&
       !showNoPlan &&
       !showNoHw &&
+      !showPlanWaiting &&
       !archive &&
       !notebookOpen &&
       !worksheetMounted;
@@ -4420,7 +4987,12 @@
       if (
         mount &&
         mount.querySelector(".hw-list-wait, .hw-hub-v5-loading-list") &&
-        (showComplete || showNoHw || showNoPlan || !hasAssignment || worksheetMounted)
+        (showComplete ||
+          showNoHw ||
+          showNoPlan ||
+          showPlanWaiting ||
+          !hasAssignment ||
+          worksheetMounted)
       ) {
         mount.querySelector(".hw-hub-v5-loading-list")?.remove();
         mount.querySelectorAll(".hw-list-wait").forEach((node) => node.remove());
@@ -4492,7 +5064,12 @@
     renderCompleteCard(status);
     renderSellup();
     renderFeedback(status);
-    setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
+    if (accountMode) {
+      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "profile");
+      renderAccountSellup();
+    } else {
+      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
+    }
     /* Re-assert diary after every paint so async hub refreshes can't flash status. */
     applyNotebookOpenUi();
     queueLiveReviewRefresh();
@@ -4602,10 +5179,10 @@
       }
     });
 
-    document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        setActiveTab(btn.getAttribute("data-v5-tab") || "homework");
-      });
+    document.getElementById("hw-v5-tabs")?.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-v5-tab]");
+      if (!btn) return;
+      setActiveTab(btn.getAttribute("data-v5-tab") || (accountMode ? "profile" : "homework"));
     });
 
     document.addEventListener("hw-platform-student-ready", () => {
@@ -4654,6 +5231,8 @@
     });
 
     window.addEventListener("hashchange", () => {
+      if (global.HwAccount?.isAccountHash?.()) return;
+      if (accountMode) return;
       /* Entering a past sheet while Notebook is open = intentional row/open-past. */
       if (notebookOpen && isArchiveMode()) {
         setActiveTab("homework", { skipFocus: true });
@@ -4696,8 +5275,22 @@
     bindHubTabSliderLayout();
     initHubTabs();
     renderAll();
+    if (wantsStuspecFocus()) {
+      clearStuspecFocusParam();
+      window.setTimeout(function () {
+        var card =
+          document.querySelector(".hw-hub-v5-sellup-card--weekly") ||
+          document.getElementById("hw-v5-no-hw-empty") ||
+          document.getElementById("hw-v5-noplan-welcome");
+        if (card && card.scrollIntoView) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 350);
+    }
+    bindHubBootDismiss();
     /* Safety: never leave the boot veil forever if ready events stall. */
-    window.setTimeout(clearHubBootGate, 9000);
+    window.setTimeout(clearHubBootGate, 4500);
+    global.HwAccount?.onHubReady?.();
   }
 
   /** Durable notebook open state for platform refresh paths. */
@@ -4710,6 +5303,11 @@
     openPastHomework: openPastHomeworkFromHub,
     openPostSubmitNext: openPostSubmitNextModal,
     closePostSubmitNext: closePostSubmitNextModal,
+    enterAccountMode,
+    exitAccountMode,
+    isAccountMode() {
+      return accountMode;
+    },
   };
 
   if (document.readyState === "loading") {

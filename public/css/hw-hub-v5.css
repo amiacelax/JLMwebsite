@@ -592,11 +592,24 @@
 
 .hw-hub-v5-sellup-card--weekly .course-card__status {
   justify-self: center;
+  pointer-events: none;
 }
 
 .hw-hub-v5-sellup-card--weekly .course-card__price {
   width: auto;
   text-align: center;
+  pointer-events: none;
+}
+
+.hw-hub-v5-sellup-card--clickable,
+#hw-weekly-upgrade-card.hw-hub-v5-sellup-card--clickable {
+  cursor: pointer;
+}
+
+.hw-hub-v5-sellup-card--clickable:focus-visible,
+#hw-weekly-upgrade-card.hw-hub-v5-sellup-card--clickable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-green) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .hw-hub-v5-complete__actions {
@@ -2474,6 +2487,37 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   min-width: 0;
 }
 
+.hw-hub-v5-lessons-promo {
+  margin: 0;
+  padding: 1.5rem 1.25rem 1.35rem;
+  text-align: center;
+}
+
+.hw-hub-v5-lessons-promo__title {
+  margin: 0 0 0.55rem;
+  font-family: "Josefin Sans", Inter, sans-serif;
+  font-size: clamp(1.2rem, 3.5vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+.hw-hub-v5-lessons-promo__desc {
+  margin: 0 auto 1.1rem;
+  max-width: 28rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v5-lessons-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
 .hw-hub-v5-lesson-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -2844,6 +2888,74 @@ body.hw-hub-v5-noplan-view #hw-v5-review-zone {
   display: none !important;
 }
 
+.hw-hub-v5-plan-waiting {
+  margin: 0 auto 1.25rem;
+  width: 100%;
+  max-width: 52rem;
+  text-align: center;
+}
+
+.hw-hub-v5-plan-waiting[hidden] {
+  display: none !important;
+}
+
+/*
+ * Match active WS HW worksheet host (tool coords: ~832×776.8 host-local).
+ * Blue card = that sheet size; waiting note centered inside — not panel-tall.
+ */
+body.hw-hub-v5-plan-waiting-view #hw-hub-v4-homework.hw-v5-homework-zone {
+  width: 100%;
+  max-width: 52rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.hw-hub-v5-plan-waiting-view .hw-hub-v5-plan-waiting:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 52rem;
+  margin: 0;
+  padding: 1.5rem 1.25rem;
+  box-sizing: border-box;
+  /* Same footprint as section.hw-hub-v2-worksheet.hw-hub-worksheet-card when HW is active */
+  min-height: 48.55rem; /* 776.8px */
+  height: 48.55rem;
+}
+
+body.hw-hub-v5-plan-waiting-view .hw-hub-v5-plan-waiting .hw-hub-v5-pending {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 26rem;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767px) {
+  body.hw-hub-v5-plan-waiting-view .hw-hub-v5-plan-waiting:not([hidden]) {
+    height: auto;
+    min-height: min(48.55rem, 70vh);
+  }
+}
+
+body.hw-hub-v5-plan-waiting-view #hw-student-past-fold,
+body.hw-hub-v5-plan-waiting-view #hw-v5-complete-card,
+body.hw-hub-v5-plan-waiting-view #hw-v2-feedback,
+body.hw-hub-v5-plan-waiting-view #hw-v5-reviewed-banner,
+body.hw-hub-v5-plan-waiting-view #hw-v5-review-zone {
+  display: none !important;
+}
+
+body.hw-hub-v5-plan-waiting-view #hw-current-assignment-card,
+body.hw-hub-v5-plan-waiting-view .hw-hub-v2-worksheet,
+body.hw-hub-v5-plan-waiting-view #hw-toolbar-bar,
+body.hw-hub-v5-plan-waiting-view #hw-print-menu,
+body.hw-hub-v5-plan-waiting-view .hw-mg-widget,
+body.hw-hub-v5-plan-waiting-view .hw-hc-launcher {
+  display: none !important;
+}
+
 body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-student-past-fold,
 body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v5-complete-card,
 body.hw-hub-v5-no-hw-view:not(.hw-hub-v5-complete-view) #hw-v2-feedback,
@@ -3038,8 +3150,8 @@ html.hw-hub-v5-toolbar-embed #hw-v5-worksheet-card.hw-hub-worksheet-card {
 }
 
 /*
- * Floating glass / cloud stay tucked until the toolbar pops them out.
- * Toolbar icons only reveal the movable live widgets — they do not arm the tools.
+ * Floating glass / cloud stay tucked until popped out (Cloud on desktop)
+ * or while Glass arms from the toolbar icon (no floating lens).
  */
 /* Ghosts use .hw-tools-flyback only (no .hw-mg-widget / .hw-hc-launcher). */
 html.hw-hub-v5-toolbar-embed:not(.hw-tb-glass-out) .hw-mg-widget,
@@ -3643,4 +3755,259 @@ html.hw-tool-pick-mode #hw-tool-layout-tools * {
   border-radius: 4px;
   pointer-events: none;
   box-shadow: 0 0 0 1px rgba(26, 39, 68, 0.35);
+}
+
+/* Account Settings — same hub tab row + worksheet-sized cards */
+body.hw-account-mode .hw-hub-v5-status-ping-host,
+body.hw-account-mode #hw-v5-status-bubble,
+body.hw-account-mode #hw-v5-status-bubble-hint,
+body.hw-account-mode #hw-v5-status-bubble-wrap {
+  display: none !important;
+}
+
+body:not(.hw-account-mode) #hw-v5-panel-profile,
+body:not(.hw-account-mode) #hw-v5-panel-subscription,
+body:not(.hw-account-mode) #hw-v5-panel-notifications {
+  display: none !important;
+}
+
+body.hw-account-mode #hw-v5-panel-homework {
+  display: none !important;
+}
+
+body.hw-account-mode #hw-v5-below > .hw-hub-v5-panel:not([data-v5-panel="profile"]):not([data-v5-panel="subscription"]):not([data-v5-panel="notifications"]) {
+  display: none !important;
+}
+
+body.hw-account-mode.hw-role-teacher #hw-teacher-hub {
+  display: none !important;
+}
+
+body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
+  display: block !important;
+}
+
+.hw-account-teacher-app {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.hw-account-teacher-panels {
+  display: grid;
+}
+
+.hw-account-teacher-panels > .hw-hub-v5-panel {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.hw-account-teacher-panels > .hw-hub-v5-panel[hidden] {
+  display: block !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hw-account-teacher-panels > .hw-hub-v5-panel.is-active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.hw-account-card {
+  position: relative;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 3.4rem 1.75rem 1.35rem;
+  text-align: left;
+}
+
+.hw-account-card:not(.is-editing) #hw-account-login-id,
+.hw-account-card:not(.is-editing) [data-hw-account-edit] {
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0.15rem;
+}
+
+.hw-account-edit {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg-card) 70%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.hw-account-edit:hover,
+.hw-account-edit:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  outline: none;
+}
+
+.hw-account-card.is-editing .hw-account-edit {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.hw-account-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hw-account-name-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hw-account-name-hub {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.hw-account-save-bar {
+  max-height: 0;
+  overflow: hidden;
+  margin-top: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.28s ease, margin-top 0.28s ease, opacity 0.2s ease;
+}
+
+.hw-account-card.is-editing .hw-account-save-bar {
+  max-height: 5rem;
+  margin-top: 1rem;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hw-account-delete-btn {
+  width: 100%;
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
+}
+
+.hw-account-delete-btn:hover,
+.hw-account-delete-btn:focus-visible {
+  background: #8f1d14;
+  border-color: #8f1d14;
+  color: #fff;
+}
+
+.hw-account-delete-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.hw-account-delete-dialog[hidden] {
+  display: none !important;
+}
+
+.hw-account-delete-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 24, 0.55);
+}
+
+.hw-account-delete-dialog__box {
+  position: relative;
+  z-index: 1;
+  width: min(26rem, 100%);
+  padding: 1.25rem 1.15rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.hw-account-delete-dialog__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+}
+
+.hw-account-delete-dialog__body {
+  margin: 0 0 0.65rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.hw-account-delete-dialog__warn {
+  margin: 0 0 0.85rem;
+  color: #e5534b;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.hw-account-delete-dialog__check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+}
+
+.hw-account-delete-dialog__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+}
+
+.hw-account-delete-dialog__actions .hw-account-delete-btn {
+  width: auto;
+}
+
+.hw-account-card__title {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hw-account-card__sub {
+  margin: 1.35rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hw-account-card__lead {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.hw-account-form {
+  max-width: 28rem;
+  text-align: left;
+}
+
+.hw-account-form--danger {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.hw-account-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 28rem;
+  margin-top: 1.5rem;
+}
+
+.hw-account-card__legal {
+  margin-top: 1.5rem;
 }

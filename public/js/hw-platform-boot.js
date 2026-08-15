@@ -32,7 +32,7 @@
     lookup: "24",
     checkout: "20260611",
     sachiko: "20260694",
-    hubV5: "109",
+    hubV5: "152",
     platform: "20260807a",
     hubV6: "23",
     feedback: "1",

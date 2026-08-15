@@ -237,7 +237,7 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   padding: 0.75rem 0 0.25rem;
 }
 
-/* Hide page-level “Homework info & plans” while Hub v6 is open. */
+/* Hide leftover page-level back-row while Hub v6 is open. */
 body.hw-hub-v6-enabled:has(#hw-hub-v6-panel:not([hidden])) .subpage-back {
   display: none;
 }
