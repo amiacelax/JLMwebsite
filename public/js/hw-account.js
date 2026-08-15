@@ -245,6 +245,8 @@
     return planRank(planId) < planRank(current) ? "lesser" : "upgrade";
   }
 
+  let pendingPlanId = "";
+
   function armAccountPlan(card) {
     const mount = document.getElementById("hw-v5-account-sellup");
     mount?.querySelectorAll(".is-armed").forEach((el) => {
@@ -253,13 +255,48 @@
     card.classList.add("is-armed");
   }
 
-  function bindAccountPlanCard(article, plan) {
-    article.addEventListener("pointerdown", () => armAccountPlan(article));
-    const tone = article.getAttribute("data-hw-plan-tone");
-    if (tone === "upgrade") {
-      article.setAttribute("data-hw-checkout", plan.id);
-      article.classList.add("hw-hub-v5-sellup-card--clickable");
+  function openChangePlanDialog(planId) {
+    pendingPlanId = String(planId || "");
+    const dialog = document.getElementById("hw-account-change-plan-dialog");
+    if (dialog) dialog.hidden = false;
+  }
+
+  function closeChangePlanDialog() {
+    pendingPlanId = "";
+    const dialog = document.getElementById("hw-account-change-plan-dialog");
+    if (dialog) dialog.hidden = true;
+  }
+
+  function confirmChangePlan() {
+    const planId = pendingPlanId;
+    closeChangePlanDialog();
+    if (!planId) return;
+    if (global.HwCheckout?.startCheckout) {
+      void global.HwCheckout.startCheckout(planId);
     }
+  }
+
+  function onAccountPlanActivate(article, plan) {
+    if (!article.classList.contains("is-armed")) {
+      armAccountPlan(article);
+      return;
+    }
+    if (article.getAttribute("data-hw-plan-tone") === "current") return;
+    openChangePlanDialog(plan.id);
+  }
+
+  function bindAccountPlanCard(article, plan) {
+    article.classList.add("hw-hub-v5-sellup-card--clickable");
+    article.setAttribute("data-hw-account-plan", plan.id);
+    article.addEventListener("click", (e) => {
+      e.preventDefault();
+      onAccountPlanActivate(article, plan);
+    });
+    article.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      onAccountPlanActivate(article, plan);
+    });
   }
 
   function buildAccountTierCard(plan) {
@@ -289,12 +326,22 @@
     const article = document.createElement("article");
     article.className = "hw-student-special hw-account-lessons-slim";
     article.setAttribute("data-hw-plan-tone", "lessons");
+    article.classList.add("hw-hub-v5-sellup-card--clickable");
     article.innerHTML =
       '<p class="hw-student-special__eyebrow">Live coaching with JD</p>' +
       '<h3 class="hw-student-special__title">Private lessons</h3>' +
       '<p class="hw-student-special__desc">Pairs with Homework Hub or stands on its own.</p>' +
       '<a class="btn btn--primary btn--sm hw-student-special__link" href="/#contact" data-service="Private lessons">Ask about lessons</a>';
-    article.addEventListener("pointerdown", () => armAccountPlan(article));
+    article.addEventListener("click", (e) => {
+      if (!article.classList.contains("is-armed")) {
+        e.preventDefault();
+        armAccountPlan(article);
+        return;
+      }
+      if (e.target.closest("a")) return;
+      const href = article.querySelector("a[href]")?.getAttribute("href");
+      if (href) global.location.href = href;
+    });
     return article;
   }
 
@@ -312,7 +359,6 @@
       mount.appendChild(buildAccountTierCard(plan));
     });
     mount.appendChild(buildLessonsSlim());
-    global.HwCheckout?.bindCheckoutControls?.(mount);
   }
 
   async function loadSelfExtras() {
@@ -503,6 +549,16 @@
       '<article class="hw-hub-worksheet-card hw-account-card hw-account-card--plans" id="hw-account-subscription-card">' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-account-sellup-frame">' +
       '<div class="hw-hub-v5-sellup hw-account-plans" id="hw-v5-account-sellup" aria-label="Homework Hub plans"></div>' +
+      "</div>" +
+      '<div class="hw-account-delete-dialog" id="hw-account-change-plan-dialog" hidden>' +
+      '<div class="hw-account-delete-dialog__backdrop" data-hw-account-change-plan-nah></div>' +
+      '<div class="hw-account-delete-dialog__box" role="dialog" aria-modal="true" aria-labelledby="hw-account-change-plan-title">' +
+      '<h3 class="hw-account-delete-dialog__title" id="hw-account-change-plan-title">Do you want to change your subscription?</h3>' +
+      '<div class="hw-account-delete-dialog__actions">' +
+      '<button type="button" class="btn btn--primary" data-hw-account-change-plan-yeah>Yeah</button>' +
+      '<button type="button" class="btn btn--ghost" data-hw-account-change-plan-nah>Nah</button>' +
+      "</div>" +
+      "</div>" +
       "</div>" +
       "</article>"
     );
@@ -901,6 +957,16 @@
         if (dialog) dialog.hidden = true;
         return;
       }
+      if (e.target.closest("[data-hw-account-change-plan-yeah]")) {
+        e.preventDefault();
+        confirmChangePlan();
+        return;
+      }
+      if (e.target.closest("[data-hw-account-change-plan-nah]")) {
+        e.preventDefault();
+        closeChangePlanDialog();
+        return;
+      }
       const notifyBtn = e.target.closest("[data-hw-notify]");
       if (notifyBtn) {
         e.preventDefault();
@@ -914,6 +980,14 @@
       e.preventDefault();
       if (isOpen()) close();
       else open("profile");
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      const dialog = document.getElementById("hw-account-change-plan-dialog");
+      if (!dialog || dialog.hidden) return;
+      e.preventDefault();
+      closeChangePlanDialog();
     });
 
     document.addEventListener("submit", (e) => {
