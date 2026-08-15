@@ -52,6 +52,33 @@
     },
   };
 
+  const HW_PLANS = {
+    basic: "Basic homework",
+    premium: "Premium homework",
+    ultra: "Ultra homework",
+    "student-special": "Student Special",
+    "student-ultra": "Student Ultra",
+    tier1: "Basic homework",
+    tier2: "Premium homework",
+    tier3: "Ultra homework",
+    student_special: "Student Special",
+    student_ultra: "Student Ultra",
+  };
+
+  function isHwPlan(productId) {
+    return Object.prototype.hasOwnProperty.call(HW_PLANS, String(productId || ""));
+  }
+
+  function normalizePlanId(productId) {
+    const p = String(productId || "").trim().toLowerCase();
+    if (p === "tier1") return "basic";
+    if (p === "tier2") return "premium";
+    if (p === "tier3") return "ultra";
+    if (p === "student_special") return "student-special";
+    if (p === "student_ultra") return "student-ultra";
+    return p;
+  }
+
   function loginUrl(productId) {
     const next = encodeURIComponent(
       global.location.pathname + global.location.search + global.location.hash
@@ -81,6 +108,88 @@
     global.location.href = loginUrl(productId);
   }
 
+  async function startCheckout(productId, options) {
+    const plan = normalizePlanId(productId);
+    if (!isHwPlan(plan) && !isHwPlan(productId)) {
+      handleCheckoutClick({ preventDefault() {} }, productId);
+      return;
+    }
+    const session = global.HwAuth?.getSession?.();
+    if (!session) {
+      requireLogin(plan);
+      return;
+    }
+    try {
+      const res = await fetch("/api/paypal/create-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          username: session.username,
+          email: session.email,
+          displayName: session.displayName,
+          origin: global.location.origin,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.fallback && !options?.forcePaypal) {
+          const fallbackUrl = buildCheckoutUrl(plan === "premium" ? "premium" : plan, session);
+          if (fallbackUrl) {
+            global.location.href = fallbackUrl;
+            return;
+          }
+        }
+        throw new Error(data.error || "Could not start PayPal checkout.");
+      }
+      if (!data.approveUrl) throw new Error("PayPal did not return a checkout link.");
+      global.location.href = data.approveUrl;
+    } catch (err) {
+      global.alert((err && err.message) || "Could not start PayPal checkout.");
+    }
+  }
+
+  async function resumePaidReturn() {
+    const params = new URLSearchParams(global.location.search);
+    if (params.get("paid") !== "1") return;
+    const session = global.HwAuth?.getSession?.();
+    if (!session?.username) return;
+    const plan = params.get("plan") || "";
+    const subscriptionId = params.get("subscription_id") || "";
+    try {
+      const res = await fetch("/api/auth/activate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: session.username,
+          displayName: session.displayName,
+          plan,
+          subscriptionId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.session && global.HwAuth?.persistSession) {
+        const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+        global.HwAuth.persistSession(
+          { ...data.session, loggedInAt: Date.now() },
+          remember
+        );
+      }
+    } catch {
+      /* plan still activates from Teacher Hub if this ping fails */
+    }
+    params.delete("paid");
+    params.delete("plan");
+    params.delete("subscription_id");
+    params.delete("ba_token");
+    params.delete("token");
+    const clean =
+      global.location.pathname +
+      (params.toString() ? "?" + params.toString() : "") +
+      global.location.hash;
+    global.history.replaceState({}, "", clean);
+  }
+
   function handleCheckoutClick(event, productId) {
     const checkoutUrl = buildCheckoutUrl(productId, global.HwAuth?.getSession?.());
     if (isPlaceholderUrl(PRODUCTS[productId]?.url)) {
@@ -97,6 +206,12 @@
     if (!session) {
       event.preventDefault();
       requireLogin(productId);
+      return;
+    }
+
+    if (isHwPlan(productId)) {
+      event.preventDefault();
+      void startCheckout(productId);
       return;
     }
 
@@ -153,6 +268,7 @@
   function init() {
     bindCheckoutControls(document);
     resumeCheckoutFromQuery();
+    void resumePaidReturn();
   }
 
   global.HwCheckout = {
@@ -160,6 +276,7 @@
     LOGIN_PATH,
     buildCheckoutUrl,
     bindCheckoutControls,
+    startCheckout,
     init,
     requireLogin,
   };

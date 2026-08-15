@@ -121,11 +121,18 @@ import {
 } from "./homework-kv";
 import {
   createUserAccount,
+  deleteOwnAccount,
   deleteUserAccount,
   loginUserAccount,
+  savePaypalSubscription,
   type SignupInput,
   type LoginInput,
 } from "./user-accounts";
+import {
+  createPaypalSubscription,
+  normalizeHwCheckoutPlan,
+  paypalCredentialsConfigured,
+} from "./paypal";
 import {
   getMgLexiconPublic,
   getMgLexiconQueue,
@@ -161,6 +168,9 @@ interface Env {
   HARRIS_PREVIEW_PASSWORD?: string;
   JEM_PREVIEW_USER?: string;
   JEM_PREVIEW_PASSWORD?: string;
+  PAYPAL_CLIENT_ID?: string;
+  PAYPAL_CLIENT_SECRET?: string;
+  PAYPAL_MODE?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -970,6 +980,190 @@ async function handleAuthDeleteAccount(request: Request, env: Env): Promise<Resp
       return jsonResponse({ error: "Username is required." }, 400);
     }
     console.error("auth delete failed:", err);
+    return jsonResponse({ error: "Could not delete account." }, 500);
+  }
+}
+
+function buildPaidReturnUrl(origin: string, plan: string): string {
+  const base = String(origin || "").replace(/\/$/, "");
+  return `${base}/homework/platform.html?paid=1&plan=${encodeURIComponent(plan)}`;
+}
+
+function buildCancelReturnUrl(origin: string, plan: string): string {
+  const base = String(origin || "").replace(/\/$/, "");
+  return `${base}/homework/platform.html?paid=0&plan=${encodeURIComponent(plan)}`;
+}
+
+async function handlePaypalCreateSubscription(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  if (!paypalCredentialsConfigured(env)) {
+    return jsonResponse(
+      {
+        error: "PayPal API not configured.",
+        code: "PAYPAL_NOT_CONFIGURED",
+        fallback: true,
+      },
+      503
+    );
+  }
+
+  let data: {
+    plan?: string;
+    username?: string;
+    email?: string;
+    displayName?: string;
+    origin?: string;
+  };
+  try {
+    data = (await request.json()) as typeof data;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  const plan = normalizeHwCheckoutPlan(String(data.plan || ""));
+  if (!plan) {
+    return jsonResponse(
+      {
+        error:
+          "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra).",
+      },
+      400
+    );
+  }
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!username) return jsonResponse({ error: "Username is required." }, 400);
+
+  const reqUrl = new URL(request.url);
+  const origin = String(
+    data.origin || `${reqUrl.protocol}//${reqUrl.host}`
+  ).replace(/\/$/, "");
+
+  try {
+    const result = await createPaypalSubscription(
+      {
+        plan,
+        username,
+        email: data.email,
+        returnUrl: buildPaidReturnUrl(origin, plan),
+        cancelUrl: buildCancelReturnUrl(origin, plan),
+      },
+      env
+    );
+    try {
+      await savePaypalSubscription(
+        username,
+        {
+          paypalSubscriptionId: result.subscriptionId,
+          paypalPlan: result.plan,
+        },
+        env
+      );
+    } catch (err) {
+      console.error("paypal create-subscription: could not save id:", err);
+    }
+    return jsonResponse({
+      success: true,
+      approveUrl: result.approveUrl,
+      subscriptionId: result.subscriptionId,
+      plan: result.plan,
+      returnUrl: buildPaidReturnUrl(origin, plan),
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "PAYPAL_NOT_CONFIGURED") {
+      return jsonResponse(
+        { error: "PayPal API not configured.", code, fallback: true },
+        503
+      );
+    }
+    if (code === "PAYPAL_AUTH_FAILED") {
+      return jsonResponse(
+        { error: "PayPal login failed. Check client id/secret.", code },
+        502
+      );
+    }
+    if (code === "PAYPAL_CREATE_FAILED") {
+      return jsonResponse(
+        { error: "Could not start PayPal checkout. Try again.", code },
+        502
+      );
+    }
+    if (
+      code === "USERNAME_REQUIRED" ||
+      code === "PLAN_INVALID" ||
+      code === "RETURN_URL_REQUIRED"
+    ) {
+      return jsonResponse({ error: "Missing plan or account details.", code }, 400);
+    }
+    console.error("paypal create-subscription failed:", err);
+    return jsonResponse({ error: "Could not start PayPal checkout." }, 500);
+  }
+}
+
+async function handleAuthDeleteOwnAccount(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as { username?: string; password?: string };
+    const result = await deleteOwnAccount(
+      {
+        username: String(data.username || ""),
+        password: String(data.password || ""),
+      },
+      env
+    );
+    return jsonResponse({
+      success: true,
+      username: result.username,
+      deleted: result.deleted,
+      message: result.deleted ? "Account deleted." : "Account not found.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Username or password is wrong." }, 401);
+    }
+    if (code === "PAYPAL_CANCEL_FAILED" || code === "PAYPAL_AUTH_FAILED") {
+      return jsonResponse(
+        {
+          error:
+            "Couldn’t cancel the PayPal plan, so the account was left in place. Try again in a moment.",
+          code,
+        },
+        502
+      );
+    }
+    if (code === "PAYPAL_NOT_CONFIGURED") {
+      return jsonResponse(
+        {
+          error:
+            "PayPal isn’t configured, so a billed account can’t be deleted from here yet.",
+          code,
+        },
+        503
+      );
+    }
+    console.error("auth delete-own failed:", err);
     return jsonResponse({ error: "Could not delete account." }, 500);
   }
 }
@@ -4478,6 +4672,14 @@ export default {
 
     if (url.pathname === "/api/auth/delete-account") {
       return handleAuthDeleteAccount(request, env);
+    }
+
+    if (url.pathname === "/api/auth/delete-own-account") {
+      return handleAuthDeleteOwnAccount(request, env);
+    }
+
+    if (url.pathname === "/api/paypal/create-subscription") {
+      return handlePaypalCreateSubscription(request, env);
     }
 
     if (url.pathname === "/api/promo-signup") {

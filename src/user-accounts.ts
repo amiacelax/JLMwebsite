@@ -1,5 +1,6 @@
 import { hashPassword, verifyPassword } from "./password";
 import { savePromoSignup } from "./homework-kv";
+import { cancelPaypalSubscription, type PaypalEnv } from "./paypal";
 
 const USERS_INDEX = "user-accounts-index";
 const userKey = (username: string) => `user-account:${username}`;
@@ -49,6 +50,8 @@ export interface UserAccount {
   courses: string[];
   videoResponseUnlock: boolean;
   createdAt: string;
+  paypalSubscriptionId?: string;
+  paypalPlan?: string;
 }
 
 export interface AuthSession {
@@ -60,10 +63,11 @@ export interface AuthSession {
   tier: AccountTier;
   courses: string[];
   videoResponseUnlock: boolean;
+  paypalBilling: boolean;
   source: "server";
 }
 
-interface KvEnv {
+interface KvEnv extends PaypalEnv {
   HOMEWORK_KV?: KVNamespace;
 }
 
@@ -119,6 +123,7 @@ export function toAuthSession(account: UserAccount): AuthSession {
     courses: account.courses || [],
     videoResponseUnlock:
       account.tier === "tier3" || Boolean(account.videoResponseUnlock),
+    paypalBilling: Boolean(String(account.paypalSubscriptionId || "").trim()),
     source: "server",
   };
 }
@@ -300,6 +305,50 @@ export async function updateUserAccountSettings(
   return account;
 }
 
+export async function savePaypalSubscription(
+  username: string,
+  patch: { paypalSubscriptionId?: string; paypalPlan?: string },
+  env: KvEnv
+): Promise<UserAccount | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const normalized = normalizeUsername(username);
+  if (!normalized) throw new Error("USERNAME_REQUIRED");
+
+  const account = await getUserAccount(normalized, env);
+  if (!account) return null;
+
+  const id = String(patch.paypalSubscriptionId || "").trim();
+  if (id) account.paypalSubscriptionId = id;
+  const plan = String(patch.paypalPlan || "").trim();
+  if (plan) account.paypalPlan = plan;
+
+  await kv.put(userKey(normalized), JSON.stringify(account));
+  return account;
+}
+
+export async function deleteOwnAccount(
+  data: { username: string; password: string },
+  env: KvEnv
+): Promise<{ username: string; deleted: boolean }> {
+  const username = normalizeUsername(data.username);
+  const password = String(data.password || "");
+  if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+
+  const account = await getUserAccount(username, env);
+  if (!account) throw new Error("INVALID_CREDENTIALS");
+
+  const ok = await verifyPassword(
+    password,
+    account.passwordSalt,
+    account.passwordHash
+  );
+  if (!ok) throw new Error("INVALID_CREDENTIALS");
+
+  return deleteUserAccount(username, env);
+}
+
 export async function deleteUserAccount(
   username: string,
   env: KvEnv
@@ -318,6 +367,11 @@ export async function deleteUserAccount(
     account = JSON.parse(raw) as UserAccount;
   } catch {
     throw new Error("INVALID_ACCOUNT");
+  }
+
+  const subscriptionId = String(account.paypalSubscriptionId || "").trim();
+  if (subscriptionId) {
+    await cancelPaypalSubscription(subscriptionId, env);
   }
 
   await kv.delete(userKey(normalized));

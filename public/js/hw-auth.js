@@ -204,6 +204,7 @@
         tierDisplay: tierMeta.name,
         courses: Array.isArray(data.courses) ? data.courses : [],
         videoResponseUnlock,
+        paypalBilling: Boolean(data.paypalBilling),
         source: "server",
         loggedInAt: data.loggedInAt || Date.now(),
         viewAs: Boolean(data.viewAs),

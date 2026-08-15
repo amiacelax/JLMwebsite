@@ -107,6 +107,10 @@
     return Boolean(global.HwAuth?.hasActiveSubscription?.(s));
   }
 
+  function canAutoCancelPaypal() {
+    return Boolean(session()?.paypalBilling);
+  }
+
   function setProfileEditing(on) {
     const panel = document.getElementById("hw-account-panel");
     const saveBar = document.getElementById("hw-account-save-bar");
@@ -249,9 +253,11 @@
       '<div class="hw-account-delete-dialog__box" role="dialog" aria-modal="true" aria-labelledby="hw-account-delete-title">' +
       '<h3 class="hw-account-delete-dialog__title" id="hw-account-delete-title">Delete account?</h3>' +
       '<p class="hw-account-delete-dialog__body">This will delete everything on your account.</p>' +
-      '<p class="hw-account-delete-dialog__warn">WARNING: this will NOT cancel your subscription.</p>' +
+      '<p class="hw-account-delete-dialog__body" id="hw-account-delete-paypal-auto" hidden>' +
+      "We’ll cancel your PayPal plan when you delete this account.</p>" +
+      '<p class="hw-account-delete-dialog__warn" id="hw-account-delete-paypal-warn" hidden>WARNING: this will NOT cancel your subscription.</p>' +
       '<p class="hw-account-delete-dialog__body" id="hw-account-delete-paypal-note" hidden>' +
-      'Cancel your PayPal plan first — we can’t stop billing from here. ' +
+      'This older plan isn’t linked yet, so cancel it in PayPal first. ' +
       '<a href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener noreferrer">Open PayPal</a>, then check the box below.</p>' +
       '<label class="hw-account-delete-dialog__check" id="hw-account-delete-paypal-check-wrap" hidden>' +
       '<input type="checkbox" id="hw-account-delete-paypal-check"> I cancelled my PayPal plan' +
@@ -505,12 +511,18 @@
 
   function openDeleteDialog() {
     const dialog = document.getElementById("hw-account-delete-dialog");
+    const autoNote = document.getElementById("hw-account-delete-paypal-auto");
+    const warn = document.getElementById("hw-account-delete-paypal-warn");
     const note = document.getElementById("hw-account-delete-paypal-note");
     const checkWrap = document.getElementById("hw-account-delete-paypal-check-wrap");
     const check = document.getElementById("hw-account-delete-paypal-check");
     const paid = hasPaidPlan();
-    if (note) note.hidden = !paid;
-    if (checkWrap) checkWrap.hidden = !paid;
+    const autoCancel = paid && canAutoCancelPaypal();
+    const needsManual = paid && !autoCancel;
+    if (autoNote) autoNote.hidden = !autoCancel;
+    if (warn) warn.hidden = !needsManual;
+    if (note) note.hidden = !needsManual;
+    if (checkWrap) checkWrap.hidden = !needsManual;
     if (check) check.checked = false;
     const pw = document.getElementById("hw-account-delete-password");
     if (pw) pw.value = "";
@@ -586,7 +598,7 @@
     const status = document.getElementById("hw-account-delete-status");
     const s = session();
     if (!s?.username) return;
-    if (hasPaidPlan()) {
+    if (hasPaidPlan() && !canAutoCancelPaypal()) {
       const checked = document.getElementById("hw-account-delete-paypal-check");
       if (!checked?.checked) {
         setStatus(

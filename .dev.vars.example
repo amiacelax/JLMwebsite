@@ -36,3 +36,10 @@ DISCORD_HOMEWORK_CHANNEL_ID=1534083802102501539
 # LOCAL_DEV=1
 
 # Your Cloudflare API token (for wrangler login / deploy) is NOT the same thing — you do not put it here.
+#
+# PayPal REST (homework subscriptions). Production secrets:
+#   wrangler secret put PAYPAL_CLIENT_ID
+#   wrangler secret put PAYPAL_CLIENT_SECRET
+# PAYPAL_CLIENT_ID=
+# PAYPAL_CLIENT_SECRET=
+# PAYPAL_MODE=live
