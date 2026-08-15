@@ -115,29 +115,21 @@
       id: "basic",
       title: "Basic",
       price: 5,
-      tip: "One HW assignment a month — so anyone can join in — with written notes when you send it.",
     },
     {
       id: "premium",
       title: "Premium",
       price: 20,
-      tip: "Four HW assignments a month — shaped around your stuck spots, with careful written notes from JD.",
-      badge: "Popular",
     },
     {
       id: "ultra",
       title: "Ultra",
       price: 49,
-      tip: "Four HW assignments a month, plus a personal video from JD on each one so more of it can stick.",
-      badge: "Video",
-      video: true,
     },
     {
       id: "student-special",
       title: "Student Special",
       price: 10,
-      tip: "Four interactive assignments a month with written notes — for current students.",
-      badge: "Students",
     },
   ];
 
@@ -273,25 +265,15 @@
   function buildAccountTierCard(plan) {
     const tone = toneForPlan(plan.id);
     const article = document.createElement("article");
-    article.className =
-      "course-card course-card--locked hw-hub-tier-plan" +
-      (plan.id === "basic" ? " hw-hub-tier-plan--featured" : "") +
-      (plan.video ? " hw-hub-tier-plan--video" : "");
+    article.className = "course-card course-card--locked hw-hub-tier-plan";
     article.setAttribute("data-hw-tier-plan", plan.id);
     article.setAttribute("data-hw-plan-tone", tone);
     article.tabIndex = 0;
     let inner = "";
-    if (plan.badge) {
-      inner +=
-        '<p class="hw-hub-tier-plan__badge' +
-        (plan.video ? " hw-hub-tier-plan__badge--video" : "") +
-        (plan.id === "student-special" ? " hw-hub-tier-plan__badge--students" : "") +
-        '">' +
-        plan.badge +
-        "</p>";
+    if (tone === "current") {
+      inner += '<p class="hw-account-current-plan-tag">Current plan</p>';
     }
     inner += '<h3 class="course-card__title">' + plan.title + "</h3>";
-    inner += '<p class="hw-account-plan-desc">' + plan.tip + "</p>";
     inner +=
       '<div class="course-card__footer">' +
       '<span class="course-card__price">$' +
@@ -301,19 +283,6 @@
     article.innerHTML = inner;
     bindAccountPlanCard(article, plan);
     return article;
-  }
-
-  function wrapCurrentPlan(card) {
-    const wrap = document.createElement("div");
-    wrap.className = "hw-account-current-wrap";
-    wrap.setAttribute("data-hw-plan-tone", "current");
-    const tag = document.createElement("p");
-    tag.className = "hw-account-current-plan-tag";
-    tag.textContent = "Current plan";
-    wrap.appendChild(tag);
-    wrap.appendChild(card);
-    wrap.addEventListener("pointerdown", () => armAccountPlan(card));
-    return wrap;
   }
 
   function buildLessonsSlim() {
@@ -340,9 +309,7 @@
       return 0;
     });
     ordered.forEach((plan) => {
-      const card = buildAccountTierCard(plan);
-      if (plan.id === currentId) mount.appendChild(wrapCurrentPlan(card));
-      else mount.appendChild(card);
+      mount.appendChild(buildAccountTierCard(plan));
     });
     mount.appendChild(buildLessonsSlim());
     global.HwCheckout?.bindCheckoutControls?.(mount);
@@ -457,7 +424,7 @@
       "</div>" +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-display-name">Display Name <span class="hw-login-inlay__optional">(first name recommended)</span></label>' +
-      '<div class="hw-account-name-row">' +
+      '<div class="hw-account-name-bubble">' +
       '<input type="text" id="hw-account-display-name" name="displayName" maxlength="40" data-hw-account-edit readonly autocomplete="nickname" placeholder="Alex">' +
       '<span class="hw-account-name-hub" aria-hidden="true">\'s Hub</span>' +
       "</div>" +

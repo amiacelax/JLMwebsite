@@ -4221,11 +4221,14 @@ body.hw-role-student .subpage-back {
 
 .hw-hub-feedback-pill-wrap {
   grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
   margin-top: 0.35rem;
 }
 
 .hw-hub-feedback-pill {
-  width: 100%;
+  width: auto;
+  max-width: max-content;
   border-radius: 999px;
   font-weight: 600;
 }
