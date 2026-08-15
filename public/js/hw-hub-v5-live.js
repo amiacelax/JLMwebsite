@@ -1133,16 +1133,16 @@
 
     document.addEventListener("click", (e) => {
       const trigger = e.target.closest("[data-hw-tier-detail]");
+      if (!trigger) return;
       const sellup = document.getElementById("hw-v5-sellup");
       const noplanSellup = document.getElementById("hw-v5-noplan-sellup");
       const noHwSellup = document.getElementById("hw-v5-no-hw-sellup");
       const accountSellup = document.getElementById("hw-v5-account-sellup");
+      if (accountSellup?.contains(trigger)) return;
       if (
-        !trigger ||
-        (!sellup?.contains(trigger) &&
-          !noplanSellup?.contains(trigger) &&
-          !noHwSellup?.contains(trigger) &&
-          !accountSellup?.contains(trigger))
+        !sellup?.contains(trigger) &&
+        !noplanSellup?.contains(trigger) &&
+        !noHwSellup?.contains(trigger)
       ) {
         return;
       }

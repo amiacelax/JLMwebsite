@@ -132,6 +132,13 @@
       badge: "Video",
       video: true,
     },
+    {
+      id: "student-special",
+      title: "Student Special",
+      price: 10,
+      tip: "Four interactive assignments a month with written notes — for current students.",
+      badge: "Students",
+    },
   ];
 
   function localNotifyKey() {
@@ -155,15 +162,21 @@
     }
   }
 
+  function pickNotifyFlag(source, key, fallback) {
+    if (source && typeof source[key] === "boolean") return source[key];
+    return fallback;
+  }
+
   function getNotifyPrefs() {
     const s = session();
-    const fromSession = s?.notifyPrefs && typeof s.notifyPrefs === "object" ? s.notifyPrefs : {};
+    const fromSession = s?.notifyPrefs && typeof s.notifyPrefs === "object" ? s.notifyPrefs : null;
     const local = readLocalNotifyPrefs();
+    const hasLocal = local && Object.keys(local).length > 0;
     return {
-      discord: !!(fromSession.discord || local.discord),
-      sms: !!(fromSession.sms || local.sms),
-      email: !!(fromSession.email || local.email),
-      phonePing: !!(fromSession.phonePing || local.phonePing),
+      discord: pickNotifyFlag(fromSession, "discord", pickNotifyFlag(hasLocal ? local : null, "discord", true)),
+      email: pickNotifyFlag(fromSession, "email", pickNotifyFlag(hasLocal ? local : null, "email", false)),
+      sms: false,
+      phonePing: false,
     };
   }
 
@@ -186,9 +199,9 @@
   function paintNotifySwitches() {
     const prefs = getNotifyPrefs();
     setSwitch("hw-account-notify-discord", prefs.discord);
-    setSwitch("hw-account-notify-sms", prefs.sms);
     setSwitch("hw-account-notify-email", prefs.email);
-    setSwitch("hw-account-notify-phonePing", prefs.phonePing);
+    const need = document.getElementById("hw-account-discord-need-id");
+    if (need) need.hidden = !(prefs.discord && !discordIdValue());
   }
 
   function persistNotifyPrefs(prefs) {
@@ -208,15 +221,8 @@
   }
 
   function toggleNotify(key) {
+    if (key !== "discord" && key !== "email") return;
     const prefs = getNotifyPrefs();
-    if (key === "discord" && !prefs.discord && !discordIdValue()) {
-      setSwitch("hw-account-notify-discord", false);
-      const need = document.getElementById("hw-account-discord-need-id");
-      if (need) need.hidden = false;
-      return;
-    }
-    const need = document.getElementById("hw-account-discord-need-id");
-    if (need) need.hidden = true;
     prefs[key] = !prefs[key];
     persistNotifyPrefs(prefs);
     paintNotifySwitches();
@@ -247,82 +253,97 @@
     return planRank(planId) < planRank(current) ? "lesser" : "upgrade";
   }
 
+  function armAccountPlan(card) {
+    const mount = document.getElementById("hw-v5-account-sellup");
+    mount?.querySelectorAll(".is-armed").forEach((el) => {
+      if (el !== card) el.classList.remove("is-armed");
+    });
+    card.classList.add("is-armed");
+  }
+
+  function bindAccountPlanCard(article, plan) {
+    article.addEventListener("pointerdown", () => armAccountPlan(article));
+    const tone = article.getAttribute("data-hw-plan-tone");
+    if (tone === "upgrade") {
+      article.setAttribute("data-hw-checkout", plan.id);
+      article.classList.add("hw-hub-v5-sellup-card--clickable");
+    }
+  }
+
   function buildAccountTierCard(plan) {
+    const tone = toneForPlan(plan.id);
     const article = document.createElement("article");
     article.className =
       "course-card course-card--locked hw-hub-tier-plan" +
       (plan.id === "basic" ? " hw-hub-tier-plan--featured" : "") +
       (plan.video ? " hw-hub-tier-plan--video" : "");
     article.setAttribute("data-hw-tier-plan", plan.id);
-    article.setAttribute("data-hw-tier-detail", plan.id);
-    article.setAttribute("data-hw-plan-tone", toneForPlan(plan.id));
+    article.setAttribute("data-hw-plan-tone", tone);
     article.tabIndex = 0;
     let inner = "";
     if (plan.badge) {
       inner +=
         '<p class="hw-hub-tier-plan__badge' +
         (plan.video ? " hw-hub-tier-plan__badge--video" : "") +
+        (plan.id === "student-special" ? " hw-hub-tier-plan__badge--students" : "") +
         '">' +
         plan.badge +
         "</p>";
     }
     inner += '<h3 class="course-card__title">' + plan.title + "</h3>";
-    inner += '<p class="hw-hub-tier-tip" role="tooltip">' + plan.tip + "</p>";
+    inner += '<p class="hw-account-plan-desc">' + plan.tip + "</p>";
     inner +=
       '<div class="course-card__footer">' +
-      '<button type="button" class="course-card__status" data-hw-tier-detail="' +
-      plan.id +
-      '" aria-label="View ' +
-      plan.title +
-      ' plan details">' +
-      '<span class="course-card__status-text course-card__status-text--locked">Details</span>' +
-      '<span class="course-card__status-text course-card__status-text--unlock">Unlock?</span>' +
-      "</button>" +
       '<span class="course-card__price">$' +
       plan.price +
       '<span class="course-card__price-suffix">/mo</span></span>' +
       "</div>";
     article.innerHTML = inner;
+    bindAccountPlanCard(article, plan);
     return article;
   }
 
-  function buildStudentSpecialSlim() {
-    const article = document.createElement("article");
-    article.className =
-      "hw-student-special hw-account-special-slim hw-hub-v5-sellup-card--clickable";
-    article.setAttribute("data-hw-plan-tone", toneForPlan("student-special"));
-    article.tabIndex = 0;
-    article.setAttribute("role", "link");
-    article.setAttribute("aria-label", "Student Special ten dollars per month");
-    article.innerHTML =
-      '<p class="hw-student-special__eyebrow">Already take lessons with JD?</p>' +
-      '<h3 class="hw-student-special__title">Student Special <span class="hw-student-special__price">$10/mo</span></h3>' +
-      '<p class="hw-student-special__desc">Four interactive assignments a month with written notes — the slim plan for current students.</p>';
-    article.addEventListener("click", () => {
-      global.HwCheckout?.startCheckout?.("student-special", { forcePaypal: true });
-    });
-    return article;
+  function wrapCurrentPlan(card) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-account-current-wrap";
+    wrap.setAttribute("data-hw-plan-tone", "current");
+    const tag = document.createElement("p");
+    tag.className = "hw-account-current-plan-tag";
+    tag.textContent = "Current plan";
+    wrap.appendChild(tag);
+    wrap.appendChild(card);
+    wrap.addEventListener("pointerdown", () => armAccountPlan(card));
+    return wrap;
   }
 
   function buildLessonsSlim() {
     const article = document.createElement("article");
-    article.className = "hw-account-lessons-slim";
+    article.className = "hw-student-special hw-account-lessons-slim";
     article.setAttribute("data-hw-plan-tone", "lessons");
     article.innerHTML =
-      '<h3 class="course-card__title">Private lessons</h3>' +
-      '<p class="course-card__desc">Live coaching with JD — pairs with Homework Hub or stands on its own.</p>' +
-      '<a class="btn btn--primary btn--sm" href="/#contact" data-service="Private lessons">Ask about lessons</a>';
+      '<p class="hw-student-special__eyebrow">Live coaching with JD</p>' +
+      '<h3 class="hw-student-special__title">Private lessons</h3>' +
+      '<p class="hw-student-special__desc">Pairs with Homework Hub or stands on its own.</p>' +
+      '<a class="btn btn--primary btn--sm hw-student-special__link" href="/#contact" data-service="Private lessons">Ask about lessons</a>';
+    article.addEventListener("pointerdown", () => armAccountPlan(article));
     return article;
   }
 
   function paintAccountPlans() {
     const mount = document.getElementById("hw-v5-account-sellup");
-    const name = document.getElementById("hw-account-current-plan-name");
-    if (name) name.textContent = currentPlanName();
     if (!mount) return;
     mount.replaceChildren();
-    PLAN_CARDS.forEach((plan) => mount.appendChild(buildAccountTierCard(plan)));
-    mount.appendChild(buildStudentSpecialSlim());
+    const currentId = currentPlanId();
+    const ordered = PLAN_CARDS.slice().sort((a, b) => {
+      if (a.id === currentId) return -1;
+      if (b.id === currentId) return 1;
+      return 0;
+    });
+    ordered.forEach((plan) => {
+      const card = buildAccountTierCard(plan);
+      if (plan.id === currentId) mount.appendChild(wrapCurrentPlan(card));
+      else mount.appendChild(card);
+    });
     mount.appendChild(buildLessonsSlim());
     global.HwCheckout?.bindCheckoutControls?.(mount);
   }
@@ -414,21 +435,7 @@
     void loadSelfExtras();
   }
 
-  function currentPlanName() {
-    const s = session();
-    if (!s) return "Not signed in";
-    if (s.role === "teacher") return "Teacher";
-    const tier = s.tier || "pending";
-    if (s.accountLabel === "current_student" && (tier === "pending" || !hasPaidPlan())) {
-      return "Lessons — no weekly homework yet";
-    }
-    if (tier === "pending" || !hasPaidPlan()) return "No plan yet";
-    return String(global.HwAuth?.TIERS?.[tier]?.name || "Your plan").replace(/\s+Tier$/i, "");
-  }
-
   function fillPlanCopy() {
-    const name = document.getElementById("hw-account-current-plan-name");
-    if (name) name.textContent = currentPlanName();
     paintAccountPlans();
   }
 
@@ -527,10 +534,6 @@
   function subscriptionMarkup() {
     return (
       '<article class="hw-hub-worksheet-card hw-account-card hw-account-card--plans" id="hw-account-subscription-card">' +
-      '<p class="hw-account-current-plan" id="hw-account-current-plan">' +
-      '<span class="hw-account-current-plan__label">Current plan</span>' +
-      '<strong class="hw-account-current-plan__name" id="hw-account-current-plan-name">—</strong>' +
-      "</p>" +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-account-sellup-frame">' +
       '<div class="hw-hub-v5-sellup hw-account-plans" id="hw-v5-account-sellup" aria-label="Homework Hub plans"></div>' +
       "</div>" +
@@ -563,20 +566,10 @@
   function notificationsMarkup() {
     return (
       '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-notifications-card">' +
-      '<h2 class="hw-account-card__title">Notifications</h2>' +
+      '<p class="hw-account-card__lead">Receive notifications regarding Homework updates</p>' +
       notifySwitchRow("hw-account-notify-discord", "Discord") +
       '<p class="hw-account-notify-error" id="hw-account-discord-need-id" hidden>Enter your Discord ID under Profile first.</p>' +
-      notifySwitchRow(
-        "hw-account-notify-sms",
-        "SMS",
-        "SMS isn’t free to send. Discord and email are — we’ll wire texts later."
-      ) +
       notifySwitchRow("hw-account-notify-email", "Email") +
-      notifySwitchRow(
-        "hw-account-notify-phonePing",
-        "Phone ping",
-        "This is for when the hub is a phone app."
-      ) +
       "</article>"
     );
   }

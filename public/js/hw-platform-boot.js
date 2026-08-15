@@ -33,7 +33,7 @@
     lookup: "24",
     checkout: "20260815-paypal-cancel",
     sachiko: "20260694",
-    hubV5: "154",
+    hubV5: "155",
     platform: "20260814-stuspec2",
     hubV6: "29",
     feedback: "3",

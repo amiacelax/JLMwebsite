@@ -494,7 +494,7 @@ export type NotifyPrefs = {
 };
 
 const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
-  discord: false,
+  discord: true,
   sms: false,
   email: false,
   phonePing: false,
@@ -503,7 +503,7 @@ const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
 export function normalizeNotifyPrefs(raw: unknown): NotifyPrefs {
   const data = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return {
-    discord: data.discord === true,
+    discord: data.discord !== false,
     sms: data.sms === true,
     email: data.email === true,
     phonePing: data.phonePing === true,

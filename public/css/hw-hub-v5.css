@@ -3817,7 +3817,7 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   max-width: 52rem;
   margin: 0 auto;
   padding: 1.5rem 1.35rem 1.75rem;
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-card:not(.is-editing) #hw-account-login-id,
@@ -3827,7 +3827,7 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-login-field {
-  text-align: center;
+  text-align: left;
   overflow: visible;
 }
 
@@ -3873,7 +3873,7 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 .hw-account-name-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.35rem;
 }
 
@@ -3987,22 +3987,22 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-card__title {
-  margin: 0 auto 0.85rem;
+  margin: 0 0 0.85rem;
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-card__sub {
   margin: 1.35rem 0 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-card__lead {
-  margin: 0 auto 1rem;
+  margin: 0 0 1rem;
   color: var(--color-text-muted);
   line-height: 1.5;
 }
@@ -4010,15 +4010,15 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 .hw-account-form {
   max-width: 28rem;
   margin: 0 auto;
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-form .hw-login-inlay__field {
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-form .hw-login-inlay__field label {
-  text-align: center;
+  text-align: left;
 }
 
 .hw-account-form--danger {
@@ -4036,8 +4036,8 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-card__legal {
-  margin: 1.5rem auto 0;
-  text-align: center;
+  margin: 1.5rem 0 0;
+  text-align: left;
 }
 
 .hw-account-help {
@@ -4066,31 +4066,29 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   outline: none;
 }
 
-.hw-account-current-plan {
-  display: inline-flex;
+.hw-account-current-wrap {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.55rem 0.55rem 0.7rem;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  margin: 0 auto 1.15rem;
-  padding: 0.55rem 1.35rem 0.7rem;
-  border-radius: 1rem;
-  border: 2px solid color-mix(in srgb, var(--color-gold, #d4a853) 70%, var(--color-border));
-  background: color-mix(in srgb, var(--color-gold, #d4a853) 18%, var(--color-bg-card));
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gold, #d4a853) 18%, transparent);
+  gap: 0.45rem;
+  border-radius: 1.15rem;
+  border: 2px solid color-mix(in srgb, var(--color-gold, #d4a853) 75%, var(--color-border));
+  background: color-mix(in srgb, var(--color-gold, #d4a853) 14%, var(--color-bg-card));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gold, #d4a853) 16%, transparent);
 }
 
-.hw-account-current-plan__label {
+.hw-account-current-plan-tag {
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-gold, #d4a853);
-}
-
-.hw-account-current-plan__name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--color-text);
 }
 
 .hw-account-card--plans {
@@ -4106,11 +4104,25 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 
 .hw-account-plans .hw-hub-tier-plan,
 .hw-account-plans .hw-student-special,
-.hw-account-plans .hw-account-lessons-slim {
+.hw-account-plans .hw-account-lessons-slim,
+.hw-account-plans .hw-account-current-wrap {
   animation: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.hw-account-plans .hw-student-special,
+.hw-account-plans .hw-hub-tier-tip {
+  display: none !important;
+}
+
+.hw-account-plan-desc {
+  margin: 0 0 0.65rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .hw-account-plans .hw-account-lessons-slim {
   flex: 1 1 100%;
   width: 100%;
@@ -4118,56 +4130,45 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   margin: 0;
 }
 
-.hw-account-lessons-slim {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem 1rem;
-  padding: 0.9rem 1.15rem;
-  text-align: left;
-  border-radius: var(--radius-xl, 1rem);
-  border: 2px solid color-mix(in srgb, var(--color-green) 14%, var(--color-border));
-  background: var(--color-bg-card);
+.hw-hub-tier-plan__badge--students {
+  color: var(--color-green);
+  background: var(--color-green-soft, color-mix(in srgb, var(--color-green) 18%, transparent));
 }
 
-.hw-account-lessons-slim .course-card__title {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.hw-account-lessons-slim .course-card__desc {
-  flex: 1 1 12rem;
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-
-.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"] {
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"],
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"].is-armed,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:hover,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:focus-within {
   border-color: color-mix(in srgb, var(--color-gold, #d4a853) 75%, var(--color-border));
   background: color-mix(in srgb, var(--color-gold, #d4a853) 16%, var(--color-bg-card));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-gold, #d4a853) 28%, transparent);
 }
 
-.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:hover,
-.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:focus-within {
-  border-color: var(--color-gold, #d4a853);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-gold, #d4a853) 32%, transparent);
-}
-
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lesser"].is-armed,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lesser"]:hover,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lesser"]:focus-within {
   border-color: var(--color-accent, #c0392b);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--color-accent, #c0392b) 28%, transparent);
 }
 
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="upgrade"].is-armed,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="upgrade"]:hover,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="upgrade"]:focus-within,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lessons"].is-armed,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lessons"]:hover,
 .hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lessons"]:focus-within {
   border-color: var(--color-green);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--color-green) 28%, transparent);
+}
+
+.hw-account-plans.hw-hub-v5-sellup .hw-account-current-wrap .hw-hub-tier-plan {
+  flex: 0 1 14rem;
+  width: 100%;
+  max-width: 14rem;
+  margin: 0;
+  border-color: var(--color-border);
+  background: var(--color-bg-card);
+  box-shadow: none;
 }
 
 .hw-account-switch-row {
@@ -4176,7 +4177,7 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   align-items: center;
   gap: 0.35rem 1rem;
   max-width: 22rem;
-  margin: 0 auto 0.85rem;
+  margin: 0 0 0.85rem;
   text-align: left;
 }
 
@@ -4231,10 +4232,10 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 
 .hw-account-notify-error {
   max-width: 22rem;
-  margin: -0.35rem auto 0.95rem;
+  margin: -0.35rem 0 0.95rem;
   color: var(--color-accent, #c0392b);
   font-weight: 600;
   font-size: 0.9rem;
   line-height: 1.4;
-  text-align: center;
+  text-align: left;
 }
