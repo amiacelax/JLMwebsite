@@ -42,6 +42,7 @@ const studentLessonPlaylistKey = (username: string) => `student:${username}:less
 const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
 const studentAccountSettingsKey = (username: string) => `student:${username}:account-settings`;
 const studentDiscordKey = (username: string) => `student:${username}:discord-user-id`;
+const studentNotifyPrefsKey = (username: string) => `student:${username}:notify-prefs`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
   `student:${username}:playlist-latest-v3:${playlistId}`;
 
@@ -474,14 +475,65 @@ export async function getStudentDiscordUserId(
   return String((await kv.get(studentDiscordKey(username.toLowerCase()))) || "").trim();
 }
 
-async function saveStudentDiscordUserId(
+export async function saveStudentDiscordUserId(
   kv: KVNamespace,
   student: string,
   raw: string
 ): Promise<void> {
   const id = normalizeDiscordUserIdInput(raw);
-  if (id) await kv.put(studentDiscordKey(student), id);
-  else await kv.delete(studentDiscordKey(student));
+  const key = studentDiscordKey(student.toLowerCase());
+  if (id) await kv.put(key, id);
+  else await kv.delete(key);
+}
+
+export type NotifyPrefs = {
+  discord: boolean;
+  sms: boolean;
+  email: boolean;
+  phonePing: boolean;
+};
+
+const DEFAULT_NOTIFY_PREFS: NotifyPrefs = {
+  discord: false,
+  sms: false,
+  email: false,
+  phonePing: false,
+};
+
+export function normalizeNotifyPrefs(raw: unknown): NotifyPrefs {
+  const data = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    discord: data.discord === true,
+    sms: data.sms === true,
+    email: data.email === true,
+    phonePing: data.phonePing === true,
+  };
+}
+
+export async function getStudentNotifyPrefs(
+  kv: KVNamespace,
+  username: string
+): Promise<NotifyPrefs> {
+  const raw = await kv.get(studentNotifyPrefsKey(username.toLowerCase()));
+  if (!raw) return { ...DEFAULT_NOTIFY_PREFS };
+  try {
+    return normalizeNotifyPrefs(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_NOTIFY_PREFS };
+  }
+}
+
+export async function saveStudentNotifyPrefs(
+  kv: KVNamespace,
+  username: string,
+  prefs: NotifyPrefs
+): Promise<NotifyPrefs> {
+  const next = normalizeNotifyPrefs(prefs);
+  await kv.put(
+    studentNotifyPrefsKey(username.toLowerCase()),
+    JSON.stringify(next)
+  );
+  return next;
 }
 
 export async function publishToStudentHub(

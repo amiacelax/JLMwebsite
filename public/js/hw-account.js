@@ -3,7 +3,6 @@
  * On the hub this fills the worksheet space; account.html redirects logged-in users there.
  */
 (function (global) {
-  const PROMO_SUBSCRIBED_KEY = "jlm-promo-subscribed";
   const PLATFORM_PATH = "/homework/platform.html";
   const ACCOUNT_TABS = ["profile", "subscription", "notifications"];
   let bound = false;
@@ -111,6 +110,249 @@
     return Boolean(session()?.paypalBilling);
   }
 
+  const PLAN_CARDS = [
+    {
+      id: "basic",
+      title: "Basic",
+      price: 5,
+      tip: "One HW assignment a month — so anyone can join in — with written notes when you send it.",
+    },
+    {
+      id: "premium",
+      title: "Premium",
+      price: 20,
+      tip: "Four HW assignments a month — shaped around your stuck spots, with careful written notes from JD.",
+      badge: "Popular",
+    },
+    {
+      id: "ultra",
+      title: "Ultra",
+      price: 49,
+      tip: "Four HW assignments a month, plus a personal video from JD on each one so more of it can stick.",
+      badge: "Video",
+      video: true,
+    },
+  ];
+
+  function localNotifyKey() {
+    const s = session();
+    return "jlm-hw-notify-prefs:" + String(s?.username || "guest");
+  }
+
+  function readLocalNotifyPrefs() {
+    try {
+      return JSON.parse(localStorage.getItem(localNotifyKey()) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function writeLocalNotifyPrefs(prefs) {
+    try {
+      localStorage.setItem(localNotifyKey(), JSON.stringify(prefs));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getNotifyPrefs() {
+    const s = session();
+    const fromSession = s?.notifyPrefs && typeof s.notifyPrefs === "object" ? s.notifyPrefs : {};
+    const local = readLocalNotifyPrefs();
+    return {
+      discord: !!(fromSession.discord || local.discord),
+      sms: !!(fromSession.sms || local.sms),
+      email: !!(fromSession.email || local.email),
+      phonePing: !!(fromSession.phonePing || local.phonePing),
+    };
+  }
+
+  function discordIdValue() {
+    const el = document.getElementById("hw-account-discord-id");
+    const typed = String(el?.value || "").trim();
+    if (typed) return typed;
+    return String(session()?.discordUserId || "").trim();
+  }
+
+  function setSwitch(id, on) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.setAttribute("aria-checked", on ? "true" : "false");
+    btn.classList.toggle("is-on", !!on);
+    const note = document.getElementById(id + "-note");
+    if (note) note.hidden = !on;
+  }
+
+  function paintNotifySwitches() {
+    const prefs = getNotifyPrefs();
+    setSwitch("hw-account-notify-discord", prefs.discord);
+    setSwitch("hw-account-notify-sms", prefs.sms);
+    setSwitch("hw-account-notify-email", prefs.email);
+    setSwitch("hw-account-notify-phonePing", prefs.phonePing);
+  }
+
+  function persistNotifyPrefs(prefs) {
+    writeLocalNotifyPrefs(prefs);
+    const s = session();
+    if (s) {
+      s.notifyPrefs = prefs;
+      const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+      global.HwAuth?.persistSession?.(s, remember);
+    }
+    if (!s?.username) return;
+    void fetch("/api/auth/self-extras", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: s.username, notifyPrefs: prefs }),
+    }).catch(() => {});
+  }
+
+  function toggleNotify(key) {
+    const prefs = getNotifyPrefs();
+    if (key === "discord" && !prefs.discord && !discordIdValue()) {
+      setSwitch("hw-account-notify-discord", false);
+      const need = document.getElementById("hw-account-discord-need-id");
+      if (need) need.hidden = false;
+      return;
+    }
+    const need = document.getElementById("hw-account-discord-need-id");
+    if (need) need.hidden = true;
+    prefs[key] = !prefs[key];
+    persistNotifyPrefs(prefs);
+    paintNotifySwitches();
+  }
+
+  function planRank(planId) {
+    if (planId === "ultra") return 3;
+    if (planId === "premium" || planId === "student-special") return 2;
+    if (planId === "basic") return 1;
+    return 0;
+  }
+
+  function currentPlanId() {
+    const s = session();
+    if (!s || s.role === "teacher" || !hasPaidPlan()) return "";
+    if (s.tier === "tier1") return "basic";
+    if (s.tier === "tier2") return "premium";
+    if (s.tier === "tier3") return "ultra";
+    if (s.tier === "student_special") return "student-special";
+    return "";
+  }
+
+  function toneForPlan(planId) {
+    if (planId === "lessons") return "lessons";
+    const current = currentPlanId();
+    if (current && planId === current) return "current";
+    if (!current) return "upgrade";
+    return planRank(planId) < planRank(current) ? "lesser" : "upgrade";
+  }
+
+  function buildAccountTierCard(plan) {
+    const article = document.createElement("article");
+    article.className =
+      "course-card course-card--locked hw-hub-tier-plan" +
+      (plan.id === "basic" ? " hw-hub-tier-plan--featured" : "") +
+      (plan.video ? " hw-hub-tier-plan--video" : "");
+    article.setAttribute("data-hw-tier-plan", plan.id);
+    article.setAttribute("data-hw-tier-detail", plan.id);
+    article.setAttribute("data-hw-plan-tone", toneForPlan(plan.id));
+    article.tabIndex = 0;
+    let inner = "";
+    if (plan.badge) {
+      inner +=
+        '<p class="hw-hub-tier-plan__badge' +
+        (plan.video ? " hw-hub-tier-plan__badge--video" : "") +
+        '">' +
+        plan.badge +
+        "</p>";
+    }
+    inner += '<h3 class="course-card__title">' + plan.title + "</h3>";
+    inner += '<p class="hw-hub-tier-tip" role="tooltip">' + plan.tip + "</p>";
+    inner +=
+      '<div class="course-card__footer">' +
+      '<button type="button" class="course-card__status" data-hw-tier-detail="' +
+      plan.id +
+      '" aria-label="View ' +
+      plan.title +
+      ' plan details">' +
+      '<span class="course-card__status-text course-card__status-text--locked">Details</span>' +
+      '<span class="course-card__status-text course-card__status-text--unlock">Unlock?</span>' +
+      "</button>" +
+      '<span class="course-card__price">$' +
+      plan.price +
+      '<span class="course-card__price-suffix">/mo</span></span>' +
+      "</div>";
+    article.innerHTML = inner;
+    return article;
+  }
+
+  function buildStudentSpecialSlim() {
+    const article = document.createElement("article");
+    article.className =
+      "hw-student-special hw-account-special-slim hw-hub-v5-sellup-card--clickable";
+    article.setAttribute("data-hw-plan-tone", toneForPlan("student-special"));
+    article.tabIndex = 0;
+    article.setAttribute("role", "link");
+    article.setAttribute("aria-label", "Student Special ten dollars per month");
+    article.innerHTML =
+      '<p class="hw-student-special__eyebrow">Already take lessons with JD?</p>' +
+      '<h3 class="hw-student-special__title">Student Special <span class="hw-student-special__price">$10/mo</span></h3>' +
+      '<p class="hw-student-special__desc">Four interactive assignments a month with written notes — the slim plan for current students.</p>';
+    article.addEventListener("click", () => {
+      global.HwCheckout?.startCheckout?.("student-special", { forcePaypal: true });
+    });
+    return article;
+  }
+
+  function buildLessonsSlim() {
+    const article = document.createElement("article");
+    article.className = "hw-account-lessons-slim";
+    article.setAttribute("data-hw-plan-tone", "lessons");
+    article.innerHTML =
+      '<h3 class="course-card__title">Private lessons</h3>' +
+      '<p class="course-card__desc">Live coaching with JD — pairs with Homework Hub or stands on its own.</p>' +
+      '<a class="btn btn--primary btn--sm" href="/#contact" data-service="Private lessons">Ask about lessons</a>';
+    return article;
+  }
+
+  function paintAccountPlans() {
+    const mount = document.getElementById("hw-v5-account-sellup");
+    const name = document.getElementById("hw-account-current-plan-name");
+    if (name) name.textContent = currentPlanName();
+    if (!mount) return;
+    mount.replaceChildren();
+    PLAN_CARDS.forEach((plan) => mount.appendChild(buildAccountTierCard(plan)));
+    mount.appendChild(buildStudentSpecialSlim());
+    mount.appendChild(buildLessonsSlim());
+    global.HwCheckout?.bindCheckoutControls?.(mount);
+  }
+
+  async function loadSelfExtras() {
+    const s = session();
+    if (!s?.username || s.role === "teacher") return;
+    try {
+      const res = await fetch("/api/auth/self-extras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: s.username }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const discordEl = document.getElementById("hw-account-discord-id");
+      if (discordEl && data.discordUserId) discordEl.value = String(data.discordUserId);
+      if (data.discordUserId) s.discordUserId = data.discordUserId;
+      if (data.notifyPrefs) {
+        s.notifyPrefs = data.notifyPrefs;
+        writeLocalNotifyPrefs(data.notifyPrefs);
+      }
+      const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+      global.HwAuth?.persistSession?.(s, remember);
+      paintNotifySwitches();
+    } catch {
+      /* local prefs still apply */
+    }
+  }
+
   function setProfileEditing(on) {
     const panel = document.getElementById("hw-account-panel");
     const saveBar = document.getElementById("hw-account-save-bar");
@@ -155,53 +397,39 @@
     const loginEl = document.getElementById("hw-account-login-id");
     const emailEl = document.getElementById("hw-account-email-input");
     const nameInput = document.getElementById("hw-account-display-name");
+    const discordEl = document.getElementById("hw-account-discord-id");
     if (loginEl) loginEl.value = loginIdValue(s);
     if (emailEl) emailEl.value = String(s.email || "").trim();
     if (nameInput) {
       nameInput.value = stripHubSuffix(s.displayName || s.username || "");
     }
+    if (discordEl) discordEl.value = String(s.discordUserId || "").trim();
     setProfileEditing(false);
     const oldPw = document.getElementById("hw-account-old-password");
     const newPw = document.getElementById("hw-account-new-password");
     if (oldPw) oldPw.value = "";
     if (newPw) newPw.value = "";
+    paintAccountPlans();
+    paintNotifySwitches();
+    void loadSelfExtras();
   }
 
-  function currentPlanCopy() {
+  function currentPlanName() {
     const s = session();
-    if (!s) return "Log in to see your plan.";
-    if (s.role === "teacher") {
-      return "Teacher account — no Homework Hub plan.";
-    }
+    if (!s) return "Not signed in";
+    if (s.role === "teacher") return "Teacher";
     const tier = s.tier || "pending";
-    const label = s.accountLabel || "homework_only";
-    if (label === "current_student" && tier === "pending") {
-      return "Lessons student — no weekly homework plan yet.";
+    if (s.accountLabel === "current_student" && (tier === "pending" || !hasPaidPlan())) {
+      return "Lessons — no weekly homework yet";
     }
-    if (tier === "pending" || !global.HwAuth?.hasActiveSubscription?.(s)) {
-      return "No plan yet — pick a Homework Hub plan below.";
-    }
-    const name = String(global.HwAuth?.TIERS?.[tier]?.name || "Your plan").replace(
-      /\s+Tier$/i,
-      ""
-    );
-    return "You’re on " + name + ".";
+    if (tier === "pending" || !hasPaidPlan()) return "No plan yet";
+    return String(global.HwAuth?.TIERS?.[tier]?.name || "Your plan").replace(/\s+Tier$/i, "");
   }
 
-  function promoSubscribed() {
-    try {
-      return localStorage.getItem(PROMO_SUBSCRIBED_KEY) === "1";
-    } catch {
-      return false;
-    }
-  }
-
-  function markPromoSubscribed() {
-    try {
-      localStorage.setItem(PROMO_SUBSCRIBED_KEY, "1");
-    } catch {
-      /* ignore */
-    }
+  function fillPlanCopy() {
+    const name = document.getElementById("hw-account-current-plan-name");
+    if (name) name.textContent = currentPlanName();
+    paintAccountPlans();
   }
 
   function profileMarkup() {
@@ -209,14 +437,16 @@
       '<svg class="hw-account-edit__icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     return (
       '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-panel">' +
+      '<form id="hw-account-profile-form" class="hw-account-form">' +
+      '<h2 class="hw-account-card__sub" style="margin-top:0">General Info</h2>' +
+      '<div class="hw-login-inlay__field hw-account-login-field">' +
+      '<label for="hw-account-login-id">Login ID</label>' +
+      '<div class="hw-account-login-bubble">' +
+      '<input type="text" id="hw-account-login-id" name="loginId" readonly autocomplete="username" placeholder="you@email.com">' +
       '<button type="button" class="hw-account-edit" id="hw-account-edit" aria-pressed="false" aria-label="Edit profile" title="Edit">' +
       pencil +
       "</button>" +
-      '<form id="hw-account-profile-form" class="hw-account-form">' +
-      '<h2 class="hw-account-card__sub" style="margin-top:0">General Info</h2>' +
-      '<div class="hw-login-inlay__field">' +
-      '<label for="hw-account-login-id">Login ID</label>' +
-      '<input type="text" id="hw-account-login-id" name="loginId" readonly autocomplete="username" placeholder="you@email.com">' +
+      "</div>" +
       "</div>" +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-display-name">Display Name <span class="hw-login-inlay__optional">(first name recommended)</span></label>' +
@@ -229,14 +459,20 @@
       '<label for="hw-account-email-input">Email</label>' +
       '<input type="email" id="hw-account-email-input" name="email" data-hw-account-edit readonly autocomplete="email" placeholder="you@email.com">' +
       "</div>" +
+      '<div class="hw-login-inlay__field">' +
+      '<label for="hw-account-discord-id">Discord ID ' +
+      '<button type="button" class="hw-account-help" id="hw-account-discord-help" title="What\'s my Discord ID?" aria-label="What\'s my Discord ID?">?</button>' +
+      "</label>" +
+      '<input type="text" id="hw-account-discord-id" name="discordUserId" data-hw-account-edit readonly inputmode="numeric" autocomplete="off" placeholder="numbers only">' +
+      "</div>" +
       '<h2 class="hw-account-card__sub">Password</h2>' +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-old-password">Current</label>' +
-      '<input type="password" id="hw-account-old-password" data-hw-account-edit readonly autocomplete="current-password">' +
+      '<input type="password" id="hw-account-old-password" data-hw-account-edit readonly autocomplete="current-password" placeholder="••••••••">' +
       "</div>" +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-new-password">New</label>' +
-      '<input type="password" id="hw-account-new-password" data-hw-account-edit readonly minlength="6" autocomplete="new-password">' +
+      '<input type="password" id="hw-account-new-password" data-hw-account-edit readonly minlength="6" autocomplete="new-password" placeholder="••••••••">' +
       "</div>" +
       '<p class="hw-login-inlay__error" id="hw-account-save-status" hidden role="status"></p>' +
       '<div class="hw-account-save-bar" id="hw-account-save-bar" aria-hidden="true">' +
@@ -248,6 +484,17 @@
       "</div>" +
       '<p class="hw-login-inlay__note hw-account-card__legal">' +
       '<a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p>' +
+      '<div class="hw-account-delete-dialog" id="hw-account-discord-help-dialog" hidden>' +
+      '<div class="hw-account-delete-dialog__backdrop" data-hw-account-discord-help-close></div>' +
+      '<div class="hw-account-delete-dialog__box" role="dialog" aria-modal="true" aria-labelledby="hw-account-discord-help-title">' +
+      '<h3 class="hw-account-delete-dialog__title" id="hw-account-discord-help-title">What\'s my Discord ID?</h3>' +
+      '<p class="hw-account-delete-dialog__body">In Discord: User Settings → Advanced → turn on Developer Mode. Then right-click your name and choose Copy User ID.</p>' +
+      '<p class="hw-account-delete-dialog__body"><a href="https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID" target="_blank" rel="noopener noreferrer">Open Discord’s guide</a></p>' +
+      '<div class="hw-account-delete-dialog__actions">' +
+      '<button type="button" class="btn btn--ghost" data-hw-account-discord-help-close>Close</button>' +
+      "</div>" +
+      "</div>" +
+      "</div>" +
       '<div class="hw-account-delete-dialog" id="hw-account-delete-dialog" hidden>' +
       '<div class="hw-account-delete-dialog__backdrop" data-hw-account-delete-close></div>' +
       '<div class="hw-account-delete-dialog__box" role="dialog" aria-modal="true" aria-labelledby="hw-account-delete-title">' +
@@ -279,39 +526,59 @@
 
   function subscriptionMarkup() {
     return (
-      '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-subscription-card">' +
-      '<h2 class="hw-account-card__title">Subscription</h2>' +
-      '<p class="hw-account-card__lead" id="hw-account-plan-copy"></p>' +
-      '<p class="hw-hub-v5-sellup-caption" id="hw-v5-account-sellup-caption" hidden></p>' +
+      '<article class="hw-hub-worksheet-card hw-account-card hw-account-card--plans" id="hw-account-subscription-card">' +
+      '<p class="hw-account-current-plan" id="hw-account-current-plan">' +
+      '<span class="hw-account-current-plan__label">Current plan</span>' +
+      '<strong class="hw-account-current-plan__name" id="hw-account-current-plan-name">—</strong>' +
+      "</p>" +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-account-sellup-frame">' +
-      '<div class="hw-hub-v5-sellup" id="hw-v5-account-sellup" aria-label="Homework Hub plans"></div>' +
+      '<div class="hw-hub-v5-sellup hw-account-plans" id="hw-v5-account-sellup" aria-label="Homework Hub plans"></div>' +
       "</div>" +
-      '<p class="hw-login-inlay__note" id="hw-account-plan-empty" hidden>No plan changes here for this account.</p>' +
       "</article>"
+    );
+  }
+
+  function notifySwitchRow(id, label, note) {
+    return (
+      '<div class="hw-account-switch-row">' +
+      '<span class="hw-account-switch-row__label">' +
+      label +
+      "</span>" +
+      '<button type="button" class="hw-account-switch" id="' +
+      id +
+      '" role="switch" aria-checked="false" data-hw-notify="' +
+      id.replace("hw-account-notify-", "") +
+      '"><span class="hw-account-switch__knob"></span></button>' +
+      (note
+        ? '<p class="hw-account-switch-row__note" id="' +
+          id +
+          '-note" hidden>' +
+          note +
+          "</p>"
+        : "") +
+      "</div>"
     );
   }
 
   function notificationsMarkup() {
-    const joined = promoSubscribed();
     return (
       '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-notifications-card">' +
       '<h2 class="hw-account-card__title">Notifications</h2>' +
-      '<p class="hw-account-card__lead">Homework and feedback alerts go to JD on Discord for now. Email or text alerts for you may come later.</p>' +
-      '<form id="hw-account-promo-form" class="hw-login-inlay__form hw-account-form">' +
-      '<h3 class="hw-account-card__sub">Email list</h3>' +
-      '<p class="hw-login-inlay__note">Deals and new features — a few emails a year, only when there’s something worth sharing.</p>' +
-      (joined
-        ? '<p class="hw-login-inlay__note" id="hw-account-promo-status" role="status">You’re on the email list.</p>'
-        : '<button type="submit" class="hw-login-inlay__submit" id="hw-account-promo-submit">Join the email list</button>' +
-          '<p class="hw-login-inlay__error" id="hw-account-promo-status" hidden role="status"></p>') +
-      "</form>" +
+      notifySwitchRow("hw-account-notify-discord", "Discord") +
+      '<p class="hw-account-notify-error" id="hw-account-discord-need-id" hidden>Enter your Discord ID under Profile first.</p>' +
+      notifySwitchRow(
+        "hw-account-notify-sms",
+        "SMS",
+        "SMS isn’t free to send. Discord and email are — we’ll wire texts later."
+      ) +
+      notifySwitchRow("hw-account-notify-email", "Email") +
+      notifySwitchRow(
+        "hw-account-notify-phonePing",
+        "Phone ping",
+        "This is for when the hub is a phone app."
+      ) +
       "</article>"
     );
-  }
-
-  function fillPlanCopy() {
-    const el = document.getElementById("hw-account-plan-copy");
-    if (el) el.textContent = currentPlanCopy();
   }
 
   function syncNav(inAccount) {
@@ -391,10 +658,6 @@
     paintTeacherTabs(app, active);
     fillSession(app);
     fillPlanCopy();
-    const empty = document.getElementById("hw-account-plan-empty");
-    const frame = document.getElementById("hw-v5-account-sellup-frame");
-    if (empty) empty.hidden = false;
-    if (frame) frame.hidden = true;
   }
 
   function ensureTeacherAccountApp() {
@@ -545,6 +808,9 @@
     const email = String(
       document.getElementById("hw-account-email-input")?.value || ""
     ).trim();
+    const discordUserId = String(
+      document.getElementById("hw-account-discord-id")?.value || ""
+    ).trim();
     const password = String(
       document.getElementById("hw-account-old-password")?.value || ""
     );
@@ -566,6 +832,7 @@
           password,
           displayName,
           email,
+          discordUserId,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -632,43 +899,6 @@
     }
   }
 
-  async function joinEmailList() {
-    const status = document.getElementById("hw-account-promo-status");
-    const s = session();
-    const email = String(s?.email || "").trim();
-    if (!email || !email.includes("@")) {
-      setStatus(
-        status,
-        "Add an email on your account first, or join from the homepage email list.",
-        true
-      );
-      return;
-    }
-    setStatus(status, "Joining…", false);
-    try {
-      const res = await fetch("/api/promo-signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          page: "Account Settings",
-          interests: ["homework"],
-          interestOther: "",
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Could not join.");
-      markPromoSubscribed();
-      const form = document.getElementById("hw-account-promo-form");
-      const btn = document.getElementById("hw-account-promo-submit");
-      if (btn) btn.remove();
-      setStatus(status, data.message || "You’re on the email list.", false);
-      if (form && status) status.hidden = false;
-    } catch (err) {
-      setStatus(status, (err && err.message) || "Could not join.", true);
-    }
-  }
-
   function bind() {
     if (bound) return;
     bound = true;
@@ -699,6 +929,25 @@
         openDeleteDialog();
         return;
       }
+      if (e.target.closest("#hw-account-discord-help")) {
+        e.preventDefault();
+        const dialog = document.getElementById("hw-account-discord-help-dialog");
+        if (dialog) dialog.hidden = false;
+        return;
+      }
+      if (e.target.closest("[data-hw-account-discord-help-close]")) {
+        e.preventDefault();
+        const dialog = document.getElementById("hw-account-discord-help-dialog");
+        if (dialog) dialog.hidden = true;
+        return;
+      }
+      const notifyBtn = e.target.closest("[data-hw-notify]");
+      if (notifyBtn) {
+        e.preventDefault();
+        const key = notifyBtn.getAttribute("data-hw-notify");
+        if (key) toggleNotify(key);
+        return;
+      }
       const nav = e.target.closest("[data-hw-account-nav]");
       if (!nav) return;
       if (isStandalonePage()) return;
@@ -713,9 +962,6 @@
       if (form.id === "hw-account-profile-form") {
         e.preventDefault();
         void saveProfileChanges();
-      } else if (form.id === "hw-account-promo-form") {
-        e.preventDefault();
-        void joinEmailList();
       }
     });
 
@@ -737,6 +983,7 @@
     notificationsMarkup,
     fillSession,
     fillPlanCopy,
+    paintAccountPlans,
     bindRoot: fillSession,
     open,
     close,

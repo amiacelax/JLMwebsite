@@ -36,6 +36,10 @@ import {
   saveStudentProfile,
   getStudentProfileForTeacher,
   getStudentDiscordUserId,
+  saveStudentDiscordUserId,
+  getStudentNotifyPrefs,
+  saveStudentNotifyPrefs,
+  normalizeNotifyPrefs,
   saveWorksheetDraft,
   deleteWorksheetFromLibrary,
   loadPublishedAssignment,
@@ -123,8 +127,10 @@ import {
   createUserAccount,
   deleteOwnAccount,
   deleteUserAccount,
+  getUserAccount,
   loginUserAccount,
   savePaypalSubscription,
+  toAuthSession,
   type SignupInput,
   type LoginInput,
 } from "./user-accounts";
@@ -133,6 +139,7 @@ import {
   normalizeHwCheckoutPlan,
   paypalCredentialsConfigured,
 } from "./paypal";
+import { verifyPassword, hashPassword } from "./password";
 import {
   getMgLexiconPublic,
   getMgLexiconQueue,
@@ -1168,6 +1175,245 @@ async function handleAuthDeleteOwnAccount(
   }
 }
 
+async function attachSessionExtras(
+  session: { username: string; [key: string]: unknown },
+  env: Env
+) {
+  const kv = env.HOMEWORK_KV;
+  if (!kv || !session?.username) {
+    return {
+      ...session,
+      discordUserId: "",
+      notifyPrefs: normalizeNotifyPrefs(null),
+    };
+  }
+  const discordUserId = await getStudentDiscordUserId(kv, session.username);
+  const notifyPrefs = await getStudentNotifyPrefs(kv, session.username);
+  return { ...session, discordUserId, notifyPrefs };
+}
+
+async function handleAuthSelfExtras(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as { username?: string; notifyPrefs?: unknown };
+    const username = String(data.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Username is required." }, 400);
+    const kv = env.HOMEWORK_KV;
+    if (!kv) throw new Error("KV_NOT_CONFIGURED");
+    if (data.notifyPrefs) {
+      await saveStudentNotifyPrefs(kv, username, normalizeNotifyPrefs(data.notifyPrefs));
+    }
+    const discordUserId = await getStudentDiscordUserId(kv, username);
+    const notifyPrefs = await getStudentNotifyPrefs(kv, username);
+    return jsonResponse({ success: true, discordUserId, notifyPrefs });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    console.error("auth self-extras failed:", err);
+    return jsonResponse({ error: "Could not load notification settings." }, 500);
+  }
+}
+
+async function handleAuthUpdateProfile(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as {
+      username?: string;
+      password?: string;
+      displayName?: string;
+      email?: string;
+      discordUserId?: string;
+    };
+    const username = String(data.username || "")
+      .trim()
+      .toLowerCase();
+    const password = String(data.password || "");
+    const displayName = String(data.displayName || "").trim();
+    if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+    if (!displayName) throw new Error("DISPLAY_NAME_REQUIRED");
+    if (displayName.length > 40) throw new Error("DISPLAY_NAME_TOO_LONG");
+    const account = await getUserAccount(username, env);
+    if (!account) throw new Error("INVALID_CREDENTIALS");
+    const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
+    if (!ok) throw new Error("INVALID_CREDENTIALS");
+    account.displayName = displayName;
+    const email = String(data.email || "").trim().toLowerCase();
+    if (email) account.email = email;
+    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(account));
+    if (env.HOMEWORK_KV && data.discordUserId !== undefined) {
+      await saveStudentDiscordUserId(env.HOMEWORK_KV, username, String(data.discordUserId || ""));
+    }
+    const session = await attachSessionExtras(toAuthSession(account), env);
+    return jsonResponse({
+      success: true,
+      session,
+      message: "Saved.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Username or password is wrong." }, 401);
+    }
+    if (code === "DISPLAY_NAME_REQUIRED") {
+      return jsonResponse({ error: "Enter a display name (first name is fine)." }, 400);
+    }
+    if (code === "DISPLAY_NAME_TOO_LONG") {
+      return jsonResponse({ error: "Keep the display name under 40 characters." }, 400);
+    }
+    if (code === "INVALID_DISCORD_USER_ID") {
+      return jsonResponse(
+        { error: "Discord ID should be the numbers-only User ID." },
+        400
+      );
+    }
+    console.error("auth update-profile failed:", err);
+    return jsonResponse({ error: "Could not update profile." }, 500);
+  }
+}
+
+async function handleAuthChangePassword(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as {
+      username?: string;
+      password?: string;
+      newPassword?: string;
+    };
+    const username = String(data.username || "")
+      .trim()
+      .toLowerCase();
+    const password = String(data.password || "");
+    const newPassword = String(data.newPassword || "");
+    if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+    if (newPassword.length < 6) throw new Error("PASSWORD_TOO_SHORT");
+    const account = await getUserAccount(username, env);
+    if (!account) throw new Error("INVALID_CREDENTIALS");
+    const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
+    if (!ok) throw new Error("INVALID_CREDENTIALS");
+    const next = await hashPassword(newPassword);
+    account.passwordSalt = next.salt;
+    account.passwordHash = next.hash;
+    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(account));
+    return jsonResponse({ success: true, message: "Password updated." });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Username or password is wrong." }, 401);
+    }
+    if (code === "PASSWORD_TOO_SHORT") {
+      return jsonResponse({ error: "New password must be at least 6 characters." }, 400);
+    }
+    console.error("auth change-password failed:", err);
+    return jsonResponse({ error: "Could not update password." }, 500);
+  }
+}
+
+function planLabelForCheckout(plan: string): string {
+  if (plan === "basic") return "Basic";
+  if (plan === "premium") return "Premium";
+  if (plan === "ultra") return "Ultra";
+  if (plan === "student-special") return "Student Special";
+  if (plan === "student-ultra") return "Student Ultra";
+  return "Your plan";
+}
+
+async function handleAuthActivatePlan(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as {
+      username?: string;
+      displayName?: string;
+      plan?: string;
+      subscriptionId?: string;
+    };
+    const username = String(data.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Username is required." }, 400);
+    const plan = normalizeHwCheckoutPlan(String(data.plan || ""));
+    if (!plan) {
+      return jsonResponse(
+        {
+          error:
+            "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra).",
+        },
+        400
+      );
+    }
+    const account = await getUserAccount(username, env);
+    if (!account) return jsonResponse({ error: "Account not found." }, 404);
+    const displayName = String(data.displayName || "").trim();
+    if (displayName) account.displayName = displayName;
+    if (plan === "basic") account.tier = "tier1";
+    else if (plan === "premium") account.tier = "tier2";
+    else if (plan === "ultra") {
+      account.tier = "tier3";
+      account.videoResponseUnlock = true;
+    } else if (plan === "student-special") {
+      account.tier = "student_special";
+    } else {
+      account.tier = "student_special";
+      account.videoResponseUnlock = true;
+    }
+    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(account));
+    const subscriptionId = String(data.subscriptionId || "").trim();
+    if (subscriptionId) {
+      await savePaypalSubscription(
+        username,
+        { paypalSubscriptionId: subscriptionId, paypalPlan: plan },
+        env
+      );
+    }
+    const saved = (await getUserAccount(username, env)) || account;
+    const session = await attachSessionExtras(toAuthSession(saved), env);
+    const planLabel = planLabelForCheckout(plan);
+    return jsonResponse({
+      success: true,
+      message: `${planLabel} plan is active. Waiting for JD to send your first homework.`,
+      session,
+      plan,
+      planLabel,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    console.error("auth activate-plan failed:", err);
+    return jsonResponse({ error: "Could not activate plan." }, 500);
+  }
+}
+
 async function handleAuthLogin(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1179,10 +1425,11 @@ async function handleAuthLogin(request: Request, env: Env): Promise<Response> {
   try {
     const data = (await request.json()) as LoginInput;
     const result = await loginUserAccount(data, env);
+    const session = await attachSessionExtras(result.session, env);
     return jsonResponse({
       success: true,
       message: "Logged in.",
-      session: result.session,
+      session,
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -4676,6 +4923,22 @@ export default {
 
     if (url.pathname === "/api/auth/delete-own-account") {
       return handleAuthDeleteOwnAccount(request, env);
+    }
+
+    if (url.pathname === "/api/auth/self-extras") {
+      return handleAuthSelfExtras(request, env);
+    }
+
+    if (url.pathname === "/api/auth/update-profile") {
+      return handleAuthUpdateProfile(request, env);
+    }
+
+    if (url.pathname === "/api/auth/change-password") {
+      return handleAuthChangePassword(request, env);
+    }
+
+    if (url.pathname === "/api/auth/activate-plan") {
+      return handleAuthActivatePlan(request, env);
     }
 
     if (url.pathname === "/api/paypal/create-subscription") {

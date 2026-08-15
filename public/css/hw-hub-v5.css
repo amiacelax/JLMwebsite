@@ -3816,48 +3816,64 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   position: relative;
   max-width: 52rem;
   margin: 0 auto;
-  padding: 1.5rem 3.4rem 1.75rem 1.35rem;
-  text-align: left;
+  padding: 1.5rem 1.35rem 1.75rem;
+  text-align: center;
 }
 
 .hw-account-card:not(.is-editing) #hw-account-login-id,
 .hw-account-card:not(.is-editing) [data-hw-account-edit] {
-  border-color: transparent;
-  background: transparent;
-  padding-left: 0.15rem;
+  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-bg-card));
+  cursor: default;
+}
+
+.hw-account-login-field {
+  text-align: center;
+  overflow: visible;
+}
+
+.hw-account-login-bubble {
+  position: relative;
+  overflow: visible;
+}
+
+.hw-account-login-bubble input {
+  padding-right: 2.6rem;
 }
 
 .hw-account-edit {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 2.35rem;
-  height: 2.35rem;
+  top: -0.45rem;
+  right: -0.35rem;
+  width: 2.15rem;
+  height: 2.15rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-accent-vivid, #e85545) 55%, var(--color-border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-bg-card) 70%, transparent);
-  color: var(--color-text-muted);
+  background: var(--color-bg-card);
+  color: var(--color-accent-vivid, #e85545);
   cursor: pointer;
+  z-index: 1;
 }
 
 .hw-account-edit:hover,
 .hw-account-edit:focus-visible {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
+  color: var(--color-accent, #c0392b);
+  border-color: var(--color-accent, #c0392b);
   outline: none;
 }
 
 .hw-account-card.is-editing .hw-account-edit {
-  color: var(--color-text);
-  border-color: var(--color-accent);
+  color: var(--color-accent, #c0392b);
+  border-color: var(--color-accent, #c0392b);
+  box-shadow: 0 0 0 3px var(--color-accent-soft, rgba(232, 85, 69, 0.2));
 }
 
 .hw-account-name-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
 }
 
@@ -3971,27 +3987,38 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-card__title {
-  margin: 0 0 0.45rem;
+  margin: 0 auto 0.85rem;
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  text-align: center;
 }
 
 .hw-account-card__sub {
   margin: 1.35rem 0 0.5rem;
   font-size: 1rem;
   font-weight: 600;
+  text-align: center;
 }
 
 .hw-account-card__lead {
-  margin: 0 0 1rem;
+  margin: 0 auto 1rem;
   color: var(--color-text-muted);
   line-height: 1.5;
 }
 
 .hw-account-form {
   max-width: 28rem;
-  text-align: left;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hw-account-form .hw-login-inlay__field {
+  text-align: center;
+}
+
+.hw-account-form .hw-login-inlay__field label {
+  text-align: center;
 }
 
 .hw-account-form--danger {
@@ -4005,9 +4032,209 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   flex-direction: column;
   gap: 0.65rem;
   max-width: 28rem;
-  margin-top: 1.5rem;
+  margin: 1.5rem auto 0;
 }
 
 .hw-account-card__legal {
-  margin-top: 1.5rem;
+  margin: 1.5rem auto 0;
+  text-align: center;
+}
+
+.hw-account-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.2rem;
+  padding: 0;
+  vertical-align: middle;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong, var(--color-border));
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-account-help:hover,
+.hw-account-help:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.hw-account-current-plan {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0 auto 1.15rem;
+  padding: 0.55rem 1.35rem 0.7rem;
+  border-radius: 1rem;
+  border: 2px solid color-mix(in srgb, var(--color-gold, #d4a853) 70%, var(--color-border));
+  background: color-mix(in srgb, var(--color-gold, #d4a853) 18%, var(--color-bg-card));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-gold, #d4a853) 18%, transparent);
+}
+
+.hw-account-current-plan__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gold, #d4a853);
+}
+
+.hw-account-current-plan__name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.hw-account-card--plans {
+  max-width: 52rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.hw-account-plans.hw-hub-v5-sellup {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.hw-account-plans .hw-hub-tier-plan,
+.hw-account-plans .hw-student-special,
+.hw-account-plans .hw-account-lessons-slim {
+  animation: none;
+}
+
+.hw-account-plans .hw-student-special,
+.hw-account-plans .hw-account-lessons-slim {
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.hw-account-lessons-slim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  padding: 0.9rem 1.15rem;
+  text-align: left;
+  border-radius: var(--radius-xl, 1rem);
+  border: 2px solid color-mix(in srgb, var(--color-green) 14%, var(--color-border));
+  background: var(--color-bg-card);
+}
+
+.hw-account-lessons-slim .course-card__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.hw-account-lessons-slim .course-card__desc {
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"] {
+  border-color: color-mix(in srgb, var(--color-gold, #d4a853) 75%, var(--color-border));
+  background: color-mix(in srgb, var(--color-gold, #d4a853) 16%, var(--color-bg-card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-gold, #d4a853) 28%, transparent);
+}
+
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:hover,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="current"]:focus-within {
+  border-color: var(--color-gold, #d4a853);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-gold, #d4a853) 32%, transparent);
+}
+
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lesser"]:hover,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lesser"]:focus-within {
+  border-color: var(--color-accent, #c0392b);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-accent, #c0392b) 28%, transparent);
+}
+
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="upgrade"]:hover,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="upgrade"]:focus-within,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lessons"]:hover,
+.hw-account-plans.hw-hub-v5-sellup [data-hw-plan-tone="lessons"]:focus-within {
+  border-color: var(--color-green);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-green) 28%, transparent);
+}
+
+.hw-account-switch-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  max-width: 22rem;
+  margin: 0 auto 0.85rem;
+  text-align: left;
+}
+
+.hw-account-switch-row__label {
+  font-weight: 600;
+}
+
+.hw-account-switch-row__note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.hw-account-switch {
+  position: relative;
+  width: 2.85rem;
+  height: 1.55rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg) 80%, var(--color-text-muted));
+  cursor: pointer;
+}
+
+.hw-account-switch.is-on {
+  background: var(--color-green);
+  border-color: var(--color-green);
+}
+
+.hw-account-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s ease;
+}
+
+.hw-account-switch.is-on .hw-account-switch__knob {
+  transform: translateX(1.28rem);
+}
+
+.hw-account-switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-soft, rgba(103, 196, 235, 0.25));
+}
+
+.hw-account-notify-error {
+  max-width: 22rem;
+  margin: -0.35rem auto 0.95rem;
+  color: var(--color-accent, #c0392b);
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
 }
