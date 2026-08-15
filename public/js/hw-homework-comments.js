@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260808";
+    link.href = "/css/hw-homework-comments.css?v=20260813-bank";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -745,23 +745,13 @@
   }
 
   /**
-   * Horizontal clamp in host-local coords. Desktop: widen to viewport L/R gutters
-   * so cloud can park clear of the question column (same as magnifying glass).
-   * Coarse/≤767px: stay fully inside the host.
+   * Horizontal clamp in host-local coords. Parked: desktop used to widen out into
+   * the viewport gutters; every pointer type now stays inside the host, like mobile
+   * (same parking as the magnifying glass).
    */
   function launcherHorizontalClampRange(half, pad) {
     const w = hostEl?.clientWidth || 0;
-    let minX = half + pad;
-    let maxX = w - half - pad;
-    if (!isCoarsePointer() && hostEl) {
-      const hostLeft = hostEl.getBoundingClientRect().left;
-      const viewMinX = half + pad - hostLeft;
-      const viewMaxX = window.innerWidth - half - pad - hostLeft;
-      minX = Math.min(minX, viewMinX);
-      maxX = Math.max(maxX, viewMaxX);
-      if (maxX < minX) maxX = minX;
-    }
-    return { minX, maxX };
+    return { minX: half + pad, maxX: w - half - pad };
   }
 
   function clampLauncherLocal(x, y) {
@@ -1290,6 +1280,8 @@
           x: typeof c.x === "number" ? c.x : undefined,
           y: typeof c.y === "number" ? c.y : undefined,
           slideIndex: typeof c.slideIndex === "number" ? c.slideIndex : 0,
+          /** Started from a saved reply rather than typed for this student. */
+          bankPrefill: c.bankPrefill === true || undefined,
           createdAt: c.createdAt || new Date().toISOString(),
           updatedAt: c.updatedAt,
         };
@@ -2469,6 +2461,10 @@
       onSelectionMenuAction(btn.dataset.action);
     });
     document.body.appendChild(selMenuEl);
+    /* Magnet parked — keep the handler, hide the menu entry. */
+    if (global.HwFeatureFlags?.toolMagnet?.() !== true) {
+      selMenuEl.querySelector('[data-action="reset-tools"]')?.remove();
+    }
   }
 
   function onSelectionMenuAction(action) {
@@ -3483,12 +3479,15 @@
     btn.className =
       "hw-hc-mini" +
       (comment.author === "teacher" ? " hw-hc-mini--teacher" : "") +
+      (comment.bankPrefill ? " hw-hc-mini--prefill" : "") +
       (comment.teacherRemark || comment.teacherRemarkMedia ? " hw-hc-mini--has-remark" : "");
     btn.dataset.id = comment.id;
     applyCloudPos(btn, comment, "mini");
     const label =
       comment.author === "teacher"
-        ? comment.text.trim()
+        ? comment.bankPrefill
+          ? "Your saved reply for this question — open to edit"
+          : comment.text.trim()
           ? "View JD note"
           : "Add JD note on this question"
         : comment.teacherRemark || comment.teacherRemarkMedia
@@ -3534,6 +3533,48 @@
     el.setAttribute("aria-hidden", "true");
     Object.assign(el.style, pctRectToStyle(anchorRect));
     return el;
+  }
+
+  /**
+   * Replies JD has already written for this question on other students' sheets.
+   * Only worth showing once there is more than one to choose between — the newest
+   * one is already sitting in the box.
+   */
+  function buildSavedReplyPicker(comment, input) {
+    const slot = String(typeof comment.slideIndex === "number" ? comment.slideIndex : 0);
+    const replies = (config?.answerBank || {})[slot];
+    if (!Array.isArray(replies) || replies.length < 2) return null;
+
+    const select = document.createElement("select");
+    select.className = "hw-hc-memo__saved-replies";
+    select.setAttribute("aria-label", "Replies you used before on this question");
+
+    const head = document.createElement("option");
+    head.value = "";
+    head.textContent = "Saved replies…";
+    select.appendChild(head);
+
+    replies.forEach((reply, i) => {
+      const text = String(reply?.text || "").trim();
+      if (!text) return;
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = text.length > 64 ? text.slice(0, 61) + "…" : text;
+      select.appendChild(opt);
+    });
+    if (select.options.length < 2) return null;
+
+    select.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    select.addEventListener("click", (ev) => ev.stopPropagation());
+    select.addEventListener("change", () => {
+      const pick = replies[Number(select.value)];
+      select.value = "";
+      if (!pick?.text) return;
+      input.value = pick.text;
+      updateCommentText(comment.id, input.value);
+      autosizeReviewMemoInput(input);
+    });
+    return select;
   }
 
   function renderMemo(comment) {
@@ -3603,6 +3644,11 @@
       }
       body.appendChild(input);
       if (reviewAuto) autosizeReviewMemoInput(input);
+
+      if (config?.teacherReview && isTeacherNote && !input.readOnly) {
+        const picker = buildSavedReplyPicker(comment, input);
+        if (picker) body.insertBefore(picker, input);
+      }
 
       if (config?.teacherReview && isTeacherNote) {
         appendTeacherRemarkRecorder(body, comment);
@@ -3876,6 +3922,9 @@
           ? { x: options.defaultLauncher.x, y: options.defaultLauncher.y }
           : null,
       useModeNeutrals: !!options.useModeNeutrals,
+      /** Replies JD used before on this worksheet, keyed by question slide index. */
+      answerBank:
+        options.answerBank && typeof options.answerBank === "object" ? options.answerBank : null,
     };
 
     if (options.initialComments?.length) {

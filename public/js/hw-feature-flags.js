@@ -45,6 +45,27 @@
   }
 
   /**
+   * Magnet (“reset tool positions”) on worksheet cards.
+   * Off everywhere for now — code stays in hw-worksheet-tools-layout.js.
+   * Re-enable: localStorage hw-tool-magnet=1 (or ?toolMagnet=1).
+   */
+  function toolMagnet() {
+    try {
+      if (localStorage.getItem("hw-tool-magnet") === "0") return false;
+      if (localStorage.getItem("hw-tool-magnet") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (new URLSearchParams(location.search).get("toolMagnet") === "0") return false;
+      if (new URLSearchParams(location.search).get("toolMagnet") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  /**
    * Homework Hub v5 student layout (tabs, post-submit sellup, review zone).
    * Default on everywhere; force off with localStorage hw-hubv5-dev=0.
    * Demo simulate bar stays local-only (see hw-hub-v5-live.js).
@@ -125,13 +146,36 @@
     return devOverride("hw-design-focus");
   }
 
+  /**
+   * Site Games + Courses pages / hub Games tab.
+   * Backburner — off everywhere. Re-enable: localStorage hw-games-courses=1
+   * (or ?gamesCourses=1).
+   */
+  function gamesAndCourses() {
+    try {
+      if (localStorage.getItem("hw-games-courses") === "0") return false;
+      if (localStorage.getItem("hw-games-courses") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (new URLSearchParams(location.search).get("gamesCourses") === "0") return false;
+      if (new URLSearchParams(location.search).get("gamesCourses") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
   global.HwFeatureFlags = {
     isLocalDev,
     magnifyingGlass,
     homeworkComments,
+    toolMagnet,
     hubV5,
     hubV5Demo,
     hubV6,
     designFocus,
+    gamesAndCourses,
   };
 })(window);

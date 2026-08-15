@@ -1,7 +1,12 @@
 # Large source files — host on R2 / YouTube, not Workers assets (25 MiB max)
-videos/
+# Ignore everything under videos/ first, then re-allow deploy-ready testimony clips.
+videos/*
+!videos/.gitkeep
+!videos/*-testimony.mp4
+!videos/*-testimony-poster.webp
 *.mov
 *.mp4
+!*-testimony.mp4
 # Unused login loop (CSS sets .hw-login-hero__bg { display: none })
 media/hw-login-bg.mp4
 media/hw-login-bg-poster.jpg

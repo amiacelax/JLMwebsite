@@ -359,6 +359,17 @@ main.obc-main > *:not(.section-kumo) {
   }
 }
 
+/* Freeze clouds while a popup is open so blur doesn't re-paint every frame. Clouds stay visible. */
+body.is-modal-open .section-kumo__img,
+body.hw-modal-open .section-kumo__img,
+body.hw-sachiko-open .section-kumo__img,
+body.promo-modal-open .section-kumo__img,
+body:has(dialog[open]) .section-kumo__img {
+  animation-play-state: paused;
+  will-change: auto;
+  filter: none;
+}
+
 .section-kumo--wallpaper .section-kumo__w1 {
   top: 3%;
   left: 1%;

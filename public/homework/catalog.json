@@ -1,6 +1,6 @@
 {
-  "playlistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
-  "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+  "playlistUrl": "",
+  "reviewPlaylistUrl": "",
   "studentProfiles": {
     "joshs": {
       "latestLessonUrl": "https://youtu.be/J1RsLT9TOKU",
@@ -12,9 +12,36 @@
       "latestLessonUrl": "https://youtu.be/q3WRBr1LHm0",
       "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY",
       "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6A_j_USq3WbLLqa0S4b10NY"
+    },
+    "alex": {
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67"
+    },
+    "sykohpath": {
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67"
     }
   },
   "assignments": [
+    {
+      "id": "sykohpath-secret-hiragana",
+      "title": "Secret Hiragana / Katakana",
+      "date": "2026-08-13",
+      "lessonName": "Secret Hiragana / Katakana",
+      "students": ["demoprem"],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "hiragana",
+        "katakana",
+        "sokuon",
+        "yoon",
+        "audio",
+        "beginner",
+        "demo"
+      ],
+      "summary": "Secret hiragana/katakana practice for Demo (Premium HW-only)."
+    },
     {
       "id": "sheet-uq0x0d3e",
       "title": "もし・～たら",

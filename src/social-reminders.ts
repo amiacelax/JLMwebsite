@@ -40,9 +40,9 @@ export interface SocialReminderArmPayload {
 const PENDING_PREFIX = "sr-pending:";
 const DONE_PREFIX = "sr-done:";
 const DEFAULT_LINK = "https://japaneselanguagementor.com/#contact";
-const DEFAULT_STORY = "Free trial ↑";
+const DEFAULT_STORY = "Free consultation ↑";
 const DEFAULT_PIN =
-  "Free trial Japanese lesson → https://japaneselanguagementor.com/#contact";
+  "Free consultation → https://japaneselanguagementor.com/#contact";
 
 function pendingKey(id: string): string {
   return `${PENDING_PREFIX}${id}`;
@@ -95,24 +95,37 @@ function clip(s: string, max: number): string {
 }
 
 export function buildSocialReminderMessage(job: SocialReminderJob): string {
+  /* One Discord message; each line is its own copyable ``` block. */
+  const title = clip(String(job.clipTitles || "").trim() || "Shorts/Reels", 280);
+  const pin = clip(String(job.ytPinComment || DEFAULT_PIN).trim() || DEFAULT_PIN, 900);
+  const story =
+    clip(String(job.igStoryCaption || DEFAULT_STORY).trim() || DEFAULT_STORY, 400);
+  const link = clip(String(job.linkSticker || DEFAULT_LINK).trim() || DEFAULT_LINK, 400);
   return [
-    "YouTube/Instagram Reminder",
-    `YT: Write ${job.ytPinComment} for ${job.clipTitles}.`,
-    `IG: Write this caption ${job.igStoryCaption} and sticker ${job.linkSticker}`,
+    "```",
+    title,
+    "```",
+    "```",
+    pin,
+    "```",
+    "```",
+    story,
+    "```",
+    "```",
+    link,
+    "```",
   ].join("\n");
 }
 
 async function postDiscordReminder(
   webhookUrl: string,
-  message: string,
-  _clipTitles: string
+  message: string
 ): Promise<boolean> {
-  const plain = String(message || "")
+  const content = String(message || "")
     .replace(/\r\n/g, "\n")
-    .replace(/```/g, "'''")
     .trim()
     .slice(0, 1980);
-  const content = "```\n" + plain + "\n```";
+  if (!content) return false;
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -176,6 +189,16 @@ export async function armSocialReminder(
     createdAt: new Date().toISOString(),
   };
 
+  /* Dedupe: same title + same fire minute → reuse pending job (avoid 4× arms). */
+  const existing = await listPendingSocialReminders(env);
+  const fireMin = fireAtUtc.slice(0, 16); // YYYY-MM-DDTHH:MM
+  const dup = existing.find(
+    (j) =>
+      j.clipTitles === job.clipTitles &&
+      String(j.fireAtUtc || "").slice(0, 16) === fireMin
+  );
+  if (dup) return dup;
+
   await kv.put(pendingKey(id), JSON.stringify(job));
   return job;
 }
@@ -236,10 +259,39 @@ async function fireOne(
   const kv = env.HOMEWORK_KV;
   if (!kv) return;
 
-  // Claim first to avoid double-fire if cron overlaps.
-  const claimed = await kv.get(pendingKey(job.id));
-  if (!claimed) return;
+  /* Exactly-once-ish claim: mark done BEFORE Discord. Concurrent crons that
+     already see doneKey skip. (KV isn't transactional; this cuts most doubles.) */
+  const already = await kv.get(doneKey(job.id));
+  if (already) {
+    await kv.delete(pendingKey(job.id));
+    return;
+  }
+
+  const pending = await kv.get(pendingKey(job.id));
+  if (!pending) return;
+
+  const claimToken = makeId();
+  const claim: SocialReminderJob & { claimToken?: string; status: SocialReminderStatus } = {
+    ...job,
+    status: "fired",
+    firedAt: new Date().toISOString(),
+    claimToken,
+  };
+  await kv.put(doneKey(job.id), JSON.stringify(claim), {
+    expirationTtl: 60 * 60 * 24 * 30,
+  });
   await kv.delete(pendingKey(job.id));
+
+  const winnerRaw = await kv.get(doneKey(job.id));
+  try {
+    const winner = winnerRaw ? (JSON.parse(winnerRaw) as { claimToken?: string }) : null;
+    if (winner?.claimToken && winner.claimToken !== claimToken) {
+      /* Lost a rare last-write race — other worker owns delivery. */
+      return;
+    }
+  } catch {
+    /* proceed with our claim */
+  }
 
   const message = buildSocialReminderMessage(job);
   let discordOk = false;
@@ -254,7 +306,7 @@ async function fireOne(
     if (channelError) {
       console.error("social-reminders:", channelError);
     } else {
-      discordOk = await postDiscordReminder(webhookUrl, message, job.clipTitles);
+      discordOk = await postDiscordReminder(webhookUrl, message);
       if (!discordOk) {
         console.error("social-reminders: Discord post failed for", job.id);
       }
@@ -279,18 +331,16 @@ async function fireOne(
     console.error("social-reminders: Teacher Hub save failed", job.id, err);
   }
 
-  const done: SocialReminderJob = {
-    ...job,
-    status: "fired",
-    firedAt: new Date().toISOString(),
-  };
-  await kv.put(doneKey(job.id), JSON.stringify({ ...done, discordOk, hubOk }), {
-    expirationTtl: 60 * 60 * 24 * 30,
-  });
+  await kv.put(
+    doneKey(job.id),
+    JSON.stringify({ ...claim, discordOk, hubOk }),
+    { expirationTtl: 60 * 60 * 24 * 30 }
+  );
 
   if (!discordOk && !hubOk) {
-    // Re-queue once so a transient outage can still deliver on the next minute.
+    /* Only re-queue if nothing landed — and clear done claim so next minute can retry. */
     console.error("social-reminders: both channels failed; re-queueing", job.id);
+    await kv.delete(doneKey(job.id));
     await kv.put(pendingKey(job.id), JSON.stringify(job));
   }
 }

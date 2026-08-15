@@ -51,6 +51,10 @@
 
   closeBtns.forEach((el) => el.addEventListener("click", closeModal));
 
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal || e.target.matches?.(".coming-soon-modal__backdrop")) closeModal();
+  });
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeModal();
   });

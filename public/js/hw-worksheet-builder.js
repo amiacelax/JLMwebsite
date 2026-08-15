@@ -26,6 +26,10 @@
   const CUSTOM_TEMPLATES_KEY = "jlm-hw-worksheet-templates-v1";
   const CUSTOM_TEMPLATE_PREFIX = "custom:";
 
+  /** Pen Pal ask, shown above the letter paper. */
+  const PEN_PAL_INSTRUCTIONS =
+    "愛子ちゃんがあなたの返事を待ってるのよ！\n早く手紙書いてあげて～";
+
   /** Built-in Pen Pal letter body (住田愛子 → フェイさん, 福井県鯖江市). */
   const PEN_PAL_LETTER_BODY =
     "初めまして！わたし、住田愛子っていいます。\n" +
@@ -150,11 +154,10 @@
         {
           mode: "context-blank",
           title: "Pen Pal",
-          instructions: "Read Aiko’s letter, then write your reply.",
+          instructions: PEN_PAL_INSTRUCTIONS,
           items: [
             {
               id: "penpal-reply-1",
-              topic: "Reply to 愛子",
               letterTo: "フェイさん",
               letterFrom: "住田愛子",
               letterLocation: "福井県鯖江市",
@@ -558,6 +561,8 @@
             openBlock.letterTo = String(item.letterTo || "").trim();
             openBlock.letterFrom = String(item.letterFrom || "").trim();
             openBlock.letterLocation = String(item.letterLocation || "").trim();
+            /* Pen Pal asks live in the block instructions, not in a prompt under the letter. */
+            openBlock.topic = "";
           }
           blocks.push(openBlock);
         } else if (sec.mode === "audio-listening") {
@@ -647,7 +652,7 @@
         }
         if (sec.items.some((item) => Object.prototype.hasOwnProperty.call(item, "letterBody"))) {
           sec.title = "Pen Pal";
-          sec.instructions = "Read Aiko’s letter, then write your reply.";
+          sec.instructions = PEN_PAL_INSTRUCTIONS;
         }
         if (sec.items.length) sections.push(sec);
         continue;
@@ -908,11 +913,12 @@
 
   function blockToOpenItem(block, index) {
     const out = { id: block.id || "open-" + (index + 1), parts: [] };
+    const isLetter = Object.prototype.hasOwnProperty.call(block, "letterBody");
     const topic = String(block.topic || "").trim();
-    if (topic) out.topic = topic;
+    if (topic && !isLetter) out.topic = topic;
     const imageUrl = String(block.imageUrl || "").trim();
     if (imageUrl) out.imageUrl = imageUrl;
-    if (Object.prototype.hasOwnProperty.call(block, "letterBody")) {
+    if (isLetter) {
       out.letterBody = String(block.letterBody || "");
       const letterTo = String(block.letterTo || "").trim();
       const letterFrom = String(block.letterFrom || "").trim();
@@ -1433,13 +1439,8 @@
         return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
       }
       if (block.type === "open-line") {
-        return (
-          clip(block.topic) ||
-          (Object.prototype.hasOwnProperty.call(block, "letterBody")
-            ? "Pen Pal letter"
-            : "") ||
-          (block.imageUrl ? "Open response + image" : "Open response")
-        );
+        if (Object.prototype.hasOwnProperty.call(block, "letterBody")) return "Pen Pal letter";
+        return clip(block.topic) || (block.imageUrl ? "Open response + image" : "Open response");
       }
       if (block.type === "grammar-line") {
         return clip(grammarSentenceFromBlock(block)) || "Blank sentence";
@@ -1757,11 +1758,14 @@
       }
 
       if (block.type === "open-line") {
-        if (Object.prototype.hasOwnProperty.call(block, "letterBody")) {
+        const isLetterBlock = Object.prototype.hasOwnProperty.call(block, "letterBody");
+        if (isLetterBlock) {
           const letterNote = document.createElement("p");
           letterNote.className = "hw-builder__penpal-note";
           letterNote.textContent =
-            "Pen Pal letter — students see this as handwritten letter paper (AP Japanese).";
+            "Pen Pal letter — students see handwritten letter paper (AP Japanese) with a show/hide button. The ask above it is “" +
+            PEN_PAL_INSTRUCTIONS +
+            "”.";
           body.appendChild(letterNote);
 
           const toLabel = document.createElement("label");
@@ -1826,25 +1830,24 @@
           body.appendChild(bodyLabel);
         }
 
-        const topicLabel = document.createElement("label");
-        topicLabel.className = "hw-builder__audio-label";
-        topicLabel.textContent = Object.prototype.hasOwnProperty.call(block, "letterBody")
-          ? "Reply prompt for the student"
-          : "Topic / question for the student";
-        const topicInput = document.createElement("textarea");
-        topicInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
-        topicInput.rows = 2;
-        topicInput.placeholder = Object.prototype.hasOwnProperty.call(block, "letterBody")
-          ? "e.g. Reply to 愛子"
-          : "e.g. Describe your weekend using ～たことがある";
-        topicInput.value = block.topic || "";
-        topicInput.addEventListener("input", () => {
-          block.topic = topicInput.value;
-          if (block.collapsed) summaryEl.textContent = blockSummary(block);
-          notifyChange();
-        });
-        topicLabel.appendChild(topicInput);
-        body.appendChild(topicLabel);
+        if (!isLetterBlock) {
+          const topicLabel = document.createElement("label");
+          topicLabel.className = "hw-builder__audio-label";
+          topicLabel.textContent = "Topic / question for the student";
+          const topicInput = document.createElement("textarea");
+          topicInput.className =
+            "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
+          topicInput.rows = 2;
+          topicInput.placeholder = "e.g. Describe your weekend using ～たことがある";
+          topicInput.value = block.topic || "";
+          topicInput.addEventListener("input", () => {
+            block.topic = topicInput.value;
+            if (block.collapsed) summaryEl.textContent = blockSummary(block);
+            notifyChange();
+          });
+          topicLabel.appendChild(topicInput);
+          body.appendChild(topicLabel);
+        }
 
         const imageZone = document.createElement("div");
         imageZone.className = "hw-builder__image-drop";

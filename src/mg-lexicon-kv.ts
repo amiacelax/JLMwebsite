@@ -4,6 +4,8 @@ import type { KvEnv } from "./homework-kv";
 
 const OVERLAY_KEY = "site:mg-lexicon-overlay";
 const QUEUE_KEY = "site:mg-lexicon-queue";
+const GLASS_CHECK_KEY = "site:mg-glass-check";
+const GLASS_CHECK_MAX = 8000;
 const TEACHER_DEFAULT = "jlm";
 
 export type MgLexiconCardKind = "custom" | "merge" | "split" | "skip" | "force_unit" | "lemma";
@@ -102,6 +104,18 @@ export interface MgLexiconSuggestItem {
   note?: string;
   example?: string;
   draft?: MgLexiconQueueCard["draft"];
+}
+
+/** One entry per worksheet question JD has already swept: `assignmentId::itemId`. */
+export interface MgGlassCheckState {
+  checked: Record<string, string>;
+  updatedAt: string;
+}
+
+export interface MgGlassCheckPayload {
+  teacherUsername?: string;
+  keys?: string[];
+  checked?: boolean;
 }
 
 export interface MgLexiconSuggestBatchPayload {
@@ -410,6 +424,74 @@ function applySubmitToOverlay(
       overlay.custom[word] = { reading, definition };
     }
   }
+}
+
+/* ── Glass check deck: which worksheet questions JD has swept with the glass ── */
+
+async function readGlassCheck(kv: KVNamespace): Promise<MgGlassCheckState> {
+  try {
+    const raw = await kv.get(GLASS_CHECK_KEY);
+    if (!raw) return { checked: {}, updatedAt: new Date().toISOString() };
+    const parsed = JSON.parse(raw) as Partial<MgGlassCheckState>;
+    const checked: Record<string, string> = {};
+    if (parsed?.checked && typeof parsed.checked === "object") {
+      for (const [key, val] of Object.entries(parsed.checked)) {
+        const id = String(key || "").trim();
+        if (id) checked[id] = String(val || "");
+      }
+    }
+    return { checked, updatedAt: String(parsed?.updatedAt || new Date().toISOString()) };
+  } catch (err) {
+    console.error("readGlassCheck failed:", err);
+    return { checked: {}, updatedAt: new Date().toISOString() };
+  }
+}
+
+export async function getMgGlassCheck(
+  data: { teacherUsername?: string },
+  env: KvEnv
+): Promise<MgGlassCheckState> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+  return readGlassCheck(kv);
+}
+
+export async function setMgGlassCheck(
+  data: MgGlassCheckPayload,
+  env: KvEnv
+): Promise<MgGlassCheckState> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const keys = (Array.isArray(data.keys) ? data.keys : [])
+    .map((k) => String(k || "").trim())
+    .filter(Boolean);
+  if (!keys.length) throw new Error("KEYS_REQUIRED");
+
+  const state = await readGlassCheck(kv);
+  const now = new Date().toISOString();
+  if (data.checked === false) {
+    keys.forEach((key) => {
+      delete state.checked[key];
+    });
+  } else {
+    keys.forEach((key) => {
+      state.checked[key] = now;
+    });
+  }
+
+  /* Oldest sweeps fall off first — the deck only cares about what is still marked. */
+  const entries = Object.entries(state.checked);
+  if (entries.length > GLASS_CHECK_MAX) {
+    entries.sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+    state.checked = Object.fromEntries(entries.slice(entries.length - GLASS_CHECK_MAX));
+  }
+
+  state.updatedAt = now;
+  await kv.put(GLASS_CHECK_KEY, JSON.stringify(state));
+  return state;
 }
 
 export async function getMgLexiconPublic(env: KvEnv): Promise<{

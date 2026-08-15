@@ -176,15 +176,12 @@
   /** Match cloud launcher: center + translate(-50%,-50%) keeps the full 4.5rem tool inside. */
   const TOOL_HALF = 36;
 
+  /**
+   * Parked: desktop used to drag out into the viewport gutters, which felt loose.
+   * Every pointer type now clamps inside the host, the way mobile always did.
+   */
   function useWideHorizontalTravel() {
-    try {
-      return !(
-        window.matchMedia("(pointer: coarse)").matches ||
-        window.matchMedia("(max-width: 767px)").matches
-      );
-    } catch (_) {
-      return window.innerWidth >= 768;
-    }
+    return false;
   }
 
   /**

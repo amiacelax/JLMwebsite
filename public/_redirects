@@ -1,0 +1,4 @@
+# Old pretty URL for the tiers page — always send to Homework Hub login.
+/homework-hub          /homework.html  301
+/homework-hub/         /homework.html  301
+/homework-hub.html     /homework.html  301

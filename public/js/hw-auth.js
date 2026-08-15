@@ -55,11 +55,23 @@
   };
 
   const PAYPAL = {
+    basic:
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3BS11069X4737034MNJ563OA",
     premium:
-      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9CF38809GM2257018NIKG6UY",
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-7RC25164AJ430933DNJ564GY",
+    ultra:
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-9VC563511T5680357NJ565KA",
+    "student-special":
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-34B653300B452420GNJ565WQ",
+    /* Paste real plan_id when the $25 Student Ultra PayPal plan is ready. */
+    "student-ultra":
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=REPLACE_STUDENT_ULTRA",
   };
 
   const WEEKLY_HOMEWORK_UPGRADE_PRICE = 10;
+  /** Lesson-student Ultra deal (video feedback) — below standalone Ultra $49. */
+  const STUDENT_ULTRA_PRICE = 25;
+  const STUDENT_ULTRA_COMPARE_PRICE = 49;
 
   /** @type {Record<string, object>} */
   const ACCOUNTS = {
@@ -387,20 +399,21 @@
     return false;
   }
 
+  /** Lesson students who do not yet have the weekly HW add-on (Student Special). */
   function canShowWeeklyHomeworkUpgrade(session) {
     const s = session || getSession();
     return Boolean(
       s &&
         s.role === "student" &&
         s.accountLabel === "current_student" &&
-        (s.tier === "student_special" || s.tier === "pending")
+        s.tier === "pending"
     );
   }
 
   /**
    * Post-submission upsell offers (Hub v5 completion zone).
    * @param {object|null} session
-   * @returns {Array<{ kind: 'tier'|'weekly_homework'|'lessons', plan?: string }>}
+   * @returns {Array<{ kind: 'tier'|'weekly_homework'|'lessons'|'games', plan?: string, studentUltra?: boolean }>}
    */
   function getPostSubmitSellupOffers(session) {
     const s = session || getSession();
@@ -409,8 +422,17 @@
     const tier = s.tier || "pending";
     const label = s.accountLabel || "homework_only";
 
-    if (label === "current_student" && (tier === "student_special" || tier === "pending")) {
+    /* Lesson student, no weekly HW yet → Student Special ($10). */
+    if (label === "current_student" && tier === "pending") {
       return [{ kind: "weekly_homework", studentSpecial: true }];
+    }
+
+    /* Already on Student Special → offer Student Ultra ($25 video notes), not the $10 card again. */
+    if (label === "current_student" && tier === "student_special") {
+      return [
+        { kind: "tier", plan: "ultra", studentUltra: true },
+        { kind: "games" },
+      ];
     }
 
     if (tier === "pending" || !hasActiveSubscription(s)) {
@@ -484,20 +506,26 @@
     return loginLocal(username, password, remember);
   }
 
-  async function loginAsync(username, password, remember) {
-    const local = loginLocal(username, password, remember);
-    if (local.ok) return local;
+  async function loginAsync(loginId, password, remember) {
+    const raw = String(loginId || "").trim();
+    const looksEmail = raw.includes("@");
+    if (!looksEmail) {
+      const local = loginLocal(raw, password, remember);
+      if (local.ok) return local;
+    }
 
-    const key = normalizeUsername(username);
     try {
+      const body = looksEmail
+        ? { email: raw.toLowerCase(), password }
+        : { username: normalizeUsername(raw), password };
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: key, password }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        return { ok: false, error: data.error || "Invalid username or password." };
+        return { ok: false, error: data.error || "Invalid email or password." };
       }
       const session = enrichSession({
         ...data.session,
@@ -620,6 +648,8 @@
     ACCOUNT_LABELS,
     TIERS,
     WEEKLY_HOMEWORK_UPGRADE_PRICE,
+    STUDENT_ULTRA_PRICE,
+    STUDENT_ULTRA_COMPARE_PRICE,
     PAYPAL,
     ACCOUNTS,
     getSession,

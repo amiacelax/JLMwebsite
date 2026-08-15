@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Zen+Kurenaido&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css?v=20260814-pageblur">
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -49,12 +49,10 @@
             <li><a href="/#contact">Contact</a></li>
           </ul>
           <ul class="nav__links nav__links--secondary">
-            <li><a href="/games.html">Games</a></li>
             <li><a href="/homework.html" aria-current="page">Homework Hub</a></li>
-            <li><a href="/courses.html">Courses</a></li>
           </ul>
         </div>
-        <a class="btn btn--primary btn--sm nav__cta" href="/#contact" data-service="Free trial lesson">Free Trial Lesson</a>
+        <a class="btn btn--primary btn--sm nav__cta" href="/#contact" data-service="Free consultation">Free Consultation</a>
       </div>
     </nav>
   </header>
@@ -68,7 +66,7 @@
           <p class="section__desc">Handcrafted homework that keeps you motivated</p>
         </div>
 
-        <div class="hw-login-hero">
+        <div class="hw-login-hero" id="hw-login">
           <div class="hw-login-hero__bg" aria-hidden="true">
             <div class="hw-login-hero__scrim"></div>
           </div>
@@ -79,8 +77,8 @@
               <div id="hw-auth-panel-login">
                 <form id="hw-login-form" class="hw-login-inlay__form" autocomplete="username">
                   <div class="hw-login-inlay__field">
-                    <label for="hw-username">Username <span class="hw-login-inlay__optional">(display name)</span></label>
-                    <input type="text" id="hw-username" name="username" required autocomplete="username" placeholder="e.g. sakura42">
+                    <label for="hw-username">Email / username</label>
+                    <input type="text" id="hw-username" name="username" required autocomplete="username" inputmode="email" placeholder="you@example.com">
                   </div>
                   <div class="hw-login-inlay__field">
                     <label for="hw-password">Password</label>
@@ -103,23 +101,24 @@
               <div id="hw-auth-panel-signup" hidden>
                 <form id="hw-signup-form" class="hw-login-inlay__form">
                   <div class="hw-login-inlay__field">
+                    <label for="hw-signup-display-name">First name</label>
+                    <input type="text" id="hw-signup-display-name" name="displayName" required maxlength="40" autocomplete="given-name" placeholder="David">
+                    <p class="hw-login-inlay__optional" style="margin:0.35rem 0 0">Shows as “David’s Hub” — you can change it later in Account.</p>
+                  </div>
+                  <div class="hw-login-inlay__field">
                     <label for="hw-signup-email">Email</label>
                     <input type="email" id="hw-signup-email" name="email" required autocomplete="email" placeholder="you@example.com">
                   </div>
                   <div class="hw-login-inlay__field">
-                    <label for="hw-signup-username">Username <span class="hw-login-inlay__optional">(display name)</span></label>
-                    <input type="text" id="hw-signup-username" name="username" required autocomplete="username" placeholder="letters, numbers, _ or -">
-                  </div>
-                  <div class="hw-login-inlay__field">
                     <label for="hw-signup-password">Password</label>
-                    <input type="password" id="hw-signup-password" name="password" required autocomplete="new-password" placeholder="••••••••">
+                    <input type="password" id="hw-signup-password" name="password" required minlength="6" autocomplete="new-password" placeholder="••••••••">
                   </div>
                   <button type="submit" class="hw-login-inlay__submit">Create account</button>
                   <p class="hw-login-inlay__switch">
                     <button type="button" class="hw-login-inlay__switch-link" data-auth-tab="login">Back to log in</button>
                   </p>
                   <p id="hw-signup-error" class="hw-login-inlay__error" hidden role="alert"></p>
-                  <p class="hw-login-inlay__note">You’ll choose a plan or course after your account is created.</p>
+                  <p class="hw-login-inlay__note">After creating an account, you can <a href="/homework-plans.html">pick a plan</a>.</p>
                 </form>
               </div>
             </div>
@@ -141,54 +140,61 @@
           </section>
 
           <section class="hw-plans" aria-labelledby="hw-plans-heading">
-            <h2 class="hw-plans-heading" id="hw-plans-heading">Plans</h2>
-            <div class="hw-breakdown-grid hw-breakdown-grid--landing">
-              <div class="hw-breakdown-column">
-                <article class="hw-breakdown-card">
-                  <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
-                  <h3>Basic</h3>
-                  <ul class="hw-breakdown-card__list">
-                    <li>One HW assignment each month</li>
-                    <li>So anyone can enjoy this — money shouldn’t keep you out</li>
-                    <li>Written notes when you send it back</li>
+            <h2 class="hw-plans-heading" id="hw-plans-heading">Stay in Japanese without the app guilt</h2>
+            <p class="hw-plans-sub">No streak nags. No “you’re behind.” Homework at your pace.</p>
+            <div class="hw-breakdown-tier-stack">
+            <div class="services__grid hw-breakdown-services">
+              <article class="service-card">
+                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5</span><span class="service-card__price-suffix">/mo</span></p>
+                <h3 class="service-card__title">Basic <span class="service-card__cadence">1 assignment</span></h3>
+                <div class="service-card__fit">
+                  <ul class="service-card__fit-list">
+                    <li>Low commitment</li>
+                    <li>$5 / one HW a month</li>
+                    <li>Written notes and audio feedback from JD</li>
                   </ul>
-                </article>
-              </div>
-              <div class="hw-breakdown-column">
-                <article class="hw-breakdown-card hw-breakdown-card--featured">
-                  <p class="hw-breakdown-card__badge">Popular</p>
-                  <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
-                  <h3>Premium</h3>
-                  <ul class="hw-breakdown-card__list">
-                    <li>Four HW assignments each month</li>
-                    <li>Made for how Japanese feels hard for you — not the same old drills</li>
-                    <li>Careful written notes from JD on your work</li>
+                </div>
+                <div class="service-card__bottom">
+                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="basic">Join Basic</button>
+                </div>
+              </article>
+              <article class="service-card service-card--featured">
+                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$20</span><span class="service-card__price-suffix">/mo</span></p>
+                <h3 class="service-card__title">Premium <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Popular</span></h3>
+                <div class="service-card__fit">
+                  <ul class="service-card__fit-list">
+                    <li>Stay motivated longer</li>
+                    <li>Relax with Japanese</li>
+                    <li>Feedback every week</li>
                   </ul>
-                </article>
-              </div>
-              <div class="hw-breakdown-column">
-                <article class="hw-breakdown-card">
-                  <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video</p>
-                  <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
-                  <h3>Ultra</h3>
-                  <ul class="hw-breakdown-card__list">
-                    <li>Four HW assignments each month</li>
-                    <li>A video from me on each one — so more of it can stick</li>
-                    <li>You hear and see the feedback, not only read it</li>
+                </div>
+                <div class="service-card__bottom">
+                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="premium">Join Premium</button>
+                </div>
+              </article>
+              <article class="service-card">
+                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$49</span><span class="service-card__price-suffix">/mo</span></p>
+                <h3 class="service-card__title">Ultra <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Video</span></h3>
+                <div class="service-card__fit">
+                  <ul class="service-card__fit-list">
+                    <li>Feels like lessons without the commitment</li>
+                    <li>Video feedback that sticks</li>
+                    <li>Help from a human, not AI</li>
                   </ul>
-                </article>
-              </div>
+                </div>
+                <div class="service-card__bottom">
+                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="ultra">Join Ultra</button>
+                </div>
+              </article>
             </div>
-
-            <p class="hw-plans-extras">
-              <span class="hw-plans-extras__label">Also on Premium &amp; Ultra</span>
-              Learning games, a quiet Discord space, and a little hint help when you want it.
-              Every plan works on your phone or on paper.
-            </p>
-
-            <div class="hw-subscribe-cta-wrap">
-              <button type="button" class="btn btn--primary hw-subscribe-cta" data-hw-subscribe-open>Subscribe</button>
-              <p class="hw-plans-note">Already take lessons with JD? <a href="/#contact" data-service="Homework Hub">Student Special — $10/mo</a></p>
+            <aside class="hw-tier-student-bar" aria-label="Student Special">
+              <div class="hw-tier-student-bar__main">
+                <p class="hw-tier-student-bar__eyebrow">Student Special</p>
+                <p class="hw-tier-student-bar__price"><span class="hw-tier-student-bar__price-main">$10</span><span class="hw-tier-student-bar__price-suffix">/mo</span></p>
+                <p class="hw-tier-student-bar__text">Currently a student? Enjoy the premium subscription at $10/mo.</p>
+              </div>
+              <button class="btn btn--primary hw-tier-student-bar__cta" type="button" data-hw-checkout="student-special">Join Student Special</button>
+            </aside>
             </div>
           </section>
         </div>
@@ -200,76 +206,23 @@
     </section>
   </main>
 
-  <div class="hw-breakdown-modal hw-subscribe-modal" id="hw-subscribe-modal" hidden>
-    <div class="hw-breakdown-modal__backdrop" data-hw-subscribe-close aria-hidden="true"></div>
-    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-subscribe-title">
-      <button class="hw-breakdown-modal__close" type="button" data-hw-subscribe-close aria-label="Close tier picker">×</button>
-      <p class="section__eyebrow">Homework Hub</p>
-      <h2 class="hw-breakdown-modal__title" id="hw-subscribe-title">Choose your tier</h2>
-      <div class="hw-breakdown-grid">
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card hw-breakdown-card--featured">
-            <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
-            <h3>Basic</h3>
-            <ul class="hw-breakdown-card__list">
-              <li>One HW assignment each month</li>
-              <li>Kept at $5 so anyone can take part</li>
-              <li>Written notes when you turn it in</li>
-            </ul>
-          </article>
-          <a class="btn btn--primary btn--full hw-breakdown-column__cta" href="/#contact" data-service="Homework Hub" data-hw-subscribe-close>Subscribe — Basic</a>
-        </div>
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card">
-            <p class="hw-breakdown-card__badge">Popular</p>
-            <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
-            <h3>Premium</h3>
-            <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments each month</li>
-              <li>Fun and creative — shaped around your real stuck spots, not a generic site</li>
-              <li><u>Written</u> notes and advice from JD</li>
-            </ul>
-          </article>
-          <button type="button" class="btn btn--primary btn--full hw-breakdown-column__cta" data-hw-checkout="premium">Subscribe — Premium</button>
-        </div>
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card hw-breakdown-card--included">
-            <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
-            <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
-            <h3>Ultra</h3>
-            <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments each month</li>
-              <li>A personal <u>video</u> from JD on <u>each</u> assignment</li>
-              <li>Hearing and seeing the feedback helps it settle in</li>
-              <li>Made so you feel walked with — not left alone with a worksheet</li>
-            </ul>
-          </article>
-          <a class="btn btn--primary btn--full hw-breakdown-column__cta" href="/#contact" data-service="Homework Hub" data-hw-subscribe-close>Subscribe — Ultra</a>
-        </div>
-      </div>
-      <p class="hw-plans-extras hw-plans-extras--modal">
-        <span class="hw-plans-extras__label">Also on Premium &amp; Ultra</span>
-        Learning games, a quiet Discord space, and a little hint help when you want it.
-        Every plan works on your phone or on paper.
-      </p>
-      <div class="hw-breakdown-modal__actions">
-        <button class="btn btn--ghost" type="button" data-hw-subscribe-close>Close</button>
-      </div>
-    </div>
-  </div>
-
   <footer class="site-footer">
     <div class="container site-footer__inner">
+      <nav class="site-footer__links" aria-label="Footer">
+        <a href="/account.html">Account</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </nav>
       <p class="site-footer__copy">&copy; 2021&ndash;2026 Japanese Language Mentor</p>
     </div>
   </footer>
 
-  <script src="/js/hw-auth.js" defer></script>
+  <script src="/js/hw-dialog-outside-close.js?v=1" defer></script>
+  <script src="/js/hw-auth.js?v=20260814-stultra" defer></script>
   <script src="/js/hw-checkout.js?v=20260815-paypal-cancel" defer></script>
-  <script src="/js/hw-subscribe.js" defer></script>
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-login-words.js" defer></script>
-  <script src="/js/hw-login.js?v=20260731-user" defer></script>
+  <script src="/js/hw-login.js?v=20260814-paypal1" defer></script>
 </body>
 </html>

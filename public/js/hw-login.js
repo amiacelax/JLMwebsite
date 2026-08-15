@@ -16,12 +16,19 @@
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
     const checkout = params.get("checkout");
-    if (checkout && window.HwCheckout?.buildCheckoutUrl) {
-      const session = HwAuth.getSession();
-      const url = HwCheckout.buildCheckoutUrl(checkout, session);
-      if (url) {
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
+    const paidPrompt = params.get("paidPrompt") === "1";
+
+    /* Guest already opened PayPal — after signup/login, confirm I’ve paid. */
+    if (checkout && paidPrompt && window.HwCheckout?.openPaidConfirm) {
+      HwCheckout.openPaidConfirm(checkout);
+      showLoggedIn(HwAuth.getSession());
+      return;
+    }
+
+    /* Same-tab PayPal (+ I’ve paid return) — don’t open a leftover new-tab link. */
+    if (checkout && window.HwCheckout?.startCheckout) {
+      HwCheckout.startCheckout(checkout);
+      return;
     }
     const dest =
       next && next.startsWith("/")
@@ -38,7 +45,7 @@
     }
     if (loggedInTier) {
       loggedInTier.textContent = session.tier === "pending"
-        ? "No plan yet — pick a tier below, then checkout with your account."
+        ? "No plan yet — see plans on Homework Hub, then checkout with your account."
         : (session.tierDisplay || "Subscriber") + " account";
     }
   }
@@ -61,12 +68,24 @@
   const params = new URLSearchParams(window.location.search);
   if (params.get("signup") === "1") activateAuthTab("signup");
 
-  // Discord DMs (and other deep links) can prefill username: ?user=benm
-  const prefillUser = String(params.get("user") || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, 32);
+  /* Guest Join → PayPal tab + this page: nudge them to finish account / I’ve paid. */
+  if (params.get("paidPrompt") === "1") {
+    const tip = document.createElement("p");
+    tip.className = "hw-login-inlay__optional";
+    tip.setAttribute("role", "status");
+    tip.style.cssText =
+      "margin:0 0 0.85rem;padding:0.65rem 0.75rem;border-radius:0.5rem;border:1px solid color-mix(in srgb, var(--color-green) 35%, transparent);background:color-mix(in srgb, var(--color-green) 12%, transparent);";
+    tip.textContent =
+      "PayPal should be open in another tab. Create your account here (or log in), finish payment there, then use I’ve paid — continue.";
+    const host =
+      document.getElementById("hw-login-fields") ||
+      document.querySelector(".hw-login-inlay");
+    if (host) host.insertBefore(tip, host.firstChild);
+    activateAuthTab("signup");
+  }
+
+  // Discord DMs (and other deep links) can prefill login: ?user=benm or email
+  const prefillUser = String(params.get("user") || "").trim();
   if (prefillUser) {
     const userInput = document.getElementById("hw-username");
     if (userInput && !userInput.value) {
@@ -84,10 +103,10 @@
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const username = document.getElementById("hw-username")?.value ?? "";
+      const loginId = document.getElementById("hw-username")?.value ?? "";
       const password = document.getElementById("hw-password")?.value ?? "";
       const remember = document.getElementById("hw-remember")?.checked ?? false;
-      const result = await HwAuth.loginAsync(username, password, remember);
+      const result = await HwAuth.loginAsync(loginId, password, remember);
       if (result.ok) {
         redirectAfterAuth();
         return;
@@ -102,16 +121,17 @@
   if (signupForm) {
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const displayName =
+        document.getElementById("hw-signup-display-name")?.value ?? "";
       const email = document.getElementById("hw-signup-email")?.value ?? "";
-      const username = document.getElementById("hw-signup-username")?.value ?? "";
       const password = document.getElementById("hw-signup-password")?.value ?? "";
       const remember = true;
 
       const result = await HwAuth.signupAsync(
         {
           email,
-          username,
           password,
+          displayName,
         },
         remember
       );

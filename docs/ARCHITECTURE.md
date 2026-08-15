@@ -30,8 +30,8 @@ npm run deploy   # wrangler deploy
 ```
 Browser
   ├─ GET /path          → Worker → ASSETS (public/) — HTML/CSS/JS/images
-  ├─ POST /api/contact  → Worker → Discord webhook embed
-  └─ POST /api/promo-signup → Worker → same Discord webhook
+  ├─ POST /api/contact  → Worker → Discord webhook + optional Resend email (Gmail)
+  └─ POST /api/promo-signup → Worker → same Discord + optional Resend email
 ```
 
 SPA fallback: `not_found_handling = "single-page-application"` in `wrangler.toml` (mostly static HTML pages today).
@@ -85,13 +85,15 @@ c:\JLM Website\
 
 ---
 
-## Discord notifications
+## Discord + Gmail (contact / promo)
 
-- **Secret:** `DISCORD_WEBHOOK_URL` (production + `.dev.vars` local).
+- **Discord secret:** `DISCORD_WEBHOOK_URL` (production + `.dev.vars` local).
+- **Gmail copies (optional until keyed):** Worker → Resend API → `INQUIRY_EMAIL_TO` (default `languagementor.jp@gmail.com`). `Reply-To` is the visitor’s email so JD can hit Reply in Gmail. Without `RESEND_API_KEY`, email is skipped (logged) and Discord-only continues.
+- **Setup:** see `docs/DEPLOY.md` → “Contact / promo → Gmail (Resend)”.
 - **Channel:** Discord notify channel ID `1534083802102501539` (`DISCORD_CHANNEL_ID` / `DISCORD_HOMEWORK_CHANNEL_ID` in `wrangler.toml`). Contact, promo, birthdays, social reminders, homework, and video upload pings all target this channel.
-- Worker **GETs webhook metadata** before send; wrong channel → 503 (no silent post to the wrong place).
+- Worker **GETs webhook metadata** before send; wrong channel → skip Discord (503 only if Resend email is also unavailable).
 - Embeds: contact = red “new message”; promo = blue “promo email signup”.
-- **Shorts/Reels social reminders:** cron `* * * * *` runs `runSocialReminders` (`src/social-reminders.ts`). Jobs live in `HOMEWORK_KV` (`sr-pending:*`). Arm with `POST /api/social-reminders` or `npm run arm:social -- --fire … --titles …`. Fires Discord + Teacher Hub `kind: reminder`. Default Story caption: `Free trial ↑`.
+- **Shorts/Reels social reminders:** cron `* * * * *` runs `runSocialReminders` (`src/social-reminders.ts`). Jobs live in `HOMEWORK_KV` (`sr-pending:*`). Arm with `POST /api/social-reminders` or `npm run arm:social -- --fire … --titles …`. Fires Discord + Teacher Hub `kind: reminder`. Default Story caption: `Free consultation ↑`. One Discord message with four copyable ``` blocks (title / pin / story / link).
 - **Do not commit** webhook URLs; rotate if leaked.
 - **Student DMs (publish / review ready):** `src/discord-notify.ts` uses bot token `DISCORD_BOT_TOKEN` + optional `DISCORD_TEACHER_USER_ID`. Discord user IDs live in KV (`student:{user}:discord-user-id`), set in Teacher Hub → Student info. Missing ID or DM failure → teacher DM, else homework webhook fallback. Never fails the HTTP publish/review response.
 - **Bot health check:** `GET /api/discord-bot-status?teacherUsername=jlm` (teacher-only) probes `GET /users/@me` and returns `{ ok, botUsername?, hint }` without leaking the token. Teacher Hub → Student info → **Check Discord bot**.
@@ -103,7 +105,8 @@ c:\JLM Website\
 - `hw-auth.js`: `sessionStorage`/`localStorage` key `jlm-hw-session`; accounts in `ACCOUNTS` with **account label** (`current_student` | `homework_only`), **tier** (`tier1` Basic, `tier2` Premium, `tier3` Unlimited, `student_special`), and optional **video response unlock** (`$15/mo` add-on stored in `localStorage` until PayPal).
 - Demo logins: `jlm` / `demo` (teacher); `benm` / `demo`, `joshs` / `jelly` (Current Student · Student Special); `deme` / `jelly` (Homework Only · Premium).
 - `hw-platform.js` renders tier badges, Student Special **$5/mo weekly upgrade** CTA, and **HW Review Playlist** when video access is enabled; extra-HW / $0.99 UI removed.
-- **PayPal (Homework):** REST subscriptions via `POST /api/paypal/create-subscription` (plan ids in `src/paypal.ts`). The PayPal `subscriptionId` is stored on the KV user and cancelled with `POST /v1/billing/subscriptions/{id}/cancel` when the account is deleted. Older plans without a stored id still need a manual PayPal cancel checkbox.
+- **PayPal (Homework):** Basic `P-3BS11069X4737034MNJ563OA`, Premium `P-7RC25164AJ430933DNJ564GY`, Ultra `P-9VC563511T5680357NJ565KA`, Student Special `P-34B653300B452420GNJ565WQ` (`HwCheckout.PRODUCTS` / `HwAuth.PAYPAL`). Prefer `POST /api/paypal/create-subscription` (needs `PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET`) → same-tab approve link with `return_url` → hub `?paid=1&plan=…` → `POST /api/auth/activate-plan`. Without PayPal API secrets, falls back to plain subscribe link + **I’ve paid — continue**. Arms HW-due reminders (Basic 21d; Premium/Ultra/SS 5d). The PayPal `subscriptionId` is stored on the KV user and cancelled with `POST /v1/billing/subscriptions/{id}/cancel` when the account is deleted; older plans without a stored id still need a manual PayPal cancel checkbox. **Webhooks:** remind at ~10 paying subscribers (see `.cursor/rules/paypal-webhooks-at-10.mdc`).
+- **Bug reports:** Hub header **Bug report** captures a screenshot (html2canvas CDN) + optional comment → `POST /api/feature-report` (KV + Discord file) → Teacher Hub notifications (`GET /api/feature-report-image` for screenshot).
 - `platform.html` calls `HwAuth.requireAuth()` inline in `<head>`.
 - **Not production-safe** — server auth + D1 planned (`docs/NIHONGO-WEEKLY-PLATFORM.md`).
 
@@ -155,6 +158,12 @@ ffmpeg -y -i "c:\External HD Copy\YouTube Edits\Da Vinci Export\Kash Lesson Comm
 | `DISCORD_HOMEWORK_CHANNEL_ID` | `wrangler.toml` [vars] | Validate homework webhook channel |
 | `DISCORD_BOT_TOKEN` | Secret / `.dev.vars` | Bot DMs for publish / review-ready pings |
 | `DISCORD_TEACHER_USER_ID` | Secret / `.dev.vars` | JD snowflake — fallback when student has no Discord ID |
+| `PAYPAL_CLIENT_ID` | Secret / `.dev.vars` | PayPal REST app — subscription approve links + return URL |
+| `PAYPAL_CLIENT_SECRET` | Secret / `.dev.vars` | PayPal REST app secret |
+| `PAYPAL_MODE` | Optional vars / `.dev.vars` | `live` (default) or `sandbox` |
+| `RESEND_API_KEY` | Secret / `.dev.vars` | Contact/promo → Gmail via Resend (optional) |
+| `INQUIRY_EMAIL_TO` | `wrangler.toml` [vars] | Inbox (default `languagementor.jp@gmail.com`) |
+| `INQUIRY_EMAIL_FROM` | `wrangler.toml` [vars] | From on Resend-verified domain |
 | `ASSETS` | Worker binding | Static files from `public/` |
 
 ---
@@ -162,10 +171,10 @@ ffmpeg -y -i "c:\External HD Copy\YouTube Edits\Da Vinci Export\Kash Lesson Comm
 ## Not built yet (don’t assume exists)
 
 - Server-side homework auth, D1, R2 lesson storage
-- PayPal webhooks / tier automation
+- PayPal **webhooks** / cancel automation (return URL + activate-plan is live; webhooks at ~10 subscribers)
 - Real course unlock flow (cards are marketing + PayPal links only)
 - Platform assignment pipeline (placeholders + demo worksheet)
-- Email sending (Discord only for contact/promo)
+- Resend domain verification / `RESEND_API_KEY` (code path ready; Discord-only until secret is set)
 
 Roadmap detail: `docs/NIHONGO-WEEKLY-PLATFORM.md`.
 

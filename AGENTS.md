@@ -4,7 +4,7 @@
 
 ## One-minute context
 
-- **Cloudflare Worker** serves `public/` and handles `POST /api/contact` + `POST /api/promo-signup` → **Discord** notify channel (`DISCORD_CHANNEL_ID=1534083802102501539`, secret `DISCORD_WEBHOOK_URL`). Homework / video submit uses the same channel (`DISCORD_HOMEWORK_*` can match).
+- **Cloudflare Worker** serves `public/` and handles `POST /api/contact` + `POST /api/promo-signup` → **Discord** notify channel (`DISCORD_CHANNEL_ID=1534083802102501539`, secret `DISCORD_WEBHOOK_URL`) plus optional **Resend** email to Gmail (`RESEND_API_KEY`; see `docs/DEPLOY.md`). Homework / video submit uses the same channel (`DISCORD_HOMEWORK_*` can match).
 - **No framework** — edit HTML + `public/css/styles.css` + small JS files; Worker is only `src/index.ts`.
 - **Homework login** is client-side demo (`public/js/hw-auth.js`) — not real server auth yet.
 - **Videos:** `public/videos/kash-lesson-commercial.mp4` for homepage “Watch a lesson”; check `public/.assetsignore` before assuming MP4 is deployed.

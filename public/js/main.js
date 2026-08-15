@@ -60,7 +60,6 @@
       label: "Tuesday",
       slots: [
         [[12, 15], [13, 15]],
-        [[13, 30], [14, 30]],
         [[21, 15], [22, 15]],
       ],
     },
@@ -541,6 +540,21 @@
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
   }
 
+  function focusContactNameSoon() {
+    const nameInput = document.getElementById("name");
+    if (!nameInput) return;
+    const focus = () => {
+      try {
+        nameInput.focus({ preventScroll: true });
+      } catch (_) {
+        nameInput.focus();
+      }
+    };
+    /* Smooth scroll needs a beat before focus feels natural. */
+    window.setTimeout(focus, 420);
+    window.addEventListener("scrollend", focus, { once: true });
+  }
+
   const serviceSelect = document.getElementById("service");
 
   function preselectService(serviceName) {
@@ -553,8 +567,39 @@
 
   window.jlmPreselectService = preselectService;
 
+  /* Cross-page deep links: /?service=Private%20Lessons&message=...#contact */
+  (function applyServiceFromQuery() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = params.get("service");
+      if (fromQuery) preselectService(fromQuery);
+      const fromMessage = params.get("message");
+      if (fromMessage && messageField && !messageField.value.trim()) {
+        messageField.value = fromMessage;
+      }
+      if (fromQuery === "Free consultation") focusContactNameSoon();
+    } catch (_) {
+      /* ignore */
+    }
+  })();
+
   hwBreakdownOpenBtns.forEach((btn) => {
-    btn.addEventListener("click", openHwBreakdown);
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openHwBreakdown();
+    });
+  });
+
+  /* Whole Homework Hub card → tier breakdown (skips Learn more / nested controls). */
+  document.querySelectorAll("[data-hw-breakdown-card]").forEach((card) => {
+    card.addEventListener("click", (e) => {
+      const interactive = e.target.closest(
+        "a, button, summary, input, select, textarea, label, details"
+      );
+      if (interactive && interactive !== card) return;
+      openHwBreakdown();
+    });
   });
 
   hwBreakdownCloseBtns.forEach((btn) => {
@@ -586,11 +631,19 @@
     btn.addEventListener("click", closeIntroVideo);
   });
 
-  introVideoModal?.addEventListener("click", (e) => {
-    if (e.target === introVideoModal.querySelector(".intro-video-modal__backdrop")) {
-      closeIntroVideo();
-    }
-  });
+  function bindOutsideClose(modal, closeFn, backdropSelector) {
+    if (!modal) return;
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal || (backdropSelector && e.target.matches?.(backdropSelector))) {
+        closeFn();
+      }
+    });
+  }
+
+  bindOutsideClose(introVideoModal, closeIntroVideo, ".intro-video-modal__backdrop");
+  bindOutsideClose(hwBreakdownModal, closeHwBreakdown, ".hw-breakdown-modal__backdrop");
+  bindOutsideClose(jumpstartModal, closeJumpstart, ".jumpstart-modal__backdrop");
+  bindOutsideClose(scheduleModal, () => closeSchedule(false), ".lesson-scheduler-modal__backdrop");
 
   function updateStickyCta() {
     if (!stickyCta || !heroSection) return;
@@ -646,9 +699,13 @@
       if (!target) return;
       e.preventDefault();
       closeMenu();
-      preselectService(link.getAttribute("data-service"));
+      const service = link.getAttribute("data-service");
+      preselectService(service);
       scrollToSection(target);
       history.replaceState(null, "", id);
+      if (id === "#contact" && service === "Free consultation") {
+        focusContactNameSoon();
+      }
     });
   });
 
@@ -740,7 +797,115 @@
     }
   });
 
-  /* Defer YouTube embeds until near viewport — avoids early third-party JS on first paint. */
+  /* Whole service card tap → destination (skips nested controls). */
+  (function serviceCardNav() {
+    document.querySelectorAll("[data-service-nav]").forEach((card) => {
+      const href = card.getAttribute("data-service-nav");
+      if (!href) return;
+      card.classList.add("service-card--nav");
+      card.addEventListener("click", (e) => {
+        const interactive = e.target.closest(
+          "a, button, summary, input, select, textarea, label, details"
+        );
+        if (interactive && interactive !== card) return;
+        const service = card.getAttribute("data-service-nav-service");
+        if (href.startsWith("#")) {
+          const target = document.querySelector(href);
+          if (!target) return;
+          e.preventDefault();
+          preselectService(service);
+          scrollToSection(target);
+          history.replaceState(null, "", href);
+          return;
+        }
+        if (service && href.indexOf("/#contact") !== -1) {
+          window.location.href =
+            "/?service=" + encodeURIComponent(service) + "#contact";
+          return;
+        }
+        window.location.href = href;
+      });
+    });
+  })();
+
+  /* Student stories: poster + play expand; only one plays at a time. */
+  (function testimonyVideos() {
+    const cards = document.querySelectorAll("[data-testimony]");
+    if (!cards.length) return;
+
+    const collapse = (card) => {
+      const video = card.querySelector("[data-testimony-video]");
+      card.classList.remove("is-playing");
+      if (!video) return;
+      if (!video.paused) video.pause();
+      try {
+        video.currentTime = 0;
+      } catch (_) {
+        /* ignore seek before metadata */
+      }
+    };
+
+    const expandAndPlay = (card) => {
+      const video = card.querySelector("[data-testimony-video]");
+      if (!video) return;
+      cards.forEach((other) => {
+        if (other !== card) collapse(other);
+      });
+      card.classList.add("is-playing");
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          /* autoplay blocked or aborted — keep expanded with controls */
+        });
+      }
+    };
+
+    cards.forEach((card) => {
+      const playBtn = card.querySelector("[data-testimony-play]");
+      const video = card.querySelector("[data-testimony-video]");
+      if (playBtn) {
+        playBtn.addEventListener("click", () => expandAndPlay(card));
+      }
+      if (!video) return;
+      video.addEventListener("play", () => {
+        cards.forEach((other) => {
+          if (other !== card) collapse(other);
+        });
+        card.classList.add("is-playing");
+      });
+    });
+  })();
+
+  /* Long copy: teaser + “...click to read more”; click / Enter / Space toggles full. */
+  (function textFolds() {
+    document.querySelectorAll("[data-text-fold]").forEach((root) => {
+      const content = root.querySelector(".text-fold__content");
+      if (!content) return;
+
+      const setOpen = (open) => {
+        root.classList.toggle("is-open", open);
+        content.setAttribute("aria-expanded", open ? "true" : "false");
+        content.setAttribute(
+          "aria-label",
+          open ? "Show less" : "Click to read more"
+        );
+      };
+
+      setOpen(false);
+
+      const toggle = () => setOpen(!root.classList.contains("is-open"));
+
+      content.addEventListener("click", toggle);
+      content.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggle();
+        }
+      });
+    });
+  })();
+
+  /* Defer YouTube embeds until near viewport — skip closed lesson-clip details until opened. */
   (function lazyYoutubeEmbeds() {
     const frames = document.querySelectorAll("iframe[data-src*='youtube']");
     if (!frames.length) return;
@@ -750,7 +915,16 @@
       }
     };
     if (!("IntersectionObserver" in window)) {
-      frames.forEach(activate);
+      frames.forEach((el) => {
+        const details = el.closest("details");
+        if (details && !details.open) {
+          details.addEventListener("toggle", () => {
+            if (details.open) activate(el);
+          });
+          return;
+        }
+        activate(el);
+      });
       return;
     }
     const io = new IntersectionObserver(
@@ -763,6 +937,16 @@
       },
       { rootMargin: "200px 0px" }
     );
-    frames.forEach((el) => io.observe(el));
+    frames.forEach((el) => {
+      const details = el.closest("details");
+      if (details && !details.open) {
+        details.addEventListener("toggle", () => {
+          if (!details.open) return;
+          activate(el);
+        });
+        return;
+      }
+      io.observe(el);
+    });
   })();
 })();

@@ -564,31 +564,49 @@
     const price = global.HwAuth?.WEEKLY_HOMEWORK_UPGRADE_PRICE || 10;
     const article = document.createElement("article");
     article.className =
-      "course-card course-card--locked hw-addon-card hw-hub-v5-sellup-card hw-hub-v5-sellup-card--weekly";
+      "course-card course-card--locked hw-addon-card hw-hub-v5-sellup-card hw-hub-v5-sellup-card--weekly hw-hub-v5-sellup-card--clickable";
     article.tabIndex = 0;
+    article.setAttribute("role", "link");
+    article.setAttribute(
+      "aria-label",
+      "Unlock weekly homework — Student Special $" + price + " per month"
+    );
     article.innerHTML =
       LOCK_SVG +
       "<h3 class=\"course-card__title\">Weekly homework</h3>" +
       '<p class="course-card__desc">Student Special add-on — Premium-level HW on top of your lesson plan.</p>' +
       '<div class="course-card__footer">' +
-      '<button type="button" class="course-card__status" data-hw-v5-weekly-upgrade aria-label="Add weekly homework for ' +
-      price +
-      ' dollars per month">' +
+      '<span class="course-card__status" aria-hidden="true">' +
       '<span class="course-card__status-text course-card__status-text--locked">LOCKED</span>' +
       '<span class="course-card__status-text course-card__status-text--unlock">UNLOCK?</span>' +
-      "</button>" +
+      "</span>" +
       '<span class="course-card__price" aria-label="' +
       escapeHtml(priceAria(price)) +
       '">$' +
       price +
       '<span class="course-card__price-suffix">/mo</span></span>' +
       "</div>";
-    article.querySelector("[data-hw-v5-weekly-upgrade]")?.addEventListener("click", () => {
+
+    function goStudentSpecialCheckout() {
+      if (global.HwCheckout?.startCheckout) {
+        global.HwCheckout.startCheckout("student-special", { forcePaypal: true });
+        return;
+      }
       alert(
         "Weekly homework add-on ($" +
           price +
-          "/mo) — PayPal coming soon. Message JD to sign up."
+          "/mo) — open Student Special checkout after login."
       );
+    }
+
+    article.addEventListener("click", (event) => {
+      event.preventDefault();
+      goStudentSpecialCheckout();
+    });
+    article.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      goStudentSpecialCheckout();
     });
     return article;
   }
@@ -938,13 +956,17 @@
     return document.documentElement.classList.contains("hw-tb-cloud-out");
   }
 
-  /** Phone widths — same as live student toolbar mobile arm. */
+  /** Phone widths — unused for Glass/Cloud arm now (both always direct-arm). */
   function usesToolbarDirectArm() {
-    try {
-      return global.matchMedia("(max-width: 767px)").matches;
-    } catch {
-      return false;
-    }
+    return true;
+  }
+
+  function usesGlassDirectArm() {
+    return true;
+  }
+
+  function usesCloudDirectArm() {
+    return true;
   }
 
   function isGlassArmed() {
@@ -985,103 +1007,27 @@
 
   function toggleGlassArmFromToolbar() {
     const next = !isGlassArmed();
-    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
-    global.HwHomeworkComments?.disarm?.();
+    /* Keep floating Glass tucked — same as live student toolbar. */
+    document.documentElement.classList.remove("hw-tb-glass-out");
     global.HwMagnifyingGlass?.setArmed?.(next);
     syncToolbarActionState();
   }
 
   function toggleCloudArmFromToolbar() {
     const next = !isCloudArmed();
-    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
-    global.HwMagnifyingGlass?.setArmed?.(false);
+    /* Keep floating Cloud tucked — same as live student toolbar. */
+    document.documentElement.classList.remove("hw-tb-cloud-out");
     if (next) global.HwHomeworkComments?.setArmed?.(true);
     else global.HwHomeworkComments?.disarm?.();
     syncToolbarActionState();
   }
 
-  function toggleGlassFromToolbar(glassBtn) {
-    if (usesToolbarDirectArm()) {
-      toggleGlassArmFromToolbar();
-      return;
-    }
-    const host = worksheetToolHostEl();
-    const layout = global.HwWorksheetToolLayout;
-    if (isGlassPopped()) {
-      if (host && layout?.flingToolsToToolbar) {
-        layout.flingToolsToToolbar({
-          hostEl: host,
-          glassBtn,
-          cloudBtn: null,
-          glassOut: true,
-          cloudOut: false,
-          onTuck: () => {
-            setGlassPopped(false);
-            syncToolbarActionState();
-          },
-        });
-        return;
-      }
-      setGlassPopped(false);
-      syncToolbarActionState();
-      return;
-    }
-    if (host && layout?.flingToolsFromToolbar) {
-      layout.flingToolsFromToolbar({
-        hostEl: host,
-        glassBtn,
-        glass: true,
-        onReveal: () => {
-          setGlassPopped(true);
-          syncToolbarActionState();
-        },
-      });
-      return;
-    }
-    setGlassPopped(true);
-    syncToolbarActionState();
+  function toggleGlassFromToolbar(_glassBtn) {
+    toggleGlassArmFromToolbar();
   }
 
-  function toggleCloudFromToolbar(cloudBtn) {
-    if (usesToolbarDirectArm()) {
-      toggleCloudArmFromToolbar();
-      return;
-    }
-    const host = worksheetToolHostEl();
-    const layout = global.HwWorksheetToolLayout;
-    if (isCloudPopped()) {
-      if (host && layout?.flingToolsToToolbar) {
-        layout.flingToolsToToolbar({
-          hostEl: host,
-          glassBtn: null,
-          cloudBtn,
-          glassOut: false,
-          cloudOut: true,
-          onTuck: () => {
-            setCloudPopped(false);
-            syncToolbarActionState();
-          },
-        });
-        return;
-      }
-      setCloudPopped(false);
-      syncToolbarActionState();
-      return;
-    }
-    if (host && layout?.flingToolsFromToolbar) {
-      layout.flingToolsFromToolbar({
-        hostEl: host,
-        cloudBtn,
-        cloud: true,
-        onReveal: () => {
-          setCloudPopped(true);
-          syncToolbarActionState();
-        },
-      });
-      return;
-    }
-    setCloudPopped(true);
-    syncToolbarActionState();
+  function toggleCloudFromToolbar(_cloudBtn) {
+    toggleCloudArmFromToolbar();
   }
 
   /** Sit the toolbar under the HW content, inside the blue grammar box (after the mount). */
@@ -1167,14 +1113,14 @@
       glassBtn.disabled = !(
         global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo
       );
-      const glassOn = usesToolbarDirectArm() ? isGlassArmed() : isGlassPopped();
+      const glassOn = usesGlassDirectArm() ? isGlassArmed() : isGlassPopped();
       glassBtn.setAttribute("aria-pressed", glassOn ? "true" : "false");
     }
     if (cloudBtn) {
       cloudBtn.disabled = !(
         global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo
       );
-      const cloudOn = usesToolbarDirectArm() ? isCloudArmed() : isCloudPopped();
+      const cloudOn = usesCloudDirectArm() ? isCloudArmed() : isCloudPopped();
       cloudBtn.setAttribute("aria-pressed", cloudOn ? "true" : "false");
     }
     global.HwToolbarQIcons?.applyToToolbar?.(bar);

@@ -145,6 +145,64 @@ Without `DISCORD_BOT_TOKEN` / `DISCORD_TEACHER_USER_ID`, publish and review stil
 
 ---
 
+## Contact / promo → Gmail (Resend)
+
+Website contact + promo signup still post to Discord. The Worker also emails a copy to Gmail so you can **Reply** to the visitor.
+
+**Why Resend (not Gmail SMTP / Cloudflare Email Routing):** Workers need an HTTPS transactional API. Resend free tier (3,000/mo) is enough for inquiries. Gmail is the *inbox*, not the sender.
+
+1. Sign up at [resend.com](https://resend.com) (free).
+2. **Domains** → add `japaneselanguagementor.com` → add the DNS records Resend shows (SPF / DKIM; often MX for receiving if you enable inbound — sending only needs what they list).
+3. Wait until the domain shows **Verified**.
+4. **API Keys** → create a key (Sending access is enough).
+5. Production secret (paste when prompted — never commit):
+
+```powershell
+cd "C:\JLM Website"
+npx.cmd wrangler secret put RESEND_API_KEY
+```
+
+6. Optional: confirm From/To in `wrangler.toml` `[vars]`:
+   - `INQUIRY_EMAIL_TO` = `languagementor.jp@gmail.com`
+   - `INQUIRY_EMAIL_FROM` = `Japanese Language Mentor <inquiries@japaneselanguagementor.com>`
+7. Redeploy if you haven’t since this feature shipped (`npm run deploy`).
+8. Test the homepage contact form — you should get Discord **and** a Gmail message. Hit **Reply** → goes to the visitor (`Reply-To`).
+
+Until `RESEND_API_KEY` is set, contact/promo keep working via Discord only (Worker logs that email was skipped).
+
+**Quick test without custom domain:** Resend allows `from: onboarding@resend.dev` only to your Resend account email. Set temporarily:
+
+```powershell
+# after verifying you can receive at that address — then switch back to inquiries@…
+```
+
+Prefer verifying `japaneselanguagementor.com` before relying on production From.
+
+---
+
+## PayPal return URL (homework plans)
+
+So students land back on the hub after paying (`?paid=1&plan=basic` etc.):
+
+1. Create / open a **Live** REST app: [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/applications/live)
+2. Copy **Client ID** and **Secret**
+3. Set Worker secrets (paste when prompted — never commit):
+
+```powershell
+cd "C:\JLM Website"
+npx.cmd wrangler secret put PAYPAL_CLIENT_ID
+npx.cmd wrangler secret put PAYPAL_CLIENT_SECRET
+```
+
+4. Redeploy once (`npm run deploy`) so the new code path is live if you haven’t already
+5. Test: pick a plan while logged in → same tab opens PayPal → after approve you return to `/homework/platform.html?paid=1&plan=…` and the waiting screen
+
+Without those secrets, checkout still works via the plain PayPal subscribe link; students use **I’ve paid — continue** when they come back.
+
+**Webhooks** (auto unlock/cancel from PayPal events): defer until ~10 paying subscribers.
+
+---
+
 ## Checklist
 
 | Step | Status |

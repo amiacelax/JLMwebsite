@@ -35,6 +35,26 @@ DISCORD_HOMEWORK_CHANNEL_ID=1534083802102501539
 # Local dev only — auto-loads key on localhost (no ?key= in URL needed)
 # LOCAL_DEV=1
 
+# PayPal Subscriptions API (return URL after checkout). Live app Client ID + Secret:
+#   https://developer.paypal.com/dashboard/applications/live
+#   wrangler secret put PAYPAL_CLIENT_ID
+#   wrangler secret put PAYPAL_CLIENT_SECRET
+# PAYPAL_CLIENT_ID=
+# PAYPAL_CLIENT_SECRET=
+# PAYPAL_MODE=live
+#
+# Without these, homework plan checkout still uses the plain PayPal subscribe link
+# and the “I’ve paid — continue” confirm on return.
+
+# Resend — Gmail copies of contact + promo form (Discord still fires). Free tier is enough.
+# 1) Sign up https://resend.com → Domains → add japaneselanguagementor.com → add DNS records
+# 2) API Keys → create key → paste here / production secret:
+#   npx wrangler secret put RESEND_API_KEY
+# Optional overrides (defaults live in wrangler.toml [vars]):
+# INQUIRY_EMAIL_TO=languagementor.jp@gmail.com
+# INQUIRY_EMAIL_FROM=Japanese Language Mentor <inquiries@japaneselanguagementor.com>
+# RESEND_API_KEY=
+
 # Your Cloudflare API token (for wrangler login / deploy) is NOT the same thing — you do not put it here.
 #
 # PayPal REST (homework subscriptions). Production secrets:

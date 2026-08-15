@@ -1,7 +1,9 @@
 /**
  * Student accounts for teacher UI — live list from KV (signups + published homework).
+ * Keeps a localStorage copy so Student/ID dropdowns paint instantly on reopen.
  */
 (function (global) {
+  const LS_KEY = "jlm-hw-student-list-v1";
   let cachedStudents = null;
   let fetchPromise = null;
 
@@ -23,6 +25,37 @@
     return [...byUser.values()].sort((a, b) => a.username.localeCompare(b.username));
   }
 
+  function readLocalStudents() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.students)
+          ? parsed.students
+          : null;
+      if (!list?.length) return null;
+      return mergeStudentLists(list);
+    } catch {
+      return null;
+    }
+  }
+
+  function writeLocalStudents(students) {
+    try {
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({
+          savedAt: Date.now(),
+          students: Array.isArray(students) ? students : [],
+        })
+      );
+    } catch {
+      /* quota / private mode */
+    }
+  }
+
   function getTeacherUsername() {
     return global.HwAuth?.getTeacherSession?.()?.username || "";
   }
@@ -30,16 +63,28 @@
   function resetCache() {
     cachedStudents = null;
     fetchPromise = null;
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {
+      /* ignore */
+    }
   }
 
   function setStudents(students) {
     if (!Array.isArray(students)) return;
     cachedStudents = mergeStudentLists(students);
     fetchPromise = Promise.resolve(cachedStudents);
+    writeLocalStudents(cachedStudents);
   }
 
   function getStudentsSync() {
-    return cachedStudents ? cachedStudents.slice() : [];
+    if (cachedStudents) return cachedStudents.slice();
+    const local = readLocalStudents();
+    if (local) {
+      cachedStudents = local;
+      return local.slice();
+    }
+    return [];
   }
 
   function isKnownStudent(username) {
@@ -55,6 +100,12 @@
    */
   async function fetchStudents(opts) {
     opts = opts || {};
+
+    if (!cachedStudents) {
+      const local = readLocalStudents();
+      if (local) cachedStudents = local;
+    }
+
     if (!opts.force && cachedStudents) return cachedStudents;
     if (!opts.force && fetchPromise) return fetchPromise;
 
@@ -86,6 +137,7 @@
           const students = await load();
           if (students?.length) {
             cachedStudents = mergeStudentLists(students);
+            writeLocalStudents(cachedStudents);
             return cachedStudents;
           }
         } catch {
@@ -93,6 +145,7 @@
         }
       }
 
+      if (cachedStudents?.length) return cachedStudents;
       cachedStudents = [];
       return cachedStudents;
     })();

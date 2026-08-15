@@ -51,6 +51,11 @@
   animation: hw-mg-float 3.6s ease-in-out infinite;
 }
 
+/* Magnet parked (HwFeatureFlags.toolMagnet) — hide any leftover DOM. */
+.hw-tools-cleanup {
+  display: none !important;
+}
+
 /* Match magnet selector specificity so paint order cannot lose to .hw-tools-cleanup. */
 .hw-mg-host > .hw-mg-widget,
 .hw-hc-host > .hw-mg-widget,
@@ -740,6 +745,16 @@ body:has(.hw-toolbar-bar:not([hidden])) .hw-mg-toast {
   top: auto;
   z-index: 460;
   max-width: min(22rem, calc(100% - 1.5rem));
+}
+
+/* Desktop: tip centered on the worksheet mid area (not buried by the toolbar). */
+@media (min-width: 768px) {
+  body:has(.hw-toolbar-bar:not([hidden])) .hw-mg-toast {
+    bottom: auto;
+    /* Center of toast sits at y ≈ 622px; x is true viewport center. */
+    top: 622.4px;
+    transform: translate(-50%, -50%);
+  }
 }
 
 @media (max-width: 640px) {

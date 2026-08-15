@@ -12,7 +12,7 @@ binding = "ASSETS"
 # or Sec-Fetch-Mode: navigate can serve index.html instead of the Worker
 # (compatibility_date >= 2025-04-01 assets_navigation_prefers_asset_serving).
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/preview/*", "/homework/platform", "/homework/platform.html", "/homework.html", "/homework"]
+run_worker_first = ["/api/*", "/preview/*", "/homework/platform", "/homework/platform.html", "/homework.html", "/homework", "/homework-hub", "/homework-hub/", "/homework-hub.html"]
 
 [observability]
 enabled = true
@@ -29,6 +29,9 @@ JEM_PREVIEW_USER = "jem"
 # → channel 1534083802102501539 (create/move webhooks into this channel)
 DISCORD_CHANNEL_ID = "1534083802102501539"
 DISCORD_HOMEWORK_CHANNEL_ID = "1534083802102501539"
+# Contact / promo Gmail copies (Resend). API key is a secret: wrangler secret put RESEND_API_KEY
+INQUIRY_EMAIL_TO = "languagementor.jp@gmail.com"
+INQUIRY_EMAIL_FROM = "Japanese Language Mentor <inquiries@japaneselanguagementor.com>"
 
 # 00:00 UTC daily ≈ 9:00 Japan time — student birthday Discord reminders
 # * * * * * — Shorts/Reels social reminder jobs (HOMEWORK_KV sr-pending:*)

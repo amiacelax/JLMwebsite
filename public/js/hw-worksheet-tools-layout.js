@@ -752,14 +752,19 @@
     );
   }
 
-  /* ——— Click-to-copy coords (same host-local space as Glass/Cloud) ——— */
-  let pickModeActive = false;
+  /* ——— Click-to-copy coords / highlight element (teacher + local) ——— */
+  /** @type {null | "point" | "highlight"} */
+  let pickMode = null;
   let pickedEl = null;
   let pickHoverEl = null;
   let pickHighlightEl = null;
   let pickLiveRaf = 0;
   /** Last click-point payload (re-copied by “Copy coords”). */
   let lastPointCoords = null;
+
+  function pickModeActive() {
+    return pickMode === "point" || pickMode === "highlight";
+  }
 
   function round1(n) {
     return Math.round(n * 10) / 10;
@@ -837,66 +842,15 @@
     };
   }
 
+  /** Single line — what you paste in chat for “put it here”. */
   function formatPointCoordsBlurb(info) {
     if (!info) return "";
-    const spaceNote =
-      info.space === "host-local"
-        ? "host-local (same as Glass/Cloud)"
-        : "viewport (no worksheet host)";
-    const modeLabel = info.mode === "focus" ? "live focus" : "live non-focus";
-    let text =
-      "point · " +
-      modeLabel +
-      " · " +
-      spaceNote +
-      "\n" +
-      "x: " +
-      info.x +
-      "  y: " +
-      info.y;
-    if (info.elCenter && info.under) {
-      text +=
-        "\n" +
-        info.under +
-        " center x: " +
-        info.elCenter.x +
-        "  y: " +
-        info.elCenter.y;
-    } else if (info.under) {
-      text += "\nunder: " + info.under;
-    }
-    return text;
+    return "x: " + info.x + "  y: " + info.y;
   }
 
   function formatPickedCoordsBlurb(info) {
     if (!info) return "";
-    const spaceNote =
-      info.space === "host-local"
-        ? "host-local center (same as Glass/Cloud)"
-        : "viewport center (no worksheet host)";
-    const modeLabel = info.mode === "focus" ? "focus" : "non-focus";
-    return (
-      info.label +
-      " · " +
-      modeLabel +
-      " · " +
-      spaceNote +
-      "\n" +
-      "center x: " +
-      info.x +
-      "  y: " +
-      info.y +
-      "\n" +
-      "top-left x: " +
-      info.left +
-      "  y: " +
-      info.top +
-      "\n" +
-      "size w: " +
-      info.w +
-      "  h: " +
-      info.h
-    );
+    return formatPointCoordsBlurb(info);
   }
 
   function ensurePickHighlight() {
@@ -947,29 +901,35 @@
   }
 
   function refreshPickChrome() {
-    const btn = document.getElementById("hw-pick-element-coords");
-    if (btn) {
-      btn.classList.toggle("is-active", pickModeActive);
-      if (pickModeActive) {
-        btn.textContent = pickedEl ? "Click a point…" : "Click to lock…";
-      } else {
-        btn.textContent = "Click to copy";
-      }
-      btn.setAttribute("aria-pressed", pickModeActive ? "true" : "false");
+    const pointBtn = document.getElementById("hw-pick-point-coords");
+    const highlightBtn = document.getElementById("hw-pick-element-highlight");
+    if (pointBtn) {
+      pointBtn.classList.toggle("is-active", pickMode === "point");
+      pointBtn.setAttribute("aria-pressed", pickMode === "point" ? "true" : "false");
+      pointBtn.textContent = pickMode === "point" ? "Click a point…" : "Copy point";
+    }
+    if (highlightBtn) {
+      highlightBtn.classList.toggle("is-active", pickMode === "highlight");
+      highlightBtn.setAttribute("aria-pressed", pickMode === "highlight" ? "true" : "false");
+      highlightBtn.textContent =
+        pickMode === "highlight" ? "Click element…" : "Highlight element";
     }
     const hint = document.getElementById("hw-tool-layout-hint");
     if (hint) {
-      if (pickModeActive) {
+      if (pickMode === "point") {
+        hint.textContent = "Click anywhere — copies one x/y line · Esc to exit";
+      } else if (pickMode === "highlight") {
         hint.textContent = pickedEl
-          ? "Element locked — click anywhere for coords · Esc clears lock"
-          : "First click locks an element · then click for coords";
+          ? "Highlighting " + shortElementLabel(pickedEl) + " · click another, or Esc"
+          : "Click an element to highlight it · Esc to exit";
       } else if (pickedEl) {
         hint.textContent =
-          "Locked " +
-          shortElementLabel(pickedEl) +
-          " · Click to copy for points, or Clear / Esc";
+          "Highlight on " + shortElementLabel(pickedEl) + " · Clear / Esc to drop";
+      } else if (lastPointCoords) {
+        hint.textContent =
+          "Last point " + lastPointCoords.x + ", " + lastPointCoords.y + " · Copy coords to re-copy";
       } else {
-        hint.textContent = "Click to copy a point, or right‑click Glass / Cloud";
+        hint.textContent = "Copy point for a spot, or Highlight element to show me what you mean";
       }
     }
     const clearBtn = document.getElementById("hw-clear-pick-coords");
@@ -978,13 +938,22 @@
     }
   }
 
-  function setPickMode(on) {
-    pickModeActive = !!on;
-    document.documentElement.classList.toggle("hw-tool-pick-mode", pickModeActive);
-    if (!pickModeActive) {
-      pickHoverEl = null;
-      if (!pickedEl && !lastPointCoords) updatePickHighlight(null);
-      else if (pickedEl) updatePickHighlight(pickedEl);
+  function setPickMode(next) {
+    const mode = next === "point" || next === "highlight" ? next : null;
+    pickMode = mode;
+    document.documentElement.classList.toggle("hw-tool-pick-mode", pickModeActive());
+    pickHoverEl = null;
+    if (pickMode === "point") {
+      /* Drop any leftover element ring — point mode never selects elements. */
+      if (!pickedEl) updatePickHighlight(null);
+      else {
+        /* Keep a prior highlight if one was set in Highlight mode, but don't chase hover. */
+        updatePickHighlight(pickedEl.isConnected ? pickedEl : null);
+        if (!pickedEl.isConnected) pickedEl = null;
+      }
+    } else if (!pickModeActive()) {
+      if (!pickedEl) updatePickHighlight(null);
+      else updatePickHighlight(pickedEl);
     }
     refreshPickChrome();
     refreshLayoutToolsReadout();
@@ -999,32 +968,18 @@
     refreshLayoutToolsReadout();
   }
 
-  /** First click: lock one element. Does not copy. */
-  function selectLockedElement(el) {
+  function selectHighlightedElement(el) {
     if (!el) return;
     pickedEl = el;
     pickHoverEl = null;
     updatePickHighlight(el);
     refreshPickChrome();
     refreshLayoutToolsReadout();
-    showCoordToast(shortElementLabel(el) + " — locked. Next click copies a point.");
+    showCoordToast("Highlight · " + shortElementLabel(el));
   }
 
-  /**
-   * Further clicks: copy host-local point. Never changes the locked element.
-   * Pass lockedEl only for blurb labeling (center of locked selection).
-   */
   async function copyPickAtPoint(clientX, clientY) {
     const point = measureClickPoint(clientX, clientY);
-    const el = pickedEl && pickedEl.isConnected ? pickedEl : null;
-    if (el) {
-      updatePickHighlight(el);
-      point.under = shortElementLabel(el);
-      const elInfo = measureElementCoords(el);
-      if (elInfo) {
-        point.elCenter = { x: elInfo.x, y: elInfo.y };
-      }
-    }
     lastPointCoords = point;
     refreshPickChrome();
     refreshLayoutToolsReadout();
@@ -1057,7 +1012,7 @@
     pickLiveRaf = requestAnimationFrame(() => {
       pickLiveRaf = 0;
       if (pickedEl) updatePickHighlight(pickedEl);
-      else if (pickModeActive && pickHoverEl) updatePickHighlight(pickHoverEl);
+      else if (pickMode === "highlight" && pickHoverEl) updatePickHighlight(pickHoverEl);
       refreshLayoutToolsReadout();
     });
   }
@@ -1069,17 +1024,24 @@
     document.addEventListener(
       "pointermove",
       (e) => {
-        if (!pickModeActive || !canUseLayoutTools()) return;
-        /* Locked selection — highlight stays on that element. */
-        if (pickedEl) {
-          if (pickedEl.isConnected) updatePickHighlight(pickedEl);
+        if (!pickModeActive() || !canUseLayoutTools()) return;
+        /* Point mode: no element selection — just aim and click for x/y. */
+        if (pickMode === "point") {
+          pickHoverEl = null;
+          if (!pickedEl) updatePickHighlight(null);
           return;
         }
-        const under = document.elementFromPoint(e.clientX, e.clientY);
-        const target = resolvePickTarget(under);
-        if (target === pickHoverEl) return;
-        pickHoverEl = target;
-        updatePickHighlight(target);
+        if (pickMode === "highlight") {
+          if (pickedEl && pickedEl.isConnected) {
+            updatePickHighlight(pickedEl);
+            return;
+          }
+          const under = document.elementFromPoint(e.clientX, e.clientY);
+          const target = resolvePickTarget(under);
+          if (target === pickHoverEl) return;
+          pickHoverEl = target;
+          updatePickHighlight(target);
+        }
       },
       true
     );
@@ -1087,23 +1049,21 @@
     document.addEventListener(
       "pointerdown",
       (e) => {
-        if (!pickModeActive || !canUseLayoutTools()) return;
+        if (!pickModeActive() || !canUseLayoutTools()) return;
         if (isLayoutToolsChrome(e.target)) return;
         e.preventDefault();
         e.stopPropagation();
-        /* Already locked — further clicks only copy the point. */
-        if (pickedEl && pickedEl.isConnected) {
-          copyPickAtPoint(e.clientX, e.clientY);
+        if (pickMode === "point") {
+          void copyPickAtPoint(e.clientX, e.clientY);
           return;
         }
-        /* First click — lock element only (no copy, no re-select later). */
         const under = document.elementFromPoint(e.clientX, e.clientY);
         const target = resolvePickTarget(under);
         if (!target) {
-          showCoordToast("Click an element to lock it first");
+          showCoordToast("Click an element to highlight");
           return;
         }
-        selectLockedElement(target);
+        selectHighlightedElement(target);
       },
       true
     );
@@ -1113,13 +1073,13 @@
       (e) => {
         if (!canUseLayoutTools()) return;
         if (e.key !== "Escape") return;
-        if (pickedEl || lastPointCoords) {
-          clearPickedElement();
+        if (pickModeActive()) {
+          setPickMode(null);
           e.preventDefault();
           return;
         }
-        if (pickModeActive) {
-          setPickMode(false);
+        if (pickedEl || lastPointCoords) {
+          clearPickedElement();
           e.preventDefault();
         }
       },
@@ -1173,34 +1133,32 @@
     const readout = document.getElementById("hw-tool-coords-readout");
     if (!readout) return;
 
-    if (pickModeActive) {
+    if (pickMode === "point") {
+      if (lastPointCoords) {
+        readout.textContent =
+          "Point " + lastPointCoords.x + ", " + lastPointCoords.y + " · click again to replace";
+        return;
+      }
+      readout.textContent = "Click a spot to copy x / y";
+      return;
+    }
+
+    if (pickMode === "highlight") {
       if (pickedEl && pickedEl.isConnected) {
-        const lock = shortElementLabel(pickedEl);
-        const last = lastPointCoords
-          ? " · last " + lastPointCoords.x + "," + lastPointCoords.y
-          : "";
-        readout.textContent = "Locked " + lock + last + " · click for coords";
+        readout.textContent = "Highlight · " + shortElementLabel(pickedEl);
         return;
       }
       if (pickHoverEl) {
-        const info = measureElementCoords(pickHoverEl);
-        if (info) {
-          readout.textContent =
-            "Lock · " + info.label + " · center " + info.x + "," + info.y;
-          return;
-        }
+        readout.textContent = "Highlight · " + shortElementLabel(pickHoverEl);
+        return;
       }
-      readout.textContent = "Click an element to lock it";
+      readout.textContent = "Click an element to highlight";
       return;
     }
 
     if (lastPointCoords) {
       const p = lastPointCoords;
-      const space = p.space === "host-local" ? "host" : "vp";
-      let text =
-        "Point · " + space + " " + p.x + "," + p.y;
-      if (p.under) text += " · " + p.under;
-      readout.textContent = text;
+      readout.textContent = "Point " + p.x + ", " + p.y;
       return;
     }
 
@@ -1211,31 +1169,14 @@
         updatePickHighlight(null);
         refreshPickChrome();
       } else {
-        const info = measureElementCoords(pickedEl);
-        if (!info) {
-          readout.textContent = "Selected element not measurable";
-          return;
-        }
-        const space = info.space === "host-local" ? "host" : "vp";
-        readout.textContent =
-          info.label +
-          " · " +
-          space +
-          " center " +
-          info.x +
-          "," +
-          info.y +
-          " · " +
-          info.w +
-          "×" +
-          info.h;
+        readout.textContent = "Highlight · " + shortElementLabel(pickedEl);
         return;
       }
     }
 
     const pos = readCurrentToolPositions();
     if (!pos) {
-      readout.textContent = "Pop Glass + Cloud, or Click to copy";
+      readout.textContent = "Copy point, or Highlight element";
       return;
     }
     const label = pos.mode === "focus" ? "Focus" : "Non-focus";
@@ -1285,33 +1226,49 @@
     return copyTextToClipboard(formatCoordsBlurb(pos));
   }
 
+  const LAYOUT_TOOLS_PANEL_VERSION = "3";
+
   function ensureSaveHomesControl() {
     if (!canUseLayoutTools()) return;
-    if (document.getElementById("hw-tool-layout-tools")) {
-      refreshLayoutToolsReadout();
-      return;
+    const existing = document.getElementById("hw-tool-layout-tools");
+    if (existing) {
+      if (existing.dataset.hwToolsPanel === LAYOUT_TOOLS_PANEL_VERSION) {
+        refreshLayoutToolsReadout();
+        return;
+      }
+      existing.remove();
     }
 
     const panel = document.createElement("div");
     panel.id = "hw-tool-layout-tools";
     panel.className = "hw-tool-layout-tools";
+    panel.dataset.hwToolsPanel = LAYOUT_TOOLS_PANEL_VERSION;
     panel.innerHTML =
       '<p class="hw-tool-layout-tools__label">Tool positions</p>' +
-      '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Pop Glass + Cloud, or Click to copy</p>' +
+      '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Copy point, or Highlight element</p>' +
       '<div class="hw-tool-layout-tools__row">' +
-      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-pick-element-coords" aria-pressed="false">Click to copy</button>' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-pick-point-coords" aria-pressed="false">Copy point</button>' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-pick-element-highlight" aria-pressed="false">Highlight element</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn" id="hw-copy-tool-coords">Copy coords</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn" id="hw-clear-pick-coords" hidden>Clear</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn hw-tool-layout-tools__btn--save" id="hw-save-tool-homes">Save as home</button>' +
       "</div>" +
-      '<p class="hw-tool-layout-tools__hint" id="hw-tool-layout-hint">Click to copy a point, or right‑click Glass / Cloud</p>';
+      '<p class="hw-tool-layout-tools__hint" id="hw-tool-layout-hint">Copy point for a spot, or Highlight element to show me what you mean</p>';
 
-    panel.querySelector("#hw-pick-element-coords").addEventListener("click", () => {
-      if (pickModeActive) {
-        setPickMode(false);
+    panel.querySelector("#hw-pick-point-coords").addEventListener("click", () => {
+      if (pickMode === "point") {
+        setPickMode(null);
         return;
       }
-      setPickMode(true);
+      setPickMode("point");
+    });
+
+    panel.querySelector("#hw-pick-element-highlight").addEventListener("click", () => {
+      if (pickMode === "highlight") {
+        setPickMode(null);
+        return;
+      }
+      setPickMode("highlight");
     });
 
     panel.querySelector("#hw-copy-tool-coords").addEventListener("click", async () => {
@@ -1319,7 +1276,7 @@
       const text = await copyToolCoords();
       if (!text) {
         btn.textContent =
-          pickedEl || lastPointCoords ? "Nothing to copy" : "Pop tools or Click";
+          pickedEl || lastPointCoords ? "Nothing to copy" : "Copy point first";
         window.setTimeout(() => {
           btn.textContent = "Copy coords";
         }, 1600);
@@ -1379,7 +1336,7 @@
       "contextmenu",
       async (e) => {
         if (!canUseLayoutTools()) return;
-        if (pickModeActive) return;
+        if (pickModeActive()) return;
         const glass = e.target.closest?.(".hw-mg-widget");
         const cloud = e.target.closest?.(".hw-hc-launcher");
         if (!glass && !cloud) return;
@@ -1936,6 +1893,12 @@
     if (!hostEl) return;
 
     const existing = hostEl.querySelector(":scope > .hw-tools-cleanup");
+
+    /* Magnet UI parked — keep resetToolPositions / layout code for later. */
+    if (global.HwFeatureFlags?.toolMagnet?.() !== true) {
+      existing?.remove();
+      return;
+    }
 
     if (!toolsEnabled() || isLexiconLookupHost(hostEl)) {
       existing?.remove();

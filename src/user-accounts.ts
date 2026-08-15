@@ -1,5 +1,9 @@
 import { hashPassword, verifyPassword } from "./password";
-import { savePromoSignup } from "./homework-kv";
+import {
+  clearStudentWiped,
+  invalidateStudentListSnapshot,
+  savePromoSignup,
+} from "./homework-kv";
 import { cancelPaypalSubscription, type PaypalEnv } from "./paypal";
 
 const USERS_INDEX = "user-accounts-index";
@@ -129,10 +133,38 @@ export function toAuthSession(account: UserAccount): AuthSession {
 }
 
 export interface SignupInput {
-  username: string;
   email: string;
   password: string;
-  displayName?: string;
+  displayName: string;
+  /** Optional legacy/manual handle — usually auto-made from email. */
+  username?: string;
+}
+
+async function allocateUsername(
+  kv: KVNamespace,
+  email: string,
+  displayName: string
+): Promise<string> {
+  const local = String(email.split("@")[0] || "user")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const fromName = String(displayName || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  let base = (local || fromName || "user").slice(0, 20);
+  if (!/^[a-z0-9]/.test(base)) base = ("u" + base).slice(0, 20);
+  if (base.length < 3) base = (base + "user").slice(0, 8);
+
+  for (let i = 0; i < 40; i++) {
+    const candidate =
+      i === 0 ? base.slice(0, 24) : (base.slice(0, 18) + String(i)).slice(0, 24);
+    if (!isValidUsername(candidate)) continue;
+    if (RESERVED_USERNAMES.has(candidate)) continue;
+    if (!(await kv.get(userKey(candidate)))) return candidate;
+  }
+  return ("u" + Date.now().toString(36)).slice(0, 24);
 }
 
 export async function createUserAccount(
@@ -142,22 +174,27 @@ export async function createUserAccount(
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
 
-  const username = normalizeUsername(data.username);
   const email = normalizeEmail(data.email);
   const password = String(data.password || "");
-  const displayName = String(data.displayName || "").trim() || username;
+  const displayName = String(data.displayName || "").trim();
+  let username = normalizeUsername(String(data.username || ""));
 
-  if (!username) throw new Error("USERNAME_REQUIRED");
-  if (!isValidUsername(username)) throw new Error("USERNAME_INVALID");
-  if (RESERVED_USERNAMES.has(username)) throw new Error("USERNAME_RESERVED");
+  if (!displayName) throw new Error("DISPLAY_NAME_REQUIRED");
+  if (displayName.length > 40) throw new Error("DISPLAY_NAME_TOO_LONG");
   if (!email || !isValidEmail(email)) throw new Error("EMAIL_INVALID");
   if (!password) throw new Error("PASSWORD_REQUIRED");
-
-  const existingUser = await kv.get(userKey(username));
-  if (existingUser) throw new Error("USERNAME_TAKEN");
+  if (password.length < 6) throw new Error("PASSWORD_TOO_SHORT");
 
   const existingEmail = await kv.get(userEmailKey(email));
   if (existingEmail) throw new Error("EMAIL_TAKEN");
+
+  if (username) {
+    if (!isValidUsername(username)) throw new Error("USERNAME_INVALID");
+    if (RESERVED_USERNAMES.has(username)) throw new Error("USERNAME_RESERVED");
+    if (await kv.get(userKey(username))) throw new Error("USERNAME_TAKEN");
+  } else {
+    username = await allocateUsername(kv, email, displayName);
+  }
 
   const { salt, hash } = await hashPassword(password);
   const id = makeUserId();
@@ -182,6 +219,8 @@ export async function createUserAccount(
   const ids = await readUsersIndex(kv);
   ids.unshift(username);
   await writeUsersIndex(kv, ids);
+  await clearStudentWiped(kv, username);
+  await invalidateStudentListSnapshot(kv);
 
   try {
     await savePromoSignup(
@@ -196,7 +235,10 @@ export async function createUserAccount(
 }
 
 export interface LoginInput {
-  username: string;
+  /** Email (preferred) or legacy username. */
+  username?: string;
+  email?: string;
+  login?: string;
   password: string;
 }
 
@@ -207,9 +249,19 @@ export async function loginUserAccount(
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
 
-  const username = normalizeUsername(data.username);
   const password = String(data.password || "");
-  if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+  const loginRaw = String(data.login || data.email || data.username || "").trim();
+  if (!loginRaw || !password) throw new Error("INVALID_CREDENTIALS");
+
+  let username = "";
+  if (loginRaw.includes("@")) {
+    const email = normalizeEmail(loginRaw);
+    if (!isValidEmail(email)) throw new Error("INVALID_CREDENTIALS");
+    username = String((await kv.get(userEmailKey(email))) || "").trim().toLowerCase();
+  } else {
+    username = normalizeUsername(loginRaw);
+  }
+  if (!username) throw new Error("INVALID_CREDENTIALS");
 
   const raw = await kv.get(userKey(username));
   if (!raw) throw new Error("INVALID_CREDENTIALS");
@@ -328,6 +380,58 @@ export async function savePaypalSubscription(
   return account;
 }
 
+export async function updateOwnDisplayName(
+  data: { username: string; password: string; displayName: string },
+  env: KvEnv
+): Promise<{ session: AuthSession }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = normalizeUsername(data.username);
+  const password = String(data.password || "");
+  const displayName = String(data.displayName || "").trim();
+  if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+  if (!displayName || displayName.length < 1) throw new Error("DISPLAY_NAME_REQUIRED");
+  if (displayName.length > 40) throw new Error("DISPLAY_NAME_TOO_LONG");
+
+  const account = await getUserAccount(username, env);
+  if (!account) throw new Error("INVALID_CREDENTIALS");
+
+  const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
+  if (!ok) throw new Error("INVALID_CREDENTIALS");
+
+  account.displayName = displayName;
+  await kv.put(userKey(username), JSON.stringify(account));
+  await invalidateStudentListSnapshot(kv);
+  return { session: toAuthSession(account) };
+}
+
+export async function changeOwnPassword(
+  data: { username: string; password: string; newPassword: string },
+  env: KvEnv
+): Promise<{ session: AuthSession }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = normalizeUsername(data.username);
+  const password = String(data.password || "");
+  const newPassword = String(data.newPassword || "");
+  if (!username || !password) throw new Error("INVALID_CREDENTIALS");
+  if (newPassword.length < 6) throw new Error("PASSWORD_TOO_SHORT");
+
+  const account = await getUserAccount(username, env);
+  if (!account) throw new Error("INVALID_CREDENTIALS");
+
+  const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
+  if (!ok) throw new Error("INVALID_CREDENTIALS");
+
+  const { salt, hash } = await hashPassword(newPassword);
+  account.passwordSalt = salt;
+  account.passwordHash = hash;
+  await kv.put(userKey(username), JSON.stringify(account));
+  return { session: toAuthSession(account) };
+}
+
 export async function deleteOwnAccount(
   data: { username: string; password: string },
   env: KvEnv
@@ -339,11 +443,7 @@ export async function deleteOwnAccount(
   const account = await getUserAccount(username, env);
   if (!account) throw new Error("INVALID_CREDENTIALS");
 
-  const ok = await verifyPassword(
-    password,
-    account.passwordSalt,
-    account.passwordHash
-  );
+  const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
   if (!ok) throw new Error("INVALID_CREDENTIALS");
 
   return deleteUserAccount(username, env);
@@ -384,6 +484,7 @@ export async function deleteUserAccount(
     kv,
     ids.filter((id) => id !== normalized)
   );
+  await invalidateStudentListSnapshot(kv);
 
   return { username: normalized, deleted: true };
 }

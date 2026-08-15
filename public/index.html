@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Japanese Language Mentor — Trustworthy Japanese for people tired of searching for answers. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
+  <meta name="description" content="Japanese Language Mentor — Learn Japanese from someone who's been in your shoes. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
   <meta name="theme-color" content="#1a2744">
   <title>Japanese Language Mentor — Learn Japanese with JD</title>
   <link rel="canonical" href="https://japaneselanguagementor.com/">
@@ -13,19 +13,19 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://japaneselanguagementor.com/">
   <meta property="og:title" content="Japanese Language Mentor — Learn Japanese with JD">
-  <meta property="og:description" content="Trustworthy Japanese for people tired of searching for answers. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
+  <meta property="og:description" content="Learn Japanese from someone who's been in your shoes. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
   <meta property="og:image" content="https://japaneselanguagementor.com/images/jd-hero.png">
   <meta property="og:image:width" content="480">
   <meta property="og:image:height" content="640">
   <meta property="og:image:alt" content="JD — Japanese Language Mentor">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Japanese Language Mentor — Learn Japanese with JD">
-  <meta name="twitter:description" content="Trustworthy Japanese for people tired of searching for answers. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
+  <meta name="twitter:description" content="Learn Japanese from someone who's been in your shoes. Private lessons, Homework Hub, and a 5-day Jumpstart from a certified translator with 10+ years in Japan.">
   <meta name="twitter:image" content="https://japaneselanguagementor.com/images/jd-hero.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Yomogi&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css?v=20260814-pageblur">
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -63,6 +63,7 @@
       <div class="nav__menu" id="nav-menu">
         <div class="nav__links-wrap">
           <ul class="nav__links">
+            <li><a href="#stories">Student stories</a></li>
             <li><a href="#about">About</a></li>
             <li><a href="#services">Services</a></li>
             <li><a href="#contact">Contact</a></li>
@@ -71,7 +72,7 @@
             <li><a href="/homework.html">Homework Hub</a></li>
           </ul>
         </div>
-        <a class="btn btn--primary btn--sm nav__cta" href="#contact" data-service="Free trial lesson">Free Trial Lesson</a>
+        <a class="btn btn--primary btn--sm nav__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
       </div>
     </nav>
   </header>
@@ -96,12 +97,10 @@
               </span>
             </span>
           </h1>
-          <p class="hero__tagline">Trustworthy Japanese for people tired of searching for answers.</p>
+          <p class="hero__tagline">Learn Japanese from someone who's been in your shoes.</p>
           <div class="hero__cta-block">
             <div class="hero__actions">
-              <a class="btn btn--primary btn--stack" href="#contact" data-service="Free trial lesson">
-                <span class="btn__stack-line">Book a Free Trial Lesson</span>
-              </a>
+              <a class="btn btn--primary" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
               <button class="btn btn--ghost btn--stack" type="button" id="hero-intro-video-btn" data-intro-video-open>
                 <span class="btn__stack-line">Watch</span>
                 <span class="btn__stack-line">Intro Video</span>
@@ -113,10 +112,23 @@
               <a class="hero__path" href="#service-jumpstart">Japanese Jumpstart</a>
             </nav>
           </div>
-          <div class="hero__subtitle">
-            <p>Studying Japanese at school with a textbook kind of felt like going through a slow video game tutorial. X does this… A does this… it just… didn't feel right.</p>
-            <p>But when I got to Japan it felt like the training wheels finally came off and I got to learn by failing—learn by actually playing the game.</p>
-            <p>So if you want to skip the tutorial and get right to the good stuff, let's do some lessons—so that you'll never need lessons ever again.</p>
+          <div class="hero__subtitle text-fold" data-text-fold>
+            <div
+              class="text-fold__content"
+              id="hero-subtitle-fold"
+              role="button"
+              tabindex="0"
+              aria-expanded="false"
+            >
+              <p class="text-fold__teaser">
+                Studying Japanese at school with a textbook kind of felt like<span class="text-fold__more">...click to read more</span>
+              </p>
+              <div class="text-fold__full">
+                <p>Studying Japanese at school with a textbook kind of felt like going through a slow video game tutorial. X does this… A does this… it just… didn't feel right.</p>
+                <p>But when I got to Japan it felt like the training wheels finally came off and I got to learn by failing—learn by actually playing the game.</p>
+                <p>So if you want to skip the tutorial and get right to the good stuff, let's do some lessons—so that you'll never need lessons ever again.</p>
+              </div>
+            </div>
           </div>
         </div>
         <div class="hero__visual">
@@ -128,6 +140,100 @@
           </div>
           <p class="hero__greeting">はじめまして、JDです！</p>
           <p class="hero__proof">10+ years in Japan · 1500+ lessons · N1 Certified</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Student stories / testimonies — trust-first, right after hero -->
+    <section class="section stories" id="stories" aria-labelledby="stories-heading">
+      <div class="container">
+        <div class="section__header section__header--center">
+          <p class="section__eyebrow">Student stories</p>
+          <h2 id="stories-heading" class="section__title">Hear from my students</h2>
+        </div>
+        <div class="stories__list">
+          <article class="testimony" data-testimony>
+            <div class="testimony__copy">
+              <h3 class="testimony__quote">It&#8217;s helped me stayed motivated&hellip;</h3>
+              <p class="testimony__name">Jay</p>
+            </div>
+            <div class="testimony__media">
+              <div class="video-wrapper testimony__video">
+                <button
+                  type="button"
+                  class="testimony__poster"
+                  data-testimony-play
+                  aria-label="Play Jay's story"
+                >
+                  <img
+                    class="testimony__poster-img"
+                    src="/videos/jay-testimony-poster.webp"
+                    alt=""
+                    width="1280"
+                    height="720"
+                    loading="lazy"
+                    decoding="async"
+                  >
+                  <span class="testimony__play" aria-hidden="true">
+                    <svg class="testimony__play-icon" viewBox="0 0 24 24" focusable="false">
+                      <path d="M8 5.14v13.72L19 12 8 5.14z"/>
+                    </svg>
+                  </span>
+                </button>
+                <video
+                  class="testimony__player"
+                  controls
+                  playsinline
+                  preload="none"
+                  poster="/videos/jay-testimony-poster.webp"
+                  data-testimony-video
+                >
+                  <source src="/videos/jay-testimony.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+          </article>
+          <article class="testimony" data-testimony>
+            <div class="testimony__copy">
+              <h3 class="testimony__quote">It&#8217;s not presented in a way that reminds me of a classroom&hellip;</h3>
+              <p class="testimony__name">Taylor</p>
+            </div>
+            <div class="testimony__media">
+              <div class="video-wrapper testimony__video">
+                <button
+                  type="button"
+                  class="testimony__poster"
+                  data-testimony-play
+                  aria-label="Play Taylor's story"
+                >
+                  <img
+                    class="testimony__poster-img"
+                    src="/videos/taylor-testimony-poster.webp"
+                    alt=""
+                    width="1280"
+                    height="720"
+                    loading="lazy"
+                    decoding="async"
+                  >
+                  <span class="testimony__play" aria-hidden="true">
+                    <svg class="testimony__play-icon" viewBox="0 0 24 24" focusable="false">
+                      <path d="M8 5.14v13.72L19 12 8 5.14z"/>
+                    </svg>
+                  </span>
+                </button>
+                <video
+                  class="testimony__player"
+                  controls
+                  playsinline
+                  preload="none"
+                  poster="/videos/taylor-testimony-poster.webp"
+                  data-testimony-video
+                >
+                  <source src="/videos/taylor-testimony.mp4" type="video/mp4">
+                </video>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -181,13 +287,28 @@
         </div>
         <div class="meet__body-wrap">
           <div class="meet__body">
-            <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free trial lesson">Book a Free Trial Lesson</a>
-            <p class="about__lead">
-              Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan. I help students go beyond grammar drills to build real, practical Japanese.
-            </p>
-            <p>
-              Whether you're preparing for the JLPT, planning a move to Japan, or just want to hold a natural conversation, I tailor every lesson to your goals — drawing on years of hands-on experience in both languages and cultures.
-            </p>
+            <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
+            <div class="text-fold" data-text-fold>
+              <div
+                class="text-fold__content"
+                id="about-bio-fold"
+                role="button"
+                tabindex="0"
+                aria-expanded="false"
+              >
+                <p class="text-fold__teaser about__lead">
+                  Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan<span class="text-fold__more">...click to read more</span>
+                </p>
+                <div class="text-fold__full">
+                  <p class="about__lead">
+                    Hi, I'm JD — a Japanese language teacher with a deep background in translation, business, and daily life in Japan. I help students go beyond grammar drills to build real, practical Japanese.
+                  </p>
+                  <p>
+                    Whether you're preparing for the JLPT, planning a move to Japan, or just want to hold a natural conversation, I tailor every lesson to your goals — drawing on years of hands-on experience in both languages and cultures.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           <aside class="meet__logo" aria-hidden="true">
             <img
@@ -214,7 +335,7 @@
         </div>
         <div class="services__grid">
           <div class="service-column" id="service-homework">
-            <article class="service-card service-card--featured">
+            <article class="service-card service-card--featured service-card--nav" data-hw-breakdown-card>
               <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5~</span><span class="service-card__price-suffix">/mo</span></p>
               <h3 class="service-card__title">Homework Hub <span class="service-card__badge service-card__badge--start">Self-learner</span></h3>
               <div class="service-card__fit">
@@ -230,22 +351,16 @@
                 <p>Don't feel like you can commit to lessons but still want to learn Japanese? Join Homework Hub to receive custom assignments with detailed feedback and corrections. Perfect for self-learners who want expert guidance.</p>
               </details>
               <div class="service-card__bottom">
-                <a class="btn btn--primary btn--full service-card__cta" href="/homework.html">Join Homework Hub</a>
+                <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-breakdown-open>Join Homework Hub</button>
               </div>
             </article>
-            <div class="service-column__extra service-column__extra--links">
-              <button class="service-card__link service-card__link-button" type="button" data-hw-breakdown-open>See tier breakdown</button>
-              <nav class="services__more" aria-label="More from Japanese Language Mentor">
-                <a href="/homework.html">Homework Hub</a>
-                <span class="services__more-sep" aria-hidden="true">·</span>
-                <a href="/games.html">Games</a>
-                <span class="services__more-sep" aria-hidden="true">·</span>
-                <a href="/courses.html">Courses</a>
-              </nav>
-            </div>
           </div>
           <div class="service-column" id="service-lessons">
-            <article class="service-card">
+            <article
+              class="service-card"
+              data-service-nav="#contact"
+              data-service-nav-service="Private Lessons"
+            >
               <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$49</span><span class="service-card__price-suffix">/lesson</span></p>
               <h3 class="service-card__title">Private Lessons</h3>
               <div class="service-card__fit">
@@ -261,20 +376,25 @@
                 <p>Anything you have to say is more important than what I have to say. Let's do lessons so you don't need lessons anymore. Get instant feedback so you can know <u>exactly</u> where you're making mistakes.</p>
               </details>
               <div class="service-card__bottom">
-                <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free trial lesson">Book a Free Trial Lesson</a>
+                <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
               </div>
             </article>
             <div class="service-column__extra">
-              <p class="service-column__extra-label">Watch a lesson clip</p>
-              <div class="video-wrapper video-wrapper--lesson">
-                <iframe
-                  data-src="https://www.youtube-nocookie.com/embed/T9n5U0L6tYk"
-                  title="Watch a lesson"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                  loading="lazy"
-                ></iframe>
-              </div>
+              <details class="lesson-clip">
+                <summary class="lesson-clip__summary">
+                  <span class="lesson-clip__play" aria-hidden="true"></span>
+                  Watch a lesson clip
+                </summary>
+                <div class="video-wrapper video-wrapper--lesson">
+                  <iframe
+                    data-src="https://www.youtube-nocookie.com/embed/T9n5U0L6tYk"
+                    title="Watch a lesson"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    loading="lazy"
+                  ></iframe>
+                </div>
+              </details>
             </div>
           </div>
           <div class="service-column" id="service-jumpstart">
@@ -311,7 +431,7 @@
             <p class="section__eyebrow">Contact</p>
             <h2 id="contact-heading" class="section__title">What are your goals?</h2>
             <p class="contact__desc">
-              Send me a message! I would love to hear about why you want to learn Japanese. Book a free trial lesson (part lesson, part consultation), or ask any questions you want.
+              Send me a message! I would love to hear about why you want to learn Japanese. Book a free consultation — about 30–45 minutes where we share our stories about Japanese, then do a little mini-lesson — or ask any questions you want.
             </p>
             <p class="contact__reassurance">No pressure! Let's just have a chat about your goals.</p>
             <ul class="contact__details">
@@ -320,6 +440,53 @@
                 <span>Within 24 hours</span>
               </li>
             </ul>
+            <aside class="contact__logo" aria-hidden="true">
+              <img
+                class="contact__logo-img"
+                src="/images/jlm-logo-white.png"
+                alt=""
+                width="400"
+                height="500"
+                loading="lazy"
+                decoding="async"
+              >
+            </aside>
+          </div>
+          <div class="contact__compose">
+            <form class="contact-form" id="contact-form" novalidate>
+              <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required autocomplete="name" placeholder="Your name">
+              </div>
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+              </div>
+              <div class="form-group">
+                <label for="service">Service</label>
+                <select id="service" name="service" required>
+                  <option value="">Select a service</option>
+                  <option value="Private Lessons">Private Lessons</option>
+                  <option value="Homework Hub">Homework Hub</option>
+                  <option value="Japanese Jumpstart">Japanese Jumpstart</option>
+                  <option value="Free consultation">Free consultation</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" name="message" rows="5" required placeholder="Tell me about your Japanese goals…"></textarea>
+              </div>
+              <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
+              <div class="contact-form__actions">
+                <button class="btn btn--primary contact-form__submit" type="submit" id="submit-btn">
+                  Send Message
+                </button>
+                <p class="contact-schedule-link">
+                  <a class="contact-schedule-link__button" href="#availability" data-schedule-open>Check availability</a>
+                </p>
+              </div>
+            </form>
             <a
               class="contact__discord"
               id="contact-discord-link"
@@ -336,52 +503,7 @@
               </span>
               <span class="contact__discord-note">Opens my Discord profile — add me or send a message</span>
             </a>
-            <aside class="contact__logo" aria-hidden="true">
-              <img
-                class="contact__logo-img"
-                src="/images/jlm-logo-white.png"
-                alt=""
-                width="400"
-                height="500"
-                loading="lazy"
-                decoding="async"
-              >
-            </aside>
           </div>
-          <form class="contact-form" id="contact-form" novalidate>
-            <div class="form-group">
-              <label for="name">Name</label>
-              <input type="text" id="name" name="name" required autocomplete="name" placeholder="Your name">
-            </div>
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
-            </div>
-            <div class="form-group">
-              <label for="service">Service</label>
-              <select id="service" name="service" required>
-                <option value="">Select a service</option>
-                <option value="Private Lessons">Private Lessons</option>
-                <option value="Homework Hub">Homework Hub</option>
-                <option value="Japanese Jumpstart">Japanese Jumpstart</option>
-                <option value="Free trial lesson">Free trial lesson</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="message">Message</label>
-              <textarea id="message" name="message" rows="5" required placeholder="Tell me about your Japanese goals…"></textarea>
-            </div>
-            <div class="form-status" id="form-status" role="status" aria-live="polite"></div>
-            <div class="contact-form__actions">
-              <button class="btn btn--primary contact-form__submit" type="submit" id="submit-btn">
-                Send Message
-              </button>
-              <p class="contact-schedule-link">
-                <a class="contact-schedule-link__button" href="#availability" data-schedule-open>Check availability</a>
-              </p>
-            </div>
-          </form>
         </div>
       </div>
     </section>
@@ -390,55 +512,67 @@
 
   <div class="hw-breakdown-modal" id="hw-breakdown-modal" hidden>
     <div class="hw-breakdown-modal__backdrop" data-hw-breakdown-close aria-hidden="true"></div>
-    <div class="hw-breakdown-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-breakdown-title">
+    <div class="hw-breakdown-modal__dialog hw-breakdown-modal__dialog--tiers" role="dialog" aria-modal="true" aria-labelledby="hw-breakdown-title">
       <button class="hw-breakdown-modal__close" type="button" data-hw-breakdown-close aria-label="Close Homework Hub breakdown">×</button>
       <p class="section__eyebrow">Homework Hub</p>
-      <h2 class="hw-breakdown-modal__title" id="hw-breakdown-title">Smarter Homework = Stronger Motivation</h2>
-      <div class="hw-breakdown-grid">
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card hw-breakdown-card--featured">
-            <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
-            <h3>Basic</h3>
-            <ul class="hw-breakdown-card__list">
-              <li>One HW assignment each month</li>
-              <li>Kept at $5 so anyone can take part</li>
-              <li>Written notes when you turn it in</li>
+      <h2 class="hw-breakdown-modal__title" id="hw-breakdown-title">Stay in Japanese without the app guilt</h2>
+      <p class="hw-breakdown-modal__desc">No streak nags. No “you’re behind.” Homework at your pace.</p>
+      <div class="hw-breakdown-tier-stack">
+      <div class="services__grid hw-breakdown-services">
+        <article class="service-card">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Basic <span class="service-card__cadence">1 assignment</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Low commitment</li>
+              <li>$5 / one HW a month</li>
+              <li>Written notes and audio feedback from JD</li>
             </ul>
-          </article>
-        </div>
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card">
-            <p class="hw-breakdown-card__badge">Popular</p>
-            <p class="hw-breakdown-card__price">$20<span>/mo</span></p>
-            <h3>Premium</h3>
-            <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments each month</li>
-              <li>Fun and creative — shaped around your real stuck spots, not a generic site</li>
-              <li><u>Written</u> notes and advice from JD</li>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="basic">Join Basic</button>
+          </div>
+        </article>
+        <article class="service-card service-card--featured">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$20</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Premium <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Popular</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Stay motivated longer</li>
+              <li>Relax with Japanese</li>
+              <li>Feedback every week</li>
             </ul>
-          </article>
-        </div>
-        <div class="hw-breakdown-column">
-          <article class="hw-breakdown-card hw-breakdown-card--included">
-            <p class="hw-breakdown-card__badge hw-breakdown-card__badge--video">Video included</p>
-            <p class="hw-breakdown-card__price">$49<span>/mo</span></p>
-            <h3>Ultra</h3>
-            <ul class="hw-breakdown-card__list">
-              <li><u>Four</u> HW assignments each month</li>
-              <li>A personal <u>video</u> from JD on <u>each</u> assignment</li>
-              <li>Hearing and seeing the feedback helps it settle in</li>
-              <li>Made so you feel walked with — not left alone with a worksheet</li>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="premium">Join Premium</button>
+          </div>
+        </article>
+        <article class="service-card">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$49</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Ultra <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Video</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Feels like lessons without the commitment</li>
+              <li>Video feedback that sticks</li>
+              <li>Help from a human, not AI</li>
             </ul>
-          </article>
-        </div>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="ultra">Join Ultra</button>
+          </div>
+        </article>
       </div>
-      <p class="hw-plans-extras hw-plans-extras--modal">
-        <span class="hw-plans-extras__label">Also on Premium &amp; Ultra</span>
-        Learning games, a quiet Discord space, and a little hint help when you want it.
-        Every plan works on your phone or on paper.
-      </p>
+      <aside class="hw-tier-student-bar" aria-label="Student Special">
+        <div class="hw-tier-student-bar__main">
+          <p class="hw-tier-student-bar__eyebrow">Student Special</p>
+          <p class="hw-tier-student-bar__price"><span class="hw-tier-student-bar__price-main">$10</span><span class="hw-tier-student-bar__price-suffix">/mo</span></p>
+          <p class="hw-tier-student-bar__text">Currently a student? Enjoy the premium subscription at $10/mo.</p>
+        </div>
+        <button class="btn btn--primary hw-tier-student-bar__cta" type="button" data-hw-checkout="student-special">Join Student Special</button>
+      </aside>
+      </div>
       <div class="hw-breakdown-modal__actions">
-        <a class="btn btn--primary" href="/homework.html" data-hw-breakdown-close>Join Homework Hub</a>
+        <a class="btn btn--ghost" href="/homework.html">Log in / Enter hub</a>
         <button class="btn btn--ghost" type="button" data-hw-breakdown-close>Close</button>
       </div>
     </div>
@@ -537,8 +671,8 @@
     </div>
   </div>
 
-  <aside class="sticky-cta" id="sticky-cta" hidden aria-label="Book a free trial lesson">
-    <a class="sticky-cta__link" href="#contact" data-service="Free trial lesson">Book a Free Trial Lesson</a>
+  <aside class="sticky-cta" id="sticky-cta" hidden aria-label="Book a free consultation">
+    <a class="sticky-cta__link" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
   </aside>
 
   <footer class="site-footer">
@@ -552,13 +686,16 @@
       </div>
       <p class="site-footer__tagline">It takes <em>more than a textbook</em> to learn Japanese.</p>
       <nav class="site-footer__links" aria-label="Footer navigation">
+        <a href="#stories">Student stories</a>
         <a href="#about">About</a>
         <a href="#services">Services</a>
         <a href="#contact">Contact</a>
-        <a href="/games.html">Games</a>
         <a href="/homework.html">Homework Hub</a>
-        <a href="/courses.html">Courses</a>
+        <a href="/account.html">Account</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
         <a href="https://www.youtube.com/@JapaneseLanguageMentor" target="_blank" rel="noopener noreferrer">YouTube</a>
+        <a href="#promo-modal" data-promo-open>Email updates</a>
       </nav>
       <p class="site-footer__copy">&copy; 2021&ndash;2026 Japanese Language Mentor. All rights reserved.</p>
     </div>
@@ -601,7 +738,10 @@
     window.JLM_DISCORD_PROFILE_URL = "234638935509172224";
   </script>
   <script src="/js/kumo-wallpaper.js" defer></script>
-  <script src="/js/main.js" defer></script>
+  <script src="/js/hw-auth.js" defer></script>
+  <script src="/js/hw-checkout.js?v=20260814-ppnew" defer></script>
+  <script src="/js/hw-dialog-outside-close.js?v=1" defer></script>
+  <script src="/js/main.js?v=20260814-focusname" defer></script>
   <script src="/js/promo-email.js" defer></script>
 </body>
 </html>

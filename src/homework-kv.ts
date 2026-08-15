@@ -29,17 +29,25 @@ export interface CatalogFile {
       lessonPlaylistUrl?: string;
       reviewPlaylistUrl?: string;
       currentHomeworkId?: string;
+      /** Queued sheet ids waiting until student finishes Done reviewing (FIFO). */
+      waitingHomeworkIds?: string[];
     }
   >;
   assignments?: Record<string, unknown>[];
 }
 
+/** Active + waiting slots per student hub. */
+const HUB_HOMEWORK_SLOT_MAX = 4;
+
 const KV_INDEX = "catalog-index";
+/** Denormalized catalog list — one KV read instead of N catalog:{id} gets. */
+const KV_CATALOG_ENTRIES = "catalog-entries-v1";
 const assignmentKey = (id: string) => `assignment:${id}`;
 const catalogKey = (id: string) => `catalog:${id}`;
 const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
 const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
 const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
+const studentHomeworkWaitingKey = (username: string) => `student:${username}:homework-waiting`;
 const studentAccountSettingsKey = (username: string) => `student:${username}:account-settings`;
 const studentDiscordKey = (username: string) => `student:${username}:discord-user-id`;
 const studentNotifyPrefsKey = (username: string) => `student:${username}:notify-prefs`;
@@ -55,6 +63,10 @@ export interface PublishPayload {
   catalogEntry: Record<string, unknown>;
   youtubeUrl?: string;
   lessonPlaylistUrl?: string;
+  /** Teacher override: make this the open sheet (Student info current-HW). */
+  forceCurrent?: boolean;
+  /** Stealth edit: swap the homework without DMing the student. */
+  silent?: boolean;
 }
 
 export interface StudentProfilePayload {
@@ -77,6 +89,7 @@ export interface StudentProfileView {
   hasKvAccount: boolean;
   currentHomeworkId: string;
   currentHomeworkTitle: string;
+  waitingHomeworkIds: string[];
   discordUserId: string;
 }
 
@@ -117,6 +130,12 @@ const LEGACY_STUDENT_LABELS: Record<string, string> = {
 };
 
 const USERS_INDEX = "user-accounts-index";
+/** Fast student dropdown list — rebuilt when missing / invalidated. */
+const KV_STUDENT_LIST = "student-list-v2";
+/** Usernames removed by teacher wipe — stay off the student list even if legacy/demo. */
+const KV_WIPED_STUDENTS = "student-wiped-v1";
+/** Old demo logins retired from code — keep them off the list if a wipe already happened. */
+const RETIRED_DEMO_STUDENTS = ["alex"] as const;
 
 const userAccountKey = (username: string) => `user-account:${username}`;
 
@@ -131,51 +150,201 @@ async function readRegisteredUsernames(kv: KVNamespace): Promise<string[]> {
   }
 }
 
-export async function listAllStudentAccounts(
+async function readWipedStudents(kv: KVNamespace): Promise<Set<string>> {
+  const raw = await kv.get(KV_WIPED_STUDENTS);
+  if (!raw) return new Set();
+  try {
+    const ids = JSON.parse(raw) as string[];
+    if (!Array.isArray(ids)) return new Set();
+    return new Set(
+      ids
+        .map((id) => String(id || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+async function writeWipedStudents(
+  kv: KVNamespace,
+  wiped: Set<string>
+): Promise<void> {
+  await kv.put(KV_WIPED_STUDENTS, JSON.stringify([...wiped].sort()));
+}
+
+export async function markStudentWiped(
+  kv: KVNamespace | undefined,
+  username: string
+): Promise<void> {
+  if (!kv) return;
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return;
+  const wiped = await readWipedStudents(kv);
+  wiped.add(key);
+  await writeWipedStudents(kv, wiped);
+  await invalidateStudentListSnapshot(kv);
+}
+
+/** If they sign up again under the same username, put them back on the list. */
+export async function clearStudentWiped(
+  kv: KVNamespace | undefined,
+  username: string
+): Promise<void> {
+  if (!kv) return;
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return;
+  const wiped = await readWipedStudents(kv);
+  if (!wiped.has(key)) return;
+  wiped.delete(key);
+  await writeWipedStudents(kv, wiped);
+  await invalidateStudentListSnapshot(kv);
+}
+
+async function readStudentListBlob(
   kv: KVNamespace
-): Promise<StudentListEntry[]> {
+): Promise<StudentListEntry[] | null> {
+  const raw = await kv.get(KV_STUDENT_LIST);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { students?: StudentListEntry[] };
+    if (!Array.isArray(parsed?.students)) return null;
+    return parsed.students
+      .map((s) => ({
+        username: String(s?.username || "")
+          .trim()
+          .toLowerCase(),
+        displayName: String(s?.displayName || s?.username || "").trim(),
+      }))
+      .filter((s) => s.username);
+  } catch {
+    return null;
+  }
+}
+
+async function writeStudentListBlob(
+  kv: KVNamespace,
+  students: StudentListEntry[]
+): Promise<void> {
+  await kv.put(
+    KV_STUDENT_LIST,
+    JSON.stringify({
+      savedAt: new Date().toISOString(),
+      students,
+    })
+  );
+}
+
+/** Drop cached student names so the next list rebuilds (signup / rename / wipe). */
+export async function invalidateStudentListSnapshot(
+  kv: KVNamespace | undefined
+): Promise<void> {
+  if (!kv) return;
+  try {
+    await kv.delete(KV_STUDENT_LIST);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> {
+  let wiped = await readWipedStudents(kv);
+  let wipedChanged = false;
+  for (const retired of RETIRED_DEMO_STUDENTS) {
+    if (!wiped.has(retired)) {
+      wiped.add(retired);
+      wipedChanged = true;
+    }
+  }
+  if (wipedChanged) {
+    try {
+      await writeWipedStudents(kv, wiped);
+    } catch {
+      /* rebuild still filters in-memory */
+    }
+  }
+
   const byUser = new Map<string, StudentListEntry>();
   for (const username of STUDENT_ACCOUNTS) {
+    if (wiped.has(username)) continue;
     byUser.set(username, {
       username,
       displayName: LEGACY_STUDENT_LABELS[username] || username,
     });
   }
+
   const ids = await readRegisteredUsernames(kv);
-  for (const username of ids) {
-    const key = String(username || "").trim().toLowerCase();
-    if (!key || byUser.has(key)) continue;
-    const raw = await kv.get(userAccountKey(key));
-    if (!raw) continue;
-    try {
-      const account = JSON.parse(raw) as {
-        username?: string;
-        displayName?: string;
-        role?: string;
-      };
-      if (account.role !== "student") continue;
-      byUser.set(key, {
-        username: account.username || key,
-        displayName: account.displayName || account.username || key,
-      });
-    } catch {
-      /* skip corrupt */
-    }
+  const accountRows = await Promise.all(
+    ids.map(async (username) => {
+      const key = String(username || "")
+        .trim()
+        .toLowerCase();
+      if (!key || wiped.has(key)) return null;
+      const raw = await kv.get(userAccountKey(key));
+      if (!raw) return null;
+      try {
+        const account = JSON.parse(raw) as {
+          username?: string;
+          displayName?: string;
+          role?: string;
+        };
+        if (account.role !== "student") return null;
+        return {
+          username: String(account.username || key)
+            .trim()
+            .toLowerCase(),
+          displayName: String(
+            account.displayName || account.username || key
+          ).trim(),
+        } as StudentListEntry;
+      } catch {
+        return null;
+      }
+    })
+  );
+  for (const row of accountRows) {
+    if (row?.username && !wiped.has(row.username)) byUser.set(row.username, row);
   }
-  const published = await loadPublishedCatalogEntries(kv);
-  for (const entry of published) {
-    for (const user of (entry.students as string[]) || []) {
-      const key = String(user || "").trim().toLowerCase();
-      if (!key || byUser.has(key)) continue;
-      byUser.set(key, {
-        username: key,
-        displayName: LEGACY_STUDENT_LABELS[key] || key,
-      });
+
+  try {
+    const published = await loadPublishedCatalogEntries(kv);
+    for (const entry of published) {
+      for (const user of (entry.students as string[]) || []) {
+        const key = String(user || "")
+          .trim()
+          .toLowerCase();
+        if (!key || byUser.has(key) || wiped.has(key)) continue;
+        byUser.set(key, {
+          username: key,
+          displayName: LEGACY_STUDENT_LABELS[key] || key,
+        });
+      }
     }
+  } catch {
+    /* registered accounts still usable if catalog list fails */
   }
-  return [...byUser.values()].sort((a, b) =>
+
+  const students = [...byUser.values()].sort((a, b) =>
     a.username.localeCompare(b.username)
   );
+  try {
+    await writeStudentListBlob(kv, students);
+  } catch {
+    /* list still works if snapshot write fails */
+  }
+  return students;
+}
+
+export async function listAllStudentAccounts(
+  kv: KVNamespace
+): Promise<StudentListEntry[]> {
+  const cached = await readStudentListBlob(kv);
+  if (cached) return cached;
+  return rebuildStudentList(kv);
 }
 
 function isTeacher(username: string | undefined, env: KvEnv): boolean {
@@ -219,6 +388,73 @@ async function readIndex(kv: KVNamespace): Promise<string[]> {
 async function writeIndex(kv: KVNamespace, ids: string[]): Promise<void> {
   const unique = [...new Set(ids.filter(Boolean))];
   await kv.put(KV_INDEX, JSON.stringify(unique));
+}
+
+async function readCatalogEntriesBlob(
+  kv: KVNamespace
+): Promise<Record<string, unknown>[] | null> {
+  const raw = await kv.get(KV_CATALOG_ENTRIES);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { entries?: Record<string, unknown>[] };
+    return Array.isArray(parsed?.entries) ? parsed.entries : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCatalogEntriesBlob(
+  kv: KVNamespace,
+  entries: Record<string, unknown>[]
+): Promise<void> {
+  await kv.put(
+    KV_CATALOG_ENTRIES,
+    JSON.stringify({ savedAt: new Date().toISOString(), entries })
+  );
+}
+
+async function upsertCatalogEntriesBlob(
+  kv: KVNamespace,
+  entry: Record<string, unknown>
+): Promise<void> {
+  const id = String(entry?.id || "").trim();
+  if (!id) return;
+  const existing = (await readCatalogEntriesBlob(kv)) || [];
+  const next = existing.filter((e) => String(e?.id || "") !== id);
+  next.unshift(entry);
+  await writeCatalogEntriesBlob(kv, next);
+}
+
+async function removeCatalogEntriesBlob(kv: KVNamespace, id: string): Promise<void> {
+  const sheetId = String(id || "").trim();
+  if (!sheetId) return;
+  const existing = await readCatalogEntriesBlob(kv);
+  if (!existing) return;
+  await writeCatalogEntriesBlob(
+    kv,
+    existing.filter((e) => String(e?.id || "") !== sheetId)
+  );
+}
+
+async function rebuildCatalogEntriesFromIndex(
+  kv: KVNamespace
+): Promise<Record<string, unknown>[]> {
+  const ids = await readIndex(kv);
+  const rows = await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(catalogKey(id));
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        /* Repair in memory only — never rewrite during list (was a big catalog stall). */
+        const { assignment: entry } = repairAssignmentRecord(parsed);
+        return entry;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return rows.filter((e): e is Record<string, unknown> => Boolean(e));
 }
 
 async function applyStudentMedia(
@@ -407,6 +643,7 @@ export async function getStudentProfileForTeacher(
     hasKvAccount: account.hasKvAccount,
     currentHomeworkId,
     currentHomeworkTitle,
+    waitingHomeworkIds: await readHomeworkWaitingQueue(kv, student),
     discordUserId: String((await kv.get(studentDiscordKey(student))) || "").trim(),
   };
 }
@@ -430,10 +667,7 @@ export async function saveStudentProfile(
     mediaOpts.youtubeUrl = data.youtubeUrl;
   }
   if (data.lessonPlaylistUrl !== undefined) {
-    const playlist = String(data.lessonPlaylistUrl || "").trim();
-    if (playlist) {
-      mediaOpts.lessonPlaylistUrl = playlist;
-    }
+    mediaOpts.lessonPlaylistUrl = String(data.lessonPlaylistUrl || "").trim();
   }
   if (Object.keys(mediaOpts).length) {
     await applyStudentMedia(kv, student, mediaOpts);
@@ -473,6 +707,108 @@ export async function getStudentDiscordUserId(
   username: string
 ): Promise<string> {
   return String((await kv.get(studentDiscordKey(username.toLowerCase()))) || "").trim();
+}
+
+async function readHomeworkWaitingQueue(kv: KVNamespace, username: string): Promise<string[]> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) return [];
+  const raw = await kv.get(studentHomeworkWaitingKey(user));
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return [
+      ...new Set(
+        parsed
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      ),
+    ];
+  } catch {
+    return [];
+  }
+}
+
+async function writeHomeworkWaitingQueue(
+  kv: KVNamespace,
+  username: string,
+  ids: string[]
+): Promise<void> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) return;
+  const unique = [
+    ...new Set(
+      ids
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  if (!unique.length) {
+    await kv.delete(studentHomeworkWaitingKey(user));
+    return;
+  }
+  await kv.put(studentHomeworkWaitingKey(user), JSON.stringify(unique));
+}
+
+async function getLatestOnlineSubmissionForAssignment(
+  kv: KVNamespace,
+  username: string,
+  assignmentId: string
+): Promise<HomeworkSubmission | null> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const id = String(assignmentId || "").trim();
+  if (!user || !id) return null;
+
+  const studentIds = await readStudentSubmissionsIndex(kv, user);
+  let submissions: HomeworkSubmission[];
+  if (studentIds !== null) {
+    submissions = await loadSubmissionsByIds(kv, studentIds);
+  } else {
+    const allIds = await readSubmissionsIndex(kv);
+    const all = await loadSubmissionsByIds(kv, allIds);
+    submissions = all.filter(
+      (entry) => String(entry.username || "").toLowerCase() === user
+    );
+    await writeStudentSubmissionsIndex(
+      kv,
+      user,
+      submissions.map((entry) => entry.id)
+    );
+  }
+
+  const matches = submissions.filter(
+    (entry) =>
+      entry.type === "online" &&
+      String(entry.assignmentId || "").trim() === id &&
+      String(entry.username || "").toLowerCase() === user
+  );
+  if (!matches.length) return null;
+  matches.sort(
+    (a, b) =>
+      new Date(b.submittedAt || b.reviewedAt || 0).getTime() -
+      new Date(a.submittedAt || a.reviewedAt || 0).getTime()
+  );
+  return matches[0] || null;
+}
+
+/** True while student still has this sheet open (working / submitted / reading notes). */
+async function isHomeworkCycleOpen(
+  kv: KVNamespace,
+  username: string,
+  assignmentId: string
+): Promise<boolean> {
+  const id = String(assignmentId || "").trim();
+  if (!id) return false;
+  const latest = await getLatestOnlineSubmissionForAssignment(kv, username, id);
+  if (!latest) return true;
+  const status = latest.reviewStatus || "submitted";
+  return status !== "acknowledged";
 }
 
 export async function saveStudentDiscordUserId(
@@ -540,7 +876,16 @@ export async function publishToStudentHub(
   data: PublishPayload,
   env: KvEnv,
   options?: { staticStudents?: string[] }
-): Promise<{ id: string; studentUrl: string; updated: boolean }> {
+): Promise<{
+  id: string;
+  studentUrl: string;
+  updated: boolean;
+  queued: boolean;
+  queueCount: number;
+  waitingCount: number;
+  currentHomeworkId: string;
+  hubSlotsUsed: number;
+}> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
   if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
@@ -599,7 +944,10 @@ export async function publishToStudentHub(
 
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
   await kv.put(catalogKey(id), JSON.stringify(catalogEntry));
-  await kv.put(studentCurrentHomeworkKey(student), String(id || "").trim());
+  await upsertCatalogEntriesBlob(kv, catalogEntry);
+
+  let currentHomeworkId = String((await kv.get(studentCurrentHomeworkKey(student))) || "").trim();
+  let waiting = await readHomeworkWaitingQueue(kv, student);
 
   const index = await readIndex(kv);
   const updated = index.includes(id);
@@ -608,7 +956,67 @@ export async function publishToStudentHub(
     await writeIndex(kv, index);
   }
 
-  return { id, studentUrl: `/homework/platform.html#hw-${id}`, updated };
+  const finish = (opts: {
+    queued: boolean;
+    currentHomeworkId: string;
+    waiting: string[];
+  }) => ({
+    id,
+    studentUrl: `/homework/platform.html#hw-${id}`,
+    updated,
+    queued: opts.queued,
+    queueCount: opts.waiting.length,
+    waitingCount: opts.waiting.length,
+    currentHomeworkId: opts.currentHomeworkId,
+    hubSlotsUsed: (opts.currentHomeworkId ? 1 : 0) + opts.waiting.length,
+  });
+
+  /* Same sheet already current — refresh content only. */
+  if (currentHomeworkId === id) {
+    return finish({ queued: false, currentHomeworkId, waiting });
+  }
+
+  /* Same sheet already waiting — refresh content only (unless forcing to current). */
+  if (waiting.includes(id) && !data.forceCurrent) {
+    return finish({ queued: true, currentHomeworkId, waiting });
+  }
+
+  /* Finished cycle (Done reviewing) frees the current slot. */
+  if (currentHomeworkId && !data.forceCurrent) {
+    const cycleOpen = await isHomeworkCycleOpen(kv, student, currentHomeworkId);
+    if (!cycleOpen) {
+      await kv.delete(studentCurrentHomeworkKey(student));
+      currentHomeworkId = "";
+    }
+  }
+
+  if (data.forceCurrent) {
+    waiting = waiting.filter((entry) => entry !== id);
+    if (currentHomeworkId && currentHomeworkId !== id) {
+      const cycleOpen = await isHomeworkCycleOpen(kv, student, currentHomeworkId);
+      if (cycleOpen && !waiting.includes(currentHomeworkId)) {
+        waiting = [currentHomeworkId, ...waiting];
+      }
+    }
+    waiting = waiting.slice(0, HUB_HOMEWORK_SLOT_MAX - 1);
+    await kv.put(studentCurrentHomeworkKey(student), id);
+    await writeHomeworkWaitingQueue(kv, student, waiting);
+    return finish({ queued: false, currentHomeworkId: id, waiting });
+  }
+
+  if (!currentHomeworkId) {
+    await kv.put(studentCurrentHomeworkKey(student), id);
+    return finish({ queued: false, currentHomeworkId: id, waiting });
+  }
+
+  const slotsUsed = 1 + waiting.length;
+  if (slotsUsed >= HUB_HOMEWORK_SLOT_MAX) {
+    throw new Error("HUB_FULL");
+  }
+
+  waiting = [...waiting, id];
+  await writeHomeworkWaitingQueue(kv, student, waiting);
+  return finish({ queued: true, currentHomeworkId, waiting });
 }
 
 /** Save a neutral worksheet to the library (not tied to a student yet). */
@@ -675,6 +1083,7 @@ export async function saveWorksheetDraft(
 
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
   await kv.put(catalogKey(id), JSON.stringify(catalogEntry));
+  await upsertCatalogEntriesBlob(kv, catalogEntry);
 
   const index = await readIndex(kv);
   const updated = index.includes(id);
@@ -705,6 +1114,7 @@ export async function deleteWorksheetFromLibrary(
 
   await kv.delete(catalogKey(id));
   await kv.delete(assignmentKey(id));
+  await removeCatalogEntriesBlob(kv, id);
 
   const index = await readIndex(kv);
   await writeIndex(
@@ -716,30 +1126,30 @@ export async function deleteWorksheetFromLibrary(
   for (const { username: student } of allStudents) {
     const current = await kv.get(studentCurrentHomeworkKey(student));
     if (current === id) await kv.delete(studentCurrentHomeworkKey(student));
+    const waiting = await readHomeworkWaitingQueue(kv, student);
+    if (waiting.includes(id)) {
+      await writeHomeworkWaitingQueue(
+        kv,
+        student,
+        waiting.filter((entry) => entry !== id)
+      );
+    }
   }
 
   return { id };
 }
 
 export async function loadPublishedCatalogEntries(kv: KVNamespace): Promise<Record<string, unknown>[]> {
-  const ids = await readIndex(kv);
-  const rows = await Promise.all(
-    ids.map(async (id) => {
-      const raw = await kv.get(catalogKey(id));
-      if (!raw) return null;
-      try {
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const { assignment: entry, repaired } = repairAssignmentRecord(parsed);
-        if (repaired) {
-          await kv.put(catalogKey(id), JSON.stringify(entry));
-        }
-        return entry;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return rows.filter((e): e is Record<string, unknown> => Boolean(e));
+  const cached = await readCatalogEntriesBlob(kv);
+  if (cached) return cached;
+
+  const rebuilt = await rebuildCatalogEntriesFromIndex(kv);
+  try {
+    await writeCatalogEntriesBlob(kv, rebuilt);
+  } catch {
+    /* list still works if snapshot write fails */
+  }
+  return rebuilt;
 }
 
 export async function loadPublishedAssignment(
@@ -916,10 +1326,12 @@ export async function mergeCatalog(
     const currentHomeworkId = String(
       (await kvNs.get(studentCurrentHomeworkKey(studentKey))) || ""
     ).trim();
-    if (currentHomeworkId) {
+    const waitingHomeworkIds = await readHomeworkWaitingQueue(kvNs, studentKey);
+    if (currentHomeworkId || waitingHomeworkIds.length) {
       merged.studentProfiles[studentKey] = {
         ...(merged.studentProfiles[studentKey] || {}),
-        currentHomeworkId,
+        ...(currentHomeworkId ? { currentHomeworkId } : {}),
+        ...(waitingHomeworkIds.length ? { waitingHomeworkIds } : {}),
       };
     }
 
@@ -975,10 +1387,12 @@ export async function mergeCatalog(
       const currentHomeworkId = String(
         (await kvNs.get(studentCurrentHomeworkKey(student))) || ""
       ).trim();
-      if (!currentHomeworkId) return;
+      const waitingHomeworkIds = await readHomeworkWaitingQueue(kvNs, student);
+      if (!currentHomeworkId && !waitingHomeworkIds.length) return;
       merged.studentProfiles![student] = {
         ...(merged.studentProfiles![student] || {}),
-        currentHomeworkId,
+        ...(currentHomeworkId ? { currentHomeworkId } : {}),
+        ...(waitingHomeworkIds.length ? { waitingHomeworkIds } : {}),
       };
     })
   );
@@ -1770,6 +2184,11 @@ async function isKnownStudentInKv(
     .trim()
     .toLowerCase();
   if (!user) return false;
+  const wiped = await readWipedStudents(kv);
+  if (wiped.has(user)) {
+    const account = await kv.get(userAccountKey(user));
+    return Boolean(account);
+  }
   if (STUDENT_ACCOUNTS.has(user)) return true;
   const account = await kv.get(userAccountKey(user));
   return Boolean(account);
@@ -2087,6 +2506,83 @@ function normalizeStoredComment(raw: HomeworkComment | Record<string, unknown>):
   };
 }
 
+/** Replies JD has already written for a given question, newest first. */
+export interface AnswerBankReply {
+  text: string;
+  usedAt: string;
+  count: number;
+}
+
+export interface AnswerBank {
+  assignmentId: string;
+  /** Keyed by question slide index, as a string. */
+  slides: Record<string, AnswerBankReply[]>;
+  updatedAt: string;
+}
+
+const answerBankKey = (assignmentId: string) => `answer-bank:${assignmentId}`;
+const ANSWER_BANK_MAX_PER_SLIDE = 6;
+
+export async function readAnswerBank(
+  kv: KVNamespace | undefined,
+  assignmentId: string
+): Promise<AnswerBank | null> {
+  const id = String(assignmentId || "").trim();
+  if (!kv || !id) return null;
+  try {
+    const raw = await kv.get(answerBankKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AnswerBank;
+    if (!parsed || typeof parsed !== "object" || !parsed.slides) return null;
+    return parsed;
+  } catch (err) {
+    console.error("readAnswerBank failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Remember the question notes JD just wrote so the next student's review can
+ * start from them. Same wording on the same question bumps its count instead of
+ * piling up duplicates.
+ */
+async function recordAnswerBank(
+  kv: KVNamespace,
+  assignmentId: string,
+  comments: HomeworkComment[],
+  now: string
+): Promise<void> {
+  const id = String(assignmentId || "").trim();
+  if (!id) return;
+  const notes = comments.filter((c) => c.author === "teacher" && c.text.trim());
+  if (!notes.length) return;
+
+  const bank: AnswerBank = (await readAnswerBank(kv, id)) || {
+    assignmentId: id,
+    slides: {},
+    updatedAt: now,
+  };
+
+  for (const note of notes) {
+    const slot = String(typeof note.slideIndex === "number" ? note.slideIndex : 0);
+    const text = note.text.trim();
+    const list = Array.isArray(bank.slides[slot]) ? bank.slides[slot] : [];
+    const match = list.find((r) => r.text === text);
+    const rest = list.filter((r) => r.text !== text);
+    bank.slides[slot] = [
+      { text, usedAt: now, count: (match?.count || 0) + 1 },
+      ...rest,
+    ].slice(0, ANSWER_BANK_MAX_PER_SLIDE);
+  }
+
+  bank.updatedAt = now;
+  try {
+    await kv.put(answerBankKey(id), JSON.stringify(bank));
+  } catch (err) {
+    console.error("recordAnswerBank failed:", err);
+  }
+}
+
 /**
  * Teacher submits review notes for an existing submission.
  * Merges teacher remarks onto student memos and appends teacher-authored question notes.
@@ -2176,6 +2672,7 @@ export async function saveHomeworkReview(
 
   if (markReviewed) {
     updated.notebook = buildNotebookPack(updated, now);
+    await recordAnswerBank(kv, updated.assignmentId, comments, now);
   }
 
   await writeSubmission(kv, updated);
@@ -2339,7 +2836,7 @@ export async function listHomeworkNotebook(
 export async function saveHomeworkReviewAck(
   data: HomeworkReviewAckInput,
   env: KvEnv
-): Promise<HomeworkSubmission> {
+): Promise<{ submission: HomeworkSubmission; nextHomeworkId: string | null }> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
 
@@ -2368,7 +2865,28 @@ export async function saveHomeworkReviewAck(
     studentNotesAckedAt: existing.studentNotesAckedAt || now,
   };
   await writeSubmission(kv, updated);
-  return updated;
+
+  let nextHomeworkId: string | null = null;
+  const assignmentId = String(updated.assignmentId || "").trim();
+  const currentHomeworkId = String(
+    (await kv.get(studentCurrentHomeworkKey(username))) || ""
+  ).trim();
+
+  if (!currentHomeworkId || currentHomeworkId === assignmentId) {
+    const waiting = await readHomeworkWaitingQueue(kv, username);
+    if (waiting.length) {
+      const [next, ...rest] = waiting;
+      nextHomeworkId = next || null;
+      if (nextHomeworkId) {
+        await kv.put(studentCurrentHomeworkKey(username), nextHomeworkId);
+      } else {
+        await kv.delete(studentCurrentHomeworkKey(username));
+      }
+      await writeHomeworkWaitingQueue(kv, username, rest);
+    }
+  }
+
+  return { submission: updated, nextHomeworkId };
 }
 
 export async function saveHomeworkPhotoSubmission(
@@ -3160,22 +3678,33 @@ export async function savePromoSignup(
   return { id, duplicate: false };
 }
 
-export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
+/**
+ * Index is newest-first, so a limit reads only the newest rows. The Teacher Hub
+ * feed passes one; the Email list panel omits it and still gets everything.
+ */
+export async function listPromoSignups(
+  env: KvEnv,
+  opts?: { limit?: number }
+): Promise<PromoSignup[]> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
 
-  const ids = await readPromoIndex(kv);
+  const limit = Number(opts?.limit) > 0 ? Math.min(500, Number(opts.limit)) : 0;
+  const all = await readPromoIndex(kv);
+  const ids = limit ? all.slice(0, limit) : all;
   const signups: PromoSignup[] = [];
 
-  for (const id of ids) {
-    const raw = await kv.get(promoSignupKey(id));
-    if (!raw) continue;
-    try {
-      signups.push(JSON.parse(raw) as PromoSignup);
-    } catch {
-      /* skip corrupt entry */
-    }
-  }
+  await Promise.all(
+    ids.map(async (id) => {
+      const raw = await kv.get(promoSignupKey(id));
+      if (!raw) return;
+      try {
+        signups.push(JSON.parse(raw) as PromoSignup);
+      } catch {
+        /* skip corrupt entry */
+      }
+    })
+  );
 
   return signups.sort(
     (a, b) => new Date(b.signedUpAt).getTime() - new Date(a.signedUpAt).getTime()
@@ -3186,6 +3715,9 @@ export async function listPromoSignups(env: KvEnv): Promise<PromoSignup[]> {
 
 const FEATURE_REPORT_INDEX = "feature-reports-index";
 const featureReportKey = (id: string) => `feature-report:${id}`;
+const featureReportImageKey = (id: string) => `feature-report-image:${id}`;
+
+const MAX_FEATURE_IMAGE_BYTES = 900_000;
 
 export type FeatureReportKind = "feature" | "bug" | "reminder";
 
@@ -3197,6 +3729,8 @@ export interface FeatureReport {
   displayName?: string;
   page?: string;
   createdAt: string;
+  /** True when a screenshot/image was stored under feature-report-image:{id}. */
+  hasImage?: boolean;
 }
 
 export interface FeatureReportPayload {
@@ -3205,6 +3739,8 @@ export interface FeatureReportPayload {
   username?: string;
   displayName?: string;
   page?: string;
+  /** Optional data-URL or raw base64 (jpeg/png/webp). Stored separately from the list record. */
+  imageBase64?: string;
 }
 
 function makeFeatureReportId(): string {
@@ -3238,6 +3774,50 @@ async function writeFeatureReportIndex(kv: KVNamespace, ids: string[]): Promise<
   await kv.put(FEATURE_REPORT_INDEX, JSON.stringify(unique.slice(0, 200)));
 }
 
+export interface FeatureReportImage {
+  contentType: string;
+  bytes: Uint8Array;
+}
+
+function parseFeatureReportImage(
+  raw: string | undefined
+): { contentType: string; bytes: Uint8Array } | null {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  let contentType = "image/jpeg";
+  let b64 = s;
+  const dataUrl = /^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/i.exec(s);
+  if (dataUrl) {
+    contentType = dataUrl[1].toLowerCase().replace("image/jpg", "image/jpeg");
+    b64 = dataUrl[2];
+  } else if (/^image\/(?:jpeg|jpg|png|webp);base64,/i.test(s)) {
+    const parts = s.split(",");
+    contentType = parts[0]
+      .split(";")[0]
+      .toLowerCase()
+      .replace("image/jpg", "image/jpeg");
+    b64 = parts.slice(1).join(",");
+  }
+
+  b64 = b64.replace(/\s/g, "");
+  if (!b64 || b64.length > Math.ceil(MAX_FEATURE_IMAGE_BYTES * 1.4)) {
+    throw new Error("IMAGE_TOO_LARGE");
+  }
+
+  let binary: string;
+  try {
+    binary = atob(b64);
+  } catch {
+    throw new Error("IMAGE_INVALID");
+  }
+  if (binary.length > MAX_FEATURE_IMAGE_BYTES) throw new Error("IMAGE_TOO_LARGE");
+
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return { contentType, bytes };
+}
+
 export async function saveFeatureReport(
   data: FeatureReportPayload,
   env: KvEnv
@@ -3248,9 +3828,14 @@ export async function saveFeatureReport(
   const kind = normalizeFeatureReportKind(data.kind);
   if (!kind) throw new Error("KIND_REQUIRED");
 
-  const message = String(data.message || "").trim();
+  let message = String(data.message || "").trim();
+  if (!message && kind === "bug") {
+    message = "(No comment — screenshot only)";
+  }
   if (!message) throw new Error("MESSAGE_REQUIRED");
   if (message.length > 4000) throw new Error("MESSAGE_TOO_LONG");
+
+  const parsedImage = parseFeatureReportImage(data.imageBase64);
 
   const id = makeFeatureReportId();
   const record: FeatureReport = {
@@ -3267,12 +3852,35 @@ export async function saveFeatureReport(
   if (username) record.username = username.slice(0, 64);
   if (displayName) record.displayName = displayName.slice(0, 120);
   if (page) record.page = page.slice(0, 200);
+  if (parsedImage) record.hasImage = true;
 
   await kv.put(featureReportKey(id), JSON.stringify(record));
+  if (parsedImage) {
+    await kv.put(featureReportImageKey(id), parsedImage.bytes, {
+      metadata: { contentType: parsedImage.contentType },
+    });
+  }
   const ids = await readFeatureReportIndex(kv);
   ids.unshift(id);
   await writeFeatureReportIndex(kv, ids);
   return record;
+}
+
+export async function loadFeatureReportImage(
+  id: string,
+  env: KvEnv
+): Promise<FeatureReportImage | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const safeId = String(id || "").trim();
+  if (!safeId) return null;
+
+  const res = await kv.getWithMetadata(featureReportImageKey(safeId), "arrayBuffer");
+  if (!res.value) return null;
+  const meta = (res.metadata || {}) as { contentType?: string };
+  const contentType =
+    String(meta.contentType || "image/jpeg").trim() || "image/jpeg";
+  return { contentType, bytes: new Uint8Array(res.value) };
 }
 
 export async function listFeatureReports(
@@ -4144,6 +4752,13 @@ export async function wipeStudentCompletely(
       }
     }
   }
+  if (catalogSheetsScrubbed) {
+    try {
+      await kv.delete(KV_CATALOG_ENTRIES);
+    } catch {
+      /* next catalog load rebuilds */
+    }
+  }
 
   /* 2. Submissions + media */
   let submissionsRemoved = 0;
@@ -4192,6 +4807,7 @@ export async function wipeStudentCompletely(
   await del(studentYoutubeKey(user));
   await del(studentLessonPlaylistKey(user));
   await del(studentCurrentHomeworkKey(user));
+  await del(studentHomeworkWaitingKey(user));
   await del(studentAccountSettingsKey(user));
   await del(studentDiscordKey(user));
 
@@ -4207,6 +4823,7 @@ export async function wipeStudentCompletely(
 
   /* 5. Login account */
   const accountResult = await deleteUserAccount(user, env);
+  await markStudentWiped(kv, user);
 
   return {
     username: user,

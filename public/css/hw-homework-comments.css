@@ -214,22 +214,35 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   pointer-events: none;
 }
 
-/* Expanded cloud note bubble */
+/* Expanded cloud note bubble — match glass lookup popup chrome. */
 .hw-hc-memo {
   position: absolute;
   z-index: 62;
   transform: translate(-50%, calc(-100% - 0.35rem));
   pointer-events: auto;
-  min-width: 11rem;
-  max-width: min(17rem, calc(100vw - 2rem));
-  filter: drop-shadow(0 3px 8px rgba(26, 39, 68, 0.1));
+  min-width: min(14rem, calc(100% - 1.5rem));
+  max-width: min(18rem, calc(100% - 1.5rem));
+  filter: none;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  animation: hw-hc-memo-pop 0.16s ease;
 }
 
 .hw-hc-memo.is-dragging {
   cursor: grabbing;
-  filter: drop-shadow(0 4px 10px rgba(26, 39, 68, 0.14));
+  animation: none;
+}
+
+@keyframes hw-hc-memo-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 0.1rem)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 0.35rem)) scale(1);
+  }
 }
 
 .hw-hc-anchor-highlight {
@@ -267,64 +280,106 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   .hw-hc-hover-highlight__rect {
     transition: none;
   }
+
+  .hw-hc-memo {
+    animation: none;
+  }
 }
 
 .hw-hc-memo__body {
   position: relative;
-  padding: 0.65rem 0.75rem 0.55rem;
-  color: var(--hw-hc-ink);
-  background: var(--hw-hc-blue);
-  border: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
-  border-radius: 1.35rem 1.35rem 1.35rem 0.45rem;
+  padding: 0.85rem 0.95rem 0.75rem;
+  color: var(--hw-hc-ink, #1a2744);
+  /* Clearly blue card — still flat like glass, not a speech bubble. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 34%, #fff) 0%,
+    color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 22%, #fff) 100%
+  );
+  border: 2px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 72%, #1a2744);
+  border-radius: var(--radius-md, 0.65rem);
+  box-shadow:
+    var(--shadow-md, 0 8px 28px rgba(0, 0, 0, 0.14)),
+    0 0 0 1px color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 35%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+  font-family: "Noto Sans JP", Inter, sans-serif;
 }
 
+.hw-hc-memo.is-dragging .hw-hc-memo__body {
+  box-shadow:
+    var(--shadow-lg, 0 12px 36px rgba(0, 0, 0, 0.2)),
+    0 0 0 1px color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 45%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 55%, transparent);
+}
+
+/* No speech-bubble tail — same flat card as glass. */
 .hw-hc-memo__body::after {
-  content: "";
-  position: absolute;
-  bottom: -0.45rem;
-  left: 50%;
-  transform: translateX(-50%) rotate(45deg);
-  width: 0.75rem;
-  height: 0.75rem;
-  background: var(--hw-hc-blue);
-  border-right: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
-  border-bottom: 2px solid color-mix(in srgb, var(--hw-hc-ink) 18%, var(--hw-hc-blue));
+  content: none;
+  display: none;
 }
 
 .hw-hc-memo__input {
   width: 100%;
+  box-sizing: border-box;
   resize: vertical;
   min-height: 3.5rem;
   max-height: 10rem;
-  padding: 0.35rem 0.4rem;
-  border: none;
-  border-radius: 0.45rem;
-  background: color-mix(in srgb, #fff 72%, transparent);
-  color: var(--hw-hc-ink);
-  font: inherit;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 55%, transparent);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, #fff 82%, var(--hw-hc-blue, #67c4eb));
+  color: var(--hw-hc-ink, #1a2744);
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.35;
   cursor: text;
+  user-select: text;
+  touch-action: manipulation;
 }
 
 .hw-hc-memo__input::placeholder {
-  color: color-mix(in srgb, var(--hw-hc-ink) 48%, transparent);
+  color: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 48%, transparent);
 }
 
 .hw-hc-memo__input:focus {
-  outline: 2px solid color-mix(in srgb, var(--hw-hc-ink) 28%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 70%, transparent);
   outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 80%, #1a2744);
 }
 
 .hw-hc-memo__input:read-only {
   background: transparent;
+  border-color: transparent;
   resize: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.hw-hc-memo__saved-replies {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 0.3rem;
+  padding: 0.12rem 0.25rem;
+  border: 1.5px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 50%, transparent);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, #fff 78%, var(--hw-hc-blue, #67c4eb));
+  color: var(--hw-hc-ink, #1a2744);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.hw-hc-memo__saved-replies option {
+  color: var(--color-text);
 }
 
 .hw-hc-memo__actions {
   display: flex;
   justify-content: flex-start;
   margin-top: 0.35rem;
+  padding-top: 0.2rem;
 }
 
 .hw-hc-memo__remove {
@@ -332,7 +387,7 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0.15rem 0 0;
+  padding: 0.15rem 0 0 0;
   border: none;
   background: transparent;
   font-family: Inter, sans-serif;
@@ -959,6 +1014,12 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
 .hw-hc-mini--teacher::before,
 .hw-hc-mini--has-remark::before {
   border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 45%, transparent);
+}
+
+/* Started from a saved reply, not typed for this student yet. */
+.hw-hc-mini--prefill {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--color-green, #2d6a4f) 55%, transparent);
 }
 
 .hw-hc-mini--jd-reply:hover,
@@ -1904,7 +1965,7 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   height: 0.38rem;
   margin: 0 auto 0.45rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--hw-hc-ink, #1a2744) 22%, transparent);
+  background: color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 78%, #1a2744);
   cursor: grab;
   touch-action: none;
   flex-shrink: 0;

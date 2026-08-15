@@ -333,6 +333,11 @@
 
     footer.replaceChildren();
 
+    if (!global.HwFeatureFlags?.gamesAndCourses?.()) {
+      card.hidden = true;
+      return;
+    }
+
     if (!HwAuth.hasGameHubAccess(session)) {
       card.hidden = true;
       return;
@@ -364,21 +369,43 @@
   function bindWeeklyUpgradeCard() {
     const card = document.getElementById("hw-weekly-upgrade-card");
     const btn = document.getElementById("hw-weekly-upgrade-btn");
-    if (!card || !btn || btn.dataset.bound === "true") return;
-    btn.dataset.bound = "true";
+    if (!card || card.dataset.bound === "true") return;
+    card.dataset.bound = "true";
     card.hidden = !HwAuth.canShowWeeklyHomeworkUpgrade(session);
+    card.classList.add("hw-hub-v5-sellup-card--clickable");
+    card.setAttribute("role", "link");
     const price = HwAuth.WEEKLY_HOMEWORK_UPGRADE_PRICE;
     const priceEl = card.querySelector(".course-card__price");
     if (priceEl) {
       priceEl.textContent = "$" + price;
       priceEl.setAttribute("aria-label", "Price: " + price + " dollars per month");
     }
-    btn.addEventListener("click", () => {
+    card.setAttribute(
+      "aria-label",
+      "Unlock weekly homework — Student Special $" + price + " per month"
+    );
+    if (btn) {
+      btn.setAttribute("data-hw-checkout", "student-special");
+      btn.dataset.hwCheckoutBound = "true";
+    }
+
+    function goStudentSpecialCheckout(event) {
+      if (event) event.preventDefault();
+      if (global.HwCheckout?.startCheckout) {
+        global.HwCheckout.startCheckout("student-special", { forcePaypal: true });
+        return;
+      }
       showToast(
         "Weekly homework add-on ($" +
           price +
-          "/mo) — PayPal coming soon. Message JD to sign up."
+          "/mo) — open Student Special checkout after login."
       );
+    }
+
+    card.addEventListener("click", goStudentSpecialCheckout);
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      goStudentSpecialCheckout(event);
     });
   }
 
@@ -399,15 +426,17 @@
 
   function getStudentMedia(catalog) {
     const profile = catalog?.studentProfiles?.[session.username] || {};
+    /* Only this student’s teacher-set playlist — never catalog-wide Ben M default. */
+    const lessonPlaylistUrl =
+      String(profile.lessonPlaylistUrl || "").trim() || null;
+    const reviewPlaylistUrl =
+      String(profile.reviewPlaylistUrl || "").trim() ||
+      lessonPlaylistUrl ||
+      null;
     return {
       latestLessonUrl: profile.latestLessonUrl || profile.youtubeUrl || null,
-      lessonPlaylistUrl:
-        profile.lessonPlaylistUrl ||
-        profile.reviewPlaylistUrl ||
-        catalog?.playlistUrl ||
-        null,
-      reviewPlaylistUrl:
-        profile.reviewPlaylistUrl || catalog?.reviewPlaylistUrl || catalog?.playlistUrl || null,
+      lessonPlaylistUrl,
+      reviewPlaylistUrl,
     };
   }
 
@@ -928,10 +957,32 @@
     }
 
     invalidateStudentSubmissionsCache();
+
+    const nextId = String(data.nextHomeworkId || "").trim();
+    if (nextId) {
+      /* Clear review-gate chrome so the promoted sheet shows as working, not acked. */
+      notifyStudentReviewGate({
+        assignmentId: nextId,
+        nextHomeworkId: nextId,
+      });
+      showToast("Your next homework is ready");
+      try {
+        const url = window.location.pathname + window.location.search + "#hw-" + nextId;
+        history.replaceState(null, "", url);
+      } catch {
+        /* ignore */
+      }
+      document.dispatchEvent(new HashChangeEvent("hashchange"));
+      scheduleStudentSubmissionsLoad({ bypassCache: true });
+      void loadStudentHub({ bypassCache: true });
+      return;
+    }
+
     notifyStudentReviewGate({
       status: "acknowledged",
       submissionId: submission.id,
       assignmentId: submission.assignmentId,
+      nextHomeworkId: null,
     });
 
     showToast("Got it — JD will assign new homework when ready.");
@@ -2002,11 +2053,42 @@
     bindCurrentAssignmentPills(active);
   }
 
+  function ensureLessonsPromo() {
+    const stack = document.getElementById("hw-v5-lessons-stack");
+    if (!stack) return null;
+    let promo = document.getElementById("hw-v5-lessons-promo");
+    if (promo) return promo;
+
+    promo = document.createElement("section");
+    promo.className = "hw-hub-v5-lessons-promo hw-hub-worksheet-card";
+    promo.id = "hw-v5-lessons-promo";
+    promo.hidden = true;
+    promo.setAttribute("aria-labelledby", "hw-v5-lessons-promo-title");
+    promo.innerHTML =
+      '<h2 class="hw-hub-v5-lessons-promo__title" id="hw-v5-lessons-promo-title">Private lessons with JD</h2>' +
+      '<p class="hw-hub-v5-lessons-promo__desc">Lesson recordings and playlists show up here for current students. Want live coaching that pairs with Homework Hub?</p>' +
+      '<div class="hw-hub-v5-lessons-promo__actions">' +
+      '<a class="btn btn--primary" href="/#contact" data-service="Private lessons">Ask about lessons</a>' +
+      "</div>";
+
+    const tabs = document.getElementById("hw-v5-lesson-tabs");
+    if (tabs && tabs.parentNode === stack) {
+      tabs.insertAdjacentElement("afterend", promo);
+    } else {
+      stack.prepend(promo);
+    }
+    return promo;
+  }
+
   function setLessonLinks(assignment, catalog) {
     const lessonBtn = document.getElementById("hw-latest-lesson");
     const lessonPlaylist = document.getElementById("hw-lesson-playlist");
+    const lessonTabs = document.getElementById("hw-v5-lesson-tabs");
     const media = getStudentMedia(catalog);
     const lessonUrl = media.latestLessonUrl || assignment?.youtubeUrl;
+    const playlistUrl = media.lessonPlaylistUrl;
+    const hasPlaylist = isYoutubeReady(playlistUrl);
+    const hasLatest = isYoutubeReady(lessonUrl);
 
     /* Never bring back the old lesson card. */
     document.querySelectorAll(".hw-grid-lesson, .hw-hub-v5-lesson-pane, .hw-lesson-actions").forEach((el) => {
@@ -2014,14 +2096,20 @@
     });
     document.getElementById("hw-lesson-meta")?.remove();
 
+    const promo = ensureLessonsPromo();
+    const showPromo = !hasPlaylist;
+
+    if (lessonTabs) lessonTabs.hidden = showPromo;
+    if (promo) promo.hidden = !showPromo;
+
     if (lessonBtn) {
-      lessonBtn.hidden = false;
+      lessonBtn.hidden = showPromo;
       lessonBtn.target = "_blank";
       lessonBtn.rel = "noopener noreferrer";
       lessonBtn.className = "hw-hub-v5-lesson-tabs__btn";
       lessonBtn.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
       lessonBtn.textContent = "Latest lesson";
-      if (isYoutubeReady(lessonUrl)) {
+      if (hasLatest) {
         lessonBtn.href = lessonUrl;
         lessonBtn.removeAttribute("aria-disabled");
         lessonBtn.removeAttribute("data-placeholder");
@@ -2032,14 +2120,13 @@
     }
 
     if (lessonPlaylist) {
-      lessonPlaylist.hidden = false;
+      lessonPlaylist.hidden = showPromo;
       lessonPlaylist.target = "_blank";
       lessonPlaylist.rel = "noopener noreferrer";
       lessonPlaylist.className = "hw-hub-v5-lesson-tabs__btn hw-lesson-playlist";
       lessonPlaylist.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
       lessonPlaylist.textContent = "Lesson playlist";
-      const playlistUrl = media.lessonPlaylistUrl;
-      if (isYoutubeReady(playlistUrl)) {
+      if (hasPlaylist) {
         lessonPlaylist.href = playlistUrl;
         lessonPlaylist.removeAttribute("aria-disabled");
       } else {
@@ -2783,7 +2870,7 @@
     if (mount.querySelector(".hw-builder") || mount.dataset.builderReady === "true") return;
     HwTeacherEditor.init({
       showToast,
-      fetchAssignmentJson: (id) => fetchAssignmentJson(id, { bypassCache: true }),
+      fetchAssignmentJson: (id) => fetchAssignmentJson(id),
       fetchCatalog,
       getCatalogEntry,
       getTeacherSession: () => getTeacherSessionForApi(),
@@ -2804,8 +2891,18 @@
         }
         return ["joshs", "benm", "deme", "ivan", "benc"].includes(key);
       },
-      onWorksheetSaved: async function () {
+      onWorksheetSaved: async function (savedId, savedAssignment) {
         invalidateCatalogCaches();
+        if (savedId) {
+          invalidateAssignmentCache(savedId);
+          if (savedAssignment?.sections?.length) {
+            assignmentMemoryCache.set(savedId, finalizeAssignment(savedAssignment));
+            writeSessionJson(assignmentSessionKey(savedId), {
+              savedAt: Date.now(),
+              data: savedAssignment,
+            });
+          }
+        }
         try {
           catalogCache = await fetchCatalog({ bypassCache: true });
           HwTeacherEditor.refreshCatalog(
@@ -3116,7 +3213,7 @@
       if (v6Full && global.HwFeatureFlags?.hubV6?.() === true) {
         document.body.classList.add("hw-hub-v6-fullpage", "hw-hub-v6-enabled");
       }
-      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2" || tabParam === "hubv6" || tabParam === "hubpreview") {
+      if (tabParam === "mistakes" || tabParam === "maker" || tabParam === "account" || tabParam === "library" || tabParam === "ideas" || tabParam === "submissions" || tabParam === "promo" || tabParam === "birthdays" || tabParam === "harris" || tabParam === "jem" || tabParam === "jd-websites" || tabParam === "gamelab" || tabParam === "lookup-lexicon" || tabParam === "hubv2" || tabParam === "hubv6" || tabParam === "hubpreview") {
         initial = tabParam === "hubv6" || tabParam === "hubpreview" ? "hubv2" : tabParam;
       } else {
       const saved = localStorage.getItem("jlm-hw-teacher-tab");
@@ -3135,6 +3232,7 @@
         saved === "birthdays" ||
         saved === "harris" ||
         saved === "jem" ||
+        saved === "jd-websites" ||
         saved === "gamelab" ||
         saved === "lookup-lexicon" ||
         saved === "hubv2"
@@ -3157,6 +3255,16 @@
 
     document.getElementById("hw-jem-copy-link")?.addEventListener("click", async () => {
       const url = new URL("/preview/jem-appraisals/", window.location.origin).href;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Preview link copied.");
+      } catch {
+        showToast("Could not copy link.");
+      }
+    });
+
+    document.getElementById("hw-jd-websites-copy-link")?.addEventListener("click", async () => {
+      const url = new URL("/preview/jd-websites/", window.location.origin).href;
       try {
         await navigator.clipboard.writeText(url);
         showToast("Preview link copied.");
@@ -3289,6 +3397,52 @@
     if (submitBtn) submitBtn.disabled = false;
   }
 
+  /** Replies JD already used on this worksheet, keyed by question slide index. */
+  async function fetchAnswerBankSlides(assignmentId, teacherUsername) {
+    if (!assignmentId || !teacherUsername) return {};
+    try {
+      const res = await fetch(
+        "/api/homework-answer-bank?assignmentId=" +
+          encodeURIComponent(assignmentId) +
+          "&teacherUsername=" +
+          encodeURIComponent(teacherUsername)
+      );
+      if (!res.ok) return {};
+      const data = await res.json().catch(() => ({}));
+      return data?.slides && typeof data.slides === "object" ? data.slides : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  /** Start each question from the reply JD gave last time, unless a note is already there. */
+  function withBankPrefilledNotes(comments, slides) {
+    const notes = Array.isArray(comments) ? [...comments] : [];
+    const taken = new Set(
+      notes
+        .filter((c) => c?.author === "teacher")
+        .map((c) => String(typeof c.slideIndex === "number" ? c.slideIndex : 0))
+    );
+    const now = new Date().toISOString();
+    Object.keys(slides || {}).forEach((slot) => {
+      const replies = slides[slot];
+      if (!Array.isArray(replies) || !replies.length || taken.has(slot)) return;
+      const text = String(replies[0]?.text || "").trim();
+      if (!text) return;
+      notes.push({
+        id: "bank-" + slot + "-" + Math.random().toString(36).slice(2, 8),
+        text,
+        author: "teacher",
+        slideIndex: Number(slot) || 0,
+        bankPrefill: true,
+        x: 72,
+        y: 18,
+        createdAt: now,
+      });
+    });
+    return notes;
+  }
+
   async function openTeacherWorksheetReview(entry, reviewOptions) {
     if (!entry?.id || entry.type !== "online") {
       showToast("Open the answers checklist for photo/video submissions.");
@@ -3356,8 +3510,15 @@
     }
     HwWorksheet.setFormReadOnly(form);
 
-    const initialComments =
-      reviewOptions?.initialComments || entry.comments || [];
+    const bankSlides =
+      entry.reviewStatus === "reviewed"
+        ? {}
+        : await fetchAnswerBankSlides(entry.assignmentId, session.username);
+
+    const initialComments = withBankPrefilledNotes(
+      reviewOptions?.initialComments || entry.comments || [],
+      bankSlides
+    );
 
     if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
       global.HwHomeworkComments.attachTo(form, {
@@ -3369,6 +3530,7 @@
         readOnly: true,
         skipOnboarding: true,
         initialComments,
+        answerBank: bankSlides,
       });
     }
 
@@ -3622,6 +3784,12 @@
         showToast,
       });
     }
+    if (global.HwGlassDeck?.init) {
+      global.HwGlassDeck.init({
+        getTeacherSession: () => getTeacherSessionForApi(),
+        showToast,
+      });
+    }
     if (global.HwReviewFlashcards?.init) {
       global.HwReviewFlashcards.init({
         getTeacherSession: () => getTeacherSessionForApi(),
@@ -3663,6 +3831,18 @@
       });
     }
 
+    /* Paint student filters from local cache immediately; refresh in background. */
+    if (global.HwStudentList?.fillStudentSelect) {
+      [
+        { selector: "#hw-mistakes-feed-student", opts: { includeAllOption: true, allLabel: "All students" } },
+        { selector: "#hw-submissions-student", opts: { includeAllOption: true, allLabel: "All students" } },
+        { selector: "#hw-teacher-viewas-select", opts: { placeholder: "— Teacher hub —", required: false } },
+      ].forEach(({ selector, opts }) => {
+        const el = document.querySelector(selector);
+        if (el) global.HwStudentList.fillStudentSelect(el, { ...opts, keepValue: el.value });
+      });
+    }
+
     const studentsTask = global.HwStudentList?.fetchStudents
       ? global.HwStudentList.fetchStudents({
           force: true,
@@ -3680,7 +3860,9 @@
         .catch(() => null);
     }
 
-    await Promise.all([studentsTask, catalogTask]);
+    /* Don't block Teacher Hub on the student list — catalog is enough to open. */
+    await catalogTask;
+    void studentsTask;
 
     const teacherTabs = teacherTabApi;
 

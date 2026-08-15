@@ -15,10 +15,19 @@
   const SESSION_SHOWN_KEY = "jlm-promo-shown-session";
   const LEGACY_SEEN_KEY = "jlm-promo-seen";
   const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
-  const OPEN_DELAY_MS = 5000;
-  const SCROLL_DEPTH = 0.45;
+  /* Timed auto-open only (no scroll-depth / exit-intent): Instagram/#contact
+     deep links used to jump to contact and immediately hit scroll ≥45%,
+     slamming this popup over the form. */
+  const OPEN_DELAY_MS = 30000;
   const AUTO_SHOW_PAGES = new Set(["Home"]);
   let promoOpened = false;
+  /* Skip auto-open for this visit when landing on #contact (Instagram links). */
+  const landedOnContact = isContactHash(location.hash);
+
+  function isContactHash(hash) {
+    const h = String(hash || "").toLowerCase();
+    return h === "#contact" || h.startsWith("#contact?");
+  }
 
   function showStatus(message, type) {
     if (!statusEl) return;
@@ -66,7 +75,9 @@
     }
   }
 
-  function shouldShowPromo() {
+  function shouldAutoShowPromo() {
+    if (landedOnContact) return false;
+    if (isContactHash(location.hash)) return false;
     if (hasSubscribed()) return false;
     if (wasDismissedRecently()) return false;
     if (hasShownThisSession()) return false;
@@ -131,42 +142,42 @@
 
   function tryOpenPromo() {
     if (!AUTO_SHOW_PAGES.has(pageName)) return;
-    if (!shouldShowPromo()) return;
+    if (!shouldAutoShowPromo()) return;
     if (!modal.hidden) return;
     markShownThisSession();
     openModal();
   }
 
-  function bindPromoTriggers() {
-    if (!AUTO_SHOW_PAGES.has(pageName)) return;
-    if (!shouldShowPromo()) return;
-
-    window.setTimeout(() => tryOpenPromo(), OPEN_DELAY_MS);
-
-    window.addEventListener(
-      "scroll",
-      () => {
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        if (maxScroll <= 0) return;
-        if (window.scrollY / maxScroll >= SCROLL_DEPTH) tryOpenPromo();
-      },
-      { passive: true }
-    );
-
-    document.addEventListener("mouseout", (e) => {
-      if (e.relatedTarget || e.clientY > 0) return;
-      tryOpenPromo();
-    });
+  function openPromoFromUserGesture() {
+    if (hasSubscribed()) return;
+    if (!modal.hidden) return;
+    markShownThisSession();
+    openModal();
   }
 
-  bindPromoTriggers();
+  function bindTimedAutoOpen() {
+    if (!AUTO_SHOW_PAGES.has(pageName)) return;
+    if (landedOnContact) return;
+    if (!shouldAutoShowPromo()) return;
+
+    window.setTimeout(() => tryOpenPromo(), OPEN_DELAY_MS);
+  }
+
+  bindTimedAutoOpen();
+
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-promo-open]");
+    if (!trigger) return;
+    e.preventDefault();
+    openPromoFromUserGesture();
+  });
 
   modal.querySelectorAll("[data-promo-close]").forEach((el) => {
     el.addEventListener("click", () => closeModal(true));
   });
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal.querySelector(".promo-modal__backdrop")) closeModal(true);
+    if (e.target === modal || e.target.matches?.(".promo-modal__backdrop")) closeModal(true);
   });
 
   document.addEventListener("keydown", (e) => {

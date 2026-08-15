@@ -9,7 +9,7 @@
  *
  * Optional:
  *   --pin "..."
- *   --story "Free trial ↑"
+ *   --story "Free consultation ↑"
  *   --link "https://japaneselanguagementor.com/#contact"
  *   --base https://japaneselanguagementor.com
  *   --user jlm
@@ -19,8 +19,8 @@ import process from "node:process";
 const DEFAULT_BASE = "https://japaneselanguagementor.com";
 const DEFAULT_USER = "jlm";
 const DEFAULT_PIN =
-  "Free trial Japanese lesson → https://japaneselanguagementor.com/#contact";
-const DEFAULT_STORY = "Free trial ↑";
+  "Free consultation → https://japaneselanguagementor.com/#contact";
+const DEFAULT_STORY = "Free consultation ↑";
 const DEFAULT_LINK = "https://japaneselanguagementor.com/#contact";
 
 function usage() {
@@ -34,7 +34,7 @@ Options:
   --fire   ISO time (UTC or with offset), e.g. 2026-08-06T01:30:00Z
   --titles Clip title(s) shown in the ping
   --pin    YouTube pin comment text
-  --story  IG Story caption (default: Free trial ↑)
+  --story  IG Story caption (default: Free consultation ↑)
   --link   Link sticker URL
   --base   API base URL (default: ${DEFAULT_BASE})
   --user   Teacher username (default: ${DEFAULT_USER})

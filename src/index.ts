@@ -8,6 +8,20 @@ import {
   type SocialReminderArmPayload,
 } from "./social-reminders";
 import {
+  armHwPlanReminder,
+  clearHwPlanReminder,
+  mapCheckoutPlanToTier,
+  planLabelFromTier,
+  runHwPlanReminders,
+} from "./hw-plan-reminders";
+import {
+  buildCancelReturnUrl,
+  buildPaidReturnUrl,
+  createPaypalSubscription,
+  normalizeHwCheckoutPlan,
+  paypalCredentialsConfigured,
+} from "./paypal-subscriptions";
+import {
   isHarrisPreviewAuthorized,
   isHarrisPreviewPath,
   harrisPreviewUnauthorized,
@@ -29,7 +43,13 @@ import {
 import {
   getDiscordBotStatus,
   notifyStudentWithTeacherFallback,
+  type DiscordNotifyResult,
 } from "./discord-notify";
+import {
+  formatInquiryEmailBody,
+  inquiryEmailConfigured,
+  sendInquiryEmail,
+} from "./notify-email";
 import {
   mergeCatalog,
   publishToStudentHub,
@@ -71,6 +91,7 @@ import {
   listHomeworkSubmissions,
   getHomeworkSubmission,
   saveHomeworkReview,
+  readAnswerBank,
   saveHomeworkReviewAck,
   listHomeworkNotebook,
   loadHomeworkSubmissionPhoto,
@@ -96,6 +117,7 @@ import {
   savePromoSignupTeacher,
   saveFeatureReport,
   listFeatureReports,
+  loadFeatureReportImage,
   deletePromoSignup,
   type PromoSignupSavePayload,
   type PromoSignupDeletePayload,
@@ -124,6 +146,7 @@ import {
   type LanternWordSetDeletePayload,
 } from "./homework-kv";
 import {
+  changeOwnPassword,
   createUserAccount,
   deleteOwnAccount,
   deleteUserAccount,
@@ -131,15 +154,11 @@ import {
   loginUserAccount,
   savePaypalSubscription,
   toAuthSession,
+  updateOwnDisplayName,
+  updateUserAccountSettings,
   type SignupInput,
   type LoginInput,
 } from "./user-accounts";
-import {
-  createPaypalSubscription,
-  normalizeHwCheckoutPlan,
-  paypalCredentialsConfigured,
-} from "./paypal";
-import { verifyPassword, hashPassword } from "./password";
 import {
   getMgLexiconPublic,
   getMgLexiconQueue,
@@ -148,10 +167,13 @@ import {
   patchMgLexiconOverlay,
   suggestMgLexiconBatch,
   suggestMgLexiconFromAssignment,
+  getMgGlassCheck,
+  setMgGlassCheck,
   type MgLexiconSubmitPayload,
   type MgLexiconAddCardPayload,
   type MgLexiconPatchPayload,
   type MgLexiconSuggestBatchPayload,
+  type MgGlassCheckPayload,
 } from "./mg-lexicon-kv";
 
 interface Env {
@@ -171,13 +193,21 @@ interface Env {
   MISTAKES_LOG_KEY?: string;
   /** Set to 1 in .dev.vars so localhost can auto-load the mistakes log key */
   LOCAL_DEV?: string;
+  /** PayPal REST app — needed for subscription approve links with return_url */
+  PAYPAL_CLIENT_ID?: string;
+  PAYPAL_CLIENT_SECRET?: string;
+  /** "live" (default) or "sandbox" */
+  PAYPAL_MODE?: string;
   HARRIS_PREVIEW_USER?: string;
   HARRIS_PREVIEW_PASSWORD?: string;
   JEM_PREVIEW_USER?: string;
   JEM_PREVIEW_PASSWORD?: string;
-  PAYPAL_CLIENT_ID?: string;
-  PAYPAL_CLIENT_SECRET?: string;
-  PAYPAL_MODE?: string;
+  /** Resend API key — contact/promo Gmail copies (optional until set). */
+  RESEND_API_KEY?: string;
+  /** Inbox for website inquiries (default: languagementor.jp@gmail.com). */
+  INQUIRY_EMAIL_TO?: string;
+  /** From address — must be on a Resend-verified domain. */
+  INQUIRY_EMAIL_FROM?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -484,7 +514,8 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   if (error) return jsonResponse({ error }, 400);
 
   const webhookUrl = getWebhook(env);
-  if (!webhookUrl) {
+  const canEmail = inquiryEmailConfigured(env);
+  if (!webhookUrl && !canEmail) {
     return jsonResponse(
       {
         error:
@@ -494,42 +525,70 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  const channelError = await getWebhookChannelMismatch(
-    webhookUrl,
-    env.DISCORD_CHANNEL_ID,
-    "Discord notify channel"
-  );
-  if (channelError) {
-    console.error(channelError);
-    return jsonResponse(
-      {
-        error:
-          "Contact notifications are misconfigured. Please try again later or email us directly.",
-      },
-      503
+  let discordAllowed = Boolean(webhookUrl);
+  if (webhookUrl) {
+    const channelError = await getWebhookChannelMismatch(
+      webhookUrl,
+      env.DISCORD_CHANNEL_ID,
+      "Discord notify channel"
     );
+    if (channelError) {
+      console.error(channelError);
+      discordAllowed = false;
+      if (!canEmail) {
+        return jsonResponse(
+          {
+            error:
+              "Contact notifications are misconfigured. Please try again later or email us directly.",
+          },
+          503
+        );
+      }
+    }
   }
 
-  const result = await notifyDiscord(webhookUrl, {
-    title: "Website inquiries — new message",
-    color: 0xe74c3c,
-    fields: [
-      { name: "Name", value: data.name!.trim(), inline: true },
-      { name: "Email", value: data.email!.trim(), inline: true },
-      {
-        name: "Service",
-        value: data.service?.trim() || "General inquiry",
-        inline: true,
-      },
-      { name: "Message", value: data.message!.trim() },
-    ],
-  });
+  const name = data.name!.trim();
+  const email = data.email!.trim();
+  const service = data.service?.trim() || "General inquiry";
+  const message = data.message!.trim();
 
-  if (!result.ok) {
+  const emailBody = formatInquiryEmailBody([
+    { label: "Name", value: name },
+    { label: "Email", value: email },
+    { label: "Service", value: service },
+    { label: "Message", value: message },
+  ]);
+
+  const [discordResult, emailResult] = await Promise.all([
+    discordAllowed && webhookUrl
+      ? notifyDiscord(webhookUrl, {
+          title: "Website inquiries — new message",
+          color: 0xe74c3c,
+          fields: [
+            { name: "Name", value: name, inline: true },
+            { name: "Email", value: email, inline: true },
+            { name: "Service", value: service, inline: true },
+            { name: "Message", value: message },
+          ],
+        })
+      : Promise.resolve({ ok: false as const, status: 0, detail: "discord skipped" }),
+    sendInquiryEmail(env, {
+      subject: `Website inquiry from ${name} — ${service}`,
+      text: emailBody.text,
+      html: emailBody.html,
+      replyTo: email,
+    }),
+  ]);
+
+  if (!discordResult.ok && !emailResult.ok) {
     return jsonResponse(
       { error: "Could not deliver your message. Please try again in a few minutes." },
       502
     );
+  }
+
+  if (!emailResult.ok && !("skipped" in emailResult && emailResult.skipped)) {
+    console.error("contact: email copy failed", emailResult);
   }
 
   return jsonResponse({
@@ -554,24 +613,31 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   if (error) return jsonResponse({ error }, 400);
 
   const webhookUrl = getWebhook(env);
-  if (!webhookUrl) {
+  const canEmail = inquiryEmailConfigured(env);
+  if (!webhookUrl && !canEmail) {
     return jsonResponse(
       { error: "Sign-ups are not configured yet. Please try again later." },
       503
     );
   }
 
-  const channelError = await getWebhookChannelMismatch(
-    webhookUrl,
-    env.DISCORD_CHANNEL_ID,
-    "Discord notify channel"
-  );
-  if (channelError) {
-    console.error(channelError);
-    return jsonResponse(
-      { error: "Sign-ups are misconfigured. Please try again later." },
-      503
+  let discordAllowed = Boolean(webhookUrl);
+  if (webhookUrl) {
+    const channelError = await getWebhookChannelMismatch(
+      webhookUrl,
+      env.DISCORD_CHANNEL_ID,
+      "Discord notify channel"
     );
+    if (channelError) {
+      console.error(channelError);
+      discordAllowed = false;
+      if (!canEmail) {
+        return jsonResponse(
+          { error: "Sign-ups are misconfigured. Please try again later." },
+          503
+        );
+      }
+    }
   }
 
   const page = data.page?.trim() || "Unknown page";
@@ -580,6 +646,7 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
     ? data.interests.map((v) => String(v || "").trim()).filter(Boolean)
     : [];
   const interestOther = String(data.interestOther || "").trim();
+  const interestsLabel = formatPromoInterestsForDiscord(interests, interestOther);
 
   let kvSaved = false;
   let duplicate = false;
@@ -597,35 +664,63 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
     }
   }
 
-  const result = await notifyDiscord(webhookUrl, {
-    title: duplicate
-      ? "Website inquiries — promo email signup (duplicate)"
-      : "Website inquiries — promo email signup",
-    color: 0x67c4eb,
-    fields: [
-      { name: "Email", value: email, inline: true },
-      { name: "Page", value: page, inline: true },
-      {
-        name: "Interests",
-        value: formatPromoInterestsForDiscord(interests, interestOther),
-        inline: false,
-      },
-      {
-        name: "Type",
-        value: "Limited promotions & discounts list",
-        inline: true,
-      },
-      ...(kvSaved
-        ? [{ name: "Stored in hub", value: duplicate ? "Already on list" : "Yes", inline: true }]
-        : []),
-    ],
-  });
+  const emailBody = formatInquiryEmailBody([
+    { label: "Email", value: email },
+    { label: "Page", value: page },
+    { label: "Interests", value: interestsLabel },
+    { label: "Type", value: "Limited promotions & discounts list" },
+    ...(kvSaved
+      ? [{ label: "Stored in hub", value: duplicate ? "Already on list" : "Yes" }]
+      : []),
+  ]);
 
-  if (!kvSaved && !result.ok) {
+  const [discordResult, emailResult] = await Promise.all([
+    discordAllowed && webhookUrl
+      ? notifyDiscord(webhookUrl, {
+          title: duplicate
+            ? "Website inquiries — promo email signup (duplicate)"
+            : "Website inquiries — promo email signup",
+          color: 0x67c4eb,
+          fields: [
+            { name: "Email", value: email, inline: true },
+            { name: "Page", value: page, inline: true },
+            { name: "Interests", value: interestsLabel, inline: false },
+            {
+              name: "Type",
+              value: "Limited promotions & discounts list",
+              inline: true,
+            },
+            ...(kvSaved
+              ? [
+                  {
+                    name: "Stored in hub",
+                    value: duplicate ? "Already on list" : "Yes",
+                    inline: true,
+                  },
+                ]
+              : []),
+          ],
+        })
+      : Promise.resolve({ ok: false as const, status: 0, detail: "discord skipped" }),
+    sendInquiryEmail(env, {
+      subject: duplicate
+        ? `Promo signup (duplicate) — ${email}`
+        : `Promo signup — ${email}`,
+      text: emailBody.text,
+      html: emailBody.html,
+      replyTo: email,
+    }),
+  ]);
+
+  if (!kvSaved && !discordResult.ok && !emailResult.ok) {
     return jsonResponse(
       { error: "Could not save your email. Please try again in a few minutes." },
       502
     );
+  }
+
+  if (!emailResult.ok && !("skipped" in emailResult && emailResult.skipped)) {
+    console.error("promo-signup: email copy failed", emailResult);
   }
 
   return jsonResponse({
@@ -648,6 +743,7 @@ async function handleFeatureReport(request: Request, env: Env): Promise<Response
     username?: string;
     displayName?: string;
     page?: string;
+    imageBase64?: string;
   };
   try {
     data = (await request.json()) as typeof data;
@@ -657,10 +753,106 @@ async function handleFeatureReport(request: Request, env: Env): Promise<Response
 
   try {
     const report = await saveFeatureReport(data, env);
+
+    const webhookUrl = getWebhook(env);
+    if (webhookUrl && (report.kind === "bug" || report.kind === "feature")) {
+      const channelError = await getWebhookChannelMismatch(
+        webhookUrl,
+        env.DISCORD_CHANNEL_ID,
+        "Discord notify channel"
+      );
+      if (channelError) {
+        console.error("feature-report discord:", channelError);
+      } else {
+        const who =
+          report.displayName || report.username || "A student";
+        const title =
+          report.kind === "bug"
+            ? "Website inquiries — bug report"
+            : "Website inquiries — feature request";
+        const lines = [
+          title,
+          `From: ${who}`,
+          report.username ? `Username: ${report.username}` : "",
+          report.page ? `Page: ${report.page}` : "",
+          "",
+          report.message,
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        if (report.hasImage) {
+          try {
+            const img = await loadFeatureReportImage(report.id, env);
+            if (img) {
+              const ext =
+                img.contentType.includes("png")
+                  ? "png"
+                  : img.contentType.includes("webp")
+                    ? "webp"
+                    : "jpg";
+              const file = new File([img.bytes], `bug-${report.id}.${ext}`, {
+                type: img.contentType,
+              });
+              const discordResult = await notifyHomeworkDiscordWithFile(
+                webhookUrl,
+                lines,
+                file
+              );
+              if (!discordResult.ok) {
+                console.error(
+                  "feature-report discord file failed:",
+                  discordResult.status,
+                  discordResult.detail
+                );
+              }
+            } else {
+              await notifyDiscord(webhookUrl, {
+                title,
+                color: report.kind === "bug" ? 0xe74c3c : 0x3498db,
+                fields: [
+                  { name: "From", value: who, inline: true },
+                  {
+                    name: "Message",
+                    value: report.message.slice(0, 1000),
+                  },
+                ],
+              });
+            }
+          } catch (err) {
+            console.error("feature-report discord image:", err);
+          }
+        } else {
+          const discordResult = await notifyDiscord(webhookUrl, {
+            title,
+            color: report.kind === "bug" ? 0xe74c3c : 0x3498db,
+            fields: [
+              { name: "From", value: who, inline: true },
+              ...(report.username
+                ? [{ name: "Username", value: report.username, inline: true }]
+                : []),
+              {
+                name: "Message",
+                value: report.message.slice(0, 1000),
+              },
+            ],
+          });
+          if (!discordResult.ok) {
+            console.error(
+              "feature-report discord post failed:",
+              discordResult.status,
+              discordResult.detail
+            );
+          }
+        }
+      }
+    }
+
     return jsonResponse({
       success: true,
       message: "Sent to JD — thanks!",
       id: report.id,
+      hasImage: Boolean(report.hasImage),
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
@@ -676,8 +868,360 @@ async function handleFeatureReport(request: Request, env: Env): Promise<Response
     if (code === "MESSAGE_TOO_LONG") {
       return jsonResponse({ error: "Message is too long (max about 4000 characters)." }, 400);
     }
+    if (code === "IMAGE_TOO_LARGE") {
+      return jsonResponse({ error: "Screenshot is too large. Try again." }, 400);
+    }
+    if (code === "IMAGE_INVALID") {
+      return jsonResponse({ error: "Could not read the screenshot." }, 400);
+    }
     console.error("feature-report failed:", err);
     return jsonResponse({ error: "Could not send your report. Try again in a moment." }, 500);
+  }
+}
+
+async function handleFeatureReportImage(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  const id = String(url.searchParams.get("id") || "").trim();
+  if (!id) return jsonResponse({ error: "Report id is required." }, 400);
+
+  try {
+    const img = await loadFeatureReportImage(id, env);
+    if (!img) return jsonResponse({ error: "Screenshot not found." }, 404);
+    return new Response(img.bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": img.contentType,
+        "Cache-Control": "private, max-age=3600",
+        ...CORS_HEADERS,
+      },
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Report storage is not configured on this server." }, 503);
+    }
+    console.error("feature-report-image failed:", err);
+    return jsonResponse({ error: "Could not load screenshot." }, 500);
+  }
+}
+
+async function attachSessionExtras(
+  session: { username: string; [key: string]: unknown },
+  env: Env
+) {
+  const kv = env.HOMEWORK_KV;
+  if (!kv || !session?.username) {
+    return {
+      ...session,
+      discordUserId: "",
+      notifyPrefs: normalizeNotifyPrefs(null),
+    };
+  }
+  const discordUserId = await getStudentDiscordUserId(kv, session.username);
+  const notifyPrefs = await getStudentNotifyPrefs(kv, session.username);
+  return { ...session, discordUserId, notifyPrefs };
+}
+
+async function handleAuthSelfExtras(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as { username?: string; notifyPrefs?: unknown };
+    const username = String(data.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Username is required." }, 400);
+    const kv = env.HOMEWORK_KV;
+    if (!kv) throw new Error("KV_NOT_CONFIGURED");
+    if (data.notifyPrefs) {
+      await saveStudentNotifyPrefs(kv, username, normalizeNotifyPrefs(data.notifyPrefs));
+    }
+    const discordUserId = await getStudentDiscordUserId(kv, username);
+    const notifyPrefs = await getStudentNotifyPrefs(kv, username);
+    return jsonResponse({ success: true, discordUserId, notifyPrefs });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    console.error("auth self-extras failed:", err);
+    return jsonResponse({ error: "Could not load notification settings." }, 500);
+  }
+}
+
+async function handleAuthActivatePlan(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let data: { username?: string; plan?: string; displayName?: string; subscriptionId?: string };
+  try {
+    data = (await request.json()) as typeof data;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  const planRaw = String(data.plan || "").trim().toLowerCase();
+  const tier = mapCheckoutPlanToTier(planRaw);
+  if (!username) return jsonResponse({ error: "Username is required." }, 400);
+  if (!tier) {
+    return jsonResponse(
+      { error: "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra)." },
+      400
+    );
+  }
+
+  try {
+    const existing = await getUserAccount(username, env);
+    if (!existing) {
+      return jsonResponse({ error: "Account not found. Log in and try again." }, 404);
+    }
+
+    const updated = await updateUserAccountSettings(username, { tier }, env);
+    if (!updated) {
+      return jsonResponse({ error: "Account not found. Log in and try again." }, 404);
+    }
+
+    // Ultra / Student Ultra also unlock video responses.
+    if (planRaw === "ultra" || planRaw === "student-ultra" || planRaw === "student_ultra") {
+      updated.videoResponseUnlock = true;
+      await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(updated));
+    }
+
+    const subscriptionId = String(data.subscriptionId || "").trim();
+    if (subscriptionId) {
+      await savePaypalSubscription(
+        username,
+        { paypalSubscriptionId: subscriptionId, paypalPlan: planRaw },
+        env
+      );
+    }
+
+    const saved = (await getUserAccount(username, env)) || updated;
+    const session = await attachSessionExtras(toAuthSession(saved), env);
+    const planName = planLabelFromTier(tier);
+
+    try {
+      await armHwPlanReminder(
+        {
+          username,
+          displayName: updated.displayName || data.displayName || username,
+          tier,
+          resetSchedule: true,
+        },
+        env
+      );
+    } catch (err) {
+      console.error("activate-plan: arm HW reminder failed:", err);
+    }
+
+    const webhookUrl = getWebhook(env);
+    if (webhookUrl) {
+      const channelError = await getWebhookChannelMismatch(
+        webhookUrl,
+        env.DISCORD_CHANNEL_ID,
+        "Discord notify channel"
+      );
+      if (channelError) {
+        console.error("activate-plan discord:", channelError);
+      } else {
+        const discordResult = await notifyDiscord(webhookUrl, {
+          title: "Website inquiries — homework plan paid (awaiting first HW)",
+          color: 0x57a773,
+          fields: [
+            { name: "Username", value: session.username, inline: true },
+            { name: "Email", value: session.email || "—", inline: true },
+            { name: "Plan", value: planName, inline: true },
+            {
+              name: "Note",
+              value:
+                "Student confirmed PayPal checkout. Send their first homework when ready.",
+            },
+          ],
+        });
+        if (!discordResult.ok) {
+          console.error(
+            "activate-plan discord post failed:",
+            discordResult.status,
+            discordResult.detail
+          );
+        }
+      }
+    }
+
+    try {
+      await saveFeatureReport(
+        {
+          kind: "reminder",
+          username: session.username,
+          displayName: `${planName} paid — ${session.displayName || session.username}`,
+          page: "Plan activate",
+          message: [
+            "New paid homework plan — waiting for first assignment.",
+            `Student: ${session.displayName || session.username} (${session.username})`,
+            `Plan: ${planName}`,
+            `Email: ${session.email || "—"}`,
+          ].join("\n"),
+        },
+        env
+      );
+    } catch (err) {
+      console.error("activate-plan: Teacher Hub note failed:", err);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `${planName} plan is active. Waiting for JD to send your first homework.`,
+      session,
+      plan: String(data.plan || "").trim().toLowerCase(),
+      planLabel: planName,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
+    }
+    if (code === "INVALID_ACCOUNT_TIER") {
+      return jsonResponse({ error: "Invalid plan tier." }, 400);
+    }
+    console.error("activate-plan failed:", err);
+    return jsonResponse({ error: "Could not activate your plan. Try again." }, 500);
+  }
+}
+
+async function handlePaypalCreateSubscription(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  if (!paypalCredentialsConfigured(env)) {
+    return jsonResponse(
+      {
+        error: "PayPal API not configured.",
+        code: "PAYPAL_NOT_CONFIGURED",
+        fallback: true,
+      },
+      503
+    );
+  }
+
+  let data: {
+    plan?: string;
+    username?: string;
+    email?: string;
+    displayName?: string;
+    origin?: string;
+  };
+  try {
+    data = (await request.json()) as typeof data;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+
+  const plan = normalizeHwCheckoutPlan(data.plan);
+  if (!plan) {
+    return jsonResponse(
+      { error: "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra)." },
+      400
+    );
+  }
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!username) return jsonResponse({ error: "Username is required." }, 400);
+
+  const reqUrl = new URL(request.url);
+  const origin = String(data.origin || `${reqUrl.protocol}//${reqUrl.host}`).replace(
+    /\/$/,
+    ""
+  );
+
+  try {
+    const result = await createPaypalSubscription(
+      {
+        plan,
+        username,
+        email: data.email,
+        displayName: data.displayName,
+        returnUrl: buildPaidReturnUrl(origin, plan),
+        cancelUrl: buildCancelReturnUrl(origin, plan),
+      },
+      env
+    );
+    try {
+      await savePaypalSubscription(
+        username,
+        {
+          paypalSubscriptionId: result.subscriptionId,
+          paypalPlan: result.plan,
+        },
+        env
+      );
+    } catch (err) {
+      console.error("paypal create-subscription: could not save id:", err);
+    }
+    return jsonResponse({
+      success: true,
+      approveUrl: result.approveUrl,
+      subscriptionId: result.subscriptionId,
+      plan: result.plan,
+      returnUrl: buildPaidReturnUrl(origin, plan),
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "PAYPAL_NOT_CONFIGURED") {
+      return jsonResponse(
+        { error: "PayPal API not configured.", code, fallback: true },
+        503
+      );
+    }
+    if (code === "PAYPAL_AUTH_FAILED") {
+      return jsonResponse(
+        { error: "PayPal login failed. Check client id/secret.", code },
+        502
+      );
+    }
+    if (code === "PAYPAL_CREATE_FAILED") {
+      return jsonResponse(
+        { error: "Could not start PayPal checkout. Try again.", code },
+        502
+      );
+    }
+    if (code === "USERNAME_REQUIRED" || code === "PLAN_INVALID" || code === "RETURN_URL_REQUIRED") {
+      return jsonResponse({ error: "Missing plan or account details.", code }, 400);
+    }
+    console.error("paypal create-subscription failed:", err);
+    return jsonResponse({ error: "Could not start PayPal checkout." }, 500);
   }
 }
 
@@ -818,7 +1362,8 @@ async function handlePromoSignups(request: Request, env: Env): Promise<Response>
     }
 
     try {
-      const signups = await listPromoSignups(env);
+      const limit = Number(url.searchParams.get("limit")) || 0;
+      const signups = await listPromoSignups(env, limit > 0 ? { limit } : undefined);
       return jsonResponse({ signups });
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -931,6 +1476,15 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
     if (code === "USERNAME_REQUIRED") {
       return jsonResponse({ error: "Username is required." }, 400);
     }
+    if (code === "DISPLAY_NAME_REQUIRED") {
+      return jsonResponse({ error: "First name is required." }, 400);
+    }
+    if (code === "DISPLAY_NAME_TOO_LONG") {
+      return jsonResponse({ error: "Keep the first name under 40 characters." }, 400);
+    }
+    if (code === "PASSWORD_TOO_SHORT") {
+      return jsonResponse({ error: "Password must be at least 6 characters." }, 400);
+    }
     if (code === "USERNAME_INVALID") {
       return jsonResponse(
         { error: "Username must be 3–24 characters: letters, numbers, _ or -." },
@@ -947,279 +1501,10 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
       return jsonResponse({ error: "Password is required." }, 400);
     }
     if (code === "USERNAME_TAKEN" || code === "EMAIL_TAKEN") {
-      return jsonResponse({ error: "Username or email is already in use." }, 409);
+      return jsonResponse({ error: "That email is already in use." }, 409);
     }
     console.error("auth signup failed:", err);
     return jsonResponse({ error: "Could not create account." }, 500);
-  }
-}
-
-async function handleAuthDeleteAccount(request: Request, env: Env): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
-  }
-
-  const url = new URL(request.url);
-  const teacherUsername = url.searchParams.get("teacherUsername") || "";
-  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
-  if (teacherUsername.trim().toLowerCase() !== allowed) {
-    return jsonResponse({ error: "Unauthorized." }, 403);
-  }
-
-  try {
-    const data = (await request.json()) as { username?: string };
-    const result = await deleteUserAccount(String(data.username || ""), env);
-    return jsonResponse({
-      success: true,
-      username: result.username,
-      deleted: result.deleted,
-      message: result.deleted ? "Account deleted." : "Account not found.",
-    });
-  } catch (err) {
-    const code = err instanceof Error ? err.message : "";
-    if (code === "KV_NOT_CONFIGURED") {
-      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
-    }
-    if (code === "USERNAME_REQUIRED") {
-      return jsonResponse({ error: "Username is required." }, 400);
-    }
-    console.error("auth delete failed:", err);
-    return jsonResponse({ error: "Could not delete account." }, 500);
-  }
-}
-
-function buildPaidReturnUrl(origin: string, plan: string): string {
-  const base = String(origin || "").replace(/\/$/, "");
-  return `${base}/homework/platform.html?paid=1&plan=${encodeURIComponent(plan)}`;
-}
-
-function buildCancelReturnUrl(origin: string, plan: string): string {
-  const base = String(origin || "").replace(/\/$/, "");
-  return `${base}/homework/platform.html?paid=0&plan=${encodeURIComponent(plan)}`;
-}
-
-async function handlePaypalCreateSubscription(
-  request: Request,
-  env: Env
-): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
-  }
-  if (!paypalCredentialsConfigured(env)) {
-    return jsonResponse(
-      {
-        error: "PayPal API not configured.",
-        code: "PAYPAL_NOT_CONFIGURED",
-        fallback: true,
-      },
-      503
-    );
-  }
-
-  let data: {
-    plan?: string;
-    username?: string;
-    email?: string;
-    displayName?: string;
-    origin?: string;
-  };
-  try {
-    data = (await request.json()) as typeof data;
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body." }, 400);
-  }
-
-  const plan = normalizeHwCheckoutPlan(String(data.plan || ""));
-  if (!plan) {
-    return jsonResponse(
-      {
-        error:
-          "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra).",
-      },
-      400
-    );
-  }
-  const username = String(data.username || "")
-    .trim()
-    .toLowerCase();
-  if (!username) return jsonResponse({ error: "Username is required." }, 400);
-
-  const reqUrl = new URL(request.url);
-  const origin = String(
-    data.origin || `${reqUrl.protocol}//${reqUrl.host}`
-  ).replace(/\/$/, "");
-
-  try {
-    const result = await createPaypalSubscription(
-      {
-        plan,
-        username,
-        email: data.email,
-        returnUrl: buildPaidReturnUrl(origin, plan),
-        cancelUrl: buildCancelReturnUrl(origin, plan),
-      },
-      env
-    );
-    try {
-      await savePaypalSubscription(
-        username,
-        {
-          paypalSubscriptionId: result.subscriptionId,
-          paypalPlan: result.plan,
-        },
-        env
-      );
-    } catch (err) {
-      console.error("paypal create-subscription: could not save id:", err);
-    }
-    return jsonResponse({
-      success: true,
-      approveUrl: result.approveUrl,
-      subscriptionId: result.subscriptionId,
-      plan: result.plan,
-      returnUrl: buildPaidReturnUrl(origin, plan),
-    });
-  } catch (err) {
-    const code = err instanceof Error ? err.message : "";
-    if (code === "PAYPAL_NOT_CONFIGURED") {
-      return jsonResponse(
-        { error: "PayPal API not configured.", code, fallback: true },
-        503
-      );
-    }
-    if (code === "PAYPAL_AUTH_FAILED") {
-      return jsonResponse(
-        { error: "PayPal login failed. Check client id/secret.", code },
-        502
-      );
-    }
-    if (code === "PAYPAL_CREATE_FAILED") {
-      return jsonResponse(
-        { error: "Could not start PayPal checkout. Try again.", code },
-        502
-      );
-    }
-    if (
-      code === "USERNAME_REQUIRED" ||
-      code === "PLAN_INVALID" ||
-      code === "RETURN_URL_REQUIRED"
-    ) {
-      return jsonResponse({ error: "Missing plan or account details.", code }, 400);
-    }
-    console.error("paypal create-subscription failed:", err);
-    return jsonResponse({ error: "Could not start PayPal checkout." }, 500);
-  }
-}
-
-async function handleAuthDeleteOwnAccount(
-  request: Request,
-  env: Env
-): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
-  }
-  try {
-    const data = (await request.json()) as { username?: string; password?: string };
-    const result = await deleteOwnAccount(
-      {
-        username: String(data.username || ""),
-        password: String(data.password || ""),
-      },
-      env
-    );
-    return jsonResponse({
-      success: true,
-      username: result.username,
-      deleted: result.deleted,
-      message: result.deleted ? "Account deleted." : "Account not found.",
-    });
-  } catch (err) {
-    const code = err instanceof Error ? err.message : "";
-    if (code === "KV_NOT_CONFIGURED") {
-      return jsonResponse({ error: "Account storage is not configured." }, 503);
-    }
-    if (code === "INVALID_CREDENTIALS") {
-      return jsonResponse({ error: "Username or password is wrong." }, 401);
-    }
-    if (code === "PAYPAL_CANCEL_FAILED" || code === "PAYPAL_AUTH_FAILED") {
-      return jsonResponse(
-        {
-          error:
-            "Couldn’t cancel the PayPal plan, so the account was left in place. Try again in a moment.",
-          code,
-        },
-        502
-      );
-    }
-    if (code === "PAYPAL_NOT_CONFIGURED") {
-      return jsonResponse(
-        {
-          error:
-            "PayPal isn’t configured, so a billed account can’t be deleted from here yet.",
-          code,
-        },
-        503
-      );
-    }
-    console.error("auth delete-own failed:", err);
-    return jsonResponse({ error: "Could not delete account." }, 500);
-  }
-}
-
-async function attachSessionExtras(
-  session: { username: string; [key: string]: unknown },
-  env: Env
-) {
-  const kv = env.HOMEWORK_KV;
-  if (!kv || !session?.username) {
-    return {
-      ...session,
-      discordUserId: "",
-      notifyPrefs: normalizeNotifyPrefs(null),
-    };
-  }
-  const discordUserId = await getStudentDiscordUserId(kv, session.username);
-  const notifyPrefs = await getStudentNotifyPrefs(kv, session.username);
-  return { ...session, discordUserId, notifyPrefs };
-}
-
-async function handleAuthSelfExtras(request: Request, env: Env): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed." }, 405);
-  }
-  try {
-    const data = (await request.json()) as { username?: string; notifyPrefs?: unknown };
-    const username = String(data.username || "")
-      .trim()
-      .toLowerCase();
-    if (!username) return jsonResponse({ error: "Username is required." }, 400);
-    const kv = env.HOMEWORK_KV;
-    if (!kv) throw new Error("KV_NOT_CONFIGURED");
-    if (data.notifyPrefs) {
-      await saveStudentNotifyPrefs(kv, username, normalizeNotifyPrefs(data.notifyPrefs));
-    }
-    const discordUserId = await getStudentDiscordUserId(kv, username);
-    const notifyPrefs = await getStudentNotifyPrefs(kv, username);
-    return jsonResponse({ success: true, discordUserId, notifyPrefs });
-  } catch (err) {
-    const code = err instanceof Error ? err.message : "";
-    if (code === "KV_NOT_CONFIGURED") {
-      return jsonResponse({ error: "Account storage is not configured." }, 503);
-    }
-    console.error("auth self-extras failed:", err);
-    return jsonResponse({ error: "Could not load notification settings." }, 500);
   }
 }
 
@@ -1301,22 +1586,19 @@ async function handleAuthChangePassword(request: Request, env: Env): Promise<Res
       password?: string;
       newPassword?: string;
     };
-    const username = String(data.username || "")
-      .trim()
-      .toLowerCase();
-    const password = String(data.password || "");
-    const newPassword = String(data.newPassword || "");
-    if (!username || !password) throw new Error("INVALID_CREDENTIALS");
-    if (newPassword.length < 6) throw new Error("PASSWORD_TOO_SHORT");
-    const account = await getUserAccount(username, env);
-    if (!account) throw new Error("INVALID_CREDENTIALS");
-    const ok = await verifyPassword(password, account.passwordSalt, account.passwordHash);
-    if (!ok) throw new Error("INVALID_CREDENTIALS");
-    const next = await hashPassword(newPassword);
-    account.passwordSalt = next.salt;
-    account.passwordHash = next.hash;
-    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(account));
-    return jsonResponse({ success: true, message: "Password updated." });
+    const result = await changeOwnPassword(
+      {
+        username: String(data.username || ""),
+        password: String(data.password || ""),
+        newPassword: String(data.newPassword || ""),
+      },
+      env
+    );
+    return jsonResponse({
+      success: true,
+      session: result.session,
+      message: "Password updated.",
+    });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
     if (code === "KV_NOT_CONFIGURED") {
@@ -1329,20 +1611,11 @@ async function handleAuthChangePassword(request: Request, env: Env): Promise<Res
       return jsonResponse({ error: "New password must be at least 6 characters." }, 400);
     }
     console.error("auth change-password failed:", err);
-    return jsonResponse({ error: "Could not update password." }, 500);
+    return jsonResponse({ error: "Could not change password." }, 500);
   }
 }
 
-function planLabelForCheckout(plan: string): string {
-  if (plan === "basic") return "Basic";
-  if (plan === "premium") return "Premium";
-  if (plan === "ultra") return "Ultra";
-  if (plan === "student-special") return "Student Special";
-  if (plan === "student-ultra") return "Student Ultra";
-  return "Your plan";
-}
-
-async function handleAuthActivatePlan(request: Request, env: Env): Promise<Response> {
+async function handleAuthDeleteOwnAccount(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -1350,67 +1623,87 @@ async function handleAuthActivatePlan(request: Request, env: Env): Promise<Respo
     return jsonResponse({ error: "Method not allowed." }, 405);
   }
   try {
-    const data = (await request.json()) as {
-      username?: string;
-      displayName?: string;
-      plan?: string;
-      subscriptionId?: string;
-    };
-    const username = String(data.username || "")
-      .trim()
-      .toLowerCase();
-    if (!username) return jsonResponse({ error: "Username is required." }, 400);
-    const plan = normalizeHwCheckoutPlan(String(data.plan || ""));
-    if (!plan) {
-      return jsonResponse(
-        {
-          error:
-            "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra).",
-        },
-        400
-      );
-    }
-    const account = await getUserAccount(username, env);
-    if (!account) return jsonResponse({ error: "Account not found." }, 404);
-    const displayName = String(data.displayName || "").trim();
-    if (displayName) account.displayName = displayName;
-    if (plan === "basic") account.tier = "tier1";
-    else if (plan === "premium") account.tier = "tier2";
-    else if (plan === "ultra") {
-      account.tier = "tier3";
-      account.videoResponseUnlock = true;
-    } else if (plan === "student-special") {
-      account.tier = "student_special";
-    } else {
-      account.tier = "student_special";
-      account.videoResponseUnlock = true;
-    }
-    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(account));
-    const subscriptionId = String(data.subscriptionId || "").trim();
-    if (subscriptionId) {
-      await savePaypalSubscription(
-        username,
-        { paypalSubscriptionId: subscriptionId, paypalPlan: plan },
-        env
-      );
-    }
-    const saved = (await getUserAccount(username, env)) || account;
-    const session = await attachSessionExtras(toAuthSession(saved), env);
-    const planLabel = planLabelForCheckout(plan);
+    const data = (await request.json()) as { username?: string; password?: string };
+    const result = await deleteOwnAccount(
+      {
+        username: String(data.username || ""),
+        password: String(data.password || ""),
+      },
+      env
+    );
     return jsonResponse({
       success: true,
-      message: `${planLabel} plan is active. Waiting for JD to send your first homework.`,
-      session,
-      plan,
-      planLabel,
+      username: result.username,
+      deleted: result.deleted,
+      message: result.deleted ? "Account deleted." : "Account not found.",
     });
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
     if (code === "KV_NOT_CONFIGURED") {
       return jsonResponse({ error: "Account storage is not configured." }, 503);
     }
-    console.error("auth activate-plan failed:", err);
-    return jsonResponse({ error: "Could not activate plan." }, 500);
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Username or password is wrong." }, 401);
+    }
+    if (code === "PAYPAL_CANCEL_FAILED" || code === "PAYPAL_AUTH_FAILED") {
+      return jsonResponse(
+        {
+          error:
+            "Couldn't cancel the PayPal plan, so the account was left in place. Try again in a moment.",
+          code,
+        },
+        502
+      );
+    }
+    if (code === "PAYPAL_NOT_CONFIGURED") {
+      return jsonResponse(
+        {
+          error:
+            "PayPal isn't configured, so a billed account can't be deleted from here yet.",
+          code,
+        },
+        503
+      );
+    }
+    console.error("auth delete-own failed:", err);
+    return jsonResponse({ error: "Could not delete account." }, 500);
+  }
+}
+
+async function handleAuthDeleteAccount(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  const url = new URL(request.url);
+  const teacherUsername = url.searchParams.get("teacherUsername") || "";
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (teacherUsername.trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Unauthorized." }, 403);
+  }
+
+  try {
+    const data = (await request.json()) as { username?: string };
+    const result = await deleteUserAccount(String(data.username || ""), env);
+    return jsonResponse({
+      success: true,
+      username: result.username,
+      deleted: result.deleted,
+      message: result.deleted ? "Account deleted." : "Account not found.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
+    }
+    if (code === "USERNAME_REQUIRED") {
+      return jsonResponse({ error: "Username is required." }, 400);
+    }
+    console.error("auth delete failed:", err);
+    return jsonResponse({ error: "Could not delete account." }, 500);
   }
 }
 
@@ -1437,7 +1730,7 @@ async function handleAuthLogin(request: Request, env: Env): Promise<Response> {
       return jsonResponse({ error: "Account storage is not configured on this server." }, 503);
     }
     if (code === "INVALID_CREDENTIALS") {
-      return jsonResponse({ error: "Invalid username or password." }, 401);
+      return jsonResponse({ error: "Invalid email or password." }, 401);
     }
     console.error("auth login failed:", err);
     return jsonResponse({ error: "Could not log in." }, 500);
@@ -2694,10 +2987,10 @@ async function handleHomeworkCatalog(request: Request, env: Env): Promise<Respon
     const staticCatalog = await loadStaticCatalog(env);
     const student = url.searchParams.get("student")?.trim().toLowerCase() || "";
     const merged = await mergeCatalog(staticCatalog, env.HOMEWORK_KV, student ? { student } : undefined);
-    const extraHeaders: Record<string, string> = {};
-    if (student) {
-      extraHeaders["Cache-Control"] = "private, max-age=30";
-    }
+    const extraHeaders: Record<string, string> = {
+      /* Teacher catalog is large; short browser cache helps reopen the MRU dropdown. */
+      "Cache-Control": student ? "private, max-age=30" : "private, max-age=60",
+    };
     return jsonResponse(merged, 200, extraHeaders);
   } catch (err) {
     console.error("homework-catalog failed:", err);
@@ -2726,7 +3019,7 @@ async function handleHomeworkStudents(request: Request, env: Env): Promise<Respo
     return jsonResponse(
       { students },
       200,
-      { "Cache-Control": "private, no-store" }
+      { "Cache-Control": "private, max-age=60" }
     );
   } catch (err) {
     console.error("homework-students failed:", err);
@@ -2798,15 +3091,20 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       encodeURIComponent(studentUsername || "");
     const loginLink = "[Click to see your homework](" + loginUrl + ")";
     const publishDm = [
-      "宿題を送りました！",
+      result.queued ? "次の宿題を用意しました！" : "宿題を送りました！",
       title ? "【" + title + "】" : null,
+      result.queued ? "今の宿題が終わったら開けるよ。" : null,
       loginLink,
     ]
       .filter(Boolean)
       .join("\n");
 
-    let discordNotify = null;
-    if (env.HOMEWORK_KV && studentUsername) {
+    /* Stealth edit from Student info: change the sheet, tell nobody. */
+    const silent = data.silent === true;
+    let discordNotify: DiscordNotifyResult | null = silent
+      ? { ok: true, mode: "silent" }
+      : null;
+    if (!silent && env.HOMEWORK_KV && studentUsername) {
       try {
         const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
         discordNotify = await notifyStudentWithTeacherFallback(env, {
@@ -2851,14 +3149,29 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       }
     }
 
+    const slots = result.hubSlotsUsed;
+    let message: string;
+    if (result.queued) {
+      message = result.updated
+        ? `Updated queued homework for ${data.studentUsername} (${result.waitingCount} waiting, ${slots}/4 hub slots).`
+        : `Queued for ${data.studentUsername} (${result.waitingCount} waiting, ${slots}/4 hub slots). Current sheet stays until they finish Done reviewing.`;
+    } else if (result.updated) {
+      message = `Updated homework for ${data.studentUsername}. They can refresh their Homework Hub to see your edits.`;
+    } else {
+      message = `Published for ${data.studentUsername}. They can open it on their Homework Hub now.`;
+    }
+
     return jsonResponse({
       success: true,
-      message: result.updated
-        ? `Updated homework for ${data.studentUsername}. They can refresh their Homework Hub to see your edits.`
-        : `Published for ${data.studentUsername}. They can open it on their Homework Hub now.`,
+      message,
       id: result.id,
       studentUrl: origin + result.studentUrl,
       updated: result.updated,
+      queued: result.queued,
+      queueCount: result.queueCount,
+      waitingCount: result.waitingCount,
+      currentHomeworkId: result.currentHomeworkId,
+      hubSlotsUsed: result.hubSlotsUsed,
       lexiconAdded,
       lexiconPending,
       lexiconTexts,
@@ -2880,6 +3193,15 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
       return jsonResponse(
         { error: "Unknown student id. Add the account in hw-auth.js first." },
         400
+      );
+    }
+    if (code === "HUB_FULL") {
+      return jsonResponse(
+        {
+          error:
+            "Hub full (4/4) — student must finish Done reviewing on a sheet before you can send another.",
+        },
+        409
       );
     }
     console.error("homework-publish failed:", err);
@@ -3007,6 +3329,29 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
   try {
     const data = (await request.json()) as StudentProfilePayload;
     const result = await saveStudentProfile(data, env);
+
+    if (data.tier !== undefined) {
+      const tier = String(data.tier || "").trim();
+      try {
+        if (tier === "pending" || !tier) {
+          await clearHwPlanReminder(result.student, env);
+        } else {
+          const account = await getUserAccount(result.student, env);
+          await armHwPlanReminder(
+            {
+              username: result.student,
+              displayName: account?.displayName || result.student,
+              tier: (tier as "tier1" | "tier2" | "tier3" | "student_special" | "pending"),
+              resetSchedule: true,
+            },
+            env
+          );
+        }
+      } catch (err) {
+        console.error("student-profile: HW reminder re-arm failed:", err);
+      }
+    }
+
     return jsonResponse({
       success: true,
       message: `Saved info for ${result.student}. They can refresh their Homework Hub to see updates.`,
@@ -3890,6 +4235,34 @@ async function handleHomeworkCommentsDraft(request: Request, env: Env): Promise<
   }
 }
 
+/** Replies JD already used on this worksheet, so review can start pre-filled. */
+async function handleHomeworkAnswerBank(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  const url = new URL(request.url);
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = (url.searchParams.get("teacherUsername") || "").trim().toLowerCase();
+  if (!teacherUsername || teacherUsername !== allowed) {
+    return jsonResponse({ error: "Teacher only." }, 403);
+  }
+  const assignmentId = (url.searchParams.get("assignmentId") || "").trim();
+  if (!assignmentId || !/^[a-z0-9-]+$/i.test(assignmentId)) {
+    return jsonResponse({ error: "Invalid assignment id." }, 400);
+  }
+  try {
+    const bank = await readAnswerBank(env.HOMEWORK_KV, assignmentId);
+    return jsonResponse(
+      { ok: true, assignmentId, slides: bank?.slides || {} },
+      200,
+      { "Cache-Control": "private, no-store" }
+    );
+  } catch (err) {
+    console.error("homework-answer-bank failed:", err);
+    return jsonResponse({ error: "Could not load saved replies." }, 500);
+  }
+}
+
 async function handleHomeworkReview(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -4215,7 +4588,9 @@ async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Resp
   try {
     const existingBefore = await getHomeworkSubmission(env, String(body.submissionId || "").trim());
     const wasAlreadyAcked = existingBefore?.reviewStatus === "acknowledged";
-    const submission = await saveHomeworkReviewAck(body, env);
+    const ackResult = await saveHomeworkReviewAck(body, env);
+    const submission = ackResult.submission;
+    const nextHomeworkId = ackResult.nextHomeworkId;
     const webhook = resolveHomeworkWebhook(env);
     if (webhook && !wasAlreadyAcked) {
       const name = submission.displayName || submission.username;
@@ -4232,7 +4607,9 @@ async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Resp
         fields: [
           {
             name: "Next",
-            value: "Ready for new homework (notes acknowledged).",
+            value: nextHomeworkId
+              ? "Promoted next queued homework: " + nextHomeworkId
+              : "Ready for new homework (notes acknowledged).",
             inline: false,
           },
         ],
@@ -4245,7 +4622,7 @@ async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Resp
     }
 
     return jsonResponse(
-      { ok: true, submission },
+      { ok: true, submission, nextHomeworkId },
       200,
       { "Cache-Control": "private, no-store" }
     );
@@ -4477,6 +4854,38 @@ async function handleMgLexicon(request: Request, env: Env): Promise<Response> {
     }
     console.error("mg-lexicon load failed:", err);
     return jsonResponse({ error: "Could not load lookup lexicon." }, 500);
+  }
+}
+
+async function handleMgGlassCheck(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  try {
+    if (request.method === "GET") {
+      const url = new URL(request.url);
+      const state = await getMgGlassCheck(
+        { teacherUsername: url.searchParams.get("teacherUsername") || undefined },
+        env
+      );
+      return jsonResponse(state);
+    }
+    if (request.method === "POST") {
+      const data = (await request.json()) as MgGlassCheckPayload;
+      const state = await setMgGlassCheck(data, env);
+      return jsonResponse({ success: true, ...state });
+    }
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "TEACHER_ONLY") return jsonResponse({ error: "Teacher login required." }, 403);
+    if (code === "KEYS_REQUIRED") return jsonResponse({ error: "No cards given." }, 400);
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Lexicon storage is not configured." }, 503);
+    }
+    console.error("mg-glass-check failed:", err);
+    return jsonResponse({ error: "Could not save glass check progress." }, 500);
   }
 }
 
@@ -4873,6 +5282,15 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    // Old marketing URL looked like the main Hub entry; always send to login.
+    if (
+      url.pathname === "/homework-hub" ||
+      url.pathname === "/homework-hub/" ||
+      url.pathname === "/homework-hub.html"
+    ) {
+      return Response.redirect(new URL("/homework.html", url.origin).toString(), 301);
+    }
+
     // Early API canaries / hot paths — keep ahead of any asset fallthrough.
     if (url.pathname === "/api/__health") {
       return new Response("worker-ok", { status: 200, headers: { "Content-Type": "text/plain" } });
@@ -4917,16 +5335,8 @@ export default {
       return handleAuthLogin(request, env);
     }
 
-    if (url.pathname === "/api/auth/delete-account") {
-      return handleAuthDeleteAccount(request, env);
-    }
-
-    if (url.pathname === "/api/auth/delete-own-account") {
-      return handleAuthDeleteOwnAccount(request, env);
-    }
-
-    if (url.pathname === "/api/auth/self-extras") {
-      return handleAuthSelfExtras(request, env);
+    if (url.pathname === "/api/auth/activate-plan") {
+      return handleAuthActivatePlan(request, env);
     }
 
     if (url.pathname === "/api/auth/update-profile") {
@@ -4937,12 +5347,20 @@ export default {
       return handleAuthChangePassword(request, env);
     }
 
-    if (url.pathname === "/api/auth/activate-plan") {
-      return handleAuthActivatePlan(request, env);
+    if (url.pathname === "/api/auth/delete-own-account") {
+      return handleAuthDeleteOwnAccount(request, env);
+    }
+
+    if (url.pathname === "/api/auth/self-extras") {
+      return handleAuthSelfExtras(request, env);
     }
 
     if (url.pathname === "/api/paypal/create-subscription") {
       return handlePaypalCreateSubscription(request, env);
+    }
+
+    if (url.pathname === "/api/auth/delete-account") {
+      return handleAuthDeleteAccount(request, env);
     }
 
     if (url.pathname === "/api/promo-signup") {
@@ -4955,6 +5373,10 @@ export default {
 
     if (url.pathname === "/api/feature-reports") {
       return handleFeatureReports(request, env);
+    }
+
+    if (url.pathname === "/api/feature-report-image") {
+      return handleFeatureReportImage(request, env);
     }
 
     if (url.pathname === "/api/social-reminders") {
@@ -4979,6 +5401,10 @@ export default {
 
     if (url.pathname === "/api/homework-review") {
       return handleHomeworkReview(request, env);
+    }
+
+    if (url.pathname === "/api/homework-answer-bank") {
+      return handleHomeworkAnswerBank(request, env);
     }
 
     if (url.pathname === "/api/homework-notebook") {
@@ -5145,6 +5571,10 @@ export default {
       return handleMgLexiconSuggestBatch(request, env);
     }
 
+    if (url.pathname === "/api/mg-glass-check") {
+      return handleMgGlassCheck(request, env);
+    }
+
     if (url.pathname === "/api/lantern-words") {
       return handleLanternWords(request, env);
     }
@@ -5201,6 +5631,7 @@ export default {
     }
     if (event.cron === "* * * * *") {
       ctx.waitUntil(runSocialReminders(env));
+      ctx.waitUntil(runHwPlanReminders(env));
     }
   },
 };

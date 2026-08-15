@@ -3,6 +3,7 @@
  * Mounts live teacher panels into v6 panes. Classic layout is Hub Preview → Hub v1.
  */
 (function (global) {
+  const FEED_CACHE_KEY = "jlm-hw-teacher-notifications-v1";
   const RECYCLE_KEY = "hw-hubv6-recycle";
   const RECYCLE_MS = 14 * 24 * 60 * 60 * 1000;
   const FEED_MAX = 5;
@@ -19,6 +20,8 @@
 
   const TAB_DEFS = [
     { id: "preview", label: "Home" },
+    { id: "review", label: "Review Deck" },
+    { id: "hwnotes", label: "HW Notes" },
     { id: "maker", label: "Worksheet Maker" },
     { id: "students", label: "Student/Email List" },
     { id: "websites", label: "Websites" },
@@ -28,6 +31,8 @@
   ];
 
   const TAB_MOUNTS = {
+    review: [],
+    hwnotes: [],
     maker: ["maker", "library"],
     students: ["account", "birthdays", "promo", "submissions", "mistakes"],
     /* Simple link strips — do not mount heavy Harris/JEM/Game lab panels */
@@ -201,7 +206,7 @@
 
     const [subResult, promoResult, reportResult] = await Promise.all([
       fetchJson("/api/homework-submissions?teacherUsername=" + teacher + "&limit=40").catch(() => null),
-      fetchJson("/api/promo-signups?teacherUsername=" + teacher).catch(() => null),
+      fetchJson("/api/promo-signups?teacherUsername=" + teacher + "&limit=20").catch(() => null),
       fetchJson("/api/feature-reports?teacherUsername=" + teacher + "&limit=40").catch(() => null),
     ]);
 
@@ -453,7 +458,8 @@
     wrap.className = "hw-hub-v6-simple-links hw-hub-v6-simple-links--websites";
     wrap.innerHTML =
       '<a class="btn btn--ghost btn--sm" href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">Harris Firm</a>' +
-      '<a class="btn btn--ghost btn--sm" href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">JEM Appraisals</a>';
+      '<a class="btn btn--ghost btn--sm" href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">JEM Appraisals</a>' +
+      '<a class="btn btn--ghost btn--sm" href="/preview/jd-websites/" target="_blank" rel="noopener noreferrer">JD Website Builder</a>';
     host.appendChild(wrap);
   }
 
@@ -792,6 +798,15 @@
       void refreshNotifications();
       void refreshBirthdayTicker();
     }
+    if (tabId === "review") {
+      global.HwGlassDeck?.open?.(document.getElementById("hw-hub-v6-glass-deck-host"));
+    } else {
+      global.HwGlassDeck?.close?.();
+    }
+    if (tabId === "hwnotes") {
+      bindReviewDeck();
+      void refreshReviewDeck();
+    }
     if (tabId === "hubpreview") {
       const iframe = document.getElementById("hw-hub-version-iframe");
       if (iframe?.dataset?.pendingSrc) {
@@ -811,6 +826,90 @@
       const delta = tablist.getBoundingClientRect().top - tabsTopBefore;
       if (Math.abs(delta) > 1) window.scrollBy(0, delta);
       syncHubV6TabSlider();
+    }
+  }
+
+  /* ── HW Notes deck (every submission still waiting on notes) ── */
+
+  let reviewDeckBound = false;
+  let reviewPending = [];
+
+  function reviewSession() {
+    return teacherSession || global.HwAuth?.getTeacherSession?.() || null;
+  }
+
+  function bindReviewDeck() {
+    if (reviewDeckBound) return;
+    const pane = document.getElementById("hw-hub-v6-pane-hwnotes");
+    if (!pane) return;
+    reviewDeckBound = true;
+    pane.addEventListener("click", (ev) => {
+      if (ev.target.closest?.("#hw-hub-v6-review-start")) {
+        ev.preventDefault();
+        if (!reviewPending.length) return;
+        if (!global.HwReviewFlashcards?.openQueue) return;
+        void global.HwReviewFlashcards.openQueue(reviewPending);
+        return;
+      }
+      if (ev.target.closest?.("#hw-hub-v6-review-refresh")) {
+        ev.preventDefault();
+        void refreshReviewDeck();
+      }
+    });
+  }
+
+  async function refreshReviewDeck() {
+    const summary = document.getElementById("hw-hub-v6-review-summary");
+    const list = document.getElementById("hw-hub-v6-review-list");
+    const startBtn = document.getElementById("hw-hub-v6-review-start");
+    if (!summary) return;
+
+    const session = reviewSession();
+    if (!session?.username) {
+      summary.textContent = "Teacher login required.";
+      return;
+    }
+
+    summary.textContent = "Loading…";
+    if (startBtn) startBtn.disabled = true;
+
+    try {
+      const res = await fetch(
+        "/api/homework-submissions?teacherUsername=" + encodeURIComponent(session.username)
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load submissions.");
+
+      reviewPending = (Array.isArray(data.submissions) ? data.submissions : [])
+        .filter((s) => s?.type === "online" && s.reviewStatus !== "reviewed")
+        .sort((a, b) => String(a.submittedAt).localeCompare(String(b.submittedAt)));
+
+      if (!reviewPending.length) {
+        summary.textContent = "Nothing waiting — every submission has your notes.";
+        if (list) list.replaceChildren();
+        return;
+      }
+
+      summary.textContent =
+        reviewPending.length +
+        (reviewPending.length === 1 ? " submission" : " submissions") +
+        " waiting on your notes.";
+      if (startBtn) startBtn.disabled = false;
+
+      if (list) {
+        list.replaceChildren();
+        reviewPending.forEach((entry) => {
+          const li = document.createElement("li");
+          li.className = "hw-hub-v6-review-list__item";
+          li.textContent =
+            (entry.displayName || entry.username || "Student") +
+            " — " +
+            (entry.lessonName || entry.title || entry.assignmentId || "Homework");
+          list.appendChild(li);
+        });
+      }
+    } catch (err) {
+      summary.textContent = err?.message || "Could not load submissions.";
     }
   }
 
@@ -846,6 +945,24 @@
     body.className = "hw-hub-v6__main-body";
     body.textContent = note.body || "";
     detail.appendChild(body);
+
+    if (note.report?.hasImage && note.report.id) {
+      const shot = document.createElement("img");
+      shot.className = "hw-hub-v6__report-shot";
+      shot.alt = "Bug report screenshot";
+      const teacher = String(
+        global.HwAuth?.getSession?.()?.username ||
+          global.HwAuth?.getTeacherSession?.()?.username ||
+          "jlm"
+      );
+      shot.src =
+        "/api/feature-report-image?id=" +
+        encodeURIComponent(note.report.id) +
+        "&teacherUsername=" +
+        encodeURIComponent(teacher);
+      shot.loading = "lazy";
+      detail.appendChild(shot);
+    }
 
     const actions = document.createElement("div");
     actions.className = "hw-hub-v6__main-actions";
@@ -994,6 +1111,29 @@
     });
   }
 
+  /** Last feed we painted — reopening the tab shows it instantly while the APIs run. */
+  function readCachedFeed() {
+    try {
+      const raw = localStorage.getItem(FEED_CACHE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed?.items) ? parsed.items : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeCachedFeed(items) {
+    try {
+      localStorage.setItem(
+        FEED_CACHE_KEY,
+        JSON.stringify({ savedAt: new Date().toISOString(), items })
+      );
+    } catch {
+      /* quota / private mode — cache is optional */
+    }
+  }
+
   async function refreshNotifications() {
     const session = getSession() || {
       username: "jlm",
@@ -1015,14 +1155,22 @@
         renderList();
         renderMain(null);
       } else {
-        list.innerHTML = "";
-        setStageMode("feed");
+        const cached = readCachedFeed().filter((n) => !isRecycled(n.id));
+        if (cached.length) {
+          notifications = cached;
+          renderList();
+          renderMain(null);
+        } else {
+          list.innerHTML = "";
+          setStageMode("feed");
+        }
       }
     }
 
     try {
       const data = await buildNotifications(session);
       notifications = data.items;
+      writeCachedFeed(notifications);
       renderList();
       if (activeId) {
         const still = notifications.find((n) => n.id === activeId);
@@ -1041,7 +1189,8 @@
         renderMain(null);
         return;
       }
-      if (list) {
+      /* Keep whatever we already painted from cache rather than blanking it. */
+      if (list && !notifications.length) {
         list.innerHTML =
           '<li class="hw-hub-v6__item hw-hub-v6__item--empty">' +
           (err?.message || "Could not load notifications.") +
@@ -1122,6 +1271,23 @@
       '<div class="hw-hub-v6__main" id="hw-hub-v6-main" aria-live="polite"></div>' +
       '<p class="hw-hub-v6__recycle" id="hw-hub-v6-recycle"></p>';
     pane("preview", previewHtml);
+
+    pane("review", '<div class="hw-hub-v6-mount" id="hw-hub-v6-glass-deck-host"></div>');
+
+    pane(
+      "hwnotes",
+      '<section class="hw-hub-v6-section">' +
+        '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
+        '<p class="hw-hub-v6-pane-lead">Every homework waiting on your notes, stacked into one deck. ' +
+        "Flip card by card — your saved replies are already filled in.</p>" +
+        '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
+        '<div class="hw-hub-v6-review-actions">' +
+        '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
+        "</div>" +
+        '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
+        "</section>"
+    );
 
     pane(
       "maker",
@@ -1258,39 +1424,97 @@
     ensureShellMarkup();
     ensureMakerFooter();
     ensureHomeTickerMarkup();
+    ensureDeckTabs();
     ensureHubPreviewTab();
     bindTabs();
     bindHubV6TabSliderLayout();
     syncHubV6TabSlider();
   }
 
-  function ensureHubPreviewTab() {
+  function ensureTabAndPane(tabId, label, paneHtml, insertAfterTabId) {
     const panel = document.getElementById("hw-hub-v6-panel");
     if (!panel) return;
     const tablist = panel.querySelector(".hw-hub-v6-tabs");
-    if (tablist && !document.getElementById("hw-hub-v6-tab-hubpreview")) {
+    if (tablist && !document.getElementById("hw-hub-v6-tab-" + tabId)) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "hw-hub-v6-tabs__btn";
       btn.setAttribute("role", "tab");
-      btn.setAttribute("data-hub-v6-tab", "hubpreview");
+      btn.setAttribute("data-hub-v6-tab", tabId);
       btn.setAttribute("aria-selected", "false");
-      btn.id = "hw-hub-v6-tab-hubpreview";
-      btn.setAttribute("aria-controls", "hw-hub-v6-pane-hubpreview");
-      btn.textContent = "Hub Preview";
-      tablist.appendChild(btn);
+      btn.id = "hw-hub-v6-tab-" + tabId;
+      btn.setAttribute("aria-controls", "hw-hub-v6-pane-" + tabId);
+      btn.textContent = label;
+      const after = insertAfterTabId
+        ? document.getElementById("hw-hub-v6-tab-" + insertAfterTabId)
+        : null;
+      if (after?.nextSibling) tablist.insertBefore(btn, after.nextSibling);
+      else if (after) tablist.appendChild(btn);
+      else tablist.appendChild(btn);
     }
-    if (!document.getElementById("hw-hub-v6-pane-hubpreview")) {
+    if (!document.getElementById("hw-hub-v6-pane-" + tabId)) {
       const el = document.createElement("div");
       el.className = "hw-hub-v6-pane";
-      el.id = "hw-hub-v6-pane-hubpreview";
+      el.id = "hw-hub-v6-pane-" + tabId;
       el.setAttribute("role", "tabpanel");
-      el.setAttribute("data-hub-v6-pane", "hubpreview");
-      el.setAttribute("aria-labelledby", "hw-hub-v6-tab-hubpreview");
+      el.setAttribute("data-hub-v6-pane", tabId);
+      el.setAttribute("aria-labelledby", "hw-hub-v6-tab-" + tabId);
       el.hidden = true;
-      el.innerHTML = '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>';
-      panel.appendChild(el);
+      el.innerHTML = paneHtml;
+      const afterPane = insertAfterTabId
+        ? document.getElementById("hw-hub-v6-pane-" + insertAfterTabId)
+        : null;
+      if (afterPane?.nextSibling) panel.insertBefore(el, afterPane.nextSibling);
+      else if (afterPane) panel.appendChild(el);
+      else panel.appendChild(el);
     }
+  }
+
+  function ensureDeckTabs() {
+    /* Older shells were built before Review Deck / HW Notes existed — retrofit them. */
+    ensureTabAndPane(
+      "review",
+      "Review Deck",
+      '<div class="hw-hub-v6-mount" id="hw-hub-v6-glass-deck-host"></div>',
+      "preview"
+    );
+    ensureTabAndPane(
+      "hwnotes",
+      "HW Notes",
+      '<section class="hw-hub-v6-section">' +
+        '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
+        '<p class="hw-hub-v6-pane-lead">Every homework waiting on your notes, stacked into one deck. ' +
+        "Flip card by card — your saved replies are already filled in.</p>" +
+        '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
+        '<div class="hw-hub-v6-review-actions">' +
+        '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
+        "</div>" +
+        '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
+        "</section>",
+      "review"
+    );
+
+    /* If Review Deck still has the old homework-notes markup, swap it to the glass host. */
+    const reviewPane = document.getElementById("hw-hub-v6-pane-review");
+    if (reviewPane && !document.getElementById("hw-hub-v6-glass-deck-host")) {
+      reviewPane.innerHTML =
+        '<div class="hw-hub-v6-mount" id="hw-hub-v6-glass-deck-host"></div>';
+    }
+    const reviewTab = document.getElementById("hw-hub-v6-tab-review");
+    if (reviewTab && /homework notes/i.test(reviewTab.textContent || "")) {
+      reviewTab.textContent = "Review Deck";
+    }
+  }
+
+  function ensureHubPreviewTab() {
+    const panel = document.getElementById("hw-hub-v6-panel");
+    if (!panel) return;
+    ensureTabAndPane(
+      "hubpreview",
+      "Hub Preview",
+      '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>'
+    );
     const makerPane = document.getElementById("hw-hub-v6-pane-maker");
     if (makerPane && !document.getElementById("hw-hub-v6-fold-library")) {
       const footer = makerPane.querySelector(".hw-hub-v6-maker-footer");

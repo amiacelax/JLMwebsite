@@ -1071,17 +1071,39 @@
     const caption = document.getElementById("hw-v5-account-sellup-caption");
     const frame = document.getElementById("hw-v5-account-sellup-frame");
     const empty = document.getElementById("hw-account-plan-empty");
+    if (!mount) return;
+
+    let offers = global.HwAuth?.getPostSubmitSellupOffers?.(getActiveSession()) || [];
+    if (demoModeEnabled() && !offers.length) {
+      offers = getSellupOffers();
+    }
+    if (!gamesAndCoursesEnabled()) {
+      offers = offers.filter((o) => o.kind !== "games");
+    }
+
+    mount.replaceChildren();
+    const show = offers.length > 0;
+    mount.hidden = !show;
     if (caption) {
-      caption.hidden = true;
-      caption.textContent = "";
+      caption.hidden = !show;
+      caption.textContent = show ? sellupCaptionText(pickSellupVariant(offers)) : "";
     }
-    if (empty) empty.hidden = true;
-    if (frame) frame.hidden = false;
-    if (mount) mount.hidden = false;
-    if (global.HwAccount?.paintAccountPlans) {
-      global.HwAccount.paintAccountPlans();
-    }
+    if (frame) frame.hidden = !show;
+    if (empty) empty.hidden = show;
+
+    offers.forEach((offer) => {
+      let node = null;
+      if (offer.kind === "tier" && offer.studentUltra) node = buildStudentUltraCard();
+      else if (offer.kind === "tier") node = buildTierCard(offer.plan);
+      else if (offer.kind === "weekly_homework") {
+        node = buildWeeklyHomeworkCard({ studentSpecial: offer.studentSpecial });
+      } else if (offer.kind === "lessons") node = buildLessonsCard();
+      else if (offer.kind === "games") node = buildGamesCard();
+      if (node) mount.appendChild(node);
+    });
+
     bindTierDetailModal();
+    global.HwCheckout?.bindCheckoutControls?.(mount);
   }
 
   function escapeHtml(s) {
@@ -1133,16 +1155,16 @@
 
     document.addEventListener("click", (e) => {
       const trigger = e.target.closest("[data-hw-tier-detail]");
-      if (!trigger) return;
       const sellup = document.getElementById("hw-v5-sellup");
       const noplanSellup = document.getElementById("hw-v5-noplan-sellup");
       const noHwSellup = document.getElementById("hw-v5-no-hw-sellup");
       const accountSellup = document.getElementById("hw-v5-account-sellup");
-      if (accountSellup?.contains(trigger)) return;
       if (
-        !sellup?.contains(trigger) &&
-        !noplanSellup?.contains(trigger) &&
-        !noHwSellup?.contains(trigger)
+        !trigger ||
+        (!sellup?.contains(trigger) &&
+          !noplanSellup?.contains(trigger) &&
+          !noHwSellup?.contains(trigger) &&
+          !accountSellup?.contains(trigger))
       ) {
         return;
       }

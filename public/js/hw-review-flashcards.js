@@ -1,6 +1,7 @@
 /**
- * Teacher flashcard review deck — one review unit at a time (Phase 1b).
+ * Teacher flashcard review deck — one review unit at a time.
  * Same comment/remark model as full-sheet review; UI only.
+ * Several submissions can be queued so JD flips straight through them.
  */
 (function (global) {
   let options = null;
@@ -16,6 +17,11 @@
   let hasUnsaved = false;
   let activePanel = null; /* "remark" | "note" | null */
   let mediaApi = null;
+  /** Submissions still to flip through after this one. */
+  let queue = [];
+  let queueIndex = 0;
+  /** Replies JD already used on this worksheet, keyed by question slide index. */
+  let bankSlides = {};
 
   const DRAFT_MS = 1500;
 
@@ -228,6 +234,29 @@
     return units;
   }
 
+  async function loadAnswerBank(assignmentId) {
+    const session = options?.getTeacherSession?.();
+    if (!assignmentId || !session?.username) return {};
+    try {
+      const res = await fetch(
+        "/api/homework-answer-bank?assignmentId=" +
+          encodeURIComponent(assignmentId) +
+          "&teacherUsername=" +
+          encodeURIComponent(session.username)
+      );
+      if (!res.ok) return {};
+      const data = await res.json().catch(() => ({}));
+      return data?.slides && typeof data.slides === "object" ? data.slides : {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function bankRepliesForSlide(slideIndex) {
+    const list = bankSlides[String(slideIndex ?? 0)];
+    return Array.isArray(list) ? list.filter((r) => String(r?.text || "").trim()) : [];
+  }
+
   function findTeacherNoteForSlide(slideIndex) {
     return workingComments.find(
       (c) => c.author === "teacher" && (c.slideIndex ?? 0) === slideIndex
@@ -344,6 +373,7 @@
       " of " +
       total +
       (done ? " · " + done + " done" : "") +
+      (queue.length > 1 ? " · sheet " + (queueIndex + 1) + " of " + queue.length : "") +
       " · " +
       studentLabel() +
       " · " +
@@ -403,22 +433,74 @@
     const empty = el("hw-rfc-empty");
     if (!empty) return;
     const hadCards = deck.length > 0;
+    const more = hasNextInQueue();
     empty.innerHTML =
       '<p class="hw-rfc-empty__lead">' +
       (hadCards
         ? "Deck clear — submit notes to mark this submission reviewed, or open the full sheet for a sanity pass."
         : "No review units on this submission. Open the full sheet or submit notes to mark reviewed.") +
+      (more
+        ? " " + (queue.length - queueIndex - 1) + " more submission(s) waiting after this one."
+        : "") +
       "</p>" +
       '<div class="hw-rfc-empty__actions">' +
-      '<button type="button" class="btn btn--primary" id="hw-rfc-submit-notes">Submit notes</button>' +
+      '<button type="button" class="btn btn--primary" id="hw-rfc-submit-notes">' +
+      (more ? "Submit notes → next student" : "Submit notes") +
+      "</button>" +
+      (more
+        ? '<button type="button" class="btn btn--ghost" id="hw-rfc-skip-next">Skip to next student</button>'
+        : "") +
       '<button type="button" class="btn btn--ghost" id="hw-rfc-empty-sheet">Review full sheet</button>' +
       "</div>";
     empty.querySelector("#hw-rfc-submit-notes")?.addEventListener("click", () => {
       void submitNotes();
     });
+    empty.querySelector("#hw-rfc-skip-next")?.addEventListener("click", () => {
+      void advanceQueue();
+    });
     empty.querySelector("#hw-rfc-empty-sheet")?.addEventListener("click", () => {
       openFullSheet();
     });
+  }
+
+  /** Past replies for this question, so JD can swap wording without retyping. */
+  function renderSavedReplies(unit, noteInput, saved) {
+    const mount = el("hw-rfc-saved");
+    if (!mount) return;
+    mount.replaceChildren();
+    if (!saved.length) return;
+
+    const hint = document.createElement("p");
+    hint.className = "hw-rfc-saved__hint";
+    hint.textContent =
+      saved.length > 1
+        ? "Filled from your saved replies — pick another or edit."
+        : "Filled from your saved reply — edit if it doesn't fit.";
+    mount.appendChild(hint);
+
+    if (saved.length < 2) return;
+
+    const select = document.createElement("select");
+    select.className = "hw-rfc-saved__select";
+    select.setAttribute("aria-label", "Replies you used before on this question");
+    saved.forEach((reply, i) => {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      const text = reply.text.trim();
+      opt.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
+      select.appendChild(opt);
+    });
+    select.addEventListener("change", () => {
+      const pick = saved[Number(select.value)];
+      if (!pick) return;
+      const note = ensureTeacherNote(unit.slideIndex);
+      note.text = pick.text;
+      note.bankPrefill = true;
+      note.updatedAt = new Date().toISOString();
+      noteInput.value = pick.text;
+      scheduleDraftSave();
+    });
+    mount.appendChild(select);
   }
 
   function renderCard() {
@@ -502,6 +584,7 @@
       "</div>" +
       '<div class="hw-rfc-panel" id="hw-rfc-note-panel" hidden>' +
       '<p class="hw-rfc-panel__label">Question note</p>' +
+      '<div class="hw-rfc-saved" id="hw-rfc-saved"></div>' +
       '<textarea class="hw-rfc-textarea" id="hw-rfc-note-input" rows="3" maxlength="2000" placeholder="Write a note on this question for the student…"></textarea>' +
       "</div>" +
       '<div class="hw-rfc-actions hw-rfc-actions--edit">' +
@@ -532,13 +615,24 @@
 
     const noteInput = el("hw-rfc-note-input");
     if (noteInput) {
-      noteInput.value = teacherNote?.text || "";
+      const saved = bankRepliesForSlide(unit.slideIndex);
+      /* Start from the reply JD gave last time; Done keeps it unless they edit. */
+      if (!String(teacherNote?.text || "").trim() && saved.length) {
+        const note = ensureTeacherNote(unit.slideIndex);
+        note.text = saved[0].text;
+        note.bankPrefill = true;
+        noteInput.value = note.text;
+      } else {
+        noteInput.value = teacherNote?.text || "";
+      }
       noteInput.addEventListener("input", () => {
         const note = ensureTeacherNote(unit.slideIndex);
         note.text = noteInput.value;
+        note.bankPrefill = undefined;
         note.updatedAt = new Date().toISOString();
         scheduleDraftSave();
       });
+      renderSavedReplies(unit, noteInput, saved);
     }
 
     el("hw-rfc-btn-remark")?.addEventListener("click", () => {
@@ -655,6 +749,17 @@
         reviewStatus: "reviewed",
         comments: data.submission?.comments || workingComments,
       };
+
+      /* Queued run: roll straight into the next student instead of bouncing to the sheet. */
+      if (hasNextInQueue()) {
+        submitBusy = false;
+        await advanceQueue();
+        if (global.HwTeacherSubmissions?.reload) {
+          void global.HwTeacherSubmissions.reload();
+        }
+        return;
+      }
+
       await close();
       if (global.HwTeacherSubmissions?.reload) {
         await global.HwTeacherSubmissions.reload();
@@ -693,10 +798,46 @@
     hasUnsaved = false;
     activePanel = null;
     mediaApi = null;
+    queue = [];
+    queueIndex = 0;
+    bankSlides = {};
     setStatus("");
   }
 
+  /** Flip through several submissions back to back. */
+  async function openQueue(entries) {
+    const online = (Array.isArray(entries) ? entries : []).filter(
+      (e) => e?.id && e.type === "online"
+    );
+    if (!online.length) {
+      options?.showToast?.("No online worksheet submissions to review.");
+      return;
+    }
+    queue = online;
+    queueIndex = 0;
+    await loadSubmission(online[0]);
+  }
+
+  function hasNextInQueue() {
+    return queueIndex + 1 < queue.length;
+  }
+
+  async function advanceQueue() {
+    if (!hasNextInQueue()) {
+      await close();
+      return;
+    }
+    queueIndex += 1;
+    await loadSubmission(queue[queueIndex]);
+  }
+
   async function open(entry) {
+    queue = entry?.id ? [entry] : [];
+    queueIndex = 0;
+    await loadSubmission(entry);
+  }
+
+  async function loadSubmission(entry) {
     if (!entry?.id || entry.type !== "online") {
       options?.showToast?.("Flashcards are for online worksheet submissions.");
       return;
@@ -740,6 +881,9 @@
       showStage("empty");
       return;
     }
+
+    bankSlides =
+      entry.reviewStatus === "reviewed" ? {} : await loadAnswerBank(entry.assignmentId);
 
     deck = buildDeck();
     setStatus(
@@ -786,6 +930,7 @@
   global.HwReviewFlashcards = {
     init,
     open,
+    openQueue,
     close,
   };
 })(window);

@@ -115,8 +115,23 @@
     return "Block";
   }
 
+  /** Pen Pal ask, shown above the letter paper (mirrors hw-worksheet-builder.js). */
+  const PEN_PAL_ASK =
+    "愛子ちゃんがあなたの返事を待ってるのよ！\n早く手紙書いてあげて～";
+  const RETIRED_PEN_PAL_INTROS = [
+    "Read Aiko’s letter, then write your reply.",
+    "Read Aiko's letter, then write your reply.",
+    /* One-line ask — second half was wrapping mid-phrase on the sheet. */
+    "愛子ちゃんがあなたの返事を待ってるのよ！ 早く手紙書いてあげて～",
+  ];
+
+  function isPenPalLetterItem(item) {
+    return Boolean(item) && Object.prototype.hasOwnProperty.call(item, "letterBody");
+  }
+
   /**
-   * Handwritten letter paper for Pen Pal worksheets (AP Japanese font via CSS).
+   * Handwritten letter paper for Pen Pal worksheets (AP Japanese font via CSS),
+   * wrapped with a show/hide toggle.
    * @param {{ letterTo?: string, letterFrom?: string, letterLocation?: string, letterBody?: string }} item
    * @returns {HTMLElement|null}
    */
@@ -167,7 +182,24 @@
       article.appendChild(footer);
     }
 
-    return article;
+    const wrap = document.createElement("div");
+    wrap.className = "hw-penpal";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "btn btn--ghost btn--sm hw-penpal__toggle";
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.textContent = "Hide letter";
+    toggle.addEventListener("click", () => {
+      const open = article.hidden;
+      article.hidden = !open;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.textContent = open ? "Hide letter" : "Show letter";
+    });
+
+    wrap.appendChild(toggle);
+    wrap.appendChild(article);
+    return wrap;
   }
 
   function enrichAssignmentMedia(assignment) {
@@ -1121,6 +1153,16 @@
     return wrap;
   }
 
+  function renderPromptEnglish(item) {
+    const text = String(item?.english || "").trim();
+    if (!text) return null;
+    const el = document.createElement("p");
+    el.className = "hw-prompt-english";
+    el.setAttribute("lang", "en");
+    el.textContent = text;
+    return el;
+  }
+
   function renderAudioRecordCue(item, index, renderOptions) {
     renderOptions = renderOptions || {};
     const audioLine = document.createElement("div");
@@ -1136,6 +1178,17 @@
 
     const wrap = document.createElement("div");
     wrap.className = "hw-audio-prompt";
+
+    const imageUrl = String(item.imageUrl || "").trim();
+    if (imageUrl) {
+      const fig = renderListenScreenshot(imageUrl);
+      if (fig) {
+        fig.classList.add("hw-audio-prompt__image");
+        const img = fig.querySelector("img");
+        if (img) img.alt = String(item.prompt || "Prompt image").trim() || "Prompt image";
+        wrap.appendChild(fig);
+      }
+    }
 
     const head = document.createElement("div");
     head.className = "hw-audio-prompt__head";
@@ -1155,7 +1208,36 @@
         })
       );
     }
+
+    const englishEl = renderPromptEnglish(item);
+    if (englishEl) head.appendChild(englishEl);
+
     wrap.appendChild(head);
+
+    const typeIn = item.typeIn === true || item.typeIn === "true" || item.typeIn === 1;
+    if (typeIn) {
+      const typeRow = document.createElement("div");
+      typeRow.className = "hw-audio-prompt__typein";
+      const typeLabel = document.createElement("label");
+      typeLabel.className = "hw-audio-prompt__typein-label";
+      typeLabel.textContent = String(item.typeInLabel || "Type your answer").trim() || "Type your answer";
+      const typeInput = document.createElement("input");
+      typeInput.type = "text";
+      typeInput.className = "hw-blank hw-blank--wide hw-audio-prompt__typein-input";
+      typeInput.name = String(item.id || "aud-" + (index + 1)) + "-type";
+      typeInput.setAttribute("data-audio-typein", "1");
+      typeInput.setAttribute("lang", "ja");
+      typeInput.setAttribute(
+        "aria-label",
+        String(item.typeInLabel || "Type your answer").trim() || "Type your answer"
+      );
+      typeInput.autocomplete = "off";
+      typeInput.spellcheck = false;
+      if (item.typeInAnswer) typeInput.dataset.answer = String(item.typeInAnswer);
+      typeLabel.appendChild(typeInput);
+      typeRow.appendChild(typeLabel);
+      wrap.appendChild(typeRow);
+    }
 
     const recorderMount = document.createElement("div");
     recorderMount.className = "hw-audio-prompt__recorder";
@@ -1205,7 +1287,27 @@
     prompt.setAttribute("data-audio-prompt", "1");
     prompt.setAttribute("aria-label", "Audio prompt " + (index + 1));
     content.appendChild(prompt);
+
+    const englishLabel = document.createElement("label");
+    englishLabel.className = "hw-author-audio-url";
+    englishLabel.textContent = "English translation (shown to student)";
+    const englishInput = document.createElement("textarea");
+    englishInput.className = "hw-blank hw-blank--wide hw-author-audio";
+    englishInput.rows = 1;
+    englishInput.value = item.english || "";
+    englishInput.setAttribute("data-item-english", "1");
+    englishInput.placeholder = "e.g. school";
+    englishLabel.appendChild(englishInput);
+    content.appendChild(englishLabel);
+
     wrap.appendChild(content);
+    /* Image / type-in are authored in JSON only — keep them through an editor round-trip. */
+    const carried = {};
+    if (item.imageUrl) carried.imageUrl = item.imageUrl;
+    if (item.typeIn) carried.typeIn = item.typeIn;
+    if (item.typeInLabel) carried.typeInLabel = item.typeInLabel;
+    if (item.typeInAnswer) carried.typeInAnswer = item.typeInAnswer;
+    if (Object.keys(carried).length) wrap.dataset.carry = JSON.stringify(carried);
     return wrap;
   }
 
@@ -1873,6 +1975,12 @@
 
     content.appendChild(sentence);
 
+    const mcEnglish = renderPromptEnglish(item);
+    if (mcEnglish) {
+      mcEnglish.classList.add("hw-prompt-english--mc");
+      content.appendChild(mcEnglish);
+    }
+
     const pool = document.createElement("div");
     pool.className = "hw-mc-block__pool";
     pool.setAttribute("role", "list");
@@ -1916,6 +2024,7 @@
     lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
     const listenBlock = sectionMode === "audio-listening";
+    const penPalBlock = isPenPalLetterItem(item);
     const useBlockLayout = openBlock || listenBlock;
     const line = document.createElement(useBlockLayout ? "div" : "p");
     line.className =
@@ -1925,7 +2034,7 @@
       (listenBlock ? " hw-worksheet__line--listen" : "");
     line.dataset.itemId = item.id || "";
 
-    if (lineOptions.itemNum) {
+    if (lineOptions.itemNum && !penPalBlock) {
       appendLineNumber(line, lineOptions.itemNum);
     }
 
@@ -1961,16 +2070,15 @@
       content.appendChild(listenCard);
     }
 
-    if (openBlock && Object.prototype.hasOwnProperty.call(item, "letterBody")) {
+    if (openBlock && penPalBlock) {
       const letterEl = renderPenPalLetter(item);
       if (letterEl) content.appendChild(letterEl);
     }
 
-    if (openBlock && item.topic) {
+    /* Pen Pal: the ask lives in the block instructions above the letter, so no prompt line under it. */
+    if (openBlock && item.topic && !penPalBlock) {
       const topicEl = document.createElement("p");
-      topicEl.className =
-        "hw-open-topic" +
-        (Object.prototype.hasOwnProperty.call(item, "letterBody") ? " hw-open-topic--penpal-reply" : "");
+      topicEl.className = "hw-open-topic";
       topicEl.textContent = item.topic;
       content.appendChild(topicEl);
       content.dataset.topic = item.topic;
@@ -2027,8 +2135,9 @@
       if (canEditImage) {
         dropHint = document.createElement("p");
         dropHint.className = "hw-open-image-drop-hint";
-        dropHint.textContent =
-          "Paste or drop your own image here (replaces JD’s until you remove it).";
+        dropHint.textContent = penPalBlock
+          ? "If you’d like, write a real letter and put your picture here"
+          : "Paste or drop your own image here (replaces JD’s until you remove it).";
         imageSlot.appendChild(dropHint);
 
         removeBtn = document.createElement("button");
@@ -2221,8 +2330,10 @@
   }
 
   function renderSection(form, section, interactive, authoring, renderOptions) {
+    const penPalSection = (section.items || []).some(isPenPalLetterItem);
     const wrap = document.createElement("div");
-    wrap.className = "hw-worksheet__section";
+    wrap.className =
+      "hw-worksheet__section" + (penPalSection ? " hw-worksheet__section--penpal" : "");
     wrap.dataset.sectionId = section.id || "";
     wrap.dataset.mode = section.mode || "";
 
@@ -2239,7 +2350,7 @@
       wrap.appendChild(head);
     }
 
-    const sectionIntro =
+    let sectionIntro =
       section.mode === "star-order"
         ? "Drag/drop the words to form the best answer!"
         : section.mode === "multiple-choice"
@@ -2248,6 +2359,10 @@
             (section.mode === "audio-listening"
               ? "Listen to the clip and write down what you think it's saying in Japanese."
               : "");
+    /* Pen Pal: the Japanese ask replaces the retired English line on older saved sheets. */
+    if (penPalSection && (!sectionIntro || RETIRED_PEN_PAL_INTROS.includes(sectionIntro))) {
+      sectionIntro = PEN_PAL_ASK;
+    }
     /* Listen + star + MC: instruction lives inside the question card (not above it). */
     if (
       sectionIntro &&
@@ -2366,9 +2481,20 @@
         secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((lineEl, ai) => {
           const prompt = lineEl.querySelector("[data-audio-prompt]")?.value?.trim();
           if (!prompt) return;
+          let carried = {};
+          if (lineEl.dataset.carry) {
+            try {
+              carried = JSON.parse(lineEl.dataset.carry) || {};
+            } catch (err) {
+              carried = {};
+            }
+          }
+          const english = lineEl.querySelector("[data-item-english]")?.value?.trim();
           section.items.push({
             id: lineEl.dataset.itemId || "aud-" + (ai + 1),
             prompt,
+            ...(english ? { english } : {}),
+            ...carried,
             recordLabel: "Record your answer",
           });
         });
@@ -3005,6 +3131,7 @@
           el.hasAttribute("data-item-audio-url") ||
           el.hasAttribute("data-item-image-url") ||
           el.hasAttribute("data-item-english-answer") ||
+          el.hasAttribute("data-item-english") ||
           el.hasAttribute("data-video-prompt") ||
           el.hasAttribute("data-audio-prompt") ||
           el.classList.contains("hw-star-block__answer")
@@ -3642,11 +3769,14 @@
       if (mode === "audio-prompt") {
         secEl.querySelectorAll(".hw-worksheet__line--audio-prompt").forEach((promptEl, ai) => {
           const num = promptEl.querySelector(".hw-item-num")?.textContent?.trim() || String(ai + 1);
+          const typed = promptEl.querySelector("[data-audio-typein]")?.value?.trim() || "";
           audioPrompts.push({
             label: "Audio " + num,
             prompt:
               promptEl.querySelector(".hw-audio-prompt__text")?.textContent?.trim() || "",
-            student: "(submitted via audio upload)",
+            student: typed
+              ? typed + " · (audio submitted)"
+              : "(submitted via audio upload)",
           });
         });
         return;
@@ -3673,6 +3803,7 @@
           el.hasAttribute("data-item-audio-url") ||
           el.hasAttribute("data-item-image-url") ||
           el.hasAttribute("data-item-english-answer") ||
+          el.hasAttribute("data-item-english") ||
           el.hasAttribute("data-video-prompt") ||
           el.hasAttribute("data-audio-prompt")
         ) {
@@ -3802,7 +3933,7 @@
   }
 
   const STUDENT_BLANK_SELECTOR =
-    "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt])";
+    "input.hw-blank:not([data-item-audio-url]):not([data-item-image-url]):not([data-item-english-answer]):not([data-item-english]), textarea.hw-blank:not([data-audio-prompt]):not([data-video-prompt]):not([data-item-english])";
 
   function collectOrderedAnswers(form, report) {
     const byName = new Map();

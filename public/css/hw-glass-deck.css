@@ -1,0 +1,138 @@
+/* Glass check deck — teacher sweeps one worksheet question at a time with the glass. */
+
+.hw-glass-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.hw-glass-deck__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.hw-glass-deck__lead {
+  margin: 0;
+  max-width: 60ch;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--hw-v6-muted, #93a2bb);
+}
+
+.hw-glass-deck__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.hw-glass-deck__progress {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--hw-v6-ink, #e8eef8);
+}
+
+.hw-glass-deck__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--hw-v6-muted, #93a2bb);
+  cursor: pointer;
+}
+
+.hw-glass-deck__status,
+.hw-glass-deck__loading,
+.hw-glass-deck__empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--hw-v6-muted, #93a2bb);
+}
+
+.hw-glass-deck__status.is-error {
+  color: #ff9c9c;
+}
+
+.hw-glass-deck__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.hw-glass-deck__cardhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+}
+
+.hw-glass-deck__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.hw-gd-source__sheet {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--hw-v6-ink, #e8eef8);
+}
+
+.hw-gd-source__item {
+  font-size: 0.8rem;
+  color: var(--hw-v6-muted, #93a2bb);
+}
+
+.hw-gd-source__done {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hw-v6-accent, #67c4eb) 22%, transparent);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hw-v6-accent, #67c4eb);
+}
+
+.hw-glass-deck__count {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--hw-v6-muted, #93a2bb);
+}
+
+/* Glass host — the student worksheet brings its own card styling. */
+.hw-glass-deck__sheet {
+  position: relative;
+  min-height: 9rem;
+}
+
+.hw-glass-deck__sheet .hw-worksheet {
+  margin: 0;
+}
+
+.hw-glass-deck__sheet .hw-worksheet__line:last-child {
+  margin-bottom: 0;
+}
+
+.hw-glass-deck__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hw-glass-deck__actions #hw-gd-done {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .hw-glass-deck__actions #hw-gd-done {
+    margin-left: 0;
+    width: 100%;
+  }
+}

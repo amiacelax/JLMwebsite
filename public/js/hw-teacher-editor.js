@@ -299,10 +299,9 @@
       tier: media.tier,
       youtubeUrl: media.youtubeUrl,
       discordUserId: media.discordUserId || "",
+      /* Always send playlist (even "") so blank clears Ben-style leftovers. */
+      lessonPlaylistUrl: media.lessonPlaylistUrl || "",
     };
-    if (media.lessonPlaylistUrl) {
-      payload.lessonPlaylistUrl = media.lessonPlaylistUrl;
-    }
     return payload;
   }
 
@@ -356,6 +355,9 @@
         ...(playlist ? { lessonPlaylistUrl: playlist } : {}),
         ...(youtube ? { latestLessonUrl: youtube, youtubeUrl: youtube } : {}),
         ...(profile.currentHomeworkId ? { currentHomeworkId: profile.currentHomeworkId } : {}),
+        ...(Array.isArray(profile.waitingHomeworkIds)
+          ? { waitingHomeworkIds: profile.waitingHomeworkIds }
+          : { waitingHomeworkIds: [] }),
       };
       populateCurrentHomeworkSelect(student, profile);
     } catch {
@@ -443,8 +445,9 @@
     const all = allAssignments();
     const mruIds = loadWorksheetMru();
     const byId = new Map(all.map((e) => [e.id, e]));
-    const mru = mruIds.map((id) => byId.get(id)).filter(Boolean);
-    const mruSet = new Set(mru.map((e) => e.id));
+    /* Show MRU immediately even before catalog titles arrive. */
+    const mru = mruIds.map((id) => byId.get(id) || { id, title: id });
+    const mruSet = new Set(mruIds);
     const rest = sortAssignmentsForLoadSelect(all.filter((e) => !mruSet.has(e.id)));
     const keep = keepId || selectEl.value;
 
@@ -538,6 +541,16 @@
     fillStudentSelect(document.getElementById("hw-teacher-account-student"));
   }
 
+  function prefetchRecentWorksheets() {
+    const fetchFn = editorOptions?.fetchAssignmentJson;
+    if (!fetchFn) return;
+    loadWorksheetMru()
+      .slice(0, 8)
+      .forEach((id) => {
+        void Promise.resolve(fetchFn(id)).catch(() => {});
+      });
+  }
+
   async function ensureCatalogLoaded() {
     if (catalogAssignments.length) return catalogAssignments;
     if (!editorOptions?.fetchCatalog) return catalogAssignments;
@@ -548,6 +561,7 @@
       catalogStudents = data.students || [];
       populateAllStudentSelects();
       seedWorksheetMruFromCatalog();
+      prefetchRecentWorksheets();
     } catch {
       /* use FALLBACK_ASSIGNMENTS */
     }
@@ -689,12 +703,31 @@
         return;
       }
       const entry = getCatalogEntry(id);
-      const assigned = (entry?.students || []).some(
-        (s) => String(s).toLowerCase() === student
-      );
-      makerDockHintEl.textContent = assigned
-        ? "Already on " + student + "'s hub — send again to refresh."
-        : "Will send “" + id + "” to " + student + ".";
+      const profile = catalogStudentProfiles[student] || {};
+      const currentId = String(profile.currentHomeworkId || "").trim();
+      const waiting = Array.isArray(profile.waitingHomeworkIds)
+        ? profile.waitingHomeworkIds.map((x) => String(x || "").trim()).filter(Boolean)
+        : [];
+      if (currentId === id) {
+        makerDockHintEl.textContent =
+          "Already current on " + student + "'s hub — send again to refresh.";
+      } else if (waiting.includes(id)) {
+        makerDockHintEl.textContent =
+          "Already waiting on " + student + "'s hub — send again to refresh.";
+      } else if (currentId) {
+        const slots = 1 + waiting.length;
+        makerDockHintEl.textContent =
+          "Will queue for " +
+          student +
+          " (" +
+          slots +
+          "/4) — current stays until Done reviewing.";
+      } else if ((entry?.students || []).some((s) => String(s).toLowerCase() === student)) {
+        makerDockHintEl.textContent =
+          "Already on " + student + "'s hub — send again to refresh.";
+      } else {
+        makerDockHintEl.textContent = "Will send “" + id + "” to " + student + ".";
+      }
     }
 
     function updateMakerTemplateButton() {
@@ -857,9 +890,12 @@
       if (!makerEditSelect || makerEditSelect.dataset.bound === "true") return;
       makerEditSelect.dataset.bound = "true";
 
-      makerEditSelect.addEventListener("focus", async () => {
-        await ensureCatalogLoaded();
+      makerEditSelect.addEventListener("focus", () => {
+        /* Paint MRU from localStorage immediately — don't wait on catalog. */
         populateWorksheetSelect(makerEditSelect, makerEditSelect.value);
+        void ensureCatalogLoaded().then(() => {
+          populateWorksheetSelect(makerEditSelect, makerEditSelect.value);
+        });
       });
 
       makerEditSelect.addEventListener("change", () => {
@@ -988,6 +1024,9 @@
       const mimic = assignment.sections.find((s) => s.mode === "audio-mimic");
       if (mimic?.items?.length) return true;
 
+      const multipleChoice = assignment.sections.find((s) => s.mode === "multiple-choice");
+      if (multipleChoice?.items?.length) return true;
+
       return false;
     }
 
@@ -1035,7 +1074,7 @@
 
       if (!validateWorksheet(assignment)) {
         setMakerStatus(
-          "Add at least one block with content — blank sentence, video prompt, or listening line.",
+          "Add at least one block with content — blank sentence, multiple choice, video, or listening.",
           true
         );
         return;
@@ -1073,7 +1112,7 @@
 
         setMakerStatus(data.message || (isNew ? "Worksheet saved." : "Worksheet updated."));
         showToast(isNew ? "Worksheet saved" : "Worksheet updated");
-        if (options.onWorksheetSaved) await options.onWorksheetSaved(assignment.id);
+        if (options.onWorksheetSaved) await options.onWorksheetSaved(assignment.id, assignment);
       } catch (err) {
         setMakerStatus((err && err.message) || "Could not save.", true);
         showToast(isNew ? "Save failed" : "Update failed");
@@ -1240,6 +1279,9 @@
           setPublishStatus(msg, isError);
         };
       const activeSendBtn = publishOpts.sendBtn || publishSendBtn;
+      const forceCurrent = publishOpts.forceCurrent === true;
+      /* Stealth swap: change their homework without any Discord DM. */
+      const silent = publishOpts.silent === true;
 
       const student = String(
         publishOpts.student !== undefined ? publishOpts.student : publishStudent?.value || ""
@@ -1322,6 +1364,8 @@
             studentUsername: student,
             assignment,
             catalogEntry,
+            ...(forceCurrent ? { forceCurrent: true } : {}),
+            ...(silent ? { silent: true } : {}),
             ...(media.youtubeUrl ? { youtubeUrl: media.youtubeUrl } : {}),
             ...(media.lessonPlaylistUrl ? { lessonPlaylistUrl: media.lessonPlaylistUrl } : {}),
           }),
@@ -1353,12 +1397,49 @@
         }
 
         touchWorksheetMru(worksheetId);
-        setStatus(
-          (data.message || "Sent to " + student + "!") +
-            " This is now their current homework on the hub."
-        );
+        if (data.queued) {
+          setStatus(
+            data.message ||
+              "Queued for " +
+                student +
+                " (" +
+                (data.waitingCount || data.queueCount || "?") +
+                " waiting, " +
+                (data.hubSlotsUsed || "?") +
+                "/4)."
+          );
+        } else {
+          setStatus(
+            (data.message || "Sent to " + student + "!") +
+              " This is now their current homework on the hub."
+          );
+        }
         const notify = data.discordNotify;
-        if (notify?.ok && notify.mode === "student_dm") {
+        if (silent) {
+          showToast(
+            data.queued
+              ? "Queued quietly for " + student + " — no Discord DM"
+              : "Homework swapped quietly for " + student + " — no Discord DM"
+          );
+        } else if (data.queued) {
+          if (notify?.ok && notify.mode === "student_dm") {
+            showToast("Queued on hub — Discord DM sent (copy to you too)");
+          } else if (notify?.ok) {
+            showToast(
+              "Queued on hub (" +
+                (data.waitingCount || data.queueCount || "?") +
+                " waiting)"
+            );
+          } else {
+            showToast(
+              "Queued for " +
+                student +
+                " (" +
+                (data.waitingCount || data.queueCount || "?") +
+                " waiting)"
+            );
+          }
+        } else if (notify?.ok && notify.mode === "student_dm") {
           showToast("Current homework set — Discord DM sent (copy to you too)");
         } else if (notify?.ok && notify.mode === "teacher_dm") {
           showToast("Current homework set — Discord pinged you (no student ID)");
@@ -1448,12 +1529,21 @@
         }
 
         if (homeworkChanged) {
-          setAccountStatus("Saved links — assigning “" + selectedHomeworkId + "”…");
+          /* Student info edits are stealth by default — tick the box to DM them. */
+          const tellStudent =
+            document.getElementById("hw-teacher-account-notify")?.checked === true;
+          setAccountStatus(
+            (tellStudent ? "Saved links — assigning “" : "Saved links — quietly assigning “") +
+              selectedHomeworkId +
+              "”…"
+          );
           await publishWorksheetToStudent({
             student: media.studentUsername,
             worksheetId: selectedHomeworkId,
             setStatus: setAccountStatus,
             sendBtn: accountSaveBtn,
+            forceCurrent: true,
+            silent: !tellStudent,
           });
           return;
         }
@@ -1617,9 +1707,21 @@
           }
           if (typeof wipeDialog?.close === "function") wipeDialog.close();
           else wipeDialog?.removeAttribute("open");
+          const wipedUser = String(student || "")
+            .trim()
+            .toLowerCase();
+          catalogStudents = (catalogStudents || []).filter(
+            (s) => String(s?.username || "").toLowerCase() !== wipedUser
+          );
+          if (catalogStudentProfiles && wipedUser) {
+            delete catalogStudentProfiles[wipedUser];
+          }
           global.HwStudentList?.resetCache?.();
+          await global.HwStudentList?.fetchStudents?.({
+            force: true,
+            teacherUsername: getTeacherSession()?.username,
+          });
           await global.HwStudentList?.refreshTeacherFilterSelects?.();
-          await ensureCatalogLoaded();
           populateAllStudentSelects();
           fillStudentSelect(accountStudentSelect, "");
           populateCurrentHomeworkSelect("", null);
@@ -1641,9 +1743,21 @@
       renderSheet("blank");
     }
 
+    /* Student names from local/cache first — don't wait on full catalog. */
+    populateAllStudentSelects();
+    if (global.HwStudentList?.fetchStudents) {
+      void global.HwStudentList
+        .fetchStudents({ teacherUsername: getTeacherSession()?.username })
+        .then(() => populateAllStudentSelects());
+    }
+
+    /* MRU from localStorage first — catalog titles fill in when ready. */
+    populateWorksheetSelect(makerEditSelect);
+    populatePublishWorksheetSelect(publishWorksheet);
     ensureCatalogLoaded().then(() => {
       populateWorksheetSelect(makerEditSelect);
       populatePublishWorksheetSelect(publishWorksheet);
+      populateAllStudentSelects();
     });
   }
 
@@ -1653,6 +1767,7 @@
     if (students) catalogStudents = students;
     populateAllStudentSelects();
     populateWorksheetSelect(document.getElementById("hw-teacher-maker-edit-select"));
+    prefetchRecentWorksheets();
     const accountStudent = document.getElementById("hw-teacher-account-student")?.value;
     if (accountStudent) {
       void loadStudentProfileFields(getAccountForm(), accountStudent);

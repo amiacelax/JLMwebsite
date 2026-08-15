@@ -12,7 +12,9 @@ export type DiscordNotifyMode =
   | "teacher_dm"
   | "teacher_dm_after_student_fail"
   | "webhook"
-  | "skipped";
+  | "skipped"
+  /** Teacher asked for a stealth change — nobody was pinged. */
+  | "silent";
 
 export interface DiscordNotifyResult {
   ok: boolean;

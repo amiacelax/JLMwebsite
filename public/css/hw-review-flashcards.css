@@ -195,6 +195,31 @@
   display: none !important;
 }
 
+.hw-rfc-saved:empty {
+  display: none;
+}
+
+.hw-rfc-saved__hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: rgba(42, 34, 24, 0.65);
+}
+
+.hw-rfc-saved__select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(40, 30, 20, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #2a2218;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
 .hw-rfc-textarea {
   display: block;
   width: 100%;

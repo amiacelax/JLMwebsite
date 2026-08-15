@@ -27,7 +27,7 @@ CTA / Link sticker URL (always this — free trial contact form, **not** availab
 | YouTube | **Description** | Light hashtags + free trial URL. On-screen cue: free trial + japaneselanguagementor.com |
 | YouTube | **Pin comment** | Always include — trial URL; note Shorts description links aren’t reliably clickable |
 | Instagram | **Caption** | CTA = link in bio; hashtags at end. On-screen cue: free trial + link in bio |
-| Instagram | **Story caption** | Always include a **short** Story text. Default: `Free trial ↑` (Link sticker sits above the caption) |
+| Instagram | **Story caption** | Always include a **short** Story text. Default: `Free consultation ↑` (Link sticker sits above the caption) |
 | Instagram | **Link sticker URL** | Always include the `#contact` URL above for the Story Link sticker |
 
 In chat, always show separate labeled paste blocks for: YT title, YT description, **YT pin comment**, IG caption, **IG Story caption (short)**, and **Link sticker URL**.
@@ -44,7 +44,7 @@ In chat, always show separate labeled paste blocks for: YT title, YT description
 Prefer production API via script (after Worker is deployed):
 
 ```bash
-node scripts/arm-social-reminder.mjs --fire 2026-08-06T01:30:00Z --titles "Want Disneyland? hoshii vs -tai" --story "Free trial ↑"
+node scripts/arm-social-reminder.mjs --fire 2026-08-06T01:30:00Z --titles "Want Disneyland? hoshii vs -tai" --story "Free consultation ↑"
 ```
 
 Or `POST https://japaneselanguagementor.com/api/social-reminders` with JSON:
@@ -54,8 +54,8 @@ Or `POST https://japaneselanguagementor.com/api/social-reminders` with JSON:
   "teacherUsername": "jlm",
   "fireAtUtc": "2026-08-06T01:30:00.000Z",
   "clipTitles": "...",
-  "ytPinComment": "Free trial Japanese lesson → https://japaneselanguagementor.com/#contact",
-  "igStoryCaption": "Free trial ↑",
+  "ytPinComment": "Free consultation → https://japaneselanguagementor.com/#contact",
+  "igStoryCaption": "Free consultation ↑",
   "linkSticker": "https://japaneselanguagementor.com/#contact"
 }
 ```
@@ -70,19 +70,29 @@ node scripts/arm-social-reminder.mjs --cancel sr-...
 Worker cron `* * * * *` loads `sr-pending:*` from `HOMEWORK_KV` and fires due jobs.
 
 ### 3b. Discord + Teacher Hub payload (fired by Worker)
-Discord embed title: **YouTube/Instagram Reminder**
+**One Discord message** with **four separate copyable code blocks** (title, pin, Story caption, link sticker):
 
-Body:
-
+````
 ```
-YT: Write {yt pin comment} for {video title}.
-
-IG: Write this caption {story caption} and sticker {link sticker URL}
+{video title}
 ```
+```
+{yt pin comment}
+```
+```
+{ig story caption}
+```
+```
+{link sticker URL}
+```
+````
 
-Default Story caption: **`Free trial ↑`**. Link sticker: `https://japaneselanguagementor.com/#contact`.
+Defaults:
+- Story caption: **`Free consultation ↑`**
+- Pin: **`Free consultation → https://japaneselanguagementor.com/#contact`**
+- Link sticker: `https://japaneselanguagementor.com/#contact`
 
-Also saves Teacher Hub `kind: reminder` with the same body.
+Also saves Teacher Hub `kind: reminder` with the same body (no second Discord from that path).
 
 ### 3c. Do not use PC sleepers anymore
 - Do **not** arm `.tmp-ig-reel-discord-ping*.ps1` for new clips once Cloudflare path works.

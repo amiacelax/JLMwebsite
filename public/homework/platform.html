@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/css/hw-review-flashcards.css?v=20260813-deck">
   <link rel="stylesheet" href="/css/hw-glass-deck.css?v=20260813-glass">
   <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=1" data-hw-fonts="1">
-  <script src="/js/hw-auth.js?v=20260815-paypal-cancel"></script>
+  <script src="/js/hw-auth.js?v=20260814-stultra"></script>
   <script src="/js/hw-feature-flags.js?v=16"></script>
   <script>
     (function () {
@@ -59,7 +59,7 @@
         }
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=156">');
+      document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=156">');
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
@@ -1170,6 +1170,7 @@
 
         <div class="subpage-back hw-platform-footer-nav" id="hw-platform-footer-nav">
           <div class="hw-platform-footer-nav__row">
+            <a class="btn btn--ghost" id="hw-platform-footer-info" href="/homework-plans.html">← Homework info &amp; plans</a>
             <div class="hw-print-menu" id="hw-print-menu" hidden>
               <button type="button" class="btn btn--ghost" id="hw-print-menu-toggle" aria-expanded="false" aria-haspopup="menu" aria-controls="hw-print-menu-popup">Print</button>
               <div class="hw-print-menu__popup" id="hw-print-menu-popup" role="menu" hidden>

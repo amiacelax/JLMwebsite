@@ -1,0 +1,13 @@
+---
+description: Reminder — wire PayPal webhooks once Homework Hub hits ~10 paying subscribers
+alwaysApply: true
+---
+
+# PayPal webhooks at 10 subscribers
+
+When discussing Homework Hub subscribers, paid plans, checkout, activate-plan, or PayPal:
+
+- If live paying homework subscribers are at **about 10 or more** (or the user says they’ve hit that scale), **remind them** to wire **PayPal webhooks** next.
+- Goal: unlock / cancel tiers from PayPal events (`BILLING.SUBSCRIPTION.ACTIVATED`, payment completed/failed, cancelled) instead of relying only on return URL + “I’ve paid”.
+- Don’t nag every turn — once per relevant conversation is enough until it’s built.
+- Until then, return URL + `POST /api/auth/activate-plan` (+ optional “I’ve paid”) is the intentional interim.

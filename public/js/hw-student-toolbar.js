@@ -22,13 +22,22 @@
     return document.getElementById("hw-toolbar-bar");
   }
 
-  /** Mobile: toolbar tap arms Glass/Cloud (no floating pop-out). */
+  /**
+   * Glass + Cloud: every viewport arms from the toolbar icon
+   * (same as mobile — no floating lens/launcher fling).
+   */
   function usesToolbarDirectArm() {
-    try {
-      return window.matchMedia(MOBILE_ARM_MQ).matches;
-    } catch {
-      return false;
-    }
+    return true;
+  }
+
+  /** Glass: every viewport — toolbar click arms/disarms; floating lens stays tucked. */
+  function usesGlassDirectArm() {
+    return true;
+  }
+
+  /** Cloud: every viewport — toolbar click arms/disarms; floating launcher stays tucked. */
+  function usesCloudDirectArm() {
+    return true;
   }
 
   function isGlassArmed() {
@@ -138,14 +147,14 @@
       glassBtn.disabled = !(
         global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo
       );
-      const glassOn = usesToolbarDirectArm() ? isGlassArmed() : isGlassPopped();
+      const glassOn = usesGlassDirectArm() ? isGlassArmed() : isGlassPopped();
       glassBtn.setAttribute("aria-pressed", glassOn ? "true" : "false");
     }
     if (cloudBtn) {
       cloudBtn.disabled = !(
         global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo
       );
-      const cloudOn = usesToolbarDirectArm() ? isCloudArmed() : isCloudPopped();
+      const cloudOn = usesCloudDirectArm() ? isCloudArmed() : isCloudPopped();
       cloudBtn.setAttribute("aria-pressed", cloudOn ? "true" : "false");
     }
     global.HwToolbarQIcons?.applyToToolbar?.(bar);
@@ -250,21 +259,20 @@
     return bar;
   }
 
-  /** Mobile: one toolbar tap arms/disarms — no floating Glass on the sheet. */
+  /** One toolbar tap arms/disarms Glass — no floating lens on the sheet. */
   function toggleGlassArmFromToolbar() {
     const next = !isGlassArmed();
-    /* Keep floating widgets tucked on mobile. */
-    setGlassPopped(false);
-    setCloudPopped(false);
+    /* Keep floating Glass tucked (desktop used to fling it out). */
+    document.documentElement.classList.remove("hw-tb-glass-out");
     global.HwMagnifyingGlass?.setArmed?.(next);
     syncToolbarActionState();
   }
 
-  /** Mobile: one toolbar tap arms/disarms — no floating Cloud on the sheet. */
+  /** One toolbar tap arms/disarms Cloud — no floating launcher on the sheet. */
   function toggleCloudArmFromToolbar() {
     const next = !isCloudArmed();
-    setGlassPopped(false);
-    setCloudPopped(false);
+    /* Keep floating Cloud tucked (desktop used to fling it out). */
+    document.documentElement.classList.remove("hw-tb-cloud-out");
     if (next) {
       global.HwHomeworkComments?.setArmed?.(true);
     } else {
@@ -273,88 +281,12 @@
     syncToolbarActionState();
   }
 
-  function toggleGlassFromToolbar(glassBtn) {
-    if (usesToolbarDirectArm()) {
-      toggleGlassArmFromToolbar();
-      return;
-    }
-    const host = worksheetToolHostEl();
-    const layout = global.HwWorksheetToolLayout;
-    if (isGlassPopped()) {
-      if (host && layout?.flingToolsToToolbar) {
-        layout.flingToolsToToolbar({
-          hostEl: host,
-          glassBtn,
-          cloudBtn: null,
-          glassOut: true,
-          cloudOut: false,
-          onTuck: () => {
-            setGlassPopped(false);
-            syncToolbarActionState();
-          },
-        });
-        return;
-      }
-      setGlassPopped(false);
-      syncToolbarActionState();
-      return;
-    }
-    if (host && layout?.flingToolsFromToolbar) {
-      layout.flingToolsFromToolbar({
-        hostEl: host,
-        glassBtn,
-        glass: true,
-        onReveal: () => {
-          setGlassPopped(true);
-          syncToolbarActionState();
-        },
-      });
-      return;
-    }
-    setGlassPopped(true);
-    syncToolbarActionState();
+  function toggleGlassFromToolbar(_glassBtn) {
+    toggleGlassArmFromToolbar();
   }
 
-  function toggleCloudFromToolbar(cloudBtn) {
-    if (usesToolbarDirectArm()) {
-      toggleCloudArmFromToolbar();
-      return;
-    }
-    const host = worksheetToolHostEl();
-    const layout = global.HwWorksheetToolLayout;
-    if (isCloudPopped()) {
-      if (host && layout?.flingToolsToToolbar) {
-        layout.flingToolsToToolbar({
-          hostEl: host,
-          glassBtn: null,
-          cloudBtn,
-          glassOut: false,
-          cloudOut: true,
-          onTuck: () => {
-            setCloudPopped(false);
-            syncToolbarActionState();
-          },
-        });
-        return;
-      }
-      setCloudPopped(false);
-      syncToolbarActionState();
-      return;
-    }
-    if (host && layout?.flingToolsFromToolbar) {
-      layout.flingToolsFromToolbar({
-        hostEl: host,
-        cloudBtn,
-        cloud: true,
-        onReveal: () => {
-          setCloudPopped(true);
-          syncToolbarActionState();
-        },
-      });
-      return;
-    }
-    setCloudPopped(true);
-    syncToolbarActionState();
+  function toggleCloudFromToolbar(_cloudBtn) {
+    toggleCloudArmFromToolbar();
   }
 
   /** Crossing phone↔desktop: drop float/arm so modes stay clean. */

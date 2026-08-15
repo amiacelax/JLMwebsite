@@ -207,6 +207,37 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   color: var(--hw-v6-ink);
 }
 
+.hw-hub-v6-review-summary {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--hw-v6-ink);
+}
+
+.hw-hub-v6-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0 0;
+}
+
+.hw-hub-v6-review-list {
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.hw-hub-v6-review-list__item {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--hw-v6-line);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--hw-v6-muted);
+}
+
 .hw-hub-v6-library-fold,
 .hw-hub-v6-fold {
   border: 1px solid var(--hw-v6-line);
@@ -417,6 +448,17 @@ body.hw-hub-v6-enabled:has(#hw-hub-v6-panel:not([hidden])) .subpage-back {
   font-size: 0.9rem;
   line-height: 1.4;
   color: var(--hw-v6-ink);
+}
+
+.hw-hub-v6__report-shot {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+  margin: 0 0 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in srgb, #67c4eb 22%, transparent);
+  background: #0b1220;
 }
 
 .hw-hub-v6__main-actions {
