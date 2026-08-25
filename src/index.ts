@@ -1,4 +1,5 @@
 import { runBirthdayReminders } from "./birthday-reminders";
+import { runHwDailyWaitingReminders } from "./hw-daily-waiting-reminders";
 import {
   armSocialReminder,
   assertTeacherArm,
@@ -49,10 +50,13 @@ import {
   formatInquiryEmailBody,
   inquiryEmailConfigured,
   sendInquiryEmail,
+  sendOutboundEmail,
+  outboundEmailConfigured,
 } from "./notify-email";
 import {
   mergeCatalog,
   publishToStudentHub,
+  getStudentAccountSettings,
   saveStudentProfile,
   getStudentProfileForTeacher,
   getStudentDiscordUserId,
@@ -61,6 +65,7 @@ import {
   saveStudentNotifyPrefs,
   normalizeNotifyPrefs,
   saveWorksheetDraft,
+  setWorksheetWsCategory,
   deleteWorksheetFromLibrary,
   loadPublishedAssignment,
   listTeacherIdeas,
@@ -80,6 +85,7 @@ import {
   type PublishPayload,
   type StudentProfilePayload,
   type SaveWorksheetPayload,
+  type SetWorksheetCategoryPayload,
   type DeleteWorksheetPayload,
   type TeacherIdeaPayload,
   type TeacherIdeaDeletePayload,
@@ -103,6 +109,9 @@ import {
   getDailyNotebook,
   saveDailyNotebook,
   type DailyNotebookSaveInput,
+  getImmersionQuests,
+  saveImmersionQuestDraft,
+  completeImmersionQuest,
   getKanjiNotebook,
   saveKanjiNotebook,
   type KanjiNotebookSaveInput,
@@ -135,6 +144,7 @@ import {
   isTeacherMistakesAccess,
   listAllStudentAccounts,
   wipeStudentCompletely,
+  deleteHomeworkSubmission,
   type StudentMistakePayload,
   type StudentMistakeDeletePayload,
   type StudentMistakeResolvePayload,
@@ -144,14 +154,18 @@ import {
   deleteLanternWordSet,
   type LanternWordSetSavePayload,
   type LanternWordSetDeletePayload,
+  reorderHomeworkWaitingQueue,
+  type HomeworkWaitingQueueReorderPayload,
 } from "./homework-kv";
 import {
   changeOwnPassword,
+  createPasswordResetToken,
   createUserAccount,
   deleteOwnAccount,
   deleteUserAccount,
   getUserAccount,
   loginUserAccount,
+  resetPasswordWithToken,
   savePaypalSubscription,
   toAuthSession,
   updateOwnDisplayName,
@@ -206,8 +220,14 @@ interface Env {
   RESEND_API_KEY?: string;
   /** Inbox for website inquiries (default: languagementor.jp@gmail.com). */
   INQUIRY_EMAIL_TO?: string;
-  /** From address — must be on a Resend-verified domain. */
+  /** From address on japaneselanguagementor.com. */
   INQUIRY_EMAIL_FROM?: string;
+  /** From address for student mail (password reset). */
+  ACCOUNT_EMAIL_FROM?: string;
+  /** Cloudflare Email Routing send binding (inquiries → Gmail). */
+  SEND_EMAIL?: { send: (message: unknown) => Promise<unknown> };
+  /** Cloudflare Email Sending — outbound to students. */
+  SEND_EMAIL_OUT?: { send: (message: unknown) => Promise<unknown> };
 }
 
 interface HomeworkAnswerRow {
@@ -1254,6 +1274,50 @@ async function handleFeatureReports(request: Request, env: Env): Promise<Respons
   }
 }
 
+async function handleHwDailyWaiting(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  let data: { teacherUsername?: string; force?: boolean } = {};
+  try {
+    data = (await request.json()) as { teacherUsername?: string; force?: boolean };
+  } catch {
+    data = {};
+  }
+
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = String(data.teacherUsername || "")
+    .trim()
+    .toLowerCase();
+  if (teacherUsername !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+
+  try {
+    const result = await runHwDailyWaitingReminders(env, {
+      force: data.force !== false,
+    });
+    if (!result.ok) {
+      return jsonResponse(
+        { error: result.message || "Could not send homework waiting ping." },
+        500
+      );
+    }
+    return jsonResponse({
+      success: true,
+      skipped: Boolean(result.skipped),
+      preview: result.message || "",
+    });
+  } catch (err) {
+    console.error("hw-daily-waiting manual failed:", err);
+    return jsonResponse({ error: "Could not send homework waiting ping." }, 500);
+  }
+}
+
 async function handleSocialReminders(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -1483,7 +1547,10 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
       return jsonResponse({ error: "Keep the first name under 40 characters." }, 400);
     }
     if (code === "PASSWORD_TOO_SHORT") {
-      return jsonResponse({ error: "Password must be at least 6 characters." }, 400);
+      return jsonResponse({ error: "Password must be at least 4 characters." }, 400);
+    }
+    if (code === "PASSWORD_MISMATCH") {
+      return jsonResponse({ error: "Those passwords don’t match." }, 400);
     }
     if (code === "USERNAME_INVALID") {
       return jsonResponse(
@@ -1608,7 +1675,7 @@ async function handleAuthChangePassword(request: Request, env: Env): Promise<Res
       return jsonResponse({ error: "Username or password is wrong." }, 401);
     }
     if (code === "PASSWORD_TOO_SHORT") {
-      return jsonResponse({ error: "New password must be at least 6 characters." }, 400);
+      return jsonResponse({ error: "New password must be at least 4 characters." }, 400);
     }
     console.error("auth change-password failed:", err);
     return jsonResponse({ error: "Could not change password." }, 500);
@@ -1734,6 +1801,145 @@ async function handleAuthLogin(request: Request, env: Env): Promise<Response> {
     }
     console.error("auth login failed:", err);
     return jsonResponse({ error: "Could not log in." }, 500);
+  }
+}
+
+const FORGOT_PASSWORD_OK =
+  "If that email is on an account, we sent a reset link. Check your inbox (and spam).";
+
+function passwordResetEmailBody(opts: {
+  displayName: string;
+  resetUrl: string;
+}): { text: string; html: string } {
+  const name = String(opts.displayName || "").trim() || "there";
+  const text =
+    "Hi " +
+    name +
+    ",\n\n" +
+    "Someone asked to reset the password for this Homework Hub account.\n" +
+    "If that was you, open this link (it expires in 1 hour):\n\n" +
+    opts.resetUrl +
+    "\n\n" +
+    "If you didn’t ask for this, you can ignore this email — your password stays the same.\n\n" +
+    "— JD\nJapanese Language Mentor";
+  const html =
+    `<div style="font-family:system-ui,sans-serif;line-height:1.5;color:#1a2744">` +
+    `<p>Hi ${escapeHtmlText(name)},</p>` +
+    `<p>Someone asked to reset the password for this Homework Hub account. If that was you, open this link (it expires in 1 hour):</p>` +
+    `<p><a href="${escapeHtmlText(opts.resetUrl)}">${escapeHtmlText(opts.resetUrl)}</a></p>` +
+    `<p>If you didn’t ask for this, you can ignore this email — your password stays the same.</p>` +
+    `<p>— JD<br>Japanese Language Mentor</p>` +
+    `</div>`;
+  return { text, html };
+}
+
+function escapeHtmlText(s: string): string {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function handleAuthForgotPassword(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as { email?: string };
+    const email = String(data.email || "").trim();
+    if (!email) {
+      return jsonResponse({ error: "Enter the email on your account." }, 400);
+    }
+    if (!outboundEmailConfigured(env)) {
+      return jsonResponse(
+        { error: "Password reset email isn’t available yet. Try again later." },
+        503
+      );
+    }
+
+    const created = await createPasswordResetToken(email, env);
+    if ("token" in created) {
+      const origin = new URL(request.url).origin;
+      const resetUrl =
+        origin + "/homework.html?reset=" + encodeURIComponent(created.token);
+      const body = passwordResetEmailBody({
+        displayName: created.account.displayName,
+        resetUrl,
+      });
+      const sent = await sendOutboundEmail(env, {
+        to: created.account.email,
+        subject: "Reset your Homework Hub password",
+        text: body.text,
+        html: body.html,
+      });
+      if (!sent.ok) {
+        console.error("auth forgot-password email failed", sent);
+        return jsonResponse(
+          { error: "Could not send the reset email. Try again in a minute." },
+          503
+        );
+      }
+    }
+
+    return jsonResponse({ success: true, message: FORGOT_PASSWORD_OK });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    console.error("auth forgot-password failed:", err);
+    return jsonResponse({ error: "Could not start a password reset." }, 500);
+  }
+}
+
+async function handleAuthResetPassword(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as {
+      token?: string;
+      password?: string;
+      confirmPassword?: string;
+    };
+    const result = await resetPasswordWithToken(data, env);
+    const session = await attachSessionExtras(result.session, env);
+    return jsonResponse({
+      success: true,
+      message: "Password updated.",
+      session,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    if (code === "RESET_TOKEN_INVALID") {
+      return jsonResponse(
+        { error: "That reset link is invalid or expired. Request a new one." },
+        400
+      );
+    }
+    if (code === "PASSWORD_TOO_SHORT") {
+      return jsonResponse({ error: "Password must be at least 4 characters." }, 400);
+    }
+    if (code === "PASSWORD_MISMATCH") {
+      return jsonResponse({ error: "Those passwords don’t match." }, 400);
+    }
+    if (code === "PASSWORD_REQUIRED") {
+      return jsonResponse({ error: "Password is required." }, 400);
+    }
+    console.error("auth reset-password failed:", err);
+    return jsonResponse({ error: "Could not reset the password." }, 500);
   }
 }
 
@@ -3209,6 +3415,195 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
   }
 }
 
+const FREE_TRIAL_LEVELS = {
+  beginner: {
+    id: "trial-beginner-secret-kana",
+    label: "Beginner",
+  },
+  intermediate: {
+    id: "trial-intermediate-tai",
+    label: "Intermediate",
+  },
+  advanced: {
+    id: "trial-advanced-notoki",
+    label: "Advanced",
+  },
+} as const;
+
+type FreeTrialLevel = keyof typeof FREE_TRIAL_LEVELS;
+
+function isFreeTrialLevel(value: string): value is FreeTrialLevel {
+  return value === "beginner" || value === "intermediate" || value === "advanced";
+}
+
+async function loadStaticAssignmentJson(
+  env: Env,
+  id: string
+): Promise<Record<string, unknown> | null> {
+  const res = await env.ASSETS.fetch(
+    new URL(`/homework/assignments/${id}.json`, "https://assets.local").toString()
+  );
+  if (!isJsonAssetResponse(res)) return null;
+  return (await res.json()) as Record<string, unknown>;
+}
+
+async function handleHomeworkTrialRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const body = (await request.json()) as {
+      username?: string;
+      level?: string;
+    };
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    const levelRaw = String(body.level || "")
+      .trim()
+      .toLowerCase();
+
+    if (!username) return jsonResponse({ error: "Student login required." }, 400);
+    if (!isFreeTrialLevel(levelRaw)) {
+      return jsonResponse({ error: "Pick Beginner, Intermediate, or Advanced." }, 400);
+    }
+    if (!env.HOMEWORK_KV) {
+      return jsonResponse({ error: "Homework storage is not configured." }, 503);
+    }
+    if (!(await isKnownStudent(username, env))) {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+
+    const settings = await getStudentAccountSettings(username, env);
+    if (settings.tier !== "pending") {
+      return jsonResponse(
+        { error: "This free trial is for accounts that don’t have a Homework Hub plan yet." },
+        403
+      );
+    }
+
+    const trial = FREE_TRIAL_LEVELS[levelRaw];
+    const assignment = await loadStaticAssignmentJson(env, trial.id);
+    if (!assignment) {
+      return jsonResponse({ error: "That trial worksheet isn’t available yet." }, 404);
+    }
+
+    const staticCatalog = await loadStaticCatalog(env);
+    const staticEntry = (staticCatalog.assignments || []).find(
+      (e) => String(e.id) === trial.id
+    );
+    const title = String(assignment.title || staticEntry?.title || trial.id).trim();
+    const catalogEntry: Record<string, unknown> = {
+      ...(staticEntry || {}),
+      id: trial.id,
+      title,
+      date: String(assignment.date || staticEntry?.date || new Date().toISOString().slice(0, 10)),
+      lessonName: String(assignment.lessonName || staticEntry?.lessonName || title),
+      students: [username],
+      forSale: false,
+      salePrice: 0.99,
+      summary: String(staticEntry?.summary || title),
+      freeTrial: true,
+      trialLevel: levelRaw,
+      wsCategory: String(assignment.wsCategory || staticEntry?.wsCategory || "core-japanese"),
+    };
+
+    const teacherUsername = String(env.HW_TEACHER_USER || "jlm").trim() || "jlm";
+    const result = await publishToStudentHub(
+      {
+        teacherUsername,
+        studentUsername: username,
+        assignment,
+        catalogEntry,
+        forceCurrent: true,
+        silent: true,
+      },
+      env
+    );
+
+    const origin = new URL(request.url).origin;
+    const loginUrl =
+      origin + "/homework.html?user=" + encodeURIComponent(username);
+    const webhook = resolveHomeworkWebhook(env);
+    if (webhook?.url) {
+      const text = [
+        "Free trial request — " + username,
+        "Level: " + trial.label,
+        "Sheet: " + title + " (" + trial.id + ")",
+        "Hub: " + loginUrl,
+      ].join("\n");
+      try {
+        await notifyHomeworkDiscord(webhook.url, text);
+      } catch (err) {
+        console.error("homework-trial-request discord notify:", err);
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      id: result.id,
+      currentHomeworkId: result.currentHomeworkId,
+      studentUrl: origin + result.studentUrl,
+      level: levelRaw,
+      message: "Your free trial assignment is on your Homework Hub.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Homework storage is not configured." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Could not assign the trial worksheet." }, 500);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student account." }, 403);
+    }
+    if (code === "HUB_FULL") {
+      return jsonResponse(
+        { error: "Your hub is full — finish Done reviewing on a sheet first." },
+        409
+      );
+    }
+    console.error("homework-trial-request failed:", err);
+    return jsonResponse({ error: "Could not request a free trial assignment." }, 500);
+  }
+}
+
+async function handleHomeworkSetWsCategory(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as SetWorksheetCategoryPayload;
+    const result = await setWorksheetWsCategory(data, env);
+    return jsonResponse({
+      success: true,
+      id: result.id,
+      wsCategory: result.wsCategory,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED" || code === "INVALID_ID") {
+      return jsonResponse({ error: "Worksheet id is required." }, 400);
+    }
+    console.error("homework-set-ws-category failed:", err);
+    return jsonResponse({ error: "Could not save category." }, 500);
+  }
+}
+
 async function handleHomeworkSaveWorksheet(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -3385,6 +3780,89 @@ async function handleHomeworkStudentProfile(request: Request, env: Env): Promise
     }
     console.error("homework-student-profile failed:", err);
     return jsonResponse({ error: "Could not save student info." }, 500);
+  }
+}
+
+async function handleHomeworkWaitingQueue(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as HomeworkWaitingQueueReorderPayload;
+    const result = await reorderHomeworkWaitingQueue(data, env);
+    return jsonResponse({
+      success: true,
+      message: `Updated queue order for ${result.student}.`,
+      student: result.student,
+      waitingHomeworkIds: result.waitingHomeworkIds,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Publish storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "STUDENT_REQUIRED") {
+      return jsonResponse({ error: "Student id is required." }, 400);
+    }
+    if (code === "UNKNOWN_STUDENT") {
+      return jsonResponse({ error: "Unknown student id." }, 400);
+    }
+    if (code === "QUEUE_MISMATCH") {
+      return jsonResponse(
+        { error: "Queue changed — refresh and try again." },
+        409
+      );
+    }
+    console.error("homework-waiting-queue failed:", err);
+    return jsonResponse({ error: "Could not update queue order." }, 500);
+  }
+}
+
+async function handleHomeworkSubmissionDelete(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST" && request.method !== "DELETE") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+
+  try {
+    const data = (await request.json()) as {
+      teacherUsername?: string;
+      submissionId?: string;
+    };
+    const result = await deleteHomeworkSubmission(data, env);
+    return jsonResponse({
+      success: true,
+      message: result.username
+        ? `Deleted submission for ${result.username}.`
+        : `Deleted submission ${result.id}.`,
+      id: result.id,
+      username: result.username,
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Submission storage is not configured on this server." }, 503);
+    }
+    if (code === "TEACHER_ONLY") {
+      return jsonResponse({ error: "Teacher login required." }, 403);
+    }
+    if (code === "ID_REQUIRED") {
+      return jsonResponse({ error: "Submission id is required." }, 400);
+    }
+    if (code === "NOT_FOUND") {
+      return jsonResponse({ error: "Submission not found." }, 404);
+    }
+    console.error("homework-submissions delete failed:", err);
+    return jsonResponse({ error: "Could not delete submission." }, 500);
   }
 }
 
@@ -4449,6 +4927,108 @@ async function handleDailyNotebook(request: Request, env: Env): Promise<Response
   return jsonResponse({ error: "Method not allowed." }, 405);
 }
 
+async function handleImmersionQuests(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+  const allowedTeacher = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  const teacherUsername = String(url.searchParams.get("teacherUsername") || "")
+    .trim()
+    .toLowerCase();
+  const isTeacher = teacherUsername === allowedTeacher;
+
+  if (request.method === "GET") {
+    let username = String(url.searchParams.get("username") || "")
+      .trim()
+      .toLowerCase();
+    const student = String(url.searchParams.get("student") || "")
+      .trim()
+      .toLowerCase();
+    if (isTeacher && student) username = student;
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const payload = await getImmersionQuests(env, username);
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Quest storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      console.error("immersion-quests GET failed:", err);
+      return jsonResponse({ error: "Could not load quests." }, 500);
+    }
+  }
+
+  if (request.method === "PUT" || request.method === "POST") {
+    let body: {
+      username?: string;
+      examples?: unknown;
+      seenKey?: string;
+      day?: unknown;
+      key?: string;
+      complete?: boolean;
+    };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) {
+      return jsonResponse({ error: "Student login required." }, 403);
+    }
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const complete = request.method === "POST" || body.complete === true;
+      const payload = complete
+        ? await completeImmersionQuest(env, body)
+        : await saveImmersionQuestDraft(env, body);
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Quest storage is not configured on this server." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "ALREADY_DONE_TODAY") {
+        return jsonResponse(
+          { error: "Already completed a quest today.", code },
+          409
+        );
+      }
+      if (code === "QUEST_STALE") {
+        return jsonResponse({ error: "Quest already moved on.", code }, 409);
+      }
+      if (code === "EXAMPLE_REQUIRED") {
+        return jsonResponse({ error: "Write at least one example.", code }, 400);
+      }
+      if (code === "ALL_DONE") {
+        return jsonResponse({ error: "All 365 quests are already done.", code }, 409);
+      }
+      console.error("immersion-quests save failed:", err);
+      return jsonResponse({ error: "Could not save quest." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
 async function handleKanjiNotebook(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -5246,6 +5826,56 @@ function fetchAsset(request: Request, env: Env, pathname?: string): Promise<Resp
   return env.ASSETS.fetch(assetUrl.toString());
 }
 
+/** Directory URLs → …/index.html so SPA not_found does not silently return homepage. */
+function resolveDirectoryIndexPath(pathname: string): string {
+  let p = String(pathname || "/").split("?")[0] || "/";
+  if (p.length > 1 && p.endsWith("/")) return p + "index.html";
+  const leaf = p.split("/").pop() || "";
+  if (leaf && !leaf.includes(".")) return p + "/index.html";
+  return p;
+}
+
+/** Workers Assets SPA mode returns public/index.html (200) for missing paths. */
+async function isHomepageSpaFallback(res: Response): Promise<boolean> {
+  if (!res.ok) return false;
+  const ct = (res.headers.get("Content-Type") || "").toLowerCase();
+  if (!ct.includes("text/html")) return false;
+  try {
+    const buf = await res.clone().arrayBuffer();
+    const n = Math.min(buf.byteLength, 1600);
+    const head = new TextDecoder("utf-8", { fatal: false }).decode(buf.slice(0, n));
+    return head.includes("Japanese Language Mentor — Learn Japanese with JD");
+  } catch {
+    return false;
+  }
+}
+
+function previewNotFoundHtml(requestPath: string, lookedFor: string): Response {
+  const safePath = String(requestPath || "").replace(/</g, "&lt;");
+  const safeLook = String(lookedFor || "").replace(/</g, "&lt;");
+  const body =
+    "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+    "<title>Preview not found</title>" +
+    "<body style=\"font-family:system-ui,sans-serif;max-width:36rem;margin:3rem auto;padding:0 1rem;line-height:1.5\">" +
+    "<h1>Preview not found</h1>" +
+    "<p>No file at <code>" +
+    safePath +
+    "</code>.</p>" +
+    "<p>Tried <code>" +
+    safeLook +
+    "</code>. This is <strong>not</strong> the site homepage (SPA fallback blocked for <code>/preview/*</code>).</p>" +
+    "<p><a href=\"/\">Home</a></p></body></html>";
+  return new Response(body, {
+    status: 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      "CDN-Cache-Control": "no-store",
+    },
+  });
+}
+
 /** Homework hub shell must never stick on an old deploy at the edge. */
 function withFreshHtmlHeaders(res: Response): Response {
   const headers = new Headers(res.headers);
@@ -5335,6 +5965,14 @@ export default {
       return handleAuthLogin(request, env);
     }
 
+    if (url.pathname === "/api/auth/forgot-password") {
+      return handleAuthForgotPassword(request, env);
+    }
+
+    if (url.pathname === "/api/auth/reset-password") {
+      return handleAuthResetPassword(request, env);
+    }
+
     if (url.pathname === "/api/auth/activate-plan") {
       return handleAuthActivatePlan(request, env);
     }
@@ -5383,6 +6021,10 @@ export default {
       return handleSocialReminders(request, env);
     }
 
+    if (url.pathname === "/api/hw-daily-waiting") {
+      return handleHwDailyWaiting(request, env);
+    }
+
     if (url.pathname === "/api/promo-signups") {
       return handlePromoSignups(request, env);
     }
@@ -5413,6 +6055,10 @@ export default {
 
     if (url.pathname === "/api/daily-notebook") {
       return handleDailyNotebook(request, env);
+    }
+
+    if (url.pathname === "/api/immersion-quests") {
+      return handleImmersionQuests(request, env);
     }
 
     if (url.pathname === "/api/kanji-notebook") {
@@ -5453,6 +6099,10 @@ export default {
 
     if (url.pathname === "/api/homework-submissions/discord-preview") {
       return handleHomeworkSubmissionDiscordPreview(request, env);
+    }
+
+    if (url.pathname === "/api/homework-submissions/delete") {
+      return handleHomeworkSubmissionDelete(request, env);
     }
 
     if (url.pathname === "/api/homework-submissions") {
@@ -5499,8 +6149,16 @@ export default {
       return handleHomeworkPublish(request, env);
     }
 
+    if (url.pathname === "/api/homework-trial-request") {
+      return handleHomeworkTrialRequest(request, env);
+    }
+
     if (url.pathname === "/api/homework-student-profile") {
       return handleHomeworkStudentProfile(request, env);
+    }
+
+    if (url.pathname === "/api/homework-waiting-queue") {
+      return handleHomeworkWaitingQueue(request, env);
     }
 
     if (url.pathname === "/api/homework-student-wipe") {
@@ -5509,6 +6167,10 @@ export default {
 
     if (url.pathname === "/api/homework-save-worksheet") {
       return handleHomeworkSaveWorksheet(request, env);
+    }
+
+    if (url.pathname === "/api/homework-set-ws-category") {
+      return handleHomeworkSetWsCategory(request, env);
     }
 
     if (url.pathname === "/api/homework-delete-worksheet") {
@@ -5606,6 +6268,16 @@ export default {
       return withJemPreviewHeaders(await spaFallback(request, env, assetResponse));
     }
 
+    /* /preview/* — never silently SPA-fallback to the marketing homepage. */
+    if (url.pathname === "/preview" || url.pathname.startsWith("/preview/")) {
+      const resolved = resolveDirectoryIndexPath(url.pathname);
+      const assetResponse = await fetchAsset(request, env, resolved);
+      if (await isHomepageSpaFallback(assetResponse)) {
+        return previewNotFoundHtml(url.pathname, resolved);
+      }
+      return withFreshHtmlHeaders(assetResponse);
+    }
+
     if (isHomeworkShellPath(url.pathname)) {
       const shellPath =
         url.pathname === "/homework" || url.pathname === "/homework/"
@@ -5628,6 +6300,10 @@ export default {
   ): Promise<void> {
     if (event.cron === "0 0 * * *") {
       ctx.waitUntil(runBirthdayReminders(env));
+    }
+    if (event.cron === "0 12 * * *") {
+      /* 12:00 UTC = 9:00pm Japan */
+      ctx.waitUntil(runHwDailyWaitingReminders(env));
     }
     if (event.cron === "* * * * *") {
       ctx.waitUntil(runSocialReminders(env));

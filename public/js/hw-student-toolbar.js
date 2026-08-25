@@ -224,14 +224,14 @@
     bar.setAttribute("aria-label", "Worksheet tools");
     bar.hidden = true;
     bar.innerHTML =
-      '<button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Glass" aria-pressed="false">' +
+      '<button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Highlight a word" aria-label="Highlight a word" aria-pressed="false">' +
       '<span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">' +
       '<svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">' +
       '<g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M50 -11.5V-13.5"/><path d="M-9 52A59 59 0 0 1 109 52A59 59 0 0 1 93.85 91.48"/>' +
       '<path d="M11.85 60.11A39 39 0 1 1 50 91"/><path d="M50 91V125"/><path d="M36 103H64"/>' +
       '<path d="M50 125V133Q49 137 46.5 136Q45 134.5 46 131"/></g></svg></span></button>' +
-      '<button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Cloud" aria-pressed="false">' +
+      '<button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Write a note/question" aria-label="Write a note/question" aria-pressed="false">' +
       '<span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--cloud" aria-hidden="true">' +
       '<svg class="hw-toolbar-bar__cloud" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48">' +
       '<g fill="currentColor"><circle cx="22" cy="28" r="13"/><circle cx="40" cy="21" r="16"/>' +
@@ -383,6 +383,7 @@
           submissionId: options.submissionId || "",
           studentReviewed: !!options.studentReviewed,
           initialComments: options.initialComments,
+          initialQuestionMarks: options.initialQuestionMarks,
           onStudentAckNotes: options.onStudentAckNotes || null,
           skipOnboarding: true,
           useModeNeutrals: true,

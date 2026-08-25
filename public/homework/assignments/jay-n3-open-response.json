@@ -1,0 +1,35 @@
+{
+  "id": "jay-n3-open-response",
+  "title": "Jay — N3 (open response)",
+  "date": "2026-08-19",
+  "register": "casual",
+  "studentLabel": "Jay",
+  "lessonName": "N3",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "jlpt",
+  "students": [],
+  "sections": [
+    {
+      "id": "jay-n3-sec",
+      "mode": "context-blank",
+      "title": "",
+      "instructions": "Read the N3 passage, then write your response in the box below.",
+      "items": [
+        {
+          "id": "jay-n3-open",
+          "topic": "",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "jay-n3-open",
+              "wide": true,
+              "multiline": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -414,7 +414,7 @@
       '<input type="email" name="email" required autocomplete="email" placeholder="you@example.com">' +
       "</label>" +
       '<label class="hw-checkout-join-dialog__field">Password' +
-      '<input type="password" name="password" required minlength="6" autocomplete="new-password" placeholder="••••••••">' +
+      '<input type="password" name="password" required minlength="4" autocomplete="new-password" placeholder="••••">' +
       "</label>" +
       '<div class="hw-hub-feedback-dialog__actions">' +
       '<button type="button" class="btn btn--ghost" data-join-cancel>Cancel</button>' +
@@ -429,7 +429,7 @@
       '<input type="text" name="loginId" required autocomplete="username" placeholder="you@example.com">' +
       "</label>" +
       '<label class="hw-checkout-join-dialog__field">Password' +
-      '<input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">' +
+      '<input type="password" name="password" required autocomplete="current-password" placeholder="••••">' +
       "</label>" +
       '<div class="hw-hub-feedback-dialog__actions">' +
       '<button type="button" class="btn btn--ghost" data-join-cancel>Cancel</button>' +

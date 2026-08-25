@@ -285,13 +285,20 @@
       if (text) {
         const p = document.createElement("p");
         p.className = "hw-submission-comments__text";
-        p.textContent = text;
+        const toHtml = global.HwHomeworkComments?.markedTextToHtml;
+        if (typeof toHtml === "function") p.innerHTML = toHtml(text);
+        else p.textContent = text;
         item.appendChild(p);
       }
       if (teacherRemark) {
         const remark = document.createElement("p");
         remark.className = "hw-submission-comments__remark";
-        remark.textContent = "JD: " + teacherRemark;
+        const toHtml = global.HwHomeworkComments?.markedTextToHtml;
+        if (typeof toHtml === "function") {
+          remark.innerHTML = "<strong>JD:</strong> " + toHtml(teacherRemark);
+        } else {
+          remark.textContent = "JD: " + teacherRemark;
+        }
         item.appendChild(remark);
       }
       if (teacherRemarkMedia?.id) {

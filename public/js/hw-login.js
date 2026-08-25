@@ -4,8 +4,13 @@
 (function () {
   const loginForm = document.getElementById("hw-login-form");
   const signupForm = document.getElementById("hw-signup-form");
+  const forgotForm = document.getElementById("hw-forgot-form");
+  const resetForm = document.getElementById("hw-reset-form");
   const loginError = document.getElementById("hw-login-error");
   const signupError = document.getElementById("hw-signup-error");
+  const forgotError = document.getElementById("hw-forgot-error");
+  const forgotOk = document.getElementById("hw-forgot-ok");
+  const resetError = document.getElementById("hw-reset-error");
   const loginFields = document.getElementById("hw-login-fields");
   const loggedInBar = document.getElementById("hw-logged-in-bar");
   const loggedInName = document.getElementById("hw-logged-in-name");
@@ -53,10 +58,24 @@
   function activateAuthTab(name) {
     const loginPanel = document.getElementById("hw-auth-panel-login");
     const signupPanel = document.getElementById("hw-auth-panel-signup");
+    const forgotPanel = document.getElementById("hw-auth-panel-forgot");
+    const resetPanel = document.getElementById("hw-auth-panel-reset");
     if (loginPanel) loginPanel.hidden = name !== "login";
     if (signupPanel) signupPanel.hidden = name !== "signup";
+    if (forgotPanel) forgotPanel.hidden = name !== "forgot";
+    if (resetPanel) resetPanel.hidden = name !== "reset";
     if (loginError) loginError.hidden = true;
     if (signupError) signupError.hidden = true;
+    if (forgotError) forgotError.hidden = true;
+    if (forgotOk) forgotOk.hidden = true;
+    if (resetError) resetError.hidden = true;
+    if (name === "forgot") {
+      const fromLogin = document.getElementById("hw-username")?.value ?? "";
+      const forgotEmail = document.getElementById("hw-forgot-email");
+      if (forgotEmail && !forgotEmail.value && fromLogin.includes("@")) {
+        forgotEmail.value = fromLogin;
+      }
+    }
   }
 
   authTabs.forEach((tab) => {
@@ -66,10 +85,13 @@
   });
 
   const params = new URLSearchParams(window.location.search);
+  const resetToken = String(params.get("reset") || "").trim();
   if (params.get("signup") === "1") activateAuthTab("signup");
+  if (params.get("forgot") === "1") activateAuthTab("forgot");
+  if (resetToken) activateAuthTab("reset");
 
   /* Guest Join → PayPal tab + this page: nudge them to finish account / I’ve paid. */
-  if (params.get("paidPrompt") === "1") {
+  if (params.get("paidPrompt") === "1" && !resetToken) {
     const tip = document.createElement("p");
     tip.className = "hw-login-inlay__optional";
     tip.setAttribute("role", "status");
@@ -96,7 +118,7 @@
   }
 
   const existing = HwAuth.getSession();
-  if (existing) {
+  if (existing && !resetToken) {
     showLoggedIn(existing);
   }
 
@@ -125,12 +147,23 @@
         document.getElementById("hw-signup-display-name")?.value ?? "";
       const email = document.getElementById("hw-signup-email")?.value ?? "";
       const password = document.getElementById("hw-signup-password")?.value ?? "";
+      const confirmPassword =
+        document.getElementById("hw-signup-password-confirm")?.value ?? "";
       const remember = true;
+
+      if (password !== confirmPassword) {
+        if (signupError) {
+          signupError.hidden = false;
+          signupError.textContent = "Those passwords don’t match.";
+        }
+        return;
+      }
 
       const result = await HwAuth.signupAsync(
         {
           email,
           password,
+          confirmPassword,
           displayName,
         },
         remember
@@ -146,6 +179,66 @@
     });
   }
 
+  if (forgotForm) {
+    forgotForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("hw-forgot-email")?.value ?? "";
+      if (forgotError) forgotError.hidden = true;
+      if (forgotOk) forgotOk.hidden = true;
+      const result = await HwAuth.requestPasswordResetAsync(email);
+      if (result.ok) {
+        if (forgotOk) {
+          forgotOk.hidden = false;
+          forgotOk.textContent = result.message;
+        }
+        return;
+      }
+      if (forgotError) {
+        forgotError.hidden = false;
+        forgotError.textContent = result.error;
+      }
+    });
+  }
+
+  if (resetForm) {
+    resetForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const password = document.getElementById("hw-reset-password")?.value ?? "";
+      const confirmPassword =
+        document.getElementById("hw-reset-password-confirm")?.value ?? "";
+      if (password !== confirmPassword) {
+        if (resetError) {
+          resetError.hidden = false;
+          resetError.textContent = "Those passwords don’t match.";
+        }
+        return;
+      }
+      const result = await HwAuth.resetPasswordAsync(
+        {
+          token: resetToken,
+          password,
+          confirmPassword,
+        },
+        true
+      );
+      if (result.ok) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("reset");
+          window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+        } catch {
+          /* ignore */
+        }
+        redirectAfterAuth();
+        return;
+      }
+      if (resetError) {
+        resetError.hidden = false;
+        resetError.textContent = result.error;
+      }
+    });
+  }
+
   document.getElementById("hw-go-platform")?.addEventListener("click", () => {
     window.location.href = HwAuth.PLATFORM_PATH;
   });
@@ -154,5 +247,36 @@
     HwAuth.logout();
     window.location.reload();
   });
+
+  /* What's Homework Hub? → plan popup (later: dedicated landing with video). */
+  (function hwWhatsHubPopup() {
+    const modal = document.getElementById("hw-breakdown-modal");
+    if (!modal) return;
+
+    function closeModal() {
+      if (modal.hidden) return;
+      modal.hidden = true;
+      document.body.classList.remove("is-modal-open");
+    }
+
+    function openModal() {
+      modal.hidden = false;
+      document.body.classList.add("is-modal-open");
+      modal.querySelector("[data-hw-breakdown-close]")?.focus();
+    }
+
+    document.querySelectorAll("[data-hw-breakdown-open]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        openModal();
+      });
+    });
+    document.querySelectorAll("[data-hw-breakdown-close]").forEach((btn) => {
+      btn.addEventListener("click", closeModal);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+  })();
 
 })();

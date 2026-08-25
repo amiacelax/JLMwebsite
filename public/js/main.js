@@ -520,6 +520,21 @@
     link.addEventListener("click", closeMenu);
   });
 
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (navMenu?.classList.contains("is-open") && !t.closest(".nav__menu, .nav__toggle")) {
+        closeMenu();
+      }
+      document.querySelectorAll(".service-card__learn-more[open]").forEach((panel) => {
+        if (!panel.contains(t)) panel.removeAttribute("open");
+      });
+    },
+    true
+  );
+
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     closeMenu();
@@ -534,9 +549,19 @@
     return (header?.offsetHeight ?? 60) + 12;
   }
 
+  function isNarrowPhone() {
+    return window.matchMedia("(max-width: 767px)").matches;
+  }
+
   function scrollToSection(target) {
-    const y =
+    let y =
       target.getBoundingClientRect().top + window.scrollY - headerScrollOffset();
+    /* Phones: sit the Contact label just under the header, using the section's own spacing. */
+    if (target.id === "contact" && isNarrowPhone()) {
+      const label = target.querySelector(".section__eyebrow") || target;
+      const headerH = document.querySelector(".site-header")?.offsetHeight ?? 60;
+      y = label.getBoundingClientRect().top + window.scrollY - headerH - 18;
+    }
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
   }
 
@@ -577,7 +602,7 @@
       if (fromMessage && messageField && !messageField.value.trim()) {
         messageField.value = fromMessage;
       }
-      if (fromQuery === "Free consultation") focusContactNameSoon();
+      if (fromQuery === "Free consultation" && !isNarrowPhone()) focusContactNameSoon();
     } catch (_) {
       /* ignore */
     }
@@ -703,7 +728,7 @@
       preselectService(service);
       scrollToSection(target);
       history.replaceState(null, "", id);
-      if (id === "#contact" && service === "Free consultation") {
+      if (id === "#contact" && !isNarrowPhone()) {
         focusContactNameSoon();
       }
     });
@@ -816,6 +841,9 @@
           preselectService(service);
           scrollToSection(target);
           history.replaceState(null, "", href);
+          if (href === "#contact" && !isNarrowPhone()) {
+            focusContactNameSoon();
+          }
           return;
         }
         if (service && href.indexOf("/#contact") !== -1) {

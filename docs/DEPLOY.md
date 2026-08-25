@@ -145,38 +145,32 @@ Without `DISCORD_BOT_TOKEN` / `DISCORD_TEACHER_USER_ID`, publish and review stil
 
 ---
 
-## Contact / promo → Gmail (Resend)
+## Contact / promo → Gmail (Cloudflare Email Routing)
 
 Website contact + promo signup still post to Discord. The Worker also emails a copy to Gmail so you can **Reply** to the visitor.
 
-**Why Resend (not Gmail SMTP / Cloudflare Email Routing):** Workers need an HTTPS transactional API. Resend free tier (3,000/mo) is enough for inquiries. Gmail is the *inbox*, not the sender.
+**No Resend account needed.** Sending uses Cloudflare Email Routing on `japaneselanguagementor.com` (already on this Cloudflare account).
 
-1. Sign up at [resend.com](https://resend.com) (free).
-2. **Domains** → add `japaneselanguagementor.com` → add the DNS records Resend shows (SPF / DKIM; often MX for receiving if you enable inbound — sending only needs what they list).
-3. Wait until the domain shows **Verified**.
-4. **API Keys** → create a key (Sending access is enough).
-5. Production secret (paste when prompted — never commit):
+### One-time: turn on Email Routing
 
-```powershell
-cd "C:\JLM Website"
-npx.cmd wrangler secret put RESEND_API_KEY
-```
+1. Open [Cloudflare Dashboard](https://dash.cloudflare.com) → **japaneselanguagementor.com**
+2. **Email** → **Email Routing** → **Get started** / enable it  
+   Accept the DNS records Cloudflare adds (MX + TXT). Grey-cloud / DNS only is fine.
+3. **Destination addresses** → add `languagementor.jp@gmail.com` → click the confirm link Google emails you.
+4. **Custom addresses** (optional but useful):
+   - `inquiries` → send to `languagementor.jp@gmail.com`
+   - `JD` → same inbox (so people can mail `JD@japaneselanguagementor.com`)
+5. Optional extra stamp (spam filters like this). **DNS** → **Add record**:
+   - Type **TXT**, Name `_dmarc`, Content  
+     `v=DMARC1; p=none; rua=mailto:languagementor.jp@gmail.com`
+6. Redeploy if this Worker version isn’t live yet (`npm run deploy`).
+7. Test the homepage contact form — Discord **and** Gmail. **Reply** goes to the visitor.
 
-6. Optional: confirm From/To in `wrangler.toml` `[vars]`:
-   - `INQUIRY_EMAIL_TO` = `languagementor.jp@gmail.com`
-   - `INQUIRY_EMAIL_FROM` = `Japanese Language Mentor <inquiries@japaneselanguagementor.com>`
-7. Redeploy if you haven’t since this feature shipped (`npm run deploy`).
-8. Test the homepage contact form — you should get Discord **and** a Gmail message. Hit **Reply** → goes to the visitor (`Reply-To`).
+Worker binding: `SEND_EMAIL` → `languagementor.jp@gmail.com`. From: `inquiries@japaneselanguagementor.com`.
 
-Until `RESEND_API_KEY` is set, contact/promo keep working via Discord only (Worker logs that email was skipped).
+If Email Routing isn’t enabled yet, contact still works via Discord; Worker logs the email send error.
 
-**Quick test without custom domain:** Resend allows `from: onboarding@resend.dev` only to your Resend account email. Set temporarily:
-
-```powershell
-# after verifying you can receive at that address — then switch back to inquiries@…
-```
-
-Prefer verifying `japaneselanguagementor.com` before relying on production From.
+**Optional Resend fallback:** `npx wrangler secret put RESEND_API_KEY` after verifying the domain in Resend. Not required when Routing is on.
 
 ---
 

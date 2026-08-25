@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Zen+Kurenaido&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260814-pageblur">
+  <link rel="stylesheet" href="/css/styles.css?v=20260818-bugdlg">
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -44,7 +44,7 @@
       <div class="nav__menu" id="nav-menu">
         <div class="nav__links-wrap">
           <ul class="nav__links">
-            <li><a href="/#about">About</a></li>
+            <li><a href="#hw-login" data-hw-breakdown-open>About</a></li>
             <li><a href="/#services">Services</a></li>
             <li><a href="/#contact">Contact</a></li>
           </ul>
@@ -82,13 +82,14 @@
                   </div>
                   <div class="hw-login-inlay__field">
                     <label for="hw-password">Password</label>
-                    <input type="password" id="hw-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                    <input type="password" id="hw-password" name="password" required autocomplete="current-password" placeholder="••••">
                   </div>
                   <div class="hw-login-inlay__extras">
                     <label class="hw-login-inlay__remember">
                       <input type="checkbox" id="hw-remember" name="remember">
                       <span>Remember me</span>
                     </label>
+                    <button type="button" class="hw-login-inlay__switch-link" data-auth-tab="forgot">Forgot password?</button>
                   </div>
                   <button type="submit" class="hw-login-inlay__submit">Log in</button>
                   <p class="hw-login-inlay__switch">
@@ -111,7 +112,11 @@
                   </div>
                   <div class="hw-login-inlay__field">
                     <label for="hw-signup-password">Password</label>
-                    <input type="password" id="hw-signup-password" name="password" required minlength="6" autocomplete="new-password" placeholder="••••••••">
+                    <input type="password" id="hw-signup-password" name="password" required minlength="4" autocomplete="new-password" placeholder="••••">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-signup-password-confirm">Confirm password</label>
+                    <input type="password" id="hw-signup-password-confirm" name="confirmPassword" required minlength="4" autocomplete="new-password" placeholder="••••">
                   </div>
                   <button type="submit" class="hw-login-inlay__submit">Create account</button>
                   <p class="hw-login-inlay__switch">
@@ -119,6 +124,40 @@
                   </p>
                   <p id="hw-signup-error" class="hw-login-inlay__error" hidden role="alert"></p>
                   <p class="hw-login-inlay__note">After creating an account, you can <a href="/homework-plans.html">pick a plan</a>.</p>
+                </form>
+              </div>
+
+              <div id="hw-auth-panel-forgot" hidden>
+                <form id="hw-forgot-form" class="hw-login-inlay__form">
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-forgot-email">Email</label>
+                    <input type="email" id="hw-forgot-email" name="email" required autocomplete="email" placeholder="you@example.com">
+                    <p class="hw-login-inlay__optional" style="margin:0.35rem 0 0">A password reset link will be sent to your email.</p>
+                  </div>
+                  <button type="submit" class="hw-login-inlay__submit">Send reset link</button>
+                  <p class="hw-login-inlay__switch">
+                    <button type="button" class="hw-login-inlay__switch-link" data-auth-tab="login">Back to log in</button>
+                  </p>
+                  <p id="hw-forgot-error" class="hw-login-inlay__error" hidden role="alert"></p>
+                  <p id="hw-forgot-ok" class="hw-login-inlay__ok" hidden role="status"></p>
+                </form>
+              </div>
+
+              <div id="hw-auth-panel-reset" hidden>
+                <form id="hw-reset-form" class="hw-login-inlay__form">
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-reset-password">New password</label>
+                    <input type="password" id="hw-reset-password" name="password" required minlength="4" autocomplete="new-password" placeholder="••••">
+                  </div>
+                  <div class="hw-login-inlay__field">
+                    <label for="hw-reset-password-confirm">Confirm password</label>
+                    <input type="password" id="hw-reset-password-confirm" name="confirmPassword" required minlength="4" autocomplete="new-password" placeholder="••••">
+                  </div>
+                  <button type="submit" class="hw-login-inlay__submit">Save new password</button>
+                  <p class="hw-login-inlay__switch">
+                    <button type="button" class="hw-login-inlay__switch-link" data-auth-tab="forgot">Need a new link?</button>
+                  </p>
+                  <p id="hw-reset-error" class="hw-login-inlay__error" hidden role="alert"></p>
                 </form>
               </div>
             </div>
@@ -131,76 +170,13 @@
             </div>
           </div>
           </div>
-        </div>
-
-        <div id="hw-gate" class="hw-gate">
-          <section class="hw-pitch" aria-labelledby="hw-pitch-title">
-            <h2 class="hw-pitch__title" id="hw-pitch-title">Practice between lessons — or without them</h2>
-            <p class="hw-pitch__desc">Custom homework from JD, done in the browser. Built so anyone can take part — whatever their budget or schedule. Written care on every plan; a personal video walk-through on Ultra.</p>
-          </section>
-
-          <section class="hw-plans" aria-labelledby="hw-plans-heading">
-            <h2 class="hw-plans-heading" id="hw-plans-heading">Stay in Japanese without the app guilt</h2>
-            <p class="hw-plans-sub">No streak nags. No “you’re behind.” Homework at your pace.</p>
-            <div class="hw-breakdown-tier-stack">
-            <div class="services__grid hw-breakdown-services">
-              <article class="service-card">
-                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5</span><span class="service-card__price-suffix">/mo</span></p>
-                <h3 class="service-card__title">Basic <span class="service-card__cadence">1 assignment</span></h3>
-                <div class="service-card__fit">
-                  <ul class="service-card__fit-list">
-                    <li>Low commitment</li>
-                    <li>$5 / one HW a month</li>
-                    <li>Written notes and audio feedback from JD</li>
-                  </ul>
-                </div>
-                <div class="service-card__bottom">
-                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="basic">Join Basic</button>
-                </div>
-              </article>
-              <article class="service-card service-card--featured">
-                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$20</span><span class="service-card__price-suffix">/mo</span></p>
-                <h3 class="service-card__title">Premium <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Popular</span></h3>
-                <div class="service-card__fit">
-                  <ul class="service-card__fit-list">
-                    <li>Stay motivated longer</li>
-                    <li>Relax with Japanese</li>
-                    <li>Feedback every week</li>
-                  </ul>
-                </div>
-                <div class="service-card__bottom">
-                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="premium">Join Premium</button>
-                </div>
-              </article>
-              <article class="service-card">
-                <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$49</span><span class="service-card__price-suffix">/mo</span></p>
-                <h3 class="service-card__title">Ultra <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Video</span></h3>
-                <div class="service-card__fit">
-                  <ul class="service-card__fit-list">
-                    <li>Feels like lessons without the commitment</li>
-                    <li>Video feedback that sticks</li>
-                    <li>Help from a human, not AI</li>
-                  </ul>
-                </div>
-                <div class="service-card__bottom">
-                  <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="ultra">Join Ultra</button>
-                </div>
-              </article>
-            </div>
-            <aside class="hw-tier-student-bar" aria-label="Student Special">
-              <div class="hw-tier-student-bar__main">
-                <p class="hw-tier-student-bar__eyebrow">Student Special</p>
-                <p class="hw-tier-student-bar__price"><span class="hw-tier-student-bar__price-main">$10</span><span class="hw-tier-student-bar__price-suffix">/mo</span></p>
-                <p class="hw-tier-student-bar__text">Currently a student? Enjoy the premium subscription at $10/mo.</p>
-              </div>
-              <button class="btn btn--primary hw-tier-student-bar__cta" type="button" data-hw-checkout="student-special">Join Student Special</button>
-            </aside>
-            </div>
-          </section>
+          <p class="hw-login-whats">
+            <button type="button" class="hw-login-whats__btn" data-hw-breakdown-open>What's Homework Hub?</button>
+          </p>
         </div>
 
         <p class="subpage-back">
-          <a class="btn btn--ghost" href="/">← Back to home</a>
+          <a class="btn btn--ghost" href="/">Home</a>
         </p>
       </div>
     </section>
@@ -217,12 +193,76 @@
     </div>
   </footer>
 
-  <script src="/js/hw-dialog-outside-close.js?v=1" defer></script>
-  <script src="/js/hw-auth.js?v=20260814-stultra" defer></script>
+  <div class="hw-breakdown-modal" id="hw-breakdown-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-breakdown-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-breakdown-modal__dialog--tiers" role="dialog" aria-modal="true" aria-labelledby="hw-breakdown-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-breakdown-close aria-label="Close Homework Hub breakdown">×</button>
+      <p class="section__eyebrow">Homework Hub</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-breakdown-title">Don't feel guilty if you miss a day of studying</h2>
+      <p class="hw-breakdown-modal__desc">Learning Japanese should be fun, not stressful. Turn in your homework whenever you want.</p>
+      <div class="hw-breakdown-tier-stack">
+      <div class="services__grid hw-breakdown-services">
+        <article class="service-card">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Basic <span class="service-card__cadence">1 assignment</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Low commitment</li>
+              <li>$5 / one HW a month</li>
+              <li>Written notes and audio feedback from JD</li>
+            </ul>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="basic">Join Basic</button>
+          </div>
+        </article>
+        <article class="service-card service-card--featured">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$20</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Premium <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Popular</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Stay motivated longer</li>
+              <li>Relax with Japanese</li>
+              <li>Feedback every week</li>
+            </ul>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="premium">Join Premium</button>
+          </div>
+        </article>
+        <article class="service-card">
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$49</span><span class="service-card__price-suffix">/mo</span></p>
+          <h3 class="service-card__title">Ultra <span class="service-card__cadence">4 assignments</span> <span class="service-card__badge service-card__badge--start">Video</span></h3>
+          <div class="service-card__fit">
+            <ul class="service-card__fit-list">
+              <li>Feels like lessons without the commitment</li>
+              <li>Video feedback that sticks</li>
+              <li>Help from a human, not AI</li>
+            </ul>
+          </div>
+          <div class="service-card__bottom">
+            <button class="btn btn--primary btn--full service-card__cta" type="button" data-hw-checkout="ultra">Join Ultra</button>
+          </div>
+        </article>
+      </div>
+      <aside class="hw-tier-student-bar" aria-label="Student Special">
+        <div class="hw-tier-student-bar__main">
+          <p class="hw-tier-student-bar__eyebrow">Student Special</p>
+          <p class="hw-tier-student-bar__price"><span class="hw-tier-student-bar__price-main">$10</span><span class="hw-tier-student-bar__price-suffix">/mo</span></p>
+          <p class="hw-tier-student-bar__text">Currently a student? Enjoy the premium subscription at $10/mo.</p>
+        </div>
+        <button class="btn btn--primary hw-tier-student-bar__cta" type="button" data-hw-checkout="student-special">Join Student Special</button>
+      </aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/hw-dialog-outside-close.js?v=3" defer></script>
+  <script src="/js/hw-auth.js?v=20260821-viewas" defer></script>
   <script src="/js/hw-checkout.js?v=20260815-paypal-cancel" defer></script>
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/subpage.js" defer></script>
   <script src="/js/hw-login-words.js" defer></script>
-  <script src="/js/hw-login.js?v=20260814-paypal1" defer></script>
+  <script src="/js/hw-login.js?v=20260818-about-tiers" defer></script>
 </body>
 </html>

@@ -92,20 +92,8 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.65rem 1rem;
-}
-
-.hw-hub-v6__banner h2 {
-  margin: 0;
-  font-size: 1.35rem;
-  color: var(--hw-v6-ink);
-}
-
-.hw-hub-v6__banner p {
-  margin: 0.2rem 0 0;
-  font-size: 0.88rem;
-  color: var(--hw-v6-muted);
 }
 
 /* ── Hub v6 tab bar (only inside this shell — not main teacher tabs) ── */
@@ -179,6 +167,59 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   border-color: color-mix(in srgb, var(--color-green, var(--hw-v6-green)) 70%, #fff);
 }
 
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__slider {
+  opacity: 0 !important;
+}
+
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn {
+  cursor: grab;
+  border-style: dashed;
+  border-color: color-mix(in srgb, #fff 18%, transparent);
+}
+
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn.is-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn.is-drop-target {
+  border-color: var(--color-green, var(--hw-v6-green));
+  color: var(--hw-v6-ink);
+}
+
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn.is-active,
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn[aria-selected="true"] {
+  color: var(--hw-v6-muted);
+}
+
+.hw-hub-v6-tabs.is-tab-edit .hw-hub-v6-tabs__btn.is-label-editing {
+  cursor: text;
+  padding: 0;
+  border-style: solid;
+  border-color: var(--color-green, var(--hw-v6-green));
+}
+
+.hw-hub-v6-tabs__label-input {
+  display: block;
+  width: 100%;
+  min-width: 5.5rem;
+  max-width: 14rem;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  line-height: 1.2;
+  color: var(--hw-v6-ink);
+  background: var(--color-bg, #fff);
+  border: none;
+  border-radius: inherit;
+  box-sizing: border-box;
+}
+
+#hw-hub-v6-edit.is-active {
+  border-color: var(--color-green, var(--hw-v6-green));
+  color: var(--hw-v6-ink);
+}
+
 .hw-hub-v6-pane[hidden] {
   display: none !important;
 }
@@ -230,12 +271,41 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   gap: 0.3rem;
 }
 
+.hw-hub-v6-review-list__row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
 .hw-hub-v6-review-list__item {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0.4rem 0.55rem;
   border: 1px solid var(--hw-v6-line);
   border-radius: 0.5rem;
+  font: inherit;
   font-size: 0.85rem;
+  text-align: left;
   color: var(--hw-v6-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.hw-hub-v6-review-list__item:hover {
+  color: var(--hw-v6-ink);
+  border-color: color-mix(in srgb, var(--hw-v6-accent, #67c4eb) 45%, var(--hw-v6-line));
+}
+
+.hw-hub-v6-review-list__item.is-selected {
+  color: var(--hw-v6-ink);
+  border-color: color-mix(in srgb, var(--hw-v6-accent, #67c4eb) 70%, transparent);
+  background: color-mix(in srgb, var(--hw-v6-accent, #67c4eb) 12%, transparent);
+}
+
+.hw-hub-v6-review-list__delete {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .hw-hub-v6-library-fold,

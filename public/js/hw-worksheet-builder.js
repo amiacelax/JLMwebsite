@@ -174,6 +174,86 @@
     return prefix + "-" + Math.random().toString(36).slice(2, 9);
   }
 
+  const ADDON_RECORD = "student-record";
+  const ADDON_POSITIONS = [
+    { id: "after-media", label: "After clip / image" },
+    { id: "before-blank", label: "Before answer box" },
+    { id: "after-blank", label: "After answer box" },
+  ];
+  const BLOCK_TYPES_WITH_ADDONS = new Set([
+    "listen-line",
+    "grammar-line",
+    "open-line",
+    "translation-line",
+    "mc-line",
+  ]);
+
+  function blockSupportsAddons(type) {
+    return BLOCK_TYPES_WITH_ADDONS.has(type);
+  }
+
+  function normalizeBlockAddons(block) {
+    if (!block) return [];
+    if (!Array.isArray(block.addons)) block.addons = [];
+    block.addons = block.addons
+      .filter((addon) => addon && addon.type === ADDON_RECORD)
+      .map((addon) => ({
+        id: String(addon.id || uid("addon")),
+        type: ADDON_RECORD,
+        prompt: String(addon.prompt || "Record your answer").trim() || "Record your answer",
+        position: ADDON_POSITIONS.some((pos) => pos.id === addon.position)
+          ? addon.position
+          : "after-blank",
+      }));
+    return block.addons;
+  }
+
+  function addonsFromItem(item) {
+    const normalized = normalizeBlockAddons({ addons: item?.addons || [] });
+    return normalized.length ? normalized : undefined;
+  }
+
+  function blockFromItemAddons(block, item) {
+    const addons = addonsFromItem(item);
+    if (addons) block.addons = addons;
+    return block;
+  }
+
+  function blockHasRecordAddon(block) {
+    normalizeBlockAddons(block);
+    return block.addons.some((addon) => addon.type === ADDON_RECORD);
+  }
+
+  function addRecordAddon(block) {
+    normalizeBlockAddons(block);
+    if (blockHasRecordAddon(block)) return;
+    block.addons.push({
+      id: uid("addon"),
+      type: ADDON_RECORD,
+      prompt: "Record your answer",
+      position: "after-blank",
+    });
+  }
+
+  function removeRecordAddon(block) {
+    normalizeBlockAddons(block);
+    block.addons = block.addons.filter((addon) => addon.type !== ADDON_RECORD);
+  }
+
+  function applyAddonsToItem(block, item) {
+    normalizeBlockAddons(block);
+    if (block.addons.length) item.addons = JSON.parse(JSON.stringify(block.addons));
+    return item;
+  }
+
+  function moveAddon(block, index, delta) {
+    normalizeBlockAddons(block);
+    const next = index + delta;
+    if (next < 0 || next >= block.addons.length) return;
+    const [row] = block.addons.splice(index, 1);
+    block.addons.splice(next, 0, row);
+  }
+
   function normalizeGrammarBlock(block, fallbackRegister) {
     block.register = block.register || fallbackRegister || "casual";
     block.negative = Boolean(block.negative);
@@ -535,17 +615,20 @@
             recordLabel: item.recordLabel || "Record your answer",
           });
         } else if (sec.mode === "grammar-blank") {
+          const grammarBlock = {
+            id: item.id || uid("blk"),
+            type: "grammar-line",
+            register: item.register || assignmentRegister || "casual",
+            past: Boolean(item.past),
+            negative: Boolean(item.negative),
+            parts: JSON.parse(JSON.stringify(item.parts || [])),
+            audioUrl: String(item.audioUrl || "").trim(),
+            imageUrl: String(item.imageUrl || "").trim(),
+          };
           blocks.push(
-            normalizeGrammarBlock(
-              {
-                id: item.id || uid("blk"),
-                type: "grammar-line",
-                register: item.register || assignmentRegister || "casual",
-                past: Boolean(item.past),
-                negative: Boolean(item.negative),
-                parts: JSON.parse(JSON.stringify(item.parts || [])),
-              },
-              assignmentRegister
+            blockFromItemAddons(
+              normalizeGrammarBlock(grammarBlock, assignmentRegister),
+              item
             )
           );
         } else if (sec.mode === "context-blank") {
@@ -564,17 +647,20 @@
             /* Pen Pal asks live in the block instructions, not in a prompt under the letter. */
             openBlock.topic = "";
           }
-          blocks.push(openBlock);
+          blocks.push(blockFromItemAddons(openBlock, item));
         } else if (sec.mode === "audio-listening") {
           blocks.push(
-            ensureListenBlock({
-              id: item.id || uid("blk"),
-              type: "listen-line",
-              audioUrl: String(item.audioUrl || "").trim() || sectionAudio,
-              imageUrl: String(item.imageUrl || "").trim(),
-              englishAnswer: String(item.englishAnswer || "").trim(),
-              parts: JSON.parse(JSON.stringify(item.parts || [])),
-            })
+            blockFromItemAddons(
+              ensureListenBlock({
+                id: item.id || uid("blk"),
+                type: "listen-line",
+                audioUrl: String(item.audioUrl || "").trim() || sectionAudio,
+                imageUrl: String(item.imageUrl || "").trim(),
+                englishAnswer: String(item.englishAnswer || "").trim(),
+                parts: JSON.parse(JSON.stringify(item.parts || [])),
+              }),
+              item
+            )
           );
         } else if (sec.mode === "audio-prompt") {
           blocks.push({
@@ -594,13 +680,18 @@
           });
         } else if (sec.mode === "translation") {
           const blank = (item.parts || []).find((p) => p.type === "blank");
-          blocks.push({
-            id: item.id || uid("blk"),
-            type: "translation-line",
-            japanese: item.japanese || "",
-            englishAnswer: blank?.answer || "",
-            parts: JSON.parse(JSON.stringify(item.parts || [])),
-          });
+          blocks.push(
+            blockFromItemAddons(
+              {
+                id: item.id || uid("blk"),
+                type: "translation-line",
+                japanese: item.japanese || "",
+                englishAnswer: blank?.answer || "",
+                parts: JSON.parse(JSON.stringify(item.parts || [])),
+              },
+              item
+            )
+          );
         } else if (sec.mode === "star-order") {
           blocks.push({
             id: item.id || uid("blk"),
@@ -608,13 +699,18 @@
             tokens: normalizeStarTokens(item),
           });
         } else if (sec.mode === "multiple-choice") {
-          blocks.push(normalizeMcBlock({
-            id: item.id || uid("blk"),
-            type: "mc-line",
-            prompt: String(item.prompt || ""),
-            choices: Array.isArray(item.choices) ? item.choices.slice(0, 4) : ["", "", "", ""],
-            answer: String(item.answer || ""),
-          }));
+          blocks.push(
+            blockFromItemAddons(
+              normalizeMcBlock({
+                id: item.id || uid("blk"),
+                type: "mc-line",
+                prompt: String(item.prompt || ""),
+                choices: Array.isArray(item.choices) ? item.choices.slice(0, 4) : ["", "", "", ""],
+                answer: String(item.answer || ""),
+              }),
+              item
+            )
+          );
         }
       });
     });
@@ -798,6 +894,10 @@
     const out = { id: block.id || "item-" + (index + 1), parts: [] };
     if (block.negative) out.negative = true;
     if (block.register === "polite") out.register = "polite";
+    const audioUrl = String(block.audioUrl || "").trim();
+    if (audioUrl) out.audioUrl = audioUrl;
+    const imageUrl = String(block.imageUrl || "").trim();
+    if (imageUrl) out.imageUrl = imageUrl;
     (block.parts || []).forEach((part) => {
       if (part.type === "text") {
         if (part.ruby?.length) {
@@ -816,7 +916,7 @@
         out.parts.push(blank);
       }
     });
-    return out;
+    return applyAddonsToItem(block, out);
   }
 
   function blockToTranslationItem(block, index) {
@@ -833,7 +933,7 @@
     };
     if (answer) blank.answer = answer;
     out.parts.push(blank);
-    return out;
+    return applyAddonsToItem(block, out);
   }
 
   function normalizeStarTokens(source, options) {
@@ -903,12 +1003,12 @@
       /* Keep teacher answer even if it drifted from the four chips. */
     }
     if (!answer && choices.length) answer = choices[0];
-    return {
+    return applyAddonsToItem(block, {
       id: block.id || "mc-" + (index + 1),
       prompt,
       choices,
       answer,
-    };
+    });
   }
 
   function blockToOpenItem(block, index) {
@@ -935,7 +1035,7 @@
         out.parts.push(blank);
       }
     });
-    return out;
+    return applyAddonsToItem(block, out);
   }
 
   function blockToListenItem(block, index) {
@@ -954,7 +1054,7 @@
         out.parts.push(blank);
       }
     });
-    return out;
+    return applyAddonsToItem(block, out);
   }
 
   /**
@@ -975,6 +1075,8 @@
     let canvasAssignmentId = null;
     let clipboardBlock = null;
     let ctxTargetIndex = null;
+    /** In-memory drag payload — custom MIME types are unreliable across browsers. */
+    let activeDrag = null;
     const DRAG_TYPE = "application/x-hw-block-type";
     const REORDER_TYPE = "application/x-hw-block-reorder";
 
@@ -985,6 +1087,7 @@
     const toolbar = document.createElement("div");
     toolbar.className = "hw-builder__toolbar";
     toolbar.innerHTML =
+      '<div class="hw-builder__cat-tabs hw-ws-cat-tabs" id="hw-teacher-maker-cat-tabs" role="tablist" aria-label="Worksheet category"></div>' +
       '<div class="hw-builder__toolbar-row">' +
       '<label class="hw-builder__toolbar-field">' +
       '<span class="hw-builder__toolbar-label">Start from a template</span>' +
@@ -992,7 +1095,7 @@
       '<option value="">— Choose template —</option>' +
       "</select></label>" +
       '<label class="hw-builder__toolbar-field hw-builder__toolbar-field--sm hw-builder__toolbar-field--end">' +
-      '<span class="hw-builder__toolbar-label">Most recently used</span>' +
+      '<span class="hw-builder__toolbar-label">Worksheets</span>' +
       '<select class="hw-builder__toolbar-select hw-builder__toolbar-select--sm" id="hw-teacher-maker-edit-select" aria-label="Choose worksheet to edit">' +
       '<option value="">— New blank sheet —</option>' +
       "</select></label></div>";
@@ -1004,7 +1107,7 @@
     palette.className = "hw-builder__palette";
     palette.innerHTML =
       '<h4 class="hw-builder__palette-title">Blocks</h4>' +
-      '<p class="hw-builder__palette-hint">Drag blocks onto the canvas · ⠿ reorder · right-click copy/paste</p>';
+      '<p class="hw-builder__palette-hint">Drag blocks onto the canvas · ⠿ reorder · right-click copy/paste or add features</p>';
 
     const paletteList = document.createElement("div");
     paletteList.className = "hw-builder__palette-list";
@@ -1023,8 +1126,13 @@
         "</span>";
       btn.addEventListener("click", () => addBlock(entry.type));
       btn.addEventListener("dragstart", (e) => {
+        activeDrag = { kind: "palette", type: entry.type };
         e.dataTransfer.setData(DRAG_TYPE, entry.type);
+        e.dataTransfer.setData("text/plain", "palette:" + entry.type);
         e.dataTransfer.effectAllowed = "copy";
+      });
+      btn.addEventListener("dragend", () => {
+        activeDrag = null;
       });
       paletteList.appendChild(btn);
     });
@@ -1159,6 +1267,12 @@
     const canvas = document.createElement("div");
     canvas.className = "hw-builder__canvas";
     canvas.setAttribute("aria-label", "Worksheet blocks");
+    canvas.addEventListener("input", (e) => {
+      const ta = e.target;
+      if (ta?.tagName === "TEXTAREA" && ta.classList.contains("hw-builder__field--area")) {
+        autosizeBuilderTextarea(ta);
+      }
+    });
     canvasWrap.append(metaStack, canvas);
 
     const previewMount = document.createElement("div");
@@ -1170,6 +1284,12 @@
     root.append(toolbar, layout);
     mount.appendChild(root);
 
+    /* Category tabs start empty in markup — paint builtins immediately. */
+    global.HwWsCategories?.renderTabs?.(
+      document.getElementById("hw-teacher-maker-cat-tabs"),
+      global.HwWsCategories?.readTab?.()
+    );
+
     const ctxMenu = document.createElement("div");
     ctxMenu.className = "hw-builder__ctx-menu";
     ctxMenu.hidden = true;
@@ -1177,7 +1297,8 @@
     ctxMenu.innerHTML =
       '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="copy">Copy block</button>' +
       '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="paste" disabled>Paste below</button>' +
-      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="duplicate">Duplicate below</button>';
+      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="duplicate">Duplicate below</button>' +
+      '<button type="button" class="hw-builder__ctx-item" role="menuitem" data-ctx="add-record" hidden>Add audio recording</button>';
     root.appendChild(ctxMenu);
 
     const templateSelect = toolbar.querySelector("[data-builder-template]");
@@ -1265,11 +1386,19 @@
       const copyBtn = ctxMenu.querySelector('[data-ctx="copy"]');
       const pasteBtn = ctxMenu.querySelector('[data-ctx="paste"]');
       const dupBtn = ctxMenu.querySelector('[data-ctx="duplicate"]');
+      const addRecordBtn = ctxMenu.querySelector('[data-ctx="add-record"]');
       copyBtn.hidden = !opts.canCopy;
       dupBtn.hidden = !opts.canCopy;
       pasteBtn.hidden = false;
       pasteBtn.disabled = !clipboardBlock;
       pasteBtn.textContent = opts.pasteLabel || "Paste below";
+      if (addRecordBtn) {
+        addRecordBtn.hidden = !opts.canAddRecord;
+        addRecordBtn.disabled = !!opts.hasRecordAddon;
+        addRecordBtn.textContent = opts.hasRecordAddon
+          ? "Audio recording added"
+          : "Add audio recording";
+      }
       positionCtxMenu(clientX, clientY);
     }
 
@@ -1302,7 +1431,13 @@
       e.preventDefault();
       e.stopPropagation();
       ctxTargetIndex = index;
-      showCtxMenu(e.clientX, e.clientY, { canCopy: true, pasteLabel: "Paste below" });
+      const block = state.blocks[index];
+      showCtxMenu(e.clientX, e.clientY, {
+        canCopy: true,
+        pasteLabel: "Paste below",
+        canAddRecord: blockSupportsAddons(block?.type),
+        hasRecordAddon: blockHasRecordAddon(block),
+      });
     }
 
     function openCanvasContextMenu(e) {
@@ -1321,6 +1456,14 @@
       if (action === "copy" && ctxTargetIndex !== null) copyBlock(ctxTargetIndex);
       else if (action === "paste") pasteBlock(ctxTargetIndex);
       else if (action === "duplicate" && ctxTargetIndex !== null) duplicateBlock(ctxTargetIndex);
+      else if (action === "add-record" && ctxTargetIndex !== null) {
+        const block = state.blocks[ctxTargetIndex];
+        if (block) {
+          addRecordAddon(block);
+          renderCanvas();
+          notifyChange();
+        }
+      }
       hideCtxMenu();
     });
 
@@ -1359,58 +1502,185 @@
     }
 
     function isCanvasDrag(dataTransfer) {
-      const types = Array.from(dataTransfer.types || []);
-      return types.includes(DRAG_TYPE) || types.includes(REORDER_TYPE);
+      if (activeDrag) return true;
+      const types = Array.from(dataTransfer?.types || []);
+      return (
+        types.includes(DRAG_TYPE) ||
+        types.includes(REORDER_TYPE) ||
+        types.includes("text/plain")
+      );
+    }
+
+    function isFileDrag(dataTransfer) {
+      return Array.from(dataTransfer?.types || []).includes("Files");
+    }
+
+    function isReorderDrag(dataTransfer) {
+      if (activeDrag?.kind === "reorder") return true;
+      const types = Array.from(dataTransfer?.types || []);
+      return types.includes(REORDER_TYPE);
+    }
+
+    function readDragPayload(dataTransfer) {
+      if (activeDrag?.kind === "reorder" && Number.isFinite(activeDrag.index)) {
+        return { kind: "reorder", index: activeDrag.index };
+      }
+      if (activeDrag?.kind === "palette" && activeDrag.type) {
+        return { kind: "palette", type: activeDrag.type };
+      }
+      const reorderFrom =
+        dataTransfer?.getData?.(REORDER_TYPE) ||
+        String(dataTransfer?.getData?.("text/plain") || "").replace(/^reorder:/, "");
+      if (reorderFrom !== "" && /^\d+$/.test(String(reorderFrom))) {
+        const index = parseInt(reorderFrom, 10);
+        if (!Number.isNaN(index)) return { kind: "reorder", index };
+      }
+      let type = dataTransfer?.getData?.(DRAG_TYPE) || "";
+      if (!type) {
+        const plain = String(dataTransfer?.getData?.("text/plain") || "");
+        if (plain.startsWith("palette:")) type = plain.slice("palette:".length);
+        else if (PALETTE.some((p) => p.type === plain)) type = plain;
+      }
+      if (type && PALETTE.some((p) => p.type === type)) {
+        return { kind: "palette", type };
+      }
+      return null;
+    }
+
+    function applyCanvasDrop(dataTransfer) {
+      const payload = readDragPayload(dataTransfer);
+      activeDrag = null;
+      if (!payload) return;
+      /* Defer so we never rebuild the canvas while the drop target is still handling the event. */
+      requestAnimationFrame(() => {
+        if (payload.kind === "reorder") {
+          reorderBlock(payload.index, Math.max(0, state.blocks.length - 1));
+          return;
+        }
+        if (payload.kind === "palette") addBlock(payload.type);
+      });
+    }
+
+    function applyBlockDrop(dataTransfer, index) {
+      const payload = readDragPayload(dataTransfer);
+      activeDrag = null;
+      if (!payload) return;
+      requestAnimationFrame(() => {
+        if (payload.kind === "reorder") {
+          if (payload.index !== index) reorderBlock(payload.index, index);
+          return;
+        }
+        if (payload.kind === "palette") addBlock(payload.type, index);
+      });
     }
 
     function bindDropZone(el) {
       el.addEventListener("dragover", (e) => {
         if (!isCanvasDrag(e.dataTransfer)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = e.dataTransfer.types.includes(REORDER_TYPE) ? "move" : "copy";
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = isReorderDrag(e.dataTransfer) ? "move" : "copy";
         el.classList.add("hw-builder__drop-zone--over");
       });
       el.addEventListener("dragleave", (e) => {
         if (!el.contains(e.relatedTarget)) el.classList.remove("hw-builder__drop-zone--over");
       });
       el.addEventListener("drop", (e) => {
+        if (!isCanvasDrag(e.dataTransfer)) return;
         e.preventDefault();
+        e.stopPropagation();
         el.classList.remove("hw-builder__drop-zone--over");
-        const reorderFrom = e.dataTransfer.getData(REORDER_TYPE);
-        if (reorderFrom !== "") {
-          const from = parseInt(reorderFrom, 10);
-          if (!Number.isNaN(from)) reorderBlock(from, state.blocks.length - 1);
-          return;
-        }
-        const type = e.dataTransfer.getData(DRAG_TYPE);
-        if (type) addBlock(type);
+        applyCanvasDrop(e.dataTransfer);
       });
     }
+
+    function bindBlankCanvasDrop(el) {
+      el.addEventListener("dragover", (e) => {
+        if (!isCanvasDrag(e.dataTransfer)) return;
+        /* Don't steal drops aimed at the drop-zone / a block. */
+        if (e.target.closest?.(".hw-builder__drop-zone, .hw-builder__block")) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = isReorderDrag(e.dataTransfer) ? "move" : "copy";
+      });
+      el.addEventListener("drop", (e) => {
+        if (!isCanvasDrag(e.dataTransfer)) return;
+        if (e.target.closest?.(".hw-builder__drop-zone, .hw-builder__block")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        applyCanvasDrop(e.dataTransfer);
+      });
+    }
+
+    bindBlankCanvasDrop(canvasWrap);
 
     function bindBlockDropTarget(el, index) {
       el.addEventListener("dragover", (e) => {
         if (!isCanvasDrag(e.dataTransfer)) return;
         e.preventDefault();
         e.stopPropagation();
-        e.dataTransfer.dropEffect = e.dataTransfer.types.includes(REORDER_TYPE) ? "move" : "copy";
+        e.dataTransfer.dropEffect = isReorderDrag(e.dataTransfer) ? "move" : "copy";
         el.classList.add("hw-builder__block--drag-over");
       });
       el.addEventListener("dragleave", (e) => {
         if (!el.contains(e.relatedTarget)) el.classList.remove("hw-builder__block--drag-over");
       });
       el.addEventListener("drop", (e) => {
+        if (!isCanvasDrag(e.dataTransfer)) return;
         e.preventDefault();
         e.stopPropagation();
         el.classList.remove("hw-builder__block--drag-over");
-        const reorderFrom = e.dataTransfer.getData(REORDER_TYPE);
-        if (reorderFrom !== "") {
-          const from = parseInt(reorderFrom, 10);
-          if (!Number.isNaN(from) && from !== index) reorderBlock(from, index);
-          return;
-        }
-        const type = e.dataTransfer.getData(DRAG_TYPE);
-        if (type) addBlock(type, index);
+        applyBlockDrop(e.dataTransfer, index);
       });
+    }
+
+    function autosizeBuilderTextarea(ta) {
+      if (!ta || ta.tagName !== "TEXTAREA") return;
+      if (!ta.classList.contains("hw-builder__field--area")) return;
+
+      const style = getComputedStyle(ta);
+      const line = Math.ceil(parseFloat(style.lineHeight) || 20);
+      const padY =
+        (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+      const min = Math.max(parseFloat(style.minHeight) || 0, line + padY);
+      const extra = Math.round(line * 1.25);
+
+      ta.dataset.autosize = "1";
+      ta.style.overflowY = "hidden";
+      ta.style.setProperty("min-height", "0", "important");
+      ta.style.setProperty("height", "0", "important");
+      const next = Math.max(ta.scrollHeight + extra, min);
+      ta.style.setProperty("height", next + "px", "important");
+      ta.style.removeProperty("min-height");
+    }
+
+    function autosizeExpandedBlocks(root) {
+      if (!root) return;
+      root
+        .querySelectorAll(
+          ".hw-builder__block:not(.hw-builder__block--collapsed) .hw-builder__block-body textarea.hw-builder__field--area"
+        )
+        .forEach(autosizeBuilderTextarea);
+    }
+
+    function scheduleAutosizeExpandedBlocks(root) {
+      const run = () => autosizeExpandedBlocks(root);
+      run();
+      requestAnimationFrame(() => {
+        run();
+        requestAnimationFrame(run);
+      });
+      setTimeout(run, 0);
+      setTimeout(run, 120);
+    }
+
+    function blockAddonSummarySuffix(block) {
+      if (!blockSupportsAddons(block.type)) return "";
+      normalizeBlockAddons(block);
+      if (!block.addons.length) return "";
+      const labels = block.addons.map((addon) =>
+        addon.type === ADDON_RECORD ? "record" : addon.type
+      );
+      return " · +" + labels.join(", ");
     }
 
     function blockSummary(block) {
@@ -1436,17 +1706,25 @@
       }
       if (block.type === "listen-line") {
         const jp = (block.parts || []).find((p) => p.type === "blank")?.answer;
-        return clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block");
+        return (
+          (clip(jp || block.englishAnswer) || (block.audioUrl ? "Audio clip added" : "Listening block")) +
+          blockAddonSummarySuffix(block)
+        );
       }
       if (block.type === "open-line") {
-        if (Object.prototype.hasOwnProperty.call(block, "letterBody")) return "Pen Pal letter";
-        return clip(block.topic) || (block.imageUrl ? "Open response + image" : "Open response");
+        if (Object.prototype.hasOwnProperty.call(block, "letterBody")) {
+          return "Pen Pal letter" + blockAddonSummarySuffix(block);
+        }
+        return (
+          (clip(block.topic) || (block.imageUrl ? "Open response + image" : "Open response")) +
+          blockAddonSummarySuffix(block)
+        );
       }
       if (block.type === "grammar-line") {
-        return clip(grammarSentenceFromBlock(block)) || "Blank sentence";
+        return (clip(grammarSentenceFromBlock(block)) || "Blank sentence") + blockAddonSummarySuffix(block);
       }
       if (block.type === "translation-line") {
-        return clip(block.japanese) || "Translation";
+        return (clip(block.japanese) || "Translation") + blockAddonSummarySuffix(block);
       }
       if (block.type === "star-line") {
         const tokens = normalizeStarTokens(block);
@@ -1457,9 +1735,115 @@
         return clip(preview) || "Sentence order";
       }
       if (block.type === "mc-line") {
-        return clip(block.prompt) || "Multiple choice";
+        return (clip(block.prompt) || "Multiple choice") + blockAddonSummarySuffix(block);
       }
       return "Block";
+    }
+
+    function renderBlockAddonsEditor(block, body, summaryEl) {
+      if (!blockSupportsAddons(block.type)) return;
+      normalizeBlockAddons(block);
+      /* Only show after right-click → Add audio recording (or later feature types). */
+      if (!block.addons.length) return;
+
+      const wrap = document.createElement("div");
+      wrap.className = "hw-builder__addons";
+
+      const head = document.createElement("div");
+      head.className = "hw-builder__addons-head";
+
+      const title = document.createElement("span");
+      title.className = "hw-builder__addons-title";
+      title.textContent = "Block features";
+      head.appendChild(title);
+      wrap.appendChild(head);
+
+      block.addons.forEach((addon, addonIndex) => {
+        const row = document.createElement("div");
+        row.className = "hw-builder__addon-row";
+
+        const typeLabel = document.createElement("span");
+        typeLabel.className = "hw-builder__addon-type";
+        typeLabel.textContent =
+          addon.type === ADDON_RECORD ? "Audio recording" : String(addon.type || "Feature");
+        row.appendChild(typeLabel);
+
+        const promptLabel = document.createElement("label");
+        promptLabel.className = "hw-builder__field-label";
+        promptLabel.textContent = "Prompt for student";
+        const promptInput = document.createElement("input");
+        promptInput.type = "text";
+        promptInput.className = "hw-builder__field hw-builder__field--compact";
+        promptInput.value = addon.prompt || "";
+        promptInput.placeholder = "Record your answer";
+        promptInput.addEventListener("input", () => {
+          addon.prompt = promptInput.value;
+          notifyChange();
+        });
+        promptLabel.appendChild(promptInput);
+        row.appendChild(promptLabel);
+
+        const posLabel = document.createElement("label");
+        posLabel.className = "hw-builder__field-label";
+        posLabel.textContent = "Placement";
+        const posSelect = document.createElement("select");
+        posSelect.className = "hw-builder__field hw-builder__field--compact hw-builder__addon-position";
+        ADDON_POSITIONS.forEach((pos) => {
+          const opt = document.createElement("option");
+          opt.value = pos.id;
+          opt.textContent = pos.label;
+          if ((addon.position || "after-blank") === pos.id) opt.selected = true;
+          posSelect.appendChild(opt);
+        });
+        posSelect.addEventListener("change", () => {
+          addon.position = posSelect.value;
+          notifyChange();
+        });
+        posLabel.appendChild(posSelect);
+        row.appendChild(posLabel);
+
+        const actions = document.createElement("div");
+        actions.className = "hw-builder__addon-actions";
+
+        const upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "btn btn--ghost btn--sm";
+        upBtn.textContent = "Move up";
+        upBtn.disabled = addonIndex === 0;
+        upBtn.addEventListener("click", () => {
+          moveAddon(block, addonIndex, -1);
+          renderCanvas();
+          notifyChange();
+        });
+
+        const downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "btn btn--ghost btn--sm";
+        downBtn.textContent = "Move down";
+        downBtn.disabled = addonIndex === block.addons.length - 1;
+        downBtn.addEventListener("click", () => {
+          moveAddon(block, addonIndex, 1);
+          renderCanvas();
+          notifyChange();
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "btn btn--ghost btn--sm hw-builder__addon-remove";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", () => {
+          block.addons.splice(addonIndex, 1);
+          if (block.collapsed) summaryEl.textContent = blockSummary(block);
+          renderCanvas();
+          notifyChange();
+        });
+
+        actions.append(upBtn, downBtn, removeBtn);
+        row.appendChild(actions);
+        wrap.appendChild(row);
+      });
+
+      body.appendChild(wrap);
     }
 
     function renderBlockEl(block, index) {
@@ -1486,15 +1870,23 @@
       dragHandle.setAttribute("aria-label", "Drag to reorder block");
       dragHandle.textContent = "⠿";
       dragHandle.addEventListener("dragstart", (e) => {
+        activeDrag = { kind: "reorder", index };
         e.dataTransfer.setData(REORDER_TYPE, String(index));
+        e.dataTransfer.setData("text/plain", "reorder:" + index);
         e.dataTransfer.effectAllowed = "move";
         el.classList.add("hw-builder__block--dragging");
       });
       dragHandle.addEventListener("dragend", () => {
+        activeDrag = null;
         el.classList.remove("hw-builder__block--dragging");
         canvas.querySelectorAll(".hw-builder__block--drag-over").forEach((node) => {
           node.classList.remove("hw-builder__block--drag-over");
         });
+        canvas.querySelectorAll(".hw-builder__drop-zone--over").forEach((node) => {
+          node.classList.remove("hw-builder__drop-zone--over");
+        });
+        /* Native DnD can yank the node into a child drop target (open-response image zone). */
+        if (!el.isConnected) renderCanvas();
       });
       head.appendChild(dragHandle);
 
@@ -1560,7 +1952,7 @@
       if (block.type === "video-prompt") {
         const prompt = document.createElement("textarea");
         prompt.className = "hw-builder__field hw-builder__field--area";
-        prompt.rows = 2;
+        prompt.rows = 1;
         prompt.placeholder = "Question or prompt for the student";
         prompt.value = block.prompt || "";
         prompt.addEventListener("input", () => {
@@ -1575,7 +1967,7 @@
       if (block.type === "audio-prompt") {
         const prompt = document.createElement("textarea");
         prompt.className = "hw-builder__field hw-builder__field--area";
-        prompt.rows = 2;
+        prompt.rows = 1;
         prompt.placeholder = "Question or prompt for the student to answer on audio";
         prompt.value = block.prompt || "";
         prompt.addEventListener("input", () => {
@@ -1599,7 +1991,7 @@
         promptLabel.textContent = "Phrase / note (optional)";
         const prompt = document.createElement("textarea");
         prompt.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
-        prompt.rows = 2;
+        prompt.rows = 1;
         prompt.placeholder = "e.g. Could we reschedule for Thursday?";
         prompt.value = block.prompt || "";
         prompt.addEventListener("input", () => {
@@ -1743,7 +2135,7 @@
         englishLabel.textContent = "English meaning (optional)";
         const englishInput = document.createElement("textarea");
         englishInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
-        englishInput.rows = 2;
+        englishInput.rows = 1;
         englishInput.placeholder = "e.g. I want to go to city hall.";
         englishInput.value = block.englishAnswer || "";
         englishInput.addEventListener("input", () => {
@@ -1754,6 +2146,7 @@
         partsWrap.appendChild(englishLabel);
 
         body.appendChild(partsWrap);
+        renderBlockAddonsEditor(block, body, summaryEl);
         return el;
       }
 
@@ -1762,10 +2155,7 @@
         if (isLetterBlock) {
           const letterNote = document.createElement("p");
           letterNote.className = "hw-builder__penpal-note";
-          letterNote.textContent =
-            "Pen Pal letter — students see handwritten letter paper (AP Japanese) with a show/hide button. The ask above it is “" +
-            PEN_PAL_INSTRUCTIONS +
-            "”.";
+          letterNote.textContent = PEN_PAL_INSTRUCTIONS;
           body.appendChild(letterNote);
 
           const toLabel = document.createElement("label");
@@ -1837,7 +2227,7 @@
           const topicInput = document.createElement("textarea");
           topicInput.className =
             "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
-          topicInput.rows = 2;
+          topicInput.rows = 1;
           topicInput.placeholder = "e.g. Describe your weekend using ～たことがある";
           topicInput.value = block.topic || "";
           topicInput.addEventListener("input", () => {
@@ -1847,6 +2237,22 @@
           });
           topicLabel.appendChild(topicInput);
           body.appendChild(topicLabel);
+
+          // Catch paste while typing in the topic box (clipboard screenshot)
+          topicInput.addEventListener("paste", (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const imageFiles = [];
+            for (const item of items) {
+              if (item.type && item.type.startsWith("image/")) {
+                const file = item.getAsFile();
+                if (file) imageFiles.push(file);
+              }
+            }
+            if (!imageFiles.length) return;
+            e.preventDefault();
+            void takeImageFiles(imageFiles);
+          });
         }
 
         const imageZone = document.createElement("div");
@@ -1992,11 +2398,26 @@
         });
 
         imageZone.addEventListener("dragenter", (e) => {
+          if (isCanvasDrag(e.dataTransfer)) {
+            e.preventDefault();
+            return;
+          }
+          if (!isFileDrag(e.dataTransfer)) return;
           e.preventDefault();
           imageZone.classList.add("is-dragover");
         });
         imageZone.addEventListener("dragover", (e) => {
+          if (isCanvasDrag(e.dataTransfer)) {
+            /* Block/palette reorder — accept here so the browser never eats the node. */
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = isReorderDrag(e.dataTransfer) ? "move" : "copy";
+            el.classList.add("hw-builder__block--drag-over");
+            return;
+          }
+          if (!isFileDrag(e.dataTransfer)) return;
           e.preventDefault();
+          e.stopPropagation();
           e.dataTransfer.dropEffect = "copy";
           imageZone.classList.add("is-dragover");
         });
@@ -2006,6 +2427,15 @@
           }
         });
         imageZone.addEventListener("drop", (e) => {
+          if (isCanvasDrag(e.dataTransfer)) {
+            e.preventDefault();
+            e.stopPropagation();
+            el.classList.remove("hw-builder__block--drag-over");
+            imageZone.classList.remove("is-dragover");
+            applyBlockDrop(e.dataTransfer, index);
+            return;
+          }
+          if (!isFileDrag(e.dataTransfer)) return;
           e.preventDefault();
           e.stopPropagation();
           imageZone.classList.remove("is-dragover");
@@ -2026,25 +2456,11 @@
           e.stopPropagation();
           void takeImageFiles(imageFiles);
         });
-        // Catch paste while typing in the topic box (clipboard screenshot)
-        topicInput.addEventListener("paste", (e) => {
-          const items = e.clipboardData?.items;
-          if (!items) return;
-          const imageFiles = [];
-          for (const item of items) {
-            if (item.type && item.type.startsWith("image/")) {
-              const file = item.getAsFile();
-              if (file) imageFiles.push(file);
-            }
-          }
-          if (!imageFiles.length) return;
-          e.preventDefault();
-          void takeImageFiles(imageFiles);
-        });
 
         thumbWrap.append(thumb, removeBtn);
         imageZone.append(imageHint, thumbWrap, pickBtn, statusEl, fileInput);
         body.appendChild(imageZone);
+        renderBlockAddonsEditor(block, body, summaryEl);
         return el;
       }
 
@@ -2055,7 +2471,7 @@
         const jpInput = document.createElement("textarea");
         jpInput.className =
           "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
-        jpInput.rows = 2;
+        jpInput.rows = 1;
         jpInput.value = block.japanese || "";
         jpInput.addEventListener("input", () => {
           block.japanese = jpInput.value;
@@ -2070,7 +2486,7 @@
         enLabel.textContent = "English answer (for JD / See Answers)";
         const enInput = document.createElement("textarea");
         enInput.className = "hw-builder__field hw-builder__field--area hw-builder__field--compact-area";
-        enInput.rows = 2;
+        enInput.rows = 1;
         enInput.value = block.englishAnswer || "";
         enInput.addEventListener("input", () => {
           block.englishAnswer = enInput.value;
@@ -2081,6 +2497,7 @@
         });
         enLabel.appendChild(enInput);
         body.appendChild(enLabel);
+        renderBlockAddonsEditor(block, body, summaryEl);
         return el;
       }
 
@@ -2185,7 +2602,7 @@
         const promptInput = document.createElement("textarea");
         promptInput.className =
           "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
-        promptInput.rows = 2;
+        promptInput.rows = 1;
         promptInput.placeholder = "この甘い匂いを嗅ぐと、ケーキを______。";
         promptInput.value = block.prompt || "";
         promptInput.addEventListener("input", () => {
@@ -2264,6 +2681,7 @@
         answerLabel.appendChild(answerSelect);
         body.appendChild(answerLabel);
         syncMcAnswerOptions();
+        renderBlockAddonsEditor(block, body, summaryEl);
         return el;
       }
 
@@ -2285,7 +2703,7 @@
         sentenceLabel.textContent = "Sentence";
         const sentenceInput = document.createElement("textarea");
         sentenceInput.className = "hw-builder__field hw-builder__field--jp hw-builder__field--area hw-builder__field--compact-area";
-        sentenceInput.rows = 2;
+        sentenceInput.rows = 1;
         sentenceInput.placeholder = "どうだった？レッスンはちょっと{難しかった}。";
         sentenceInput.value = grammarSentenceFromBlock(block);
         sentenceInput.addEventListener("input", () => {
@@ -2395,6 +2813,7 @@
         partsWrap.appendChild(registerRow);
 
         body.appendChild(partsWrap);
+        renderBlockAddonsEditor(block, body, summaryEl);
         return el;
       }
 
@@ -2444,7 +2863,18 @@
         list.appendChild(hint);
       } else {
         state.blocks.forEach((block, index) => {
-          list.appendChild(renderBlockEl(block, index));
+          try {
+            list.appendChild(renderBlockEl(block, index));
+          } catch (err) {
+            console.error("Worksheet block render failed:", block?.type, err);
+            const fallback = document.createElement("article");
+            fallback.className = "hw-builder__block";
+            fallback.textContent =
+              "Could not draw this block (" +
+              (block?.type || "?") +
+              "). Remove it and add it again.";
+            list.appendChild(fallback);
+          }
         });
       }
 
@@ -2465,6 +2895,7 @@
 
       canvas.append(list, dropZone);
       updateCollapseAllBtn();
+      scheduleAutosizeExpandedBlocks(list);
     }
 
     function syncTopicFieldsFromState() {

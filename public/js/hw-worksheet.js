@@ -55,6 +55,107 @@
     return { audioUrl, imageUrl };
   }
 
+  const ADDON_RECORD = "student-record";
+  const ADDON_POSITIONS = new Set(["after-media", "before-blank", "after-blank"]);
+
+  function normalizeItemAddons(item) {
+    if (!item || !Array.isArray(item.addons)) return [];
+    return item.addons
+      .filter((addon) => addon && addon.type === ADDON_RECORD)
+      .map((addon, index) => ({
+        id: String(addon.id || "record-" + (index + 1)),
+        type: ADDON_RECORD,
+        prompt: String(addon.prompt || "Record your answer").trim() || "Record your answer",
+        position: ADDON_POSITIONS.has(addon.position) ? addon.position : "after-blank",
+      }));
+  }
+
+  function addonsAtPosition(addons, position) {
+    return (addons || []).filter((addon) => (addon.position || "after-blank") === position);
+  }
+
+  function renderStudentRecordAddon(addon, item, lineOptions) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-line-addon hw-line-addon--record";
+    wrap.dataset.addonId = addon.id || "";
+    wrap.dataset.addonType = ADDON_RECORD;
+
+    const promptText = String(addon.prompt || "").trim();
+    if (promptText) {
+      const prompt = document.createElement("p");
+      prompt.className = "hw-line-addon__prompt";
+      prompt.textContent = promptText;
+      wrap.appendChild(prompt);
+    }
+
+    const recorderMount = document.createElement("div");
+    recorderMount.className = "hw-line-addon__recorder";
+    wrap.appendChild(recorderMount);
+
+    if (lineOptions.preview) {
+      recorderMount.innerHTML =
+        '<p class="hw-line-addon__note">Students record their answer here.</p>';
+    } else if (!lineOptions.readOnly && global.HwAudioInline?.mount) {
+      const meta = resolveRecorderMeta(lineOptions, lineOptions.assignment);
+      global.HwAudioInline.mount(recorderMount, {
+        username: meta.username,
+        displayName: meta.displayName,
+        assignmentId: meta.assignmentId,
+        lessonName: meta.lessonName,
+        promptId:
+          String(item.id || "item") + "-record-" + String(addon.id || "1").replace(/\s+/g, ""),
+        promptLabel: promptText || item.prompt || "Recording",
+      });
+    } else if (lineOptions.readOnly) {
+      recorderMount.innerHTML =
+        '<p class="hw-line-addon__note">Recording playback appears here after submit.</p>';
+    }
+
+    return wrap;
+  }
+
+  function appendLineAddons(container, item, position, lineOptions) {
+    if (!container) return;
+    addonsAtPosition(normalizeItemAddons(item), position).forEach((addon) => {
+      container.appendChild(renderStudentRecordAddon(addon, item, lineOptions));
+    });
+  }
+
+  function lineRecordAddonsAnswered(lineEl) {
+    const mounts = lineEl?.querySelectorAll(".hw-line-addon--record .hw-audio-inline") || [];
+    if (!mounts.length) return true;
+    return Array.from(mounts).every(
+      (inline) => inline.dataset.hwAnswerSaved === "true" && inline.dataset.mediaId?.trim()
+    );
+  }
+
+  function rowWithRecordAddon(lineEl, row) {
+    const recordSaved = lineRecordAddonsAnswered(lineEl);
+    if (!recordSaved) return row;
+    const recordInline = lineEl.querySelector(".hw-line-addon--record .hw-audio-inline");
+    const recordMediaId = recordInline?.dataset?.mediaId?.trim();
+    if (!recordMediaId) return row;
+    const student = row.student && row.student !== "(blank)" ? row.student : "";
+    return {
+      ...row,
+      student: student ? student + " · (audio submitted)" : "(audio submitted)",
+      mediaId: recordMediaId,
+      mediaKind: "audio",
+    };
+  }
+
+  function applyRecordAddonReplay(lineEl, row) {
+    if (!row?.mediaId) return;
+    const addonWrap = lineEl.querySelector(".hw-line-addon--record");
+    if (!addonWrap) return;
+    const url = global.HwAudioInline?.mediaUrl
+      ? global.HwAudioInline.mediaUrl(row.mediaId)
+      : "/api/hw-m/" + encodeURIComponent(row.mediaId);
+    setAudioAnswerReplay(addonWrap, url, { ariaLabel: "Student's recorded answer" });
+    const recorder = addonWrap.querySelector(".hw-line-addon__recorder");
+    if (recorder) recorder.hidden = true;
+  }
+
   function normalizeHintConjugation(value) {
     const c = String(value || "").trim();
     if (!c || c === "plain") return DEFAULT_HINT_TENSE;
@@ -530,7 +631,7 @@
       field.dataset.variants = JSON.stringify(part.variants);
     }
     if (!options.omitAnswers && part.answer) field.dataset.answer = part.answer;
-    if (options.omitAnswers && listenStyle) {
+    if (options.omitAnswers) {
       const teacherAnswer = String(part.answer || "").trim();
       if (teacherAnswer) wrap.dataset.teacherAnswer = teacherAnswer;
     }
@@ -1163,6 +1264,30 @@
     return el;
   }
 
+  function renderAudioPromptImageFigure(url, item, caption) {
+    const imageUrl = String(url || "").trim();
+    if (!imageUrl) return null;
+    const fig = renderListenScreenshot(imageUrl);
+    if (!fig) return null;
+    fig.classList.add("hw-audio-prompt__image");
+    if (String(item.imageAlign || "").trim() === "center") {
+      fig.classList.add("hw-audio-prompt__image--center");
+    }
+    const img = fig.querySelector("img");
+    if (img) {
+      img.alt =
+        String(caption || item.prompt || "Prompt image").trim() || "Prompt image";
+    }
+    const capText = String(caption || "").trim();
+    if (capText) {
+      const cap = document.createElement("p");
+      cap.className = "hw-audio-prompt__image-caption";
+      cap.textContent = capText;
+      fig.appendChild(cap);
+    }
+    return fig;
+  }
+
   function renderAudioRecordCue(item, index, renderOptions) {
     renderOptions = renderOptions || {};
     const audioLine = document.createElement("div");
@@ -1180,14 +1305,26 @@
     wrap.className = "hw-audio-prompt";
 
     const imageUrl = String(item.imageUrl || "").trim();
-    if (imageUrl) {
-      const fig = renderListenScreenshot(imageUrl);
-      if (fig) {
-        fig.classList.add("hw-audio-prompt__image");
-        const img = fig.querySelector("img");
-        if (img) img.alt = String(item.prompt || "Prompt image").trim() || "Prompt image";
-        wrap.appendChild(fig);
-      }
+    const imageUrl2 = String(item.imageUrl2 || "").trim();
+    if (imageUrl && imageUrl2) {
+      const pair = document.createElement("div");
+      pair.className = "hw-audio-prompt__images";
+      const fig1 = renderAudioPromptImageFigure(
+        imageUrl,
+        item,
+        item.imageCaption || "状況①（日本）"
+      );
+      const fig2 = renderAudioPromptImageFigure(
+        imageUrl2,
+        item,
+        item.imageCaption2 || "状況②（アメリカ）"
+      );
+      if (fig1) pair.appendChild(fig1);
+      if (fig2) pair.appendChild(fig2);
+      if (pair.childElementCount) wrap.appendChild(pair);
+    } else if (imageUrl) {
+      const fig = renderAudioPromptImageFigure(imageUrl, item, item.imageCaption || "");
+      if (fig) wrap.appendChild(fig);
     }
 
     const head = document.createElement("div");
@@ -1304,6 +1441,10 @@
     /* Image / type-in are authored in JSON only — keep them through an editor round-trip. */
     const carried = {};
     if (item.imageUrl) carried.imageUrl = item.imageUrl;
+    if (item.imageUrl2) carried.imageUrl2 = item.imageUrl2;
+    if (item.imageCaption) carried.imageCaption = item.imageCaption;
+    if (item.imageCaption2) carried.imageCaption2 = item.imageCaption2;
+    if (item.imageAlign) carried.imageAlign = item.imageAlign;
     if (item.typeIn) carried.typeIn = item.typeIn;
     if (item.typeInLabel) carried.typeInLabel = item.typeInLabel;
     if (item.typeInAnswer) carried.typeInAnswer = item.typeInAnswer;
@@ -1473,6 +1614,9 @@
     instruction.textContent = "Translate into English";
     content.appendChild(instruction);
 
+    appendLineAddons(content, item, "after-media", lineOptions);
+    appendLineAddons(content, item, "before-blank", lineOptions);
+
     const blankPart =
       (item.parts || []).find((p) => p.type === "blank") ||
       { type: "blank", name: item.id, wide: true };
@@ -1482,6 +1626,7 @@
         { omitAnswers: true, listenStyle: false, translationStyle: true }
       )
     );
+    appendLineAddons(content, item, "after-blank", lineOptions);
 
     line.appendChild(content);
     return line;
@@ -1938,6 +2083,9 @@
       content.appendChild(hint);
     }
 
+    appendLineAddons(content, item, "after-media", lineOptions);
+    appendLineAddons(content, item, "before-blank", lineOptions);
+
     const sentence = document.createElement("div");
     sentence.className = "hw-mc-block__sentence";
     sentence.setAttribute("lang", "ja");
@@ -2007,6 +2155,7 @@
     resetBtn.textContent = "Clear answer";
     resetBtn.disabled = true;
     content.appendChild(resetBtn);
+    appendLineAddons(content, item, "after-blank", lineOptions);
 
     line.appendChild(content);
 
@@ -2024,14 +2173,19 @@
     lineOptions = lineOptions || {};
     const openBlock = item.openResponse || (sectionMode === "context-blank" && item.parts?.[0]?.multiline);
     const listenBlock = sectionMode === "audio-listening";
+    const audioUrl = String(
+      item.audioUrl || (listenBlock ? lineOptions.sectionAudioUrl : "") || ""
+    ).trim();
+    const imageUrl = String(item.imageUrl || "").trim();
+    const hasListenMedia = listenBlock || Boolean(audioUrl);
     const penPalBlock = isPenPalLetterItem(item);
-    const useBlockLayout = openBlock || listenBlock;
+    const useBlockLayout = openBlock || hasListenMedia;
     const line = document.createElement(useBlockLayout ? "div" : "p");
     line.className =
       "hw-worksheet__line" +
       (item.negative ? " hw-worksheet__line--negative" : "") +
       (openBlock ? " hw-worksheet__line--open-response" : "") +
-      (listenBlock ? " hw-worksheet__line--listen" : "");
+      (hasListenMedia ? " hw-worksheet__line--listen" : "");
     line.dataset.itemId = item.id || "";
 
     if (lineOptions.itemNum && !penPalBlock) {
@@ -2041,12 +2195,14 @@
     const content = document.createElement(useBlockLayout ? "div" : "span");
     content.className = "hw-worksheet__content";
 
+    if (!hasListenMedia) {
+      appendLineAddons(content, item, "after-media", lineOptions);
+    }
+
     let listenCard = null;
-    if (sectionMode === "audio-listening") {
+    if (hasListenMedia) {
       listenCard = document.createElement("div");
       listenCard.className = "hw-listen-card";
-      const audioUrl = String(item.audioUrl || lineOptions.sectionAudioUrl || "").trim();
-      const imageUrl = String(item.imageUrl || "").trim();
       const screenshot = renderListenScreenshot(imageUrl);
       if (screenshot) listenCard.appendChild(screenshot);
       listenCard.appendChild(renderAudioPlayer(audioUrl, { inline: true }));
@@ -2068,7 +2224,10 @@
         listenCard.appendChild(head);
       }
       content.appendChild(listenCard);
+      appendLineAddons(listenCard, item, "after-media", lineOptions);
     }
+
+    const addonHost = () => listenCard || content;
 
     if (openBlock && penPalBlock) {
       const letterEl = renderPenPalLetter(item);
@@ -2281,6 +2440,7 @@
       if (part.type === "text") {
         content.appendChild(renderTextPart(part));
       } else if (part.type === "blank") {
+        appendLineAddons(addonHost(), item, "before-blank", lineOptions);
         const blankWrap = renderBlankWithHint(part, {
           omitAnswers: true,
           listenStyle: sectionMode === "audio-listening",
@@ -2289,7 +2449,8 @@
           const field = blankWrap.querySelector(".hw-blank");
           if (field) field.after(renderGrammarPills(item));
         }
-        (listenCard || content).appendChild(blankWrap);
+        addonHost().appendChild(blankWrap);
+        appendLineAddons(addonHost(), item, "after-blank", lineOptions);
       } else if (part.type === "hint") {
         /* legacy: hint after blank in JSON — attach below previous blank if possible */
         const wraps = content.querySelectorAll(".hw-blank-wrap");
@@ -2322,6 +2483,11 @@
 
     if (item.question) {
       content.appendChild(renderQuestionBadge());
+    }
+
+    if (!(item.parts || []).some((part) => part.type === "blank")) {
+      appendLineAddons(content, item, "before-blank", lineOptions);
+      appendLineAddons(content, item, "after-blank", lineOptions);
     }
 
     line.appendChild(content);
@@ -3089,12 +3255,16 @@
             } else {
               applyReplayNote(lineEl, row);
             }
+            applyRecordAddonReplay(lineEl, row);
             return;
           }
           const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
           if (input && row.student != null) {
-            input.value = row.student === "(blank)" ? "" : String(row.student);
+            const studentText = String(row.student || "");
+            const plainStudent = studentText.replace(/\s*·\s*\(audio submitted\)\s*$/i, "").trim();
+            input.value = plainStudent === "(blank)" ? "" : plainStudent;
           }
+          applyRecordAddonReplay(lineEl, row);
           applyOpenStudentImageReplay(lineEl, row);
         });
       });
@@ -3166,6 +3336,78 @@
       btn.setAttribute("aria-pressed", "false");
       btn.disabled = !isSeeAnswersUnlocked(form);
     }
+  }
+
+  function clearWrongMarkedAnswerReveal(form) {
+    if (!form) return;
+    form.querySelectorAll(".hw-worksheet__teacher-answer[data-hw-wrong-mark-reveal]").forEach((el) => {
+      el.remove();
+    });
+  }
+
+  function getLineExpectedAnswer(lineEl) {
+    if (!lineEl) return "";
+
+    const mc = lineEl.querySelector(".hw-mc-block__answer");
+    if (mc?.dataset?.answer) return String(mc.dataset.answer).trim();
+
+    const star = lineEl.querySelector(".hw-star-block__answer");
+    if (star?.dataset?.answer) {
+      try {
+        const pieces = JSON.parse(star.dataset.answer);
+        if (Array.isArray(pieces) && pieces.length) {
+          return pieces.map((piece) => String(piece || "").trim()).join("");
+        }
+      } catch (_) {
+        /* fall through */
+      }
+    }
+
+    const teacherWrap = lineEl.querySelector(".hw-blank-wrap[data-teacher-answer]");
+    if (teacherWrap?.dataset?.teacherAnswer) {
+      return String(teacherWrap.dataset.teacherAnswer).trim();
+    }
+
+    const blank = lineEl.querySelector(".hw-blank[data-answer]");
+    if (blank?.dataset?.answer) return String(blank.dataset.answer).trim();
+
+    const typeIn = lineEl.querySelector("[data-audio-typein][data-answer]");
+    if (typeIn?.dataset?.answer) return String(typeIn.dataset.answer).trim();
+
+    return "";
+  }
+
+  function appendWrongMarkTeacherAnswer(lineEl, answer) {
+    const target =
+      lineEl.querySelector(".hw-blank-wrap--listen") ||
+      lineEl.querySelector(".hw-blank-wrap") ||
+      lineEl.querySelector(".hw-mc-block") ||
+      lineEl.querySelector(".hw-audio-prompt") ||
+      lineEl.querySelector(".hw-worksheet__content") ||
+      lineEl;
+    if (target.querySelector(".hw-worksheet__teacher-answer[data-hw-wrong-mark-reveal]")) return;
+
+    const el = document.createElement("p");
+    el.className = "hw-worksheet__teacher-answer";
+    el.dataset.hwWrongMarkReveal = "1";
+    el.setAttribute("lang", "ja");
+    if (hasBracketRubyNotation(answer)) {
+      el.appendChild(renderBracketRubyText(answer));
+    } else {
+      el.textContent = answer;
+    }
+    target.appendChild(el);
+  }
+
+  function revealWrongMarkedAnswers(form, questionMarks) {
+    if (!form || !questionMarks || typeof questionMarks !== "object") return;
+    clearWrongMarkedAnswerReveal(form);
+    form.querySelectorAll(".hw-worksheet__line").forEach((line, i) => {
+      if (questionMarks[String(i)] !== "wrong") return;
+      const answer = getLineExpectedAnswer(line);
+      if (!answer) return;
+      appendWrongMarkTeacherAnswer(line, answer);
+    });
   }
 
   function revealTeacherAnswers(form) {
@@ -3343,13 +3585,75 @@
     return countAnsweredQuestions(form) >= total;
   }
 
+  function topicBriefHasAudio(brief) {
+    return Boolean(
+      brief?.querySelector(".hw-worksheet__topic-audio, .hw-worksheet__topic-brief-audio-hint")
+    );
+  }
+
+  function pauseTopicBriefAudio(brief) {
+    brief?.querySelectorAll("audio").forEach((el) => {
+      try {
+        el.pause();
+      } catch (_) {
+        /* ignore */
+      }
+    });
+  }
+
+  function topicBriefSeenStorageKey(form) {
+    const assignmentId = String(form?.getAttribute?.("data-assignment-id") || "").trim();
+    if (!assignmentId) return "";
+    const username = String(global.HwAuth?.getSession?.()?.username || "").trim().toLowerCase();
+    return "hw-topic-brief-seen:" + (username || "anon") + ":" + assignmentId;
+  }
+
+  function hasSeenTopicBrief(form) {
+    const key = topicBriefSeenStorageKey(form);
+    if (!key) return false;
+    try {
+      return global.localStorage?.getItem(key) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function markTopicBriefSeen(form) {
+    const key = topicBriefSeenStorageKey(form);
+    if (!key) return;
+    try {
+      global.localStorage?.setItem(key, "1");
+    } catch {
+      /* private mode / quota */
+    }
+  }
+
+  /** Open Grammar description the first time they use this homework (on question 1, when it has audio). */
+  function syncTopicBriefOpen(brief, onFirstQuestion, form) {
+    if (!brief) return;
+    const firstLook =
+      onFirstQuestion && topicBriefHasAudio(brief) && !hasSeenTopicBrief(form);
+    if (firstLook) {
+      markTopicBriefSeen(form);
+      brief.open = true;
+      return;
+    }
+    if (!onFirstQuestion) {
+      if (brief.open) pauseTopicBriefAudio(brief);
+      brief.open = false;
+    }
+  }
+
   /**
    * One-question-at-a-time view for students (default). Toggle to see full worksheet.
    * @param {HTMLFormElement} form
    */
   function initSlideMode(form) {
     const lines = Array.from(form.querySelectorAll(".hw-worksheet__line"));
-    if (lines.length <= 1) return;
+    if (lines.length <= 1) {
+      syncTopicBriefOpen(form.querySelector(".hw-worksheet__topic-brief"), true, form);
+      return;
+    }
 
     let current = 0;
     let seeAll = false;
@@ -3431,6 +3735,7 @@
         sec.hidden = !sectionVisible;
       });
       placeSubmitTrackerInCard(form, lines[current]);
+      syncTopicBriefOpen(brief, current === 0, form);
     }
 
     function notifySlideChange() {
@@ -4050,51 +4355,70 @@
             lineEl.querySelector(".hw-mc-block__sentence")?.textContent?.replace(/\s+/g, " ").trim() ||
             "";
           const student = input?.value?.trim() || "";
-          return {
+          return rowWithRecordAddon(lineEl, {
             progress,
             blockType: blockTypeLabel(mode),
             label: num,
             question: prompt || undefined,
             student: student || "(blank)",
-          };
+          });
         }
         if (mode === "translation") {
           const input = lineEl.querySelector("textarea.hw-blank, .hw-blank");
           const jp =
             lineEl.querySelector(".hw-translation-block__japanese")?.textContent?.trim() || "";
           const student = input?.value?.trim() || "";
-          return {
+          return rowWithRecordAddon(lineEl, {
             progress,
             blockType: blockTypeLabel(mode),
             label: num,
             question: jp || undefined,
             student: student || "(blank)",
-          };
+          });
         }
         if (mode === "audio-listening") {
           const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
           const student = input?.value?.trim() || "";
           const reference =
             input?.closest(".hw-blank-wrap")?.dataset?.teacherAnswer?.trim() || "";
-          return {
+          const recordSaved = lineRecordAddonsAnswered(lineEl);
+          const recordInline = lineEl.querySelector(".hw-line-addon--record .hw-audio-inline");
+          const recordMediaId = recordSaved ? recordInline?.dataset?.mediaId?.trim() : "";
+          return rowWithRecordAddon(lineEl, {
             progress,
             blockType: blockTypeLabel(mode),
             label: num,
             question: reference || undefined,
             reference: reference || undefined,
-            student: student || "(blank)",
-          };
+            student: student
+              ? recordSaved
+                ? student + " · (audio submitted)"
+                : student
+              : recordSaved
+                ? "(audio submitted)"
+                : "(blank)",
+            mediaId: recordMediaId || undefined,
+            mediaKind: recordMediaId ? "audio" : undefined,
+          });
         }
         const input = lineEl.querySelector(STUDENT_BLANK_SELECTOR);
         const row = input?.name ? byName.get(input.name) : null;
-        if (!row) return null;
-        return {
+        if (!row) {
+          if (!lineEl.querySelector(".hw-line-addon--record")) return null;
+          return rowWithRecordAddon(lineEl, {
+            progress,
+            blockType: blockTypeLabel(mode),
+            label: num,
+            student: "(blank)",
+          });
+        }
+        return rowWithRecordAddon(lineEl, {
           progress,
           blockType: blockTypeLabel(mode),
           label: row.label,
           question: row.prompt ? stripWorksheetInstructions(row.prompt) : undefined,
           student: row.student,
-        };
+        });
       })
       .filter(Boolean);
   }
@@ -4156,8 +4480,15 @@
       return hasMeaningfulStudentAnswer(hidden?.value);
     }
     const blanks = lineEl.querySelectorAll(STUDENT_BLANK_SELECTOR);
-    if (!blanks.length) return false;
-    return Array.from(blanks).every((el) => hasMeaningfulStudentAnswer(el.value));
+    if (!blanks.length) {
+      if (lineEl.querySelector(".hw-line-addon--record")) {
+        return lineRecordAddonsAnswered(lineEl);
+      }
+      return false;
+    }
+    const blanksFilled = Array.from(blanks).every((el) => hasMeaningfulStudentAnswer(el.value));
+    if (!blanksFilled) return false;
+    return lineRecordAddonsAnswered(lineEl);
   }
 
   function totalQuestions(form) {
@@ -4231,6 +4562,7 @@
     enableSeeAnswers,
     disableSeeAnswers,
     revealTeacherAnswers,
+    revealWrongMarkedAnswers,
     hideTeacherAnswers,
     toggleTeacherAnswers,
     hasListenTeacherAnswers,

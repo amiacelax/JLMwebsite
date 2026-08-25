@@ -46,6 +46,19 @@ export async function hashPassword(
   };
 }
 
+function bytesToBase64Url(bytes: Uint8Array): string {
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export function randomUrlToken(byteLength = 32): string {
+  return bytesToBase64Url(crypto.getRandomValues(new Uint8Array(byteLength)));
+}
+
+export async function sha256Base64Url(value: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return bytesToBase64Url(new Uint8Array(buf));
+}
+
 export async function verifyPassword(
   password: string,
   saltBase64: string,

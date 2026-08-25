@@ -8,11 +8,18 @@
   const RECYCLE_MS = 14 * 24 * 60 * 60 * 1000;
   const FEED_MAX = 5;
   const V6_TAB_KEY = "jlm-hw-hubv6-tab";
+  const V6_TAB_ORDER_KEY = "jlm-hw-hubv6-tab-order";
+  const V6_TAB_LABELS_KEY = "jlm-hw-hubv6-tab-labels";
 
   /** @type {{ id: string, homeParent: Node, homeNext: ChildNode | null }[]} */
   const mountHomes = [];
   let bound = false;
   let tabsBound = false;
+  let tabReorderBound = false;
+  let tabEditMode = false;
+  let tabDragId = null;
+  /** @type {{ btn: HTMLButtonElement, input: HTMLInputElement, tabId: string, original: string } | null} */
+  let tabLabelEditing = null;
   let notifications = [];
   let activeId = null;
   let teacherSession = null;
@@ -51,6 +58,97 @@
       '<button type="button" class="btn btn--primary" id="hw-hub-v6-maker-download">Download</button>' +
       "</div>"
     );
+  }
+
+  function studentsPaneHtml() {
+    return (
+      '<div class="hw-hub-v6-mount" data-v6-mount="account"></div>' +
+      '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">' +
+      "<summary>Submissions</summary>" +
+      '<div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>' +
+      "</details>" +
+      '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-birthdays">' +
+      "<summary>Birthdays</summary>" +
+      '<div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>' +
+      "</details>" +
+      '<details class="hw-hub-v6-fold" id="hw-hub-v6-email-anchor">' +
+      "<summary>Email list</summary>" +
+      '<p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>' +
+      '<div class="hw-hub-v6-mount" data-v6-mount="promo"></div>' +
+      "</details>" +
+      '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">' +
+      "<summary>Mistakes</summary>" +
+      '<div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>' +
+      "</details>"
+    );
+  }
+
+  /** Retrofit older Student/Email panes: Submissions on top; Birthdays + Email collapsed. */
+  function ensureStudentsPaneLayout() {
+    const pane = document.getElementById("hw-hub-v6-pane-students");
+    if (!pane) return;
+
+    const account = pane.querySelector('[data-v6-mount="account"]');
+    const submissions = document.getElementById("hw-hub-v6-fold-submissions");
+    const mistakes = document.getElementById("hw-hub-v6-fold-mistakes");
+    const bdayMount = pane.querySelector('[data-v6-mount="birthdays"]');
+    const promoMount = pane.querySelector('[data-v6-mount="promo"]');
+
+    let birthdays = document.getElementById("hw-hub-v6-fold-birthdays");
+    if (!birthdays && bdayMount) {
+      const oldSection = bdayMount.closest(".hw-hub-v6-section");
+      birthdays = document.createElement("details");
+      birthdays.className = "hw-hub-v6-fold";
+      birthdays.id = "hw-hub-v6-fold-birthdays";
+      const sum = document.createElement("summary");
+      sum.textContent = "Birthdays";
+      birthdays.appendChild(sum);
+      birthdays.appendChild(bdayMount);
+      if (oldSection) oldSection.replaceWith(birthdays);
+      else pane.appendChild(birthdays);
+    }
+
+    let email = document.getElementById("hw-hub-v6-email-anchor");
+    if (email && !(email instanceof HTMLDetailsElement) && promoMount) {
+      const oldSection = promoMount.closest(".hw-hub-v6-section") || email;
+      const fold = document.createElement("details");
+      fold.className = "hw-hub-v6-fold";
+      fold.id = "hw-hub-v6-email-anchor";
+      const sum = document.createElement("summary");
+      sum.textContent = "Email list";
+      fold.appendChild(sum);
+      const lead = oldSection.querySelector?.(".hw-hub-v6-pane-lead");
+      if (lead) fold.appendChild(lead);
+      else {
+        const p = document.createElement("p");
+        p.className = "hw-hub-v6-pane-lead";
+        p.textContent = "Contacts and promo signups — separate from student IDs above.";
+        fold.appendChild(p);
+      }
+      fold.appendChild(promoMount);
+      if (oldSection?.parentNode) oldSection.replaceWith(fold);
+      else pane.appendChild(fold);
+      email = fold;
+    } else if (!email && promoMount) {
+      email = document.createElement("details");
+      email.className = "hw-hub-v6-fold";
+      email.id = "hw-hub-v6-email-anchor";
+      const sum = document.createElement("summary");
+      sum.textContent = "Email list";
+      email.appendChild(sum);
+      const p = document.createElement("p");
+      p.className = "hw-hub-v6-pane-lead";
+      p.textContent = "Contacts and promo signups — separate from student IDs above.";
+      email.appendChild(p);
+      email.appendChild(promoMount);
+      pane.appendChild(email);
+    }
+
+    [account, submissions, birthdays, email, mistakes]
+      .filter(Boolean)
+      .forEach((el) => {
+        if (el.parentNode === pane) pane.appendChild(el);
+      });
   }
 
   function downloadMakerWorksheet() {
@@ -617,6 +715,323 @@
     }
   }
 
+  function getHubV6Tablist() {
+    return (
+      document.querySelector("#hw-hub-v6-panel .hw-hub-v6-tabs") ||
+      document.querySelector(".hw-hub-v6-tabs")
+    );
+  }
+
+  function getHubV6TabIdsFromDom() {
+    const tablist = getHubV6Tablist();
+    if (!tablist) return TAB_DEFS.map((t) => t.id);
+    return [...tablist.querySelectorAll("[data-hub-v6-tab]")]
+      .map((btn) => String(btn.getAttribute("data-hub-v6-tab") || "").trim())
+      .filter(Boolean);
+  }
+
+  function hasSavedTabOrder() {
+    try {
+      const raw = localStorage.getItem(V6_TAB_ORDER_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  function mergeTabOrder(saved) {
+    const defaults = TAB_DEFS.map((t) => t.id);
+    const domIds = getHubV6TabIdsFromDom();
+    const allIds = [...new Set([...defaults, ...domIds])];
+    if (!Array.isArray(saved) || !saved.length) return allIds;
+    const ordered = [];
+    const seen = new Set();
+    saved.forEach((id) => {
+      const key = String(id || "").trim();
+      if (key && allIds.includes(key) && !seen.has(key)) {
+        ordered.push(key);
+        seen.add(key);
+      }
+    });
+    allIds.forEach((id) => {
+      if (!seen.has(id)) ordered.push(id);
+    });
+    return ordered;
+  }
+
+  function readSavedTabOrder() {
+    try {
+      const raw = localStorage.getItem(V6_TAB_ORDER_KEY);
+      if (!raw) return mergeTabOrder(null);
+      return mergeTabOrder(JSON.parse(raw));
+    } catch {
+      return mergeTabOrder(null);
+    }
+  }
+
+  function saveTabOrderFromDom() {
+    const order = getHubV6TabIdsFromDom();
+    try {
+      localStorage.setItem(V6_TAB_ORDER_KEY, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+    return order;
+  }
+
+  function defaultTabLabel(tabId) {
+    const key = String(tabId || "").trim();
+    const def = TAB_DEFS.find((t) => t.id === key);
+    return def?.label || key;
+  }
+
+  function readSavedTabLabels() {
+    try {
+      const raw = localStorage.getItem(V6_TAB_LABELS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function tabLabelFor(tabId) {
+    const key = String(tabId || "").trim();
+    if (!key) return "";
+    const custom = String(readSavedTabLabels()[key] || "").trim();
+    return custom || defaultTabLabel(key);
+  }
+
+  function saveTabLabel(tabId, label) {
+    const key = String(tabId || "").trim();
+    if (!key) return;
+    const text = String(label || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .slice(0, 48);
+    const labels = readSavedTabLabels();
+    if (!text || text === defaultTabLabel(key)) {
+      delete labels[key];
+    } else {
+      labels[key] = text;
+    }
+    try {
+      localStorage.setItem(V6_TAB_LABELS_KEY, JSON.stringify(labels));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function applySavedTabLabels() {
+    getHubV6Tablist()
+      ?.querySelectorAll("[data-hub-v6-tab]")
+      .forEach((btn) => {
+        const id = btn.getAttribute("data-hub-v6-tab");
+        if (!id || btn.classList.contains("is-label-editing")) return;
+        btn.textContent = tabLabelFor(id);
+      });
+  }
+
+  function finishTabLabelEdit(save) {
+    if (!tabLabelEditing) return;
+    const { btn, input, tabId, original } = tabLabelEditing;
+    input.remove();
+    btn.classList.remove("is-label-editing");
+    btn.draggable = tabEditMode;
+    if (save) {
+      const next =
+        String(input.value || "")
+          .trim()
+          .replace(/\s+/g, " ") || defaultTabLabel(tabId);
+      saveTabLabel(tabId, next);
+      btn.textContent = tabLabelFor(tabId);
+    } else {
+      btn.textContent = original;
+    }
+    tabLabelEditing = null;
+    syncHubV6TabSlider();
+  }
+
+  function startTabLabelEdit(btn) {
+    if (!tabEditMode || !btn) return;
+    const tabId = String(btn.getAttribute("data-hub-v6-tab") || "").trim();
+    if (!tabId) return;
+    if (tabLabelEditing?.btn === btn) return;
+    finishTabLabelEdit(true);
+
+    const original = btn.textContent.trim() || tabLabelFor(tabId);
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "hw-hub-v6-tabs__label-input";
+    input.value = original;
+    input.setAttribute("aria-label", "Tab name");
+    input.maxLength = 48;
+
+    btn.classList.add("is-label-editing");
+    btn.draggable = false;
+    btn.textContent = "";
+    btn.appendChild(input);
+    input.focus();
+    input.select();
+
+    tabLabelEditing = { btn, input, tabId, original };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finishTabLabelEdit(true);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        finishTabLabelEdit(false);
+      }
+    });
+    input.addEventListener("blur", () => finishTabLabelEdit(true));
+  }
+
+  function applySavedTabOrder() {
+    const tablist = getHubV6Tablist();
+    if (!tablist) return;
+    const slider = tablist.querySelector(".hw-hub-v6-tabs__slider");
+    readSavedTabOrder().forEach((id) => {
+      const btn = document.getElementById("hw-hub-v6-tab-" + id);
+      if (btn) tablist.appendChild(btn);
+    });
+    if (slider && tablist.firstChild !== slider) {
+      tablist.insertBefore(slider, tablist.firstChild);
+    }
+  }
+
+  /** Always keep the banner control as Edit (never leave a cached "Refresh"). */
+  function ensureEditButton() {
+    let editBtn =
+      document.getElementById("hw-hub-v6-edit") ||
+      document.getElementById("hw-hub-v6-refresh");
+    if (!editBtn) {
+      const banner = document.querySelector("#hw-hub-v6-panel .hw-hub-v6__banner");
+      if (!banner) return null;
+      editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn btn--ghost btn--sm";
+      banner.appendChild(editBtn);
+    }
+    editBtn.id = "hw-hub-v6-edit";
+    if (!tabEditMode && editBtn.textContent.trim() !== "Edit") {
+      editBtn.textContent = "Edit";
+    }
+    if (!editBtn.hasAttribute("aria-pressed")) {
+      editBtn.setAttribute("aria-pressed", "false");
+    }
+    return editBtn;
+  }
+
+  function setTabEditMode(on) {
+    if (!on && tabLabelEditing) finishTabLabelEdit(true);
+    tabEditMode = !!on;
+    const tablist = getHubV6Tablist();
+    const editBtn = ensureEditButton();
+    tablist?.classList.toggle("is-tab-edit", tabEditMode);
+    if (editBtn) {
+      editBtn.textContent = tabEditMode ? "Done" : "Edit";
+      editBtn.setAttribute("aria-pressed", tabEditMode ? "true" : "false");
+      editBtn.classList.toggle("is-active", tabEditMode);
+      editBtn.title = tabEditMode
+        ? "Drag tabs to reorder · double-click a tab to rename"
+        : "";
+    }
+    tablist?.querySelectorAll("[data-hub-v6-tab]").forEach((btn) => {
+      btn.draggable = tabEditMode && !btn.classList.contains("is-label-editing");
+    });
+    const slider = tablist?.querySelector(".hw-hub-v6-tabs__slider");
+    if (slider) slider.style.opacity = tabEditMode ? "0" : "";
+    if (!tabEditMode) {
+      saveTabOrderFromDom();
+      applySavedTabLabels();
+    }
+    syncHubV6TabSlider();
+  }
+
+  function bindTabReorder() {
+    if (tabReorderBound) return;
+    const panel = document.getElementById("hw-hub-v6-panel");
+    if (!panel) return;
+    tabReorderBound = true;
+    ensureEditButton();
+
+    const editBtn =
+      document.getElementById("hw-hub-v6-edit") ||
+      document.getElementById("hw-hub-v6-refresh");
+    if (editBtn) {
+      if (editBtn.id === "hw-hub-v6-refresh") editBtn.id = "hw-hub-v6-edit";
+      if (editBtn.textContent.trim() === "Refresh") editBtn.textContent = "Edit";
+      editBtn.setAttribute("aria-pressed", "false");
+      editBtn.addEventListener("click", () => setTabEditMode(!tabEditMode));
+    }
+
+    panel.addEventListener("dragstart", (ev) => {
+      if (!tabEditMode) return;
+      if (tabLabelEditing) finishTabLabelEdit(true);
+      const btn = ev.target.closest?.("[data-hub-v6-tab]");
+      if (!btn || !panel.contains(btn)) return;
+      if (btn.classList.contains("is-label-editing")) {
+        ev.preventDefault();
+        return;
+      }
+      tabDragId = btn.getAttribute("data-hub-v6-tab");
+      btn.classList.add("is-dragging");
+      ev.dataTransfer?.setData("text/plain", tabDragId || "");
+      if (ev.dataTransfer) ev.dataTransfer.effectAllowed = "move";
+    });
+
+    panel.addEventListener("dblclick", (ev) => {
+      if (!tabEditMode) return;
+      const btn = ev.target.closest?.("[data-hub-v6-tab]");
+      if (!btn || !panel.contains(btn)) return;
+      if (ev.target.closest?.(".hw-hub-v6-tabs__label-input")) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      startTabLabelEdit(btn);
+    });
+
+    panel.addEventListener("dragover", (ev) => {
+      if (!tabEditMode || !tabDragId) return;
+      const btn = ev.target.closest?.("[data-hub-v6-tab]");
+      if (!btn || !panel.contains(btn)) return;
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+      getHubV6Tablist()
+        ?.querySelectorAll("[data-hub-v6-tab].is-drop-target")
+        .forEach((el) => el.classList.remove("is-drop-target"));
+      if (btn.getAttribute("data-hub-v6-tab") !== tabDragId) {
+        btn.classList.add("is-drop-target");
+      }
+    });
+
+    panel.addEventListener("drop", (ev) => {
+      if (!tabEditMode || !tabDragId) return;
+      const btn = ev.target.closest?.("[data-hub-v6-tab]");
+      if (!btn || !panel.contains(btn)) return;
+      ev.preventDefault();
+      const dropId = btn.getAttribute("data-hub-v6-tab");
+      const tablist = getHubV6Tablist();
+      const dragged = document.getElementById("hw-hub-v6-tab-" + tabDragId);
+      if (!tablist || !dragged || !dropId || dropId === tabDragId) return;
+      tablist.insertBefore(dragged, btn);
+      btn.classList.remove("is-drop-target");
+    });
+
+    panel.addEventListener("dragend", (ev) => {
+      const btn = ev.target.closest?.("[data-hub-v6-tab]");
+      btn?.classList.remove("is-dragging");
+      getHubV6Tablist()
+        ?.querySelectorAll("[data-hub-v6-tab].is-drop-target")
+        .forEach((el) => el.classList.remove("is-drop-target"));
+      tabDragId = null;
+    });
+  }
+
   function syncTabButtons(tabId) {
     document.querySelectorAll("[data-hub-v6-tab]").forEach((btn) => {
       const on = btn.getAttribute("data-hub-v6-tab") === tabId;
@@ -829,13 +1244,90 @@
     }
   }
 
-  /* ── HW Notes deck (every submission still waiting on notes) ── */
+  /* ── HW Notes — pick a waiting submission, Start opens full-sheet review ── */
 
   let reviewDeckBound = false;
   let reviewPending = [];
+  let reviewSelectedId = "";
 
   function reviewSession() {
     return teacherSession || global.HwAuth?.getTeacherSession?.() || null;
+  }
+
+  function selectedReviewEntry() {
+    if (!reviewSelectedId) return null;
+    return reviewPending.find((s) => String(s.id) === reviewSelectedId) || null;
+  }
+
+  function syncReviewSelectionUi() {
+    const list = document.getElementById("hw-hub-v6-review-list");
+    const startBtn = document.getElementById("hw-hub-v6-review-start");
+    const deleteBtn = document.getElementById("hw-hub-v6-review-delete");
+    list?.querySelectorAll("[data-submission-id]").forEach((btn) => {
+      const on = btn.getAttribute("data-submission-id") === reviewSelectedId;
+      btn.classList.toggle("is-selected", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (startBtn) {
+      startBtn.disabled = !selectedReviewEntry();
+    }
+    if (deleteBtn) {
+      deleteBtn.disabled = !selectedReviewEntry();
+    }
+  }
+
+  async function openSelectedFullSheetReview() {
+    const entry = selectedReviewEntry();
+    if (!entry) {
+      global.HwToast?.show?.("Pick a student submission first.");
+      return;
+    }
+    if (reviewStatus(entry) !== "submitted") {
+      global.HwToast?.show?.("That submission is already finished — refresh the list.");
+      await refreshReviewDeck();
+      return;
+    }
+    if (global.HwTeacherReview?.openOnlineSubmission) {
+      await global.HwTeacherReview.openOnlineSubmission(entry);
+      return;
+    }
+    global.HwToast?.show?.("Full-sheet review isn’t available yet — hard-refresh.");
+  }
+
+  async function deleteReviewSubmission(submissionId, label) {
+    const id = String(submissionId || "").trim();
+    if (!id) return;
+    const session = reviewSession();
+    if (!session?.username) {
+      global.HwToast?.show?.("Teacher login required.");
+      return;
+    }
+    const who = String(label || "this submission").trim() || "this submission";
+    if (
+      !window.confirm(
+        "Delete " + who + "?\n\nThis removes the submission permanently. You can’t undo it."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/homework-submissions/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: session.username,
+          submissionId: id,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not delete submission.");
+      if (reviewSelectedId === id) reviewSelectedId = "";
+      global.HwToast?.show?.(data.message || "Submission deleted.");
+      await refreshReviewDeck();
+    } catch (err) {
+      global.HwToast?.show?.(err?.message || "Could not delete submission.");
+    }
   }
 
   function bindReviewDeck() {
@@ -844,11 +1336,39 @@
     if (!pane) return;
     reviewDeckBound = true;
     pane.addEventListener("click", (ev) => {
+      const delRow = ev.target.closest?.("[data-delete-submission-id]");
+      if (delRow && pane.contains(delRow)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = delRow.getAttribute("data-delete-submission-id") || "";
+        const label = delRow.getAttribute("data-delete-label") || "";
+        void deleteReviewSubmission(id, label);
+        return;
+      }
+      const pick = ev.target.closest?.("[data-submission-id]");
+      if (pick && pane.contains(pick)) {
+        ev.preventDefault();
+        reviewSelectedId = pick.getAttribute("data-submission-id") || "";
+        syncReviewSelectionUi();
+        return;
+      }
       if (ev.target.closest?.("#hw-hub-v6-review-start")) {
         ev.preventDefault();
-        if (!reviewPending.length) return;
-        if (!global.HwReviewFlashcards?.openQueue) return;
-        void global.HwReviewFlashcards.openQueue(reviewPending);
+        void openSelectedFullSheetReview();
+        return;
+      }
+      if (ev.target.closest?.("#hw-hub-v6-review-delete")) {
+        ev.preventDefault();
+        const entry = selectedReviewEntry();
+        if (!entry) {
+          global.HwToast?.show?.("Pick a student submission first.");
+          return;
+        }
+        const label =
+          (entry.displayName || entry.username || "Student") +
+          " — " +
+          (entry.lessonName || entry.title || entry.assignmentId || "Homework");
+        void deleteReviewSubmission(entry.id, label);
         return;
       }
       if (ev.target.closest?.("#hw-hub-v6-review-refresh")) {
@@ -856,12 +1376,23 @@
         void refreshReviewDeck();
       }
     });
+    pane.addEventListener("dblclick", (ev) => {
+      if (ev.target.closest?.("[data-delete-submission-id]")) return;
+      const pick = ev.target.closest?.("[data-submission-id]");
+      if (!pick || !pane.contains(pick)) return;
+      ev.preventDefault();
+      reviewSelectedId = pick.getAttribute("data-submission-id") || "";
+      syncReviewSelectionUi();
+      void openSelectedFullSheetReview();
+    });
   }
 
   async function refreshReviewDeck() {
+    ensureHwNotesDeleteControls();
     const summary = document.getElementById("hw-hub-v6-review-summary");
     const list = document.getElementById("hw-hub-v6-review-list");
     const startBtn = document.getElementById("hw-hub-v6-review-start");
+    const deleteBtn = document.getElementById("hw-hub-v6-review-delete");
     if (!summary) return;
 
     const session = reviewSession();
@@ -872,6 +1403,7 @@
 
     summary.textContent = "Loading…";
     if (startBtn) startBtn.disabled = true;
+    if (deleteBtn) deleteBtn.disabled = true;
 
     try {
       const res = await fetch(
@@ -881,36 +1413,79 @@
       if (!res.ok) throw new Error(data.error || "Could not load submissions.");
 
       reviewPending = (Array.isArray(data.submissions) ? data.submissions : [])
-        .filter((s) => s?.type === "online" && s.reviewStatus !== "reviewed")
+        .filter((s) => s?.type === "online" && reviewStatus(s) === "submitted")
         .sort((a, b) => String(a.submittedAt).localeCompare(String(b.submittedAt)));
 
       if (!reviewPending.length) {
+        reviewSelectedId = "";
         summary.textContent = "Nothing waiting — every submission has your notes.";
         if (list) list.replaceChildren();
+        if (startBtn) startBtn.disabled = true;
+        if (deleteBtn) deleteBtn.disabled = true;
         return;
       }
 
       summary.textContent =
         reviewPending.length +
         (reviewPending.length === 1 ? " submission" : " submissions") +
-        " waiting on your notes.";
-      if (startBtn) startBtn.disabled = false;
+        " waiting on your notes. Pick one, then Start deck — or Delete to remove a duplicate.";
+
+      if (
+        reviewSelectedId &&
+        !reviewPending.some((s) => String(s.id) === reviewSelectedId)
+      ) {
+        reviewSelectedId = "";
+      }
 
       if (list) {
         list.replaceChildren();
         reviewPending.forEach((entry) => {
-          const li = document.createElement("li");
-          li.className = "hw-hub-v6-review-list__item";
-          li.textContent =
+          const id = String(entry.id || "");
+          const label =
             (entry.displayName || entry.username || "Student") +
             " — " +
             (entry.lessonName || entry.title || entry.assignmentId || "Homework");
+          const li = document.createElement("li");
+          li.className = "hw-hub-v6-review-list__row";
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "hw-hub-v6-review-list__item";
+          btn.setAttribute("data-submission-id", id);
+          btn.setAttribute("aria-pressed", "false");
+          btn.textContent = label;
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "btn btn--ghost btn--sm hw-btn--danger hw-hub-v6-review-list__delete";
+          del.setAttribute("data-delete-submission-id", id);
+          del.setAttribute("data-delete-label", label);
+          del.setAttribute("aria-label", "Delete " + label);
+          del.textContent = "Delete";
+          li.appendChild(btn);
+          li.appendChild(del);
           list.appendChild(li);
         });
       }
+      syncReviewSelectionUi();
     } catch (err) {
       summary.textContent = err?.message || "Could not load submissions.";
     }
+  }
+
+  function ensureHwNotesDeleteControls() {
+    const actions = document.querySelector(
+      "#hw-hub-v6-pane-hwnotes .hw-hub-v6-review-actions"
+    );
+    if (!actions) return;
+    if (document.getElementById("hw-hub-v6-review-delete")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--ghost btn--sm hw-btn--danger";
+    btn.id = "hw-hub-v6-review-delete";
+    btn.disabled = true;
+    btn.textContent = "Delete";
+    const refresh = document.getElementById("hw-hub-v6-review-refresh");
+    if (refresh) actions.insertBefore(btn, refresh);
+    else actions.appendChild(btn);
   }
 
   /* ── Notifications (Hub Preview tab) ── */
@@ -1016,7 +1591,9 @@
     }
     if (note.promo) {
       activateV6Tab("students");
-      document.getElementById("hw-hub-v6-email-anchor")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      const emailFold = document.getElementById("hw-hub-v6-email-anchor");
+      if (emailFold instanceof HTMLDetailsElement) emailFold.open = true;
+      emailFold?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       return;
     }
     if (note.report) {
@@ -1035,6 +1612,9 @@
     }
     if (note.birthday) {
       activateV6Tab("students");
+      const bdayFold = document.getElementById("hw-hub-v6-fold-birthdays");
+      if (bdayFold instanceof HTMLDetailsElement) bdayFold.open = true;
+      bdayFold?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       return;
     }
     global.HwToast?.show?.("Demo notification — wire a real submission to open HW.");
@@ -1208,24 +1788,28 @@
     /* Upgrade legacy notifications-only markup into tabbed shell */
     const existingMain = panel.querySelector(".hw-hub-v6__main");
     const existingRecycle = panel.querySelector(".hw-hub-v6__recycle");
-    const existingRefresh = document.getElementById("hw-hub-v6-refresh");
+    const existingEdit =
+      document.getElementById("hw-hub-v6-edit") ||
+      document.getElementById("hw-hub-v6-refresh");
 
     panel.replaceChildren();
 
     const banner = document.createElement("div");
     banner.className = "hw-hub-v6__banner";
-    banner.innerHTML =
-      "<div><h2>Teacher Hub</h2>" +
-      "<p>Home notifications, maker, students, and tools — classic layout is Hub Preview → Hub v1.</p></div>";
-    if (existingRefresh) {
-      existingRefresh.id = "hw-hub-v6-refresh";
-      banner.appendChild(existingRefresh);
+    if (existingEdit) {
+      existingEdit.id = "hw-hub-v6-edit";
+      if (existingEdit.textContent.trim() === "Refresh") {
+        existingEdit.textContent = "Edit";
+      }
+      existingEdit.setAttribute("aria-pressed", "false");
+      banner.appendChild(existingEdit);
     } else {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn btn--ghost btn--sm";
-      btn.id = "hw-hub-v6-refresh";
-      btn.textContent = "Refresh";
+      btn.id = "hw-hub-v6-edit";
+      btn.setAttribute("aria-pressed", "false");
+      btn.textContent = "Edit";
       banner.appendChild(btn);
     }
     panel.appendChild(banner);
@@ -1247,7 +1831,7 @@
       btn.setAttribute("aria-selected", i === 0 ? "true" : "false");
       btn.id = "hw-hub-v6-tab-" + t.id;
       btn.setAttribute("aria-controls", "hw-hub-v6-pane-" + t.id);
-      btn.textContent = t.label;
+      btn.textContent = tabLabelFor(t.id);
       tablist.appendChild(btn);
     });
     panel.appendChild(tablist);
@@ -1278,11 +1862,11 @@
       "hwnotes",
       '<section class="hw-hub-v6-section">' +
         '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
-        '<p class="hw-hub-v6-pane-lead">Every homework waiting on your notes, stacked into one deck. ' +
-        "Flip card by card — your saved replies are already filled in.</p>" +
+        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the same full-sheet review as Submissions → Open full sheet.</p>' +
         '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
         '<div class="hw-hub-v6-review-actions">' +
         '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-hub-v6-review-delete" disabled>Delete</button>' +
         '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
         "</div>" +
         '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
@@ -1299,27 +1883,7 @@
         makerDownloadFooterHtml()
     );
 
-    pane(
-      "students",
-      '<div class="hw-hub-v6-mount" data-v6-mount="account"></div>' +
-        '<section class="hw-hub-v6-section">' +
-        '<h3 class="hw-hub-v6-section__title">Birthdays</h3>' +
-        '<div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>' +
-        "</section>" +
-        '<section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">' +
-        '<h3 class="hw-hub-v6-section__title">Email list</h3>' +
-        '<p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>' +
-        '<div class="hw-hub-v6-mount" data-v6-mount="promo"></div>' +
-        "</section>" +
-        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">' +
-        "<summary>Submissions</summary>" +
-        '<div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>' +
-        "</details>" +
-        '<details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">' +
-        "<summary>Mistakes</summary>" +
-        '<div class="hw-hub-v6-mount" data-v6-mount="mistakes"></div>' +
-        "</details>"
-    );
+    pane("students", studentsPaneHtml());
 
     pane("websites", '<div class="hw-hub-v6-mount" data-v6-mount="websites"></div>');
 
@@ -1373,6 +1937,7 @@
       }
       const btn = ev.target.closest?.("[data-hub-v6-tab]");
       if (!btn || !panel.contains(btn)) return;
+      if (tabEditMode) return;
       activateV6Tab(btn.getAttribute("data-hub-v6-tab") || "maker");
     });
   }
@@ -1408,7 +1973,7 @@
     }
     /* Prefer Home first in the tab strip (after the sliding pill). */
     const tablist = pane.closest(".hw-hub-v6")?.querySelector(".hw-hub-v6-tabs");
-    if (tablist && homeTab) {
+    if (tablist && homeTab && !hasSavedTabOrder()) {
       const slider = tablist.querySelector(".hw-hub-v6-tabs__slider");
       const firstBtn = tablist.querySelector(".hw-hub-v6-tabs__btn");
       if (firstBtn !== homeTab) {
@@ -1424,9 +1989,14 @@
     ensureShellMarkup();
     ensureMakerFooter();
     ensureHomeTickerMarkup();
+    ensureStudentsPaneLayout();
     ensureDeckTabs();
     ensureHubPreviewTab();
+    ensureEditButton();
+    applySavedTabOrder();
+    applySavedTabLabels();
     bindTabs();
+    bindTabReorder();
     bindHubV6TabSliderLayout();
     syncHubV6TabSlider();
   }
@@ -1444,7 +2014,7 @@
       btn.setAttribute("aria-selected", "false");
       btn.id = "hw-hub-v6-tab-" + tabId;
       btn.setAttribute("aria-controls", "hw-hub-v6-pane-" + tabId);
-      btn.textContent = label;
+      btn.textContent = tabLabelFor(tabId) || label;
       const after = insertAfterTabId
         ? document.getElementById("hw-hub-v6-tab-" + insertAfterTabId)
         : null;
@@ -1483,11 +2053,11 @@
       "HW Notes",
       '<section class="hw-hub-v6-section">' +
         '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
-        '<p class="hw-hub-v6-pane-lead">Every homework waiting on your notes, stacked into one deck. ' +
-        "Flip card by card — your saved replies are already filled in.</p>" +
+        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the same full-sheet review as Submissions → Open full sheet.</p>' +
         '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
         '<div class="hw-hub-v6-review-actions">' +
         '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-hub-v6-review-delete" disabled>Delete</button>' +
         '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
         "</div>" +
         '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
@@ -1556,12 +2126,7 @@
       return;
     }
     bound = true;
-    document.getElementById("hw-hub-v6-refresh")?.addEventListener("click", () => {
-      if (activeV6Tab === "preview") {
-        void refreshNotifications();
-        void refreshBirthdayTicker();
-      } else afterMountHooks(activeV6Tab);
-    });
+    bindTabReorder();
     document.addEventListener("hw-teacher-tab-change", (ev) => {
       /* Primary shell owns mounts; classic tabs only under Hub Preview → Hub v1. */
       if (document.body.classList.contains("hw-hub-v6-primary")) return;

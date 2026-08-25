@@ -24,13 +24,109 @@
   },
   "assignments": [
     {
+      "id": "faye-situation-cards-1",
+      "title": "Situation Cards 1 — 日本での一日",
+      "date": "2026-08-24",
+      "lessonName": "Situation Cards 1",
+      "studentLabel": "Faye",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "other",
+      "tags": [
+        "situation-cards",
+        "speaking",
+        "roleplay",
+        "faye",
+        "draft"
+      ],
+      "summary": "Library draft — 8 Situation Cards (mix of sticky + happy). Look at the picture, read JP, record what you'd say. NOT assigned to Faye yet."
+    },
+    {
+      "id": "faye-aiko-reply-15y",
+      "title": "Pen Pal — 愛子の返事（15年後）",
+      "date": "2026-08-19",
+      "lessonName": "Pen Pal — 愛子 reply 15 years later",
+      "studentLabel": "Faye",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "other",
+      "tags": [
+        "pen-pal",
+        "letter",
+        "愛子",
+        "faye",
+        "draft"
+      ],
+      "summary": "Library draft — Faye only received 愛子's first letter last week (15 years late). She wrote back; now read 愛子's reply (married, first child, maternity leave) and write your response. NOT assigned to Faye."
+    },
+    {
+      "id": "trial-beginner-secret-kana",
+      "title": "Free trial — Secret Hiragana / Katakana",
+      "date": "2026-08-18",
+      "lessonName": "Free trial — Beginner",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "freeTrial": true,
+      "trialLevel": "beginner",
+      "tags": [
+        "trial",
+        "beginner",
+        "hiragana",
+        "katakana"
+      ],
+      "summary": "Short free-trial sheet: greeting, Café, ゲームを買った, リュウ, りゃりゅりょ."
+    },
+    {
+      "id": "trial-intermediate-tai",
+      "title": "Free trial — ～たい",
+      "date": "2026-08-18",
+      "lessonName": "Free trial — Intermediate",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "freeTrial": true,
+      "trialLevel": "intermediate",
+      "tags": [
+        "trial",
+        "intermediate",
+        "たい",
+        "ほしい"
+      ],
+      "summary": "Short free-trial ～たい / ほしい sheet (no はい行きたいです)."
+    },
+    {
+      "id": "trial-advanced-notoki",
+      "title": "Free trial — 〜時、〜の時",
+      "date": "2026-08-18",
+      "lessonName": "Free trial — Advanced",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "freeTrial": true,
+      "trialLevel": "advanced",
+      "tags": [
+        "trial",
+        "advanced",
+        "とき",
+        "の時"
+      ],
+      "summary": "Short free-trial のとき sheet: 使うときは, 子どもよく遊んだ, childhood video prompt."
+    },
+    {
       "id": "sykohpath-secret-hiragana",
       "title": "Secret Hiragana / Katakana",
-      "date": "2026-08-13",
+      "date": "2026-08-22",
       "lessonName": "Secret Hiragana / Katakana",
       "students": ["demoprem"],
       "forSale": false,
       "salePrice": 0.99,
+      "wsCategory": "core-japanese",
       "tags": [
         "hiragana",
         "katakana",
@@ -319,9 +415,8 @@
       "date": "2026-08-05",
       "studentLabel": "Drew",
       "lessonName": "〜ずにはいられない / 〜をよそに / 〜ともなると / 〜んがために / 〜極まりない",
-      "students": [
-        "drew"
-      ],
+      "students": [],
+      "wsCategory": "jlpt",
       "forSale": false,
       "salePrice": 0.99,
       "tags": [
@@ -329,6 +424,7 @@
         "N1",
         "grammar",
         "draft",
+        "jlpt",
         "ずにはいられない",
         "をよそに",
         "ともなると",
@@ -336,6 +432,83 @@
         "極まりない"
       ],
       "summary": "Five multiple-choice blanks for advanced grammar: 〜ずにはいられない, 〜をよそに, 〜ともなると, 〜んがために, 〜極まりない."
+    },
+    {
+      "id": "drew-n1-mc-quiz-2",
+      "title": "Multiple Choice Quiz 2",
+      "date": "2026-08-22",
+      "studentLabel": "Drew",
+      "lessonName": "〜に相違ない / 〜といえども / 〜にあたって / 〜を皮切りに / 〜まみれ",
+      "students": [],
+      "wsCategory": "jlpt",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "multiple-choice",
+        "audio-prompt",
+        "N1",
+        "grammar",
+        "draft",
+        "jlpt",
+        "に相違ない",
+        "といえども",
+        "にあたって",
+        "を皮切りに",
+        "まみれ"
+      ],
+      "summary": "Five N1 MC blanks (に相違ない, といえども, にあたって, を皮切りに, まみれ) — each followed by a JP/US culture recording prompt."
+    },
+    {
+      "id": "jay-n3-open-response",
+      "title": "Jay — N3 (open response)",
+      "date": "2026-08-19",
+      "studentLabel": "Jay",
+      "lessonName": "N3",
+      "students": [],
+      "wsCategory": "jlpt",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": ["open-response", "N3", "draft", "jlpt"],
+      "summary": "Simple N3 open response (library only)."
+    },
+    {
+      "id": "alex-iadj-conjugation",
+      "title": "いadj conjugation",
+      "date": "2026-08-19",
+      "studentLabel": "Alex",
+      "lessonName": "い-adjective conjugation",
+      "students": [],
+      "wsCategory": "core-japanese",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": ["い-adjective", "conjugation", "listening", "draft"],
+      "summary": "Placeholder structure: 4 listening, 4 star-order, 2 translation, 1 video response."
+    },
+    {
+      "id": "josh-fukuin-part1",
+      "title": "福音を伝えよう Part 1",
+      "date": "2026-08-19",
+      "studentLabel": "Josh",
+      "lessonName": "Sharing the gospel in Japanese",
+      "students": [],
+      "wsCategory": "christian",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": ["gospel", "open-response", "draft", "christian"],
+      "summary": "Open response — 5 core Japanese gospel points + Josh's English draft reference."
+    },
+    {
+      "id": "benm-fukuin-part1",
+      "title": "福音を伝えよう Part 1",
+      "date": "2026-08-19",
+      "studentLabel": "Ben M",
+      "lessonName": "Sharing the gospel in Japanese",
+      "students": [],
+      "wsCategory": "christian",
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": ["gospel", "open-response", "draft", "christian"],
+      "summary": "Open response — 5 core Japanese gospel points + Ben's theological outline reference."
     }
   ]
 }

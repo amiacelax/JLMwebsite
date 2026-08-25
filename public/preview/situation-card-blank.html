@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Situation Card — blank template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&family=Zen+Kurenaido&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1a2744;
+      --navy-soft: #243556;
+      --cream: #faf6ef;
+      --paper: #fffdf9;
+      --line: #d4dce8;
+      --muted: #6b7a92;
+      --accent: #c9a227;
+      --shadow: 0 12px 40px rgba(26, 39, 68, 0.12);
+      --card-w: 420px;
+      --card-h: 620px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(201, 162, 39, 0.08), transparent 55%),
+        linear-gradient(165deg, #eef2f8 0%, #e4eaf3 45%, #dce3ee 100%);
+      color: var(--navy);
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    .page-head {
+      max-width: 920px;
+      margin: 0 auto 1.5rem;
+      text-align: center;
+    }
+
+    .page-head h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+      letter-spacing: 0.02em;
+    }
+
+    .page-head p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      max-width: 920px;
+      margin: 0 auto 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .toolbar label,
+    .toolbar button {
+      font-size: 0.78rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 0.75rem;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--navy-soft);
+    }
+
+    .toolbar label input { display: none; }
+
+    .toolbar button {
+      padding: 0.45rem 0.85rem;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+    }
+
+    .toolbar button:hover { opacity: 0.92; }
+
+    .stage {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* —— The card —— */
+    .sit-card {
+      width: var(--card-w);
+      min-height: var(--card-h);
+      background: var(--paper);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(26, 39, 68, 0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .sit-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    .sit-card__head {
+      padding: 0.85rem 1.1rem 0.65rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      border-bottom: 1px solid rgba(26, 39, 68, 0.06);
+      background: linear-gradient(180deg, var(--cream) 0%, var(--paper) 100%);
+    }
+
+    .sit-card__eyebrow {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .sit-card__mark {
+      font-family: "Zen Kurenaido", "Noto Sans JP", sans-serif;
+      font-size: 0.95rem;
+      color: var(--navy-soft);
+      opacity: 0.55;
+    }
+
+    .sit-card__image {
+      flex: 0 0 auto;
+      height: 240px;
+      margin: 1rem 1.1rem 0;
+      border-radius: 14px;
+      border: 2px dashed var(--line);
+      background:
+        linear-gradient(135deg, rgba(26, 39, 68, 0.03) 25%, transparent 25%) -8px 0/16px 16px,
+        linear-gradient(225deg, rgba(26, 39, 68, 0.03) 25%, transparent 25%) -8px 0/16px 16px,
+        linear-gradient(315deg, rgba(26, 39, 68, 0.03) 25%, transparent 25%) 0 0/16px 16px,
+        linear-gradient(45deg, rgba(26, 39, 68, 0.03) 25%, transparent 25%) 0 0/16px 16px,
+        #f3f6fb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .sit-card__image:hover {
+      border-color: #b8c4d6;
+    }
+
+    .sit-card__image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      display: block;
+      background: #fff;
+    }
+
+    .sit-card__image-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+
+    .sit-card__image-hint svg {
+      width: 36px;
+      height: 36px;
+      opacity: 0.45;
+    }
+
+    .sit-card__image.has-image .sit-card__image-hint {
+      display: none;
+    }
+
+    .sit-card__body {
+      flex: 1;
+      padding: 1.15rem 1.25rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .sit-card__label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .sit-card__text {
+      flex: 1;
+      min-height: 140px;
+      font-family: "Noto Sans JP", "Hiragino Sans", sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.75;
+      color: var(--navy);
+      border: none;
+      outline: none;
+      resize: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .sit-card__text:empty::before,
+    .sit-card__text[data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      color: #aab4c4;
+      pointer-events: none;
+    }
+
+    .sit-card__foot {
+      padding: 0.65rem 1.1rem 0.85rem;
+      border-top: 1px solid rgba(26, 39, 68, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      background: var(--cream);
+    }
+
+    .sit-card__foot-logo {
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--navy-soft);
+      opacity: 0.7;
+    }
+
+    /* Print — one card per page, clean */
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .page-head,
+      .toolbar,
+      .print-hide { display: none !important; }
+      .stage { gap: 0; }
+      .sit-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .sit-card__image { border-style: solid; border-color: #ddd; }
+      .sit-card__text { min-height: 120px; }
+    }
+
+    @media (max-width: 480px) {
+      :root {
+        --card-w: min(100vw - 2rem, 420px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-head print-hide">
+    <h1>Situation Card — blank template</h1>
+    <p>Click the picture area or use Choose image · Type your Japanese in the box · Print or screenshot</p>
+  </header>
+
+  <div class="toolbar print-hide">
+    <label>
+      Choose image
+      <input type="file" id="file-pick" accept="image/*">
+    </label>
+    <button type="button" id="btn-clear-image">Clear image</button>
+    <button type="button" id="btn-clear-text">Clear text</button>
+    <button type="button" onclick="window.print()">Print card</button>
+  </div>
+
+  <div class="stage">
+    <article class="sit-card" id="sit-card">
+      <header class="sit-card__head">
+        <span class="sit-card__eyebrow">Situation Card</span>
+        <span class="sit-card__mark" aria-hidden="true">状況</span>
+      </header>
+
+      <div class="sit-card__image" id="image-zone" title="Click to add a picture">
+        <div class="sit-card__image-hint">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/>
+          </svg>
+          <span>Drop or click<br>to add picture</span>
+        </div>
+      </div>
+
+      <div class="sit-card__body">
+        <span class="sit-card__label">What do you say?</span>
+        <div
+          class="sit-card__text"
+          id="prompt-text"
+          contenteditable="true"
+          spellcheck="false"
+          data-placeholder="日本語のプロンプトをここに…"
+        ></div>
+      </div>
+
+      <footer class="sit-card__foot">
+        <span class="sit-card__foot-logo">Japanese Language Mentor</span>
+        <span>Homework Hub</span>
+      </footer>
+    </article>
+  </div>
+
+  <script>
+    (function () {
+      const zone = document.getElementById("image-zone");
+      const filePick = document.getElementById("file-pick");
+      const prompt = document.getElementById("prompt-text");
+      let imgEl = null;
+
+      function setImage(file) {
+        if (!file || !file.type.startsWith("image/")) return;
+        const url = URL.createObjectURL(file);
+        if (!imgEl) {
+          imgEl = document.createElement("img");
+          imgEl.alt = "";
+          zone.appendChild(imgEl);
+        }
+        imgEl.src = url;
+        zone.classList.add("has-image");
+      }
+
+      function clearImage() {
+        if (imgEl) {
+          URL.revokeObjectURL(imgEl.src);
+          imgEl.remove();
+          imgEl = null;
+        }
+        zone.classList.remove("has-image");
+        filePick.value = "";
+      }
+
+      zone.addEventListener("click", () => filePick.click());
+      filePick.addEventListener("change", () => {
+        const f = filePick.files && filePick.files[0];
+        if (f) setImage(f);
+      });
+
+      zone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        zone.style.borderColor = "#c9a227";
+      });
+      zone.addEventListener("dragleave", () => {
+        zone.style.borderColor = "";
+      });
+      zone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        zone.style.borderColor = "";
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) setImage(f);
+      });
+
+      document.getElementById("btn-clear-image").addEventListener("click", clearImage);
+      document.getElementById("btn-clear-text").addEventListener("click", () => {
+        prompt.textContent = "";
+        prompt.focus();
+      });
+
+      prompt.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+        document.execCommand("insertText", false, text);
+      });
+    })();
+  </script>
+</body>
+</html>

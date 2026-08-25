@@ -201,10 +201,12 @@
     const s = session();
     if (s) {
       s.notifyPrefs = prefs;
-      const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
-      global.HwAuth?.persistSession?.(s, remember);
+      if (!s.viewAs && !global.HwAuth?.isViewingAsStudent?.()) {
+        const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+        global.HwAuth?.persistSession?.(s, remember);
+      }
     }
-    if (!s?.username) return;
+    if (!s?.username || s.viewAs || global.HwAuth?.isViewingAsStudent?.()) return;
     void fetch("/api/auth/self-extras", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -218,6 +220,10 @@
     prefs[key] = !prefs[key];
     persistNotifyPrefs(prefs);
     paintNotifySwitches();
+    const label = key === "email" ? "Email notifications" : "Discord notifications";
+    global.HwToast?.show?.(
+      prefs[key] ? label + " are on." : label + " are off."
+    );
   }
 
   function planRank(planId) {
@@ -318,6 +324,7 @@
   async function loadSelfExtras() {
     const s = session();
     if (!s?.username || s.role === "teacher") return;
+    if (s.viewAs || global.HwAuth?.isViewingAsStudent?.()) return;
     try {
       const res = await fetch("/api/auth/self-extras", {
         method: "POST",
@@ -442,11 +449,11 @@
       '<h2 class="hw-account-card__sub">Password</h2>' +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-old-password">Current</label>' +
-      '<input type="password" id="hw-account-old-password" data-hw-account-edit readonly autocomplete="current-password" placeholder="••••••••">' +
+      '<input type="password" id="hw-account-old-password" data-hw-account-edit readonly autocomplete="current-password" placeholder="••••">' +
       "</div>" +
       '<div class="hw-login-inlay__field">' +
       '<label for="hw-account-new-password">New</label>' +
-      '<input type="password" id="hw-account-new-password" data-hw-account-edit readonly minlength="6" autocomplete="new-password" placeholder="••••••••">' +
+      '<input type="password" id="hw-account-new-password" data-hw-account-edit readonly minlength="4" autocomplete="new-password" placeholder="••••">' +
       "</div>" +
       '<p class="hw-login-inlay__error" id="hw-account-save-status" hidden role="status"></p>' +
       '<div class="hw-account-save-bar" id="hw-account-save-bar" aria-hidden="true">' +
@@ -798,8 +805,10 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not save.");
       if (data.session && global.HwAuth?.persistSession) {
-        const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
-        global.HwAuth.persistSession(data.session, remember);
+        if (!data.session.viewAs && !global.HwAuth?.isViewingAsStudent?.()) {
+          const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+          global.HwAuth.persistSession(data.session, remember);
+        }
       }
       if (newPassword) {
         const pwRes = await fetch("/api/auth/change-password", {
@@ -816,6 +825,9 @@
       }
       fillSession();
       setStatus(status, data.message || "Saved.", false);
+      global.HwToast?.show?.(
+        newPassword ? "Your password was updated." : data.message || "Your account was saved."
+      );
     } catch (err) {
       setStatus(status, (err && err.message) || "Could not save.", true);
     }

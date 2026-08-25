@@ -8,7 +8,8 @@
   "status": "draft",
   "forSale": false,
   "salePrice": 0.99,
-  "students": ["drew"],
+  "wsCategory": "jlpt",
+  "students": [],
   "sections": [
     {
       "id": "mc-sec",

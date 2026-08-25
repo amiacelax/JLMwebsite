@@ -901,9 +901,104 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   box-shadow: none;
 }
 
+.hw-hc-qmark-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hw-hc-qmark-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  background: color-mix(in srgb, #0f1728 70%, transparent);
+  color: #e8edf5;
+}
+
+.hw-hc-qmark-btn__icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.hw-hc-qmark-btn--correct {
+  border-color: color-mix(in srgb, #3d9a62 45%, transparent);
+}
+
+.hw-hc-qmark-btn--wrong {
+  border-color: color-mix(in srgb, #d64545 45%, transparent);
+}
+
+.hw-hc-qmark-btn--correct.is-on {
+  background: color-mix(in srgb, #2d6a4f 78%, #0b1624);
+  border-color: #5dca86;
+  color: #effff4;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #5dca86 35%, transparent);
+}
+
+.hw-hc-qmark-btn--wrong.is-on {
+  background: color-mix(in srgb, #8b1e1e 72%, #0b1624);
+  border-color: #f07171;
+  color: #fff5f5;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #f07171 35%, transparent);
+}
+
+.hw-worksheet__line.hw-qmark--correct,
+.hw-worksheet__line.hw-qmark--wrong {
+  position: relative;
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.85rem 0.8rem;
+  box-sizing: border-box;
+}
+
+.hw-worksheet__line.hw-qmark--correct {
+  background: color-mix(in srgb, #2d6a4f 14%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #3d9a62 72%, transparent);
+}
+
+.hw-worksheet__line.hw-qmark--wrong {
+  background: color-mix(in srgb, #c1121f 11%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #d64545 70%, transparent);
+}
+
+.hw-qmark-badge {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.3rem;
+  z-index: 5;
+  width: 2.55rem;
+  height: 2.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(8, 16, 28, 0.35));
+}
+
+.hw-qmark-badge svg {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.hw-qmark-badge--correct {
+  color: #1f8a4c;
+}
+
+.hw-qmark-badge--wrong {
+  color: #d12a2a;
+}
+
 .hw-hc-student-ack-bar {
   position: sticky;
-  top: 0;
+  top: 0.65rem;
   z-index: 70;
   display: flex;
   flex-direction: column;
@@ -911,7 +1006,7 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   gap: 0.28rem;
   width: fit-content;
   max-width: min(100%, 22rem);
-  margin: 0 auto 0.55rem;
+  margin: 1rem auto 0.55rem;
   padding: 0.4rem 0.65rem;
   border-radius: var(--radius-sm, 8px);
   background: color-mix(in srgb, var(--color-green, #2d6a4f) 14%, #0f1728);
@@ -1093,11 +1188,11 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
 }
 
 /* Pulse ring is z:0; content above it — never force close into flow (that pinned X top-left). */
-.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body > *:not(.hw-hc-memo__close),
-.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close),
-.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close),
-.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close),
-.hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close) {
+.hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__body > *:not(.hw-hc-memo__close):not(.hw-hc-memo__resize),
+.hw-hc-review-pair .hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close):not(.hw-hc-memo__resize),
+.hw-hc-memo--review-teacher .hw-hc-memo__body--teacher-reply > *:not(.hw-hc-memo__close):not(.hw-hc-memo__resize),
+.hw-hc-review-pair .hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close):not(.hw-hc-memo__resize),
+.hw-hc-memo--review-student .hw-hc-memo__body > *:not(.hw-hc-memo__close):not(.hw-hc-memo__resize) {
   position: relative;
   z-index: 1;
 }
@@ -1111,6 +1206,14 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
 }
 
 /* Author cue on open JD green chips — top-left, clear of the X */
+.hw-hc-memo__jd-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 1.6rem 0.2rem 0;
+  pointer-events: auto;
+}
+
 .hw-hc-memo--teacher.hw-hc-memo--expanded .hw-hc-memo__jd-label,
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__jd-label {
   display: block;
@@ -1125,8 +1228,120 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   user-select: none;
 }
 
+.hw-hc-memo__jd-row .hw-hc-memo__jd-label {
+  margin: 0;
+}
+
+.hw-hc-memo__mark-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid color-mix(in srgb, #ffc9c2 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #6b3030 35%, transparent);
+  color: #ffc9c2;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hw-hc-memo__mark-btn:hover,
+.hw-hc-memo__mark-btn:focus-visible {
+  background: color-mix(in srgb, #6b3030 52%, transparent);
+  color: #ffd6d0;
+  outline: none;
+}
+
+.hw-hc-mark {
+  color: #ffc4bc !important;
+  font-weight: 650;
+  background: color-mix(in srgb, #5c2424 38%, transparent);
+  border-radius: 0.18rem;
+  padding: 0 0.12em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Light surfaces (Notebook / hub review slides) — readable rose, not green-chip pink */
+.hw-hub-v5-notebook__text .hw-hc-mark,
+.hw-hub-v5-review-memo__remark .hw-hc-mark,
+.hw-hub-v5-review-memo__text .hw-hc-mark {
+  color: #c62828 !important;
+  background: color-mix(in srgb, #c62828 14%, transparent);
+}
+
+.hw-hc-memo__editor {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.hw-hc-memo__remark--marked {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.hw-hc-memo__editor:empty::before {
+  content: "Write a note on this question for the student…";
+  color: color-mix(in srgb, #fff 55%, transparent);
+  pointer-events: none;
+}
+
+.hw-hc-memo__resize {
+  position: absolute;
+  right: 0.12rem;
+  bottom: 0.12rem;
+  left: auto;
+  z-index: 4;
+  width: 0.9rem;
+  height: 0.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0 0 0.45rem 0;
+  background:
+    linear-gradient(135deg, transparent 46%, color-mix(in srgb, #fff 62%, transparent) 46% 58%, transparent 58%),
+    linear-gradient(135deg, transparent 68%, color-mix(in srgb, #fff 62%, transparent) 68% 80%, transparent 80%);
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
+.hw-hc-memo__resize:hover,
+.hw-hc-memo__resize:focus-visible {
+  filter: brightness(1.15);
+  outline: none;
+}
+
+@media (max-width: 767px) {
+  .hw-hc-memo__resize {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .hw-hc-memo--teacher .hw-hc-memo__body,
+  .hw-hc-memo--review .hw-hc-memo__body {
+    max-width: min(32rem, 56vw);
+  }
+
+  .hw-hc-memo--teacher.is-sized .hw-hc-memo__body {
+    width: var(--hw-hc-memo-w, auto);
+    max-width: min(42rem, 80vw);
+    min-height: var(--hw-hc-memo-h, 0);
+  }
+
+  .hw-hc-memo--teacher.is-sized .hw-hc-memo__editor,
+  .hw-hc-memo--teacher.is-sized .hw-hc-memo__input--review-auto {
+    min-height: calc(var(--hw-hc-memo-h, 7rem) - 2.8rem);
+    overflow: auto !important;
+  }
+}
+
 /* Text sits on the chip like starQ に — white, no nested white field */
 .hw-hc-memo--teacher .hw-hc-memo__input--review-auto,
+.hw-hc-memo--teacher .hw-hc-memo__editor,
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__remark,
 .hw-hc-memo__body--student-reviewed .hw-hc-memo__remark,
 .hw-hc-memo__remark--review-auto,
@@ -1179,12 +1394,19 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   color: #fff;
 }
 
-  /* Override min-width so short notes don't force a huge green shell */
+  /* Override min-width so short notes don't force a huge green shell.
+     Do not set max-width here — it would override the desktop 32rem rule above. */
 .hw-hc-memo--teacher .hw-hc-memo__body,
 .hw-hc-memo--review .hw-hc-memo__body {
   min-width: 0;
   width: max-content;
-  max-width: min(18rem, 88vw);
+}
+
+@media (max-width: 767px) {
+  .hw-hc-memo--teacher .hw-hc-memo__body,
+  .hw-hc-memo--review .hw-hc-memo__body {
+    max-width: min(22rem, 88vw);
+  }
 }
 
 .hw-hc-memo__quote,
@@ -2305,4 +2527,52 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
   width: 100%;
   font-size: 0.75rem;
   padding: 0.28rem 0.45rem;
+}
+
+/* Keep the listen bar inside JD green clouds (no leaking seek/time/speed). */
+.hw-hc-memo--teacher .hw-listen-card,
+.hw-hc-memo--teacher .hw-listen-card--review-compact,
+.hw-hc-memo--teacher .hw-audio-chrome,
+.hw-hc-memo--teacher .hw-review-media,
+.hw-hc-memo--teacher .hw-hc-memo__remark-media,
+.hw-hc-memo--teacher .hw-hc-memo__remark-media-mount,
+.hw-hc-memo--teacher .hw-hc-memo__remark-playback {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.hw-hc-memo--teacher .hw-listen-card--review-compact,
+.hw-hc-memo--teacher .hw-listen-card--review-compact .hw-audio-chrome,
+.hw-hc-memo--teacher .hw-listen-card--review-compact .hw-audio-chrome__bar,
+.hw-hc-memo--teacher .hw-hc-memo__remark-playback .hw-listen-card--review-compact,
+.hw-hc-memo--teacher .hw-hc-memo__remark-playback .hw-listen-card--review-compact .hw-audio-chrome,
+.hw-hc-memo--teacher .hw-hc-memo__remark-playback .hw-listen-card--review-compact .hw-audio-chrome__bar {
+  overflow: hidden;
+}
+
+.hw-hc-memo--teacher .hw-audio-chrome__bar,
+.hw-hc-memo--teacher .hw-listen-card--review-compact .hw-audio-chrome__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.hw-hc-memo--teacher .hw-audio-chrome__seek-wrap,
+.hw-hc-memo--teacher .hw-listen-card--review-compact .hw-audio-chrome__seek-wrap {
+  flex: 1 1 4.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hw-hc-memo--teacher .hw-audio-chrome__time,
+.hw-hc-memo--teacher .hw-listen-card--review-compact .hw-audio-chrome__time {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.58rem;
 }

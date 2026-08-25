@@ -1,0 +1,195 @@
+{
+  "id": "drew-n1-mc-quiz-2",
+  "title": "Multiple Choice Quiz 2",
+  "youtubeUrl": "",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "sections": [
+    {
+      "id": "sec-6hjr7dc",
+      "mode": "multiple-choice",
+      "title": "",
+      "instructions": "Click or drag the best answer into the blank.",
+      "items": [
+        {
+          "id": "mc-1",
+          "prompt": "この調査結果から、少子化は今後さらに進む______。",
+          "choices": [
+            "に相違ない",
+            "に違いない",
+            "に決まっている",
+            "にほかならない"
+          ],
+          "answer": "に相違ない"
+        },
+        {
+          "id": "mc-2",
+          "prompt": "天才______、日々の練習を怠れば技術は磨かれない。",
+          "choices": [
+            "といえども",
+            "にしても",
+            "とすると",
+            "とすれば"
+          ],
+          "answer": "といえども"
+        },
+        {
+          "id": "mc-3",
+          "prompt": "新商品の発売______、担当チームは何度も試作品のテストを重ねた。",
+          "choices": [
+            "にあたって",
+            "において",
+            "に際して",
+            "に先立ち"
+          ],
+          "answer": "にあたって"
+        },
+        {
+          "id": "mc-4",
+          "prompt": "大阪の映画館での上映______、その作品は全国へ広がっていった。",
+          "choices": [
+            "を皮切りに",
+            "をはじめ",
+            "をめぐって",
+            "を通じて"
+          ],
+          "answer": "を皮切りに"
+        },
+        {
+          "id": "mc-5",
+          "prompt": "作業のあと、彼の作業服は油______になっていた。",
+          "choices": [
+            "まみれ",
+            "だらけ",
+            "ずくめ",
+            "びたし"
+          ],
+          "answer": "まみれ"
+        }
+      ]
+    },
+    {
+      "id": "sec-gmew54a",
+      "mode": "audio-listening",
+      "title": "",
+      "instructions": "Listen to the clip and write down what you think it's saying in Japanese.",
+      "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_03_0.21.38.230-0.21.42.810.mp3",
+      "items": [
+        {
+          "id": "blk-fgmmkyq",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-fgmmkyq",
+              "wide": true,
+              "answer": "いかにも そういうお前はランサーに相違ないな"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_03_0.21.38.230-0.21.42.810.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_03_0.21.40.520.jpg",
+          "englishAnswer": "Indeed. And you must be Lancer.",
+          "addons": [
+            {
+              "id": "addon-25lg6cb",
+              "type": "student-record",
+              "prompt": "Record yourself saying the above.",
+              "position": "after-blank"
+            }
+          ]
+        },
+        {
+          "id": "blk-33tad82",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-33tad82",
+              "wide": true,
+              "answer": "いかな大王[だいおう]といえども 臣下[しんか]に降[くだ]るわけにはいかん"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_05_0.01.30.120-0.01.34.230.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_05_0.01.32.175.jpg",
+          "englishAnswer": "No matter how great a king you may be, I cannot lower myself to the rank of subject.",
+          "addons": [
+            {
+              "id": "addon-toiedomo",
+              "type": "student-record",
+              "prompt": "Record yourself saying the above.",
+              "position": "after-blank"
+            }
+          ]
+        },
+        {
+          "id": "blk-thtzu34",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-thtzu34",
+              "wide": true,
+              "answer": "そう 解散[かいさん]するにあたって あの曲[きょく]は誰[だれ]のもんだって話[はなし]になってさ"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Girls%20Band%20Cry/media/girls_band_cry_001_0.18.06.440-0.18.11.400.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Girls%20Band%20Cry/media/girls_band_cry_001_0.18.08.920.jpg",
+          "englishAnswer": "Yeah. When we split up, we talked about who the song belonged to.",
+          "addons": [
+            {
+              "id": "addon-niatatte",
+              "type": "student-record",
+              "prompt": "Record yourself saying the above.",
+              "position": "after-blank"
+            }
+          ]
+        },
+        {
+          "id": "blk-ciulrvc",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-ciulrvc",
+              "wide": true,
+              "answer": "ビートルズの来日[らいにち]をきっかけに　グループサウンズが流行[りゅうこう]しはじめ―"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Only%20Yesterday/media/A_OnlyYesterday_1_0.13.09.043-0.13.13.380.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Only%20Yesterday/media/A_OnlyYesterday_1_0.13.11.212.jpg",
+          "englishAnswer": "Starting with the Beatles' visit to Japan, group-sounds rock began to boom. (Immersion Kit has 0 clips for を皮切りに / 皮切り — used related をきっかけに.)",
+          "addons": [
+            {
+              "id": "addon-kawakiri",
+              "type": "student-record",
+              "prompt": "Record yourself saying the above.",
+              "position": "after-blank"
+            }
+          ]
+        },
+        {
+          "id": "blk-5zxlgrq",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-5zxlgrq",
+              "wide": true,
+              "answer": "お前 手 チキンの 油まみれじゃねーか！"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Toradora!/media/Toradora_19_0.07.19.637-0.07.22.106.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Toradora!/media/Toradora_19_0.07.20.872.jpg",
+          "englishAnswer": "Your hands are covered with fried chicken grease!",
+          "addons": [
+            {
+              "id": "addon-mamire",
+              "type": "student-record",
+              "prompt": "Record yourself saying the above.",
+              "position": "after-blank"
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_03_0.21.40.520.jpg"
+    }
+  ],
+  "register": "casual"
+}

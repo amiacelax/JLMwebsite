@@ -29,11 +29,24 @@ JEM_PREVIEW_USER = "jem"
 # → channel 1534083802102501539 (create/move webhooks into this channel)
 DISCORD_CHANNEL_ID = "1534083802102501539"
 DISCORD_HOMEWORK_CHANNEL_ID = "1534083802102501539"
-# Contact / promo Gmail copies (Resend). API key is a secret: wrangler secret put RESEND_API_KEY
+# Contact / promo Gmail copies. Cloudflare Email Routing sends them (no Resend key required).
 INQUIRY_EMAIL_TO = "languagementor.jp@gmail.com"
 INQUIRY_EMAIL_FROM = "Japanese Language Mentor <inquiries@japaneselanguagementor.com>"
+ACCOUNT_EMAIL_FROM = "Japanese Language Mentor <JD@japaneselanguagementor.com>"
 
-# 00:00 UTC daily ≈ 9:00 Japan time — student birthday Discord reminders
+# 00:00 UTC daily ≈ 9:00am Japan — student birthday Discord reminders
+# 12:00 UTC daily = 9:00pm Japan — HW waiting daily Discord ping
 # * * * * * — Shorts/Reels social reminder jobs (HOMEWORK_KV sr-pending:*)
 [triggers]
-crons = ["0 0 * * *", "* * * * *"]
+crons = ["0 0 * * *", "0 12 * * *", "* * * * *"]
+
+# Contact/promo copies → Gmail. Enable Email Routing on japaneselanguagementor.com first
+# (Cloudflare dashboard → Email → Email Routing → Get started, verify Gmail).
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "languagementor.jp@gmail.com"
+
+# Password reset and other student mail (Email Sending / Workers Paid).
+[[send_email]]
+name = "SEND_EMAIL_OUT"
+allowed_sender_addresses = ["JD@japaneselanguagementor.com"]

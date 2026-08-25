@@ -1,0 +1,88 @@
+{
+  "id": "faye-situation-cards-1",
+  "title": "Situation Cards 1 — 日本での一日",
+  "date": "2026-08-24",
+  "register": "casual",
+  "studentLabel": "Faye",
+  "lessonName": "Situation Cards 1",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "other",
+  "students": [],
+  "sections": [
+    {
+      "id": "sec-sit-cards",
+      "mode": "audio-prompt",
+      "title": "Situation Cards",
+      "instructions": "Look at the picture. Read the Japanese. You’re in that moment in Japan — say what you’d say (or what you’d do) out loud, then record. No perfect answer. Real Japanese for a real situation.",
+      "items": [
+        {
+          "id": "sit-4-konbini-wallet",
+          "prompt": "お弁当を温めようとしたら、財布を家に忘れたことに気づきました。店員さんの岩崎さんに何と言いますか？",
+          "english": "Picture: コンビニ店員 — You forgot your wallet at the konbini. Clerk is 岩崎さん.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-4-konbini.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-5-train-late",
+          "prompt": "友達のりかちゃんとの大事な約束に間に合いません。次の電車まで８分。友達に何を伝えますか？",
+          "english": "Picture: 電車のホーム・時計 — Late for plans with りかちゃん.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-5-train.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-6-allergy",
+          "prompt": "色々な食べ物のアレルギーがあります。注文の前に、店員さんにちゃんと伝えてください。",
+          "english": "Picture: レストラン・メニュー — Tell the staff about your food allergies before ordering.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-6-restaurant.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-11-wrong-drink",
+          "prompt": "頼んだものと違う飲み物が来ました。怒らずに、でもはっきり言ってください。",
+          "english": "Picture: カフェのドリンク — Wrong drink arrived. Be clear, not angry.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-11-cafe.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-13-cancel",
+          "prompt": "今日の予定、さっき全部キャンセルされました。返事を書いて（言って）ください。",
+          "english": "Picture: 友人・メッセージ画面 — Plans just got cancelled. Reply.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-13-message.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h1-birthday",
+          "prompt": "今日は友達のセラさんの誕生日です。大事なプレゼントを考えて買ったんだけど、渡す前に何と言いますか？",
+          "english": "Picture: 友達・プレゼント — Birthday gift for セラさん. Happy card.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-h1-birthday.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h3-thanks",
+          "prompt": "店員さんの大和さんがドライヤーを買うのにとても親切でした。お礼を言ってください。",
+          "english": "Picture: 店員さん・笑顔 — 大和さん helped with a hair dryer. Say thanks. Happy card.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-h3-thanks.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h4-reunion",
+          "prompt": "久しぶりに会えた友達の家族とばったり会いました。最初に何と言いますか？",
+          "english": "Picture: 久しぶり・再会 — Ran into a friend’s family. Happy card.",
+          "imageUrl": "/homework/media/faye-situation-cards-1/sit-h4-reunion.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        }
+      ]
+    }
+  ]
+}

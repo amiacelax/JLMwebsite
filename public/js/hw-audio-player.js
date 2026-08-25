@@ -342,12 +342,29 @@
     let pipArrowDoc = null;
     let stereoGraph = null;
 
+    function canCaptureElementWithWebAudio() {
+      const src = String(audio.currentSrc || audio.src || audio.getAttribute("src") || "").trim();
+      if (!src) return false;
+      if (/^(blob:|data:|filesystem:)/i.test(src)) return true;
+      try {
+        const parsed = new URL(src, global.location?.href || "http://localhost/");
+        if (parsed.protocol === "blob:" || parsed.protocol === "data:") return true;
+        const origin = global.location?.origin;
+        return Boolean(origin && parsed.origin === origin);
+      } catch {
+        return src.startsWith("/") && !src.startsWith("//");
+      }
+    }
+
     /**
      * Fold L+R into both ears. Fixes stored clips that are “stereo” but only
      * have signal on the left channel (silent right = left-ear-only headphones).
+     * Skip ImmersionKit / Tatoeba / other cross-origin files — Linode does not
+     * send CORS, so createMediaElementSource captures the element and outputs silence.
      */
     function ensureStereoBothEars() {
       if (stereoGraph || audio.dataset.hwStereoWired === "1") return;
+      if (!canCaptureElementWithWebAudio()) return;
       const AudioCtx = global.AudioContext || global.webkitAudioContext;
       if (!AudioCtx) return;
       try {
@@ -644,6 +661,12 @@
 
     playBtn.addEventListener("click", () => {
       if (audio.paused || audio.ended) {
+        try {
+          audio.muted = false;
+          if (!Number.isFinite(audio.volume) || audio.volume <= 0) audio.volume = 1;
+        } catch {
+          /* ignore */
+        }
         ensureStereoBothEars();
         if (stereoGraph?.ctx?.state === "suspended") {
           void stereoGraph.ctx.resume();

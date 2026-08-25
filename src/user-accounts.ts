@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, randomUrlToken, sha256Base64Url, verifyPassword } from "./password";
 import {
   clearStudentWiped,
   invalidateStudentListSnapshot,
@@ -135,6 +135,7 @@ export function toAuthSession(account: UserAccount): AuthSession {
 export interface SignupInput {
   email: string;
   password: string;
+  confirmPassword?: string;
   displayName: string;
   /** Optional legacy/manual handle — usually auto-made from email. */
   username?: string;
@@ -176,6 +177,7 @@ export async function createUserAccount(
 
   const email = normalizeEmail(data.email);
   const password = String(data.password || "");
+  const confirmPassword = String(data.confirmPassword ?? "");
   const displayName = String(data.displayName || "").trim();
   let username = normalizeUsername(String(data.username || ""));
 
@@ -183,7 +185,8 @@ export async function createUserAccount(
   if (displayName.length > 40) throw new Error("DISPLAY_NAME_TOO_LONG");
   if (!email || !isValidEmail(email)) throw new Error("EMAIL_INVALID");
   if (!password) throw new Error("PASSWORD_REQUIRED");
-  if (password.length < 6) throw new Error("PASSWORD_TOO_SHORT");
+  if (password.length < 4) throw new Error("PASSWORD_TOO_SHORT");
+  if (password !== confirmPassword) throw new Error("PASSWORD_MISMATCH");
 
   const existingEmail = await kv.get(userEmailKey(email));
   if (existingEmail) throw new Error("EMAIL_TAKEN");
@@ -417,7 +420,7 @@ export async function changeOwnPassword(
   const password = String(data.password || "");
   const newPassword = String(data.newPassword || "");
   if (!username || !password) throw new Error("INVALID_CREDENTIALS");
-  if (newPassword.length < 6) throw new Error("PASSWORD_TOO_SHORT");
+  if (newPassword.length < 4) throw new Error("PASSWORD_TOO_SHORT");
 
   const account = await getUserAccount(username, env);
   if (!account) throw new Error("INVALID_CREDENTIALS");
@@ -487,4 +490,104 @@ export async function deleteUserAccount(
   await invalidateStudentListSnapshot(kv);
 
   return { username: normalized, deleted: true };
+}
+
+const RESET_TTL_SEC = 60 * 60;
+const resetTokenKey = (tokenHash: string) => `password-reset:${tokenHash}`;
+const resetUserKey = (username: string) => `password-reset-user:${username}`;
+const resetRateKey = (email: string) => `password-reset-rate:${email}`;
+
+interface PasswordResetRecord {
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
+export async function getUserAccountByEmail(
+  email: string,
+  env: KvEnv
+): Promise<UserAccount | null> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const normalized = normalizeEmail(email);
+  if (!normalized || !isValidEmail(normalized)) return null;
+  const username = String((await kv.get(userEmailKey(normalized))) || "")
+    .trim()
+    .toLowerCase();
+  if (!username) return null;
+  return getUserAccount(username, env);
+}
+
+export async function createPasswordResetToken(
+  email: string,
+  env: KvEnv
+): Promise<{ token: string; account: UserAccount } | { skipped: true; reason: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const account = await getUserAccountByEmail(email, env);
+  if (!account) return { skipped: true, reason: "unknown" };
+
+  const rateRaw = await kv.get(resetRateKey(account.email));
+  const rateCount = Number(rateRaw || 0);
+  if (rateCount >= 3) return { skipped: true, reason: "rate" };
+
+  const prevHash = String((await kv.get(resetUserKey(account.username))) || "").trim();
+  if (prevHash) await kv.delete(resetTokenKey(prevHash));
+
+  const token = randomUrlToken(32);
+  const tokenHash = await sha256Base64Url(token);
+  const record: PasswordResetRecord = {
+    username: account.username,
+    email: account.email,
+    createdAt: new Date().toISOString(),
+  };
+  await kv.put(resetTokenKey(tokenHash), JSON.stringify(record), {
+    expirationTtl: RESET_TTL_SEC,
+  });
+  await kv.put(resetUserKey(account.username), tokenHash, {
+    expirationTtl: RESET_TTL_SEC,
+  });
+  await kv.put(resetRateKey(account.email), String(rateCount + 1), {
+    expirationTtl: RESET_TTL_SEC,
+  });
+  return { token, account };
+}
+
+export async function resetPasswordWithToken(
+  data: { token?: string; password?: string; confirmPassword?: string },
+  env: KvEnv
+): Promise<{ session: AuthSession }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const token = String(data.token || "").trim();
+  const password = String(data.password || "");
+  const confirmPassword = String(data.confirmPassword ?? "");
+  if (!token) throw new Error("RESET_TOKEN_INVALID");
+  if (!password) throw new Error("PASSWORD_REQUIRED");
+  if (password.length < 4) throw new Error("PASSWORD_TOO_SHORT");
+  if (password !== confirmPassword) throw new Error("PASSWORD_MISMATCH");
+
+  const tokenHash = await sha256Base64Url(token);
+  const raw = await kv.get(resetTokenKey(tokenHash));
+  if (!raw) throw new Error("RESET_TOKEN_INVALID");
+
+  let record: PasswordResetRecord;
+  try {
+    record = JSON.parse(raw) as PasswordResetRecord;
+  } catch {
+    throw new Error("RESET_TOKEN_INVALID");
+  }
+
+  const account = await getUserAccount(record.username, env);
+  if (!account) throw new Error("RESET_TOKEN_INVALID");
+
+  const { salt, hash } = await hashPassword(password);
+  account.passwordSalt = salt;
+  account.passwordHash = hash;
+  await kv.put(userKey(account.username), JSON.stringify(account));
+  await kv.delete(resetTokenKey(tokenHash));
+  await kv.delete(resetUserKey(account.username));
+  return { session: toAuthSession(account) };
 }

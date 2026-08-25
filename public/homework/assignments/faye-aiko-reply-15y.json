@@ -1,0 +1,39 @@
+{
+  "id": "faye-aiko-reply-15y",
+  "title": "Pen Pal — 愛子の返事（15年後）",
+  "date": "2026-08-19",
+  "register": "casual",
+  "studentLabel": "Faye",
+  "lessonName": "Pen Pal — 愛子 reply 15 years later",
+  "templateType": "pen-pal",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "other",
+  "students": [],
+  "sections": [
+    {
+      "id": "sec-faye-aiko-reply",
+      "mode": "context-blank",
+      "title": "Pen Pal",
+      "instructions": "Faye only got 愛子's first letter last week — fifteen years late! She wrote back, and now 愛子 has replied. Read Aiko's letter (show/hide if you need to), then write your reply in the box below.",
+      "items": [
+        {
+          "id": "penpal-aiko-reply-15y",
+          "letterTo": "フェイさん",
+          "letterFrom": "住田愛子",
+          "letterLocation": "福井県鯖江市",
+          "letterBody": "そんなことがあったのね！それでも、１５年も経ったのに、手紙の返事をしてくれたのは本当にうれしいです。フェイさんは元気で何より。\n\n私はもう旦那さんと結婚して、去年、初子が元気に生まれました。男の子で、よく泣くけどかわいくて、毎日バタバタしてます（笑）\n\n仕事はとりあえず休んでて、産休中です。復帰は来年の春ごろの予定。それまで赤ちゃんと過ごす時間を大切にしたいな。\n\n15年前の手紙、本当に届かなかったなんてびっくりしたけど、こうやってまたやりとりできるの、なんだか運命みたいで嬉しい。\n\nフェイさんの手紙、フルバの話とか読んで懐かしかったよ！今もたまに見返すくらい好き。あと、今どんなことしてるのか、もっと教えてほしいな。\n\n赤ちゃんの写真、今度送るネ♡\n\nじゃあ、また返事待ってるよ！",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "penpal-aiko-reply-15y",
+              "wide": true,
+              "multiline": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

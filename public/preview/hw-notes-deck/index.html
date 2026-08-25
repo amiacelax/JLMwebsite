@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Mockup — HW Notes (submission deck)</title>
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg2: #122038;
+      --card: #152a45;
+      --card2: #1a3354;
+      --ink: #e8edf5;
+      --muted: #9aabbf;
+      --line: color-mix(in srgb, #67c4eb 28%, transparent);
+      --blue: #67c4eb;
+      --red: #c45a4a;
+      --green: #6bcf8e;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background: radial-gradient(1200px 600px at 50% -10%, #1a2f4d 0%, var(--bg) 55%);
+      color: var(--ink);
+    }
+    .banner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg2) 88%, #000);
+    }
+    .banner strong { color: var(--blue); }
+    .banner p { margin: 0; font-size: 0.9rem; color: var(--muted); max-width: 52rem; }
+    .banner a { color: var(--blue); }
+    .wrap {
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin: 0 0 1.25rem;
+    }
+    .tabs span {
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .tabs span.is-on {
+      color: var(--ink);
+      border-color: var(--line);
+      background: color-mix(in srgb, var(--blue) 14%, transparent);
+    }
+    .view[hidden] { display: none !important; }
+
+    /* List */
+    .list-head h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.55rem;
+      font-weight: 650;
+    }
+    .list-head p { margin: 0 0 1.25rem; color: var(--muted); font-size: 0.95rem; }
+    .group {
+      margin: 0 0 1rem;
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      overflow: hidden;
+    }
+    .group__h {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      background: color-mix(in srgb, var(--card2) 70%, transparent);
+    }
+    .group__h strong { font-size: 1rem; }
+    .group__h span { font-size: 0.78rem; color: var(--muted); }
+    .row {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1rem;
+      border: 0;
+      border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .group .row:first-of-type { border-top: 0; }
+    .row:hover { background: color-mix(in srgb, var(--blue) 10%, transparent); }
+    .row__title { font-weight: 600; }
+    .row__meta { display: block; margin-top: 0.2rem; font-size: 0.8rem; color: var(--muted); }
+    .row__cta {
+      flex-shrink: 0;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--blue);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* Review */
+    .review-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .back {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      font: inherit;
+      cursor: pointer;
+    }
+    .back:hover { border-color: var(--blue); color: var(--blue); }
+    .who h2 { margin: 0 0 0.25rem; font-size: 1.35rem; }
+    .who p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+    .status {
+      margin: 0 0 0.85rem;
+      color: var(--green);
+      font-size: 0.85rem;
+    }
+    .sheet {
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: linear-gradient(180deg, #18324f 0%, #132840 100%);
+      padding: 1rem 1rem 1.15rem;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    }
+    .sheet__nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .sheet__nav h3 { margin: 0; font-size: 1.05rem; }
+    .pager {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .pager button {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .pager button:disabled { opacity: 0.35; cursor: default; }
+    .grammar {
+      margin: 0 0 0.85rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: 0.55rem;
+      border: 1px dashed color-mix(in srgb, var(--blue) 40%, transparent);
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .q {
+      border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+      border-radius: 0.75rem;
+      background: color-mix(in srgb, #0e1c30 70%, transparent);
+      padding: 0.85rem;
+    }
+    .video {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      max-height: 220px;
+      border-radius: 0.55rem;
+      background:
+        linear-gradient(135deg, #2a4568 0%, #1a2f48 55%, #243a58 100%);
+      margin-bottom: 0.75rem;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      overflow: hidden;
+    }
+    .video::after {
+      content: "▶";
+      position: absolute;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: color-mix(in srgb, var(--blue) 85%, #fff);
+      color: #0b162a;
+      font-size: 1.1rem;
+      padding-left: 0.15rem;
+    }
+    .prompt { margin: 0 0 0.55rem; font-size: 0.95rem; }
+    .tip {
+      display: inline-block;
+      margin-bottom: 0.65rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .answer {
+      width: 100%;
+      min-height: 2.6rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 0.45rem;
+      border: 1px solid color-mix(in srgb, var(--blue) 35%, transparent);
+      background: color-mix(in srgb, #0a1524 80%, transparent);
+      color: var(--ink);
+      font: inherit;
+      font-size: 1.05rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .actions button {
+      border-radius: 999px;
+      padding: 0.5rem 0.95rem;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border: 1.5px solid var(--line);
+      background: color-mix(in srgb, #0f1728 70%, transparent);
+      color: var(--ink);
+    }
+    .actions button.is-good.is-on {
+      border-color: color-mix(in srgb, var(--green) 70%, transparent);
+      color: var(--green);
+      background: color-mix(in srgb, var(--green) 14%, transparent);
+    }
+    .actions button.is-bad.is-on {
+      border-color: color-mix(in srgb, var(--red) 70%, transparent);
+      color: #ffb4a8;
+      background: color-mix(in srgb, var(--red) 16%, transparent);
+    }
+    .actions button.is-submit {
+      border-color: transparent;
+      background: var(--red);
+      color: #fff;
+    }
+    .toast {
+      margin-top: 0.85rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      min-height: 1.2em;
+    }
+    .note {
+      margin-top: 0.85rem;
+      padding: 0.75rem;
+      border-radius: 0.55rem;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 50%, transparent);
+    }
+    .note[hidden] { display: none !important; }
+    .note textarea {
+      width: 100%;
+      min-height: 4.5rem;
+      border: 1px solid var(--line);
+      border-radius: 0.4rem;
+      background: #0a1524;
+      color: var(--ink);
+      font: inherit;
+      padding: 0.5rem;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="banner">
+    <p><strong>Mockup only</strong> — not wired to real submissions. Click a student row to open the review deck.</p>
+    <p>Local: <code>/preview/hw-notes-deck/</code></p>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs" aria-hidden="true">
+      <span>Home</span>
+      <span>Review Deck <small>(glass — unchanged)</small></span>
+      <span class="is-on">HW Notes</span>
+      <span>Worksheet Maker</span>
+      <span>…</span>
+    </div>
+
+    <!-- LIST -->
+    <div class="view" id="view-list">
+      <div class="list-head">
+        <h1>HW Notes</h1>
+        <p>Waiting on your notes · grouped by student (not a lump of grammar cards).</p>
+      </div>
+
+      <div class="group">
+        <div class="group__h">
+          <strong>Ben M</strong>
+          <span>1 waiting</span>
+        </div>
+        <button type="button" class="row" data-open="benm">
+          <span>
+            <span class="row__title">～のに ・ ～なのに</span>
+            <span class="row__meta">Online · Jul 31, 2026, 11:08 AM · sheet-usa7jd0</span>
+          </span>
+          <span class="row__cta">Review</span>
+        </button>
+      </div>
+
+      <div class="group">
+        <div class="group__h">
+          <strong>Faye</strong>
+          <span>1 waiting</span>
+        </div>
+        <button type="button" class="row" data-open="faye">
+          <span>
+            <span class="row__title">Pen pal — sample</span>
+            <span class="row__meta">Online · Aug 18, 2026 · (fake for mockup)</span>
+          </span>
+          <span class="row__cta">Review</span>
+        </button>
+      </div>
+
+      <div class="group">
+        <div class="group__h">
+          <strong>Josh S</strong>
+          <span>1 waiting</span>
+        </div>
+        <button type="button" class="row" data-open="josh">
+          <span>
+            <span class="row__title">～ないといけない</span>
+            <span class="row__meta">Online · Aug 19, 2026 · (fake for mockup)</span>
+          </span>
+          <span class="row__cta">Review</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="view" id="view-review" hidden>
+      <div class="review-top">
+        <button type="button" class="back" id="btn-back">← Done reviewing</button>
+        <div class="who">
+          <h2 id="review-title">Ben M — ～のに ・ ～なのに</h2>
+          <p id="review-meta">Awaiting your notes · sheet-usa7jd0 · Jul 31, 2026, 11:08 AM</p>
+        </div>
+      </div>
+      <p class="status">Loaded — reply to open memos or add a question note. Edits auto-save as drafts. <em>(mock)</em></p>
+
+      <div class="sheet">
+        <div class="sheet__nav">
+          <h3 id="q-label">～のに ・ ～なのに</h3>
+          <div class="pager">
+            <button type="button" id="prev" aria-label="Previous">←</button>
+            <span id="pager-label">1 of 6</span>
+            <button type="button" id="next" aria-label="Next">→</button>
+          </div>
+        </div>
+        <div class="grammar">Grammar description (audio available!)</div>
+        <div class="q">
+          <div class="video" id="q-media">clip / media</div>
+          <p class="prompt" id="q-prompt">Listen to the clip and write down what you think it's saying in Japanese.</p>
+          <span class="tip">💡 Tip</span>
+          <input class="answer" id="q-answer" readonly value="喋りたいのに喋れない" />
+        </div>
+        <div class="actions">
+          <button type="button" class="is-good" id="btn-good">✓ Looks good</button>
+          <button type="button" class="is-bad" id="btn-bad">✕ Not quite</button>
+          <button type="button" id="btn-note">Add Note</button>
+          <button type="button" class="is-submit" id="btn-submit">Submit notes</button>
+        </div>
+        <div class="note" id="note-box" hidden>
+          <textarea placeholder="JD note for this question… (mock — not saved)"></textarea>
+        </div>
+        <p class="toast" id="toast"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const decks = {
+        benm: {
+          title: "Ben M — ～のに ・ ～なのに",
+          meta: "Awaiting your notes · sheet-usa7jd0 · Jul 31, 2026, 11:08 AM",
+          questions: [
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Listen to the clip and write down what you think it's saying in Japanese.",
+              answer: "喋りたいのに喋れない",
+              media: true,
+            },
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Fill in the blank with のに / なのに.",
+              answer: "勉強したのに、テストはダメだった。",
+              media: false,
+            },
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Translate: I called, but nobody answered.",
+              answer: "電話したのに、出なかった。",
+              media: false,
+            },
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Open response — use なのに once.",
+              answer: "好きなのに言えなかった。",
+              media: false,
+            },
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Listening — write what you hear.",
+              answer: "行ったのに会えなかった",
+              media: true,
+            },
+            {
+              label: "～のに ・ ～なのに",
+              prompt: "Fix the mistake in this sentence.",
+              answer: "高いのに買った。",
+              media: false,
+            },
+          ],
+        },
+        faye: {
+          title: "Faye — Pen pal — sample",
+          meta: "Awaiting your notes · mock-faye · Aug 18, 2026",
+          questions: [
+            {
+              label: "Pen pal",
+              prompt: "Write your reply letter.",
+              answer: "元気？手紙ありがとう！",
+              media: false,
+            },
+            {
+              label: "Pen pal",
+              prompt: "Mark any grammar you want JD to check.",
+              answer: "15年も経ったのに…",
+              media: false,
+            },
+          ],
+        },
+        josh: {
+          title: "Josh S — ～ないといけない",
+          meta: "Awaiting your notes · mock-josh · Aug 19, 2026",
+          questions: [
+            {
+              label: "～ないといけない",
+              prompt: "Make a sentence with ないといけない.",
+              answer: "宿題を出さないといけない。",
+              media: false,
+            },
+            {
+              label: "～ないといけない",
+              prompt: "Listening write-down.",
+              answer: "早く寝ないといけない",
+              media: true,
+            },
+            {
+              label: "～ないといけない",
+              prompt: "Open response.",
+              answer: "毎日練習しないといけないと思う。",
+              media: false,
+            },
+          ],
+        },
+      };
+
+      const viewList = document.getElementById("view-list");
+      const viewReview = document.getElementById("view-review");
+      let deck = null;
+      let idx = 0;
+      let mark = null;
+
+      function showList() {
+        viewReview.hidden = true;
+        viewList.hidden = false;
+        deck = null;
+        document.getElementById("toast").textContent = "";
+        document.getElementById("note-box").hidden = true;
+      }
+
+      function paint() {
+        const q = deck.questions[idx];
+        document.getElementById("review-title").textContent = deck.title;
+        document.getElementById("review-meta").textContent = deck.meta;
+        document.getElementById("q-label").textContent = q.label;
+        document.getElementById("q-prompt").textContent = q.prompt;
+        document.getElementById("q-answer").value = q.answer;
+        document.getElementById("pager-label").textContent =
+          idx + 1 + " of " + deck.questions.length;
+        document.getElementById("prev").disabled = idx <= 0;
+        document.getElementById("next").disabled = idx >= deck.questions.length - 1;
+        document.getElementById("q-media").style.display = q.media ? "grid" : "none";
+        document.getElementById("btn-good").classList.toggle("is-on", mark === "good");
+        document.getElementById("btn-bad").classList.toggle("is-on", mark === "bad");
+      }
+
+      function openDeck(key) {
+        deck = decks[key];
+        if (!deck) return;
+        idx = 0;
+        mark = null;
+        viewList.hidden = true;
+        viewReview.hidden = false;
+        document.getElementById("note-box").hidden = true;
+        document.getElementById("toast").textContent = "";
+        paint();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      document.querySelectorAll("[data-open]").forEach((btn) => {
+        btn.addEventListener("click", () => openDeck(btn.getAttribute("data-open")));
+      });
+      document.getElementById("btn-back").addEventListener("click", showList);
+      document.getElementById("prev").addEventListener("click", () => {
+        if (idx <= 0) return;
+        idx -= 1;
+        mark = null;
+        document.getElementById("note-box").hidden = true;
+        paint();
+      });
+      document.getElementById("next").addEventListener("click", () => {
+        if (idx >= deck.questions.length - 1) return;
+        idx += 1;
+        mark = null;
+        document.getElementById("note-box").hidden = true;
+        paint();
+      });
+      document.getElementById("btn-good").addEventListener("click", () => {
+        mark = mark === "good" ? null : "good";
+        paint();
+        if (mark === "good" && idx < deck.questions.length - 1) {
+          idx += 1;
+          mark = null;
+          paint();
+        }
+      });
+      document.getElementById("btn-bad").addEventListener("click", () => {
+        mark = mark === "bad" ? null : "bad";
+        paint();
+        if (mark === "bad" && idx < deck.questions.length - 1) {
+          idx += 1;
+          mark = null;
+          paint();
+        }
+      });
+      document.getElementById("btn-note").addEventListener("click", () => {
+        const box = document.getElementById("note-box");
+        box.hidden = !box.hidden;
+      });
+      document.getElementById("btn-submit").addEventListener("click", () => {
+        document.getElementById("toast").textContent =
+          "Mock: notes would send to the student — then back to the student list.";
+        setTimeout(showList, 900);
+      });
+    })();
+  </script>
+</body>
+</html>

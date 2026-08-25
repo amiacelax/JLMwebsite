@@ -1,11 +1,32 @@
 ---
-description: Shorts/Reels batch review → paste-ready YT/IG copy → Cloudflare Discord/Hub post reminder. Use when user drops a finished clip path (Batch*yt.mp4 / IG twin), asks for Shorts/Reels captions, or wants a social post reminder.
+description: Shorts/Reels batch review → paste-ready YT/IG copy → Cloudflare Discord/Hub post reminder; CapCut AI prompts when dissecting Japanese lessons. Use when user drops a finished clip path (Batch*yt.mp4 / IG twin), asks for Shorts/Reels captions, CapCut AI prompts, or wants a social post reminder.
 alwaysApply: false
 ---
 
 # Shorts / Reels post workflow
 
 When the user sends a finished clip path (e.g. `e:\Da Vinci\...\BatchA2yt.mp4` or IG twin):
+
+## 0. CapCut AI / lesson-dissect prompts (YT vs IG)
+
+When JD asks for a **CapCut AI prompt** (or similar) to cut Japanese lessons into Shorts/Reels, **plan two platform shapes** — do not treat YT and IG as the same edit:
+
+### Instagram Reels (discovery + follows + saves)
+- Lean **storytelling / path / mindset / aspirational** hooks (“fastest path…”, fluency thesis).
+- Soft thesis + high-value framing → people **save** and **follow**.
+- Strong IG signal: high saves, non-follower reach, profile follows.
+- Cold open can sell a **big idea** before the grammar detail.
+
+### YouTube Shorts (feed is pickier)
+- Lean **concrete mistake → quiz → fix** (“I hear this mistake…”, opposite of X?, wrong vs right).
+- Abstract fluency philosophy often **flops** on Shorts unless the first second is a sharp problem.
+- Shorts-native: conjugation puzzle, te-form fail, specific wrong answer.
+- If reusing a storytelling lesson for YT, **re-prompt CapCut** to open on a specific fail before the thesis.
+
+### When writing CapCut prompts
+- Prefer **separate YT vs IG prompt variants** (or one prompt with explicit “YT cut” / “IG cut” instructions).
+- Call out cold open, on-screen text style, and pacing per platform using the above.
+- Keep pedagogy: mistake→fix in captions is intentional — don’t “correct” it away.
 
 ## 1. Review the clip
 - Prefer `ffprobe` + a few sample frames if tools are available.
@@ -16,24 +37,36 @@ When the user sends a finished clip path (e.g. `e:\Da Vinci\...\BatchA2yt.mp4` o
 - Clip numbering / filenames: **leave as-is**. The **title alone** is enough to identify which clip — no extra “Batch A2” labels needed in pings unless the user asks.
 
 ## 2. Paste-ready copy (separate labeled blocks)
-Offer is **100% free trial lessons** (not Homework Hub unless user says otherwise).
-CTA / Link sticker URL (always this — free trial contact form, **not** availability):
+Offer wording is **Free consultation** (not “free trial lessons”; not Homework Hub unless user says otherwise).
+CTA / Link sticker URL (always this — contact form, **not** availability):
 
 `https://japaneselanguagementor.com/#contact`
 
 | Platform | Block | Notes |
 |----------|--------|--------|
 | YouTube | **Title** | Clear, hooky (identifies the clip) |
-| YouTube | **Description** | Light hashtags + free trial URL. On-screen cue: free trial + japaneselanguagementor.com |
-| YouTube | **Pin comment** | Always include — trial URL; note Shorts description links aren’t reliably clickable |
-| Instagram | **Caption** | CTA = link in bio; hashtags at end. On-screen cue: free trial + link in bio |
+| YouTube | **Description** | Light hashtags + Free consultation URL. On-screen cue: free trial / consultation + japaneselanguagementor.com |
+| YouTube | **Pin comment** | Always include — `Free consultation →` + URL; note Shorts description links aren’t reliably clickable |
+| Instagram | **Caption** | CTA = link in bio; hashtags at end. End line: `Free consultation → link in bio` |
 | Instagram | **Story caption** | Always include a **short** Story text. Default: `Free consultation ↑` (Link sticker sits above the caption) |
 | Instagram | **Link sticker URL** | Always include the `#contact` URL above for the Story Link sticker |
 
-In chat, always show separate labeled paste blocks for: YT title, YT description, **YT pin comment**, IG caption, **IG Story caption (short)**, and **Link sticker URL**.
+In chat, show paste blocks for: **YT title**, **YT description**, **IG caption** only.
+
+Do **not** paste YT pin comment, IG Story caption, or Link sticker URL in the review chat — those go in the later Discord/Hub ping when the reminder is armed. Still generate them internally so the ping is ready (defaults below).
 
 ## 3. Arm reminder → Cloudflare (not PC sleeper)
-- Default slot: today’s **6:30pm Los Angeles / Pacific** if still ahead; otherwise tomorrow 6:30pm LA — **or** the exact time the user gave (e.g. `8/6 10:30am jp`).
+
+**Manual ping prompt required.** Do **not** auto-arm after clip review.
+Only arm when JD explicitly asks (e.g. “arm ping”, “ping at 10:30”, drops a YT link + “remind me”, or “set up vid pings for today”).
+Clip review alone never schedules Discord.
+
+**Easiest remind method for JD:** paste the **YouTube Shorts/video URL** (scheduled or live) and say to arm/ping.
+- Prefer reading the **scheduled publish time** from the link when tools can (e.g. `yt-dlp --print` / page meta).
+- If schedule can’t be read, ask once for fire time (JP or LA), then arm.
+- Title in the ping = the video’s title (or the paste-ready YT title from review).
+
+- Default slot **only when they ask to arm without a time:** today’s **6:30pm Los Angeles / Pacific** if still ahead; otherwise tomorrow 6:30pm LA — **or** the exact time they gave (e.g. `8/6 10:30am jp`).
 - Convert to **UTC ISO** carefully (JST = UTC+9; LA PDT = UTC−7 / PST = UTC−8).
 - If multiple clips same day: **one** ping listing all titles — do not Discord-spam.
 - After arming, confirm fire time in user language (JP + LA) + job id.

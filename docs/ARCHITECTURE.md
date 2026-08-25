@@ -88,14 +88,15 @@ c:\JLM Website\
 ## Discord + Gmail (contact / promo)
 
 - **Discord secret:** `DISCORD_WEBHOOK_URL` (production + `.dev.vars` local).
-- **Gmail copies (optional until keyed):** Worker → Resend API → `INQUIRY_EMAIL_TO` (default `languagementor.jp@gmail.com`). `Reply-To` is the visitor’s email so JD can hit Reply in Gmail. Without `RESEND_API_KEY`, email is skipped (logged) and Discord-only continues.
-- **Setup:** see `docs/DEPLOY.md` → “Contact / promo → Gmail (Resend)”.
+- **Gmail copies:** Worker → Cloudflare Email Routing (`SEND_EMAIL`) → `INQUIRY_EMAIL_TO` (default `languagementor.jp@gmail.com`). `Reply-To` is the visitor’s email so JD can hit Reply in Gmail. Optional Resend fallback if `RESEND_API_KEY` is set.
+- **Setup:** see `docs/DEPLOY.md` → “Contact / promo → Gmail”.
 - **Channel:** Discord notify channel ID `1534083802102501539` (`DISCORD_CHANNEL_ID` / `DISCORD_HOMEWORK_CHANNEL_ID` in `wrangler.toml`). Contact, promo, birthdays, social reminders, homework, and video upload pings all target this channel.
 - Worker **GETs webhook metadata** before send; wrong channel → skip Discord (503 only if Resend email is also unavailable).
 - Embeds: contact = red “new message”; promo = blue “promo email signup”.
 - **Shorts/Reels social reminders:** cron `* * * * *` runs `runSocialReminders` (`src/social-reminders.ts`). Jobs live in `HOMEWORK_KV` (`sr-pending:*`). Arm with `POST /api/social-reminders` or `npm run arm:social -- --fire … --titles …`. Fires Discord + Teacher Hub `kind: reminder`. Default Story caption: `Free consultation ↑`. One Discord message with four copyable ``` blocks (title / pin / story / link).
 - **Do not commit** webhook URLs; rotate if leaked.
 - **Student DMs (publish / review ready):** `src/discord-notify.ts` uses bot token `DISCORD_BOT_TOKEN` + optional `DISCORD_TEACHER_USER_ID`. Discord user IDs live in KV (`student:{user}:discord-user-id`), set in Teacher Hub → Student info. Missing ID or DM failure → teacher DM, else homework webhook fallback. Never fails the HTTP publish/review response.
+- **Teacher list name:** Teacher Hub → Student info → **Name in dropdown**. KV `student:{user}:teacher-list-name`. Dropdown only — not their hub name.
 - **Bot health check:** `GET /api/discord-bot-status?teacherUsername=jlm` (teacher-only) probes `GET /users/@me` and returns `{ ok, botUsername?, hint }` without leaking the token. Teacher Hub → Student info → **Check Discord bot**.
 
 ---

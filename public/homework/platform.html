@@ -12,15 +12,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260815-feedback-pill">
+  <link rel="stylesheet" href="/css/styles.css?v=20260825-pastpill2">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=15">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=8">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=97">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260814-glass-blue2" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260825-ackgap" data-hw-comments-css="1">
   <link rel="stylesheet" href="/css/hw-review-flashcards.css?v=20260813-deck">
   <link rel="stylesheet" href="/css/hw-glass-deck.css?v=20260813-glass">
   <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=1" data-hw-fonts="1">
-  <script src="/js/hw-auth.js?v=20260814-stultra"></script>
+  <script src="/js/hw-auth.js?v=20260821-viewas"></script>
   <script src="/js/hw-feature-flags.js?v=16"></script>
   <script>
     (function () {
@@ -59,14 +59,14 @@
         }
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
-      document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=156">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=164">');
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
         else window.addEventListener('load', loadStudentHandwritingFont, { once: true });
       }
       if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=18">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=22">');
       }
     })();
   </script>
@@ -283,11 +283,7 @@
         <div class="hw-teacher-hub" id="hw-teacher-hub" hidden>
           <div class="hw-hub-v6" id="hw-hub-v6-panel" hidden>
               <div class="hw-hub-v6__banner">
-                <div>
-                  <h2>Teacher Hub</h2>
-                  <p>Home notifications, maker, students, and tools — classic layout is Hub Preview → Hub v1.</p>
-                </div>
-                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-refresh">Refresh</button>
+                <button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-edit" aria-pressed="false">Edit</button>
               </div>
 
               <div class="hw-hub-v6-tabs" role="tablist" aria-label="Teacher Hub sections">
@@ -331,18 +327,18 @@
 
               <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-students" role="tabpanel" data-hub-v6-pane="students" aria-labelledby="hw-hub-v6-tab-students" hidden>
                 <div class="hw-hub-v6-mount" data-v6-mount="account"></div>
-                <section class="hw-hub-v6-section">
-                  <h3 class="hw-hub-v6-section__title">Birthdays</h3>
-                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
-                </section>
-                <section class="hw-hub-v6-section" id="hw-hub-v6-email-anchor">
-                  <h3 class="hw-hub-v6-section__title">Email list</h3>
-                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
-                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
-                </section>
                 <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-submissions">
                   <summary>Submissions</summary>
                   <div class="hw-hub-v6-mount" data-v6-mount="submissions"></div>
+                </details>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-birthdays">
+                  <summary>Birthdays</summary>
+                  <div class="hw-hub-v6-mount" data-v6-mount="birthdays"></div>
+                </details>
+                <details class="hw-hub-v6-fold" id="hw-hub-v6-email-anchor">
+                  <summary>Email list</summary>
+                  <p class="hw-hub-v6-pane-lead">Contacts and promo signups — separate from student IDs above.</p>
+                  <div class="hw-hub-v6-mount" data-v6-mount="promo"></div>
                 </details>
                 <details class="hw-hub-v6-fold" id="hw-hub-v6-fold-mistakes">
                   <summary>Mistakes</summary>
@@ -391,7 +387,6 @@
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel" id="hw-teacher-maker" role="tabpanel" aria-labelledby="hw-teacher-tab-maker">
             <h2 class="hw-platform-card__title">Worksheet maker</h2>
-            <p class="hw-platform-card__desc">Build a worksheet, then send to students from the panel below the blocks list — sending saves it to your library.</p>
 
             <form class="hw-teacher-meta" id="hw-teacher-maker-form">
               <p class="hw-maker-status" id="hw-teacher-maker-status" role="status" aria-live="polite">
@@ -431,12 +426,21 @@
                     <option value="tier3">Ultra</option>
                   </select>
                 </label>
+                <label class="hw-maker-field hw-maker-field--wide">
+                  Name in dropdown
+                  <input type="text" name="teacherListName" id="hw-teacher-list-name" maxlength="40" autocomplete="off" spellcheck="false" placeholder="e.g. Jay">
+                </label>
                 <label class="hw-maker-field hw-maker-field--wide hw-teacher-current-hw">
                   Current homework
                   <select name="currentHomeworkId" id="hw-teacher-current-hw" disabled>
                     <option value="">No homework assigned yet.</option>
                   </select>
                 </label>
+                <div class="hw-teacher-hw-hub" id="hw-teacher-hw-hub" hidden>
+                  <p class="hw-teacher-hw-hub__label">On their hub</p>
+                  <ul class="hw-teacher-hw-hub__list" id="hw-teacher-hw-hub-list" aria-live="polite"></ul>
+                  <p class="hw-teacher-hw-hub__meta" id="hw-teacher-hw-hub-meta"></p>
+                </div>
                 <label class="hw-maker-field hw-maker-field--wide">
                   Lesson playlist
                   <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=… (leave blank for no lessons)">
@@ -486,6 +490,13 @@
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-library" id="hw-teacher-library" role="tabpanel" aria-labelledby="hw-teacher-tab-library" hidden>
             <h2 class="hw-platform-card__title">Worksheet library</h2>
             <p class="hw-platform-card__desc">All saved worksheets — preview, download, edit in Worksheet maker, or send from the maker dock.</p>
+            <div class="hw-ws-cat-tabs" id="hw-library-cat-tabs" role="tablist" aria-label="Worksheet category">
+              <button type="button" class="hw-ws-cat-tab is-active" role="tab" data-ws-cat="core-japanese" aria-selected="true">Core Japanese</button>
+              <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="jlpt" aria-selected="false">JLPT</button>
+              <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="christian" aria-selected="false">Christian</button>
+              <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="other" aria-selected="false">Other</button>
+              <button type="button" class="hw-ws-cat-tab hw-ws-cat-tab--add" role="tab" data-ws-cat-add="1" aria-label="Add worksheet category">+</button>
+            </div>
             <label class="hw-library-search-label" for="hw-library-search">Search</label>
             <input type="search" class="hw-library-search" id="hw-library-search" placeholder="grammar, student id…" autocomplete="off">
             <p class="hw-library-meta" id="hw-library-meta" aria-live="polite"></p>
@@ -918,7 +929,7 @@
               <div id="hw-v2-worksheet-mount" lang="ja"></div>
               <!-- Tools bar — under HW content, inside the blue grammar box. -->
               <nav class="hw-toolbar-bar" id="hw-toolbar-bar" hidden aria-label="Worksheet tools">
-                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Glass" aria-pressed="false">
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="glass" title="Highlight a word" aria-label="Highlight a word" aria-pressed="false">
                   <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--glass" aria-hidden="true">
                     <svg class="hw-toolbar-bar__glass" xmlns="http://www.w3.org/2000/svg" viewBox="-18 -28 148 170" fill="none">
                       <g transform="rotate(-40 50 55)" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
@@ -932,7 +943,7 @@
                     </svg>
                   </span>
                 </button>
-                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Cloud" aria-pressed="false">
+                <button type="button" class="hw-toolbar-bar__btn" data-tb-tool="cloud" title="Write a note/question" aria-label="Write a note/question" aria-pressed="false">
                   <span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--cloud" aria-hidden="true">
                     <svg class="hw-toolbar-bar__cloud" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48">
                       <g fill="currentColor">
@@ -1123,6 +1134,9 @@
             </article>
 
             <div class="hw-hub-feedback-pill-wrap" id="hw-hub-feedback-pill-wrap">
+              <button type="button" class="btn hw-hub-past-homework-pill" id="hw-hub-past-homework-pill">
+                Browse past homework
+              </button>
               <button type="button" class="btn btn--ghost hw-current-assignment__pill hw-hub-feedback-pill" id="hw-hub-feedback-pill">
                 Feature request / Bug report
               </button>
@@ -1131,7 +1145,7 @@
           </div>
 
           <dialog class="hw-hub-feedback-dialog" id="hw-hub-feedback-dialog" aria-labelledby="hw-hub-feedback-title">
-            <form method="dialog" class="hw-hub-feedback-dialog__form" id="hw-hub-feedback-form">
+            <form class="hw-hub-feedback-dialog__form" id="hw-hub-feedback-form">
               <h3 class="hw-hub-feedback-dialog__title" id="hw-hub-feedback-title">Send to JD</h3>
               <p class="hw-hub-feedback-dialog__desc">Feature ideas and bugs go to Discord + Teacher Hub notifications. Bug reports include a screenshot.</p>
               <fieldset class="hw-hub-feedback-dialog__kind">
@@ -1170,7 +1184,6 @@
 
         <div class="subpage-back hw-platform-footer-nav" id="hw-platform-footer-nav">
           <div class="hw-platform-footer-nav__row">
-            <a class="btn btn--ghost" id="hw-platform-footer-info" href="/homework-plans.html">← Homework info &amp; plans</a>
             <div class="hw-print-menu" id="hw-print-menu" hidden>
               <button type="button" class="btn btn--ghost" id="hw-print-menu-toggle" aria-expanded="false" aria-haspopup="menu" aria-controls="hw-print-menu-popup">Print</button>
               <div class="hw-print-menu__popup" id="hw-print-menu-popup" role="menu" hidden>
@@ -1317,17 +1330,17 @@
   </footer>
 
   <!-- Shared worksheet/media stack (both roles). Role-specific bundles load via hw-platform-boot.js. -->
-  <script src="/js/hw-dialog-outside-close.js?v=1" defer></script>
+  <script src="/js/hw-dialog-outside-close.js?v=3" defer></script>
   <script src="/js/kumo-wallpaper.js?v=20260727r" defer></script>
   <script src="/js/subpage.js?v=20260727r" defer></script>
   <script src="/js/hw-loading.js?v=5" defer></script>
-  <script src="/js/hw-audio-player.js?v=20260807a" defer></script>
+  <script src="/js/hw-audio-player.js?v=20260825-vol" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
   <script src="/js/hw-compat.js?v=20260807a" defer></script>
   <script src="/js/hw-video-inline.js?v=20260807a" defer></script>
   <script src="/js/hw-audio-inline.js?v=20260807a" defer></script>
   <script src="/js/hw-submit-format.js?v=20260805" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260813-penpal-ask2" defer></script>
+  <script src="/js/hw-worksheet.js?v=20260825-ytlink" defer></script>
   <script src="/js/hw-star-block.js?v=20260728" defer></script>
   <script src="/js/hw-mc-block.js?v=20260805-mc-fit" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
@@ -1336,12 +1349,12 @@
   <script src="/js/hw-worksheet-tools-layout.js?v=64" defer></script>
   <script src="/js/hw-magnifying-glass.js?v=87" defer></script>
   <script src="/js/hw-review-media.js?v=20260807a" defer></script>
-  <script src="/js/hw-homework-comments.js?v=105" defer></script>
+  <script src="/js/hw-homework-comments.js?v=111" defer></script>
   <script src="/js/hw-toolbar-q-icons.js?v=5" defer></script>
-  <script src="/js/hw-student-toolbar.js?v=13" defer></script>
+  <script src="/js/hw-student-toolbar.js?v=15" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
-  <script src="/js/hw-account.js?v=8" defer></script>
-  <script src="/js/hw-platform-boot.js?v=75" defer></script>
+  <script src="/js/hw-account.js?v=11" defer></script>
+  <script src="/js/hw-platform-boot.js?v=102" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {
