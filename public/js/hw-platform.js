@@ -507,6 +507,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2800);
   }
+  global.HwToast = { show: showToast };
 
   function confirmHomeworkSubmit() {
     return new Promise((resolve) => {
@@ -632,7 +633,8 @@
     }
   }
 
-  const ASSIGNMENT_SESSION_PREFIX = "jlm-hw-assignment-v2-";
+  /* Bump when assignment payloads must invalidate stale sessionStorage (e.g. library edits). */
+  const ASSIGNMENT_SESSION_PREFIX = "jlm-hw-assignment-v3-";
 
   function assignmentSessionKey(id) {
     return ASSIGNMENT_SESSION_PREFIX + id;
@@ -965,7 +967,7 @@
         assignmentId: nextId,
         nextHomeworkId: nextId,
       });
-      showToast("Your next homework is ready");
+      showToast("Your next homework is ready.");
       try {
         const url = window.location.pathname + window.location.search + "#hw-" + nextId;
         history.replaceState(null, "", url);
@@ -985,7 +987,7 @@
       nextHomeworkId: null,
     });
 
-    showToast("Got it — JD will assign new homework when ready.");
+    showToast("Thanks — JD will assign new homework when it’s ready.");
 
     /* Leave the reviewed sheet and suggest upgrade / games (not past HW). */
     try {
@@ -1525,9 +1527,6 @@
       readOnly: true,
     });
     HwWorksheet.applySubmissionAnswers(form, submission);
-    if (HwWorksheet.hasListenTeacherAnswers?.(form)) {
-      HwWorksheet.revealTeacherAnswers(form);
-    }
     HwWorksheet.setFormReadOnly(form);
     bindHubV4WorksheetChrome(form, assignment);
     studentMountedAssignmentId = submission.assignmentId;
@@ -1548,6 +1547,11 @@
           submission.reviewStatus === "reviewed" ||
           submission.reviewStatus === "acknowledged",
         initialComments: submission.comments,
+        initialQuestionMarks:
+          submission.reviewStatus === "reviewed" ||
+          submission.reviewStatus === "acknowledged"
+            ? submission.questionMarks || {}
+            : {},
         onStudentAckNotes: canAck
           ? async () => {
               try {
@@ -1919,7 +1923,7 @@
         if (saveStatus) {
           saveStatus.textContent = data.message || "Homework sent! Please await JD's review.";
         }
-        showToast("Sent to JD");
+        showToast("Homework sent to JD — thank you.");
         try {
           localStorage.setItem(submittedKey, new Date().toISOString());
         } catch (_) {}
@@ -2136,6 +2140,53 @@
     }
   }
 
+  function syncLibraryCatTabs() {
+    const cat = global.HwTeacherEditor?.getWsCategoryTab?.() || "core-japanese";
+    global.HwWsCategories?.renderTabs?.(document.getElementById("hw-library-cat-tabs"), cat);
+  }
+
+  async function setLibraryWorksheetCategory(id, cat) {
+    const session = getTeacherSessionForApi();
+    if (!session || !id) return;
+    try {
+      const res = await fetch("/api/homework-set-ws-category", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherUsername: session.username,
+          worksheetId: id,
+          wsCategory: cat,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save category.");
+      if (catalogCache?.assignments) {
+        catalogCache.assignments = catalogCache.assignments.map((e) =>
+          e.id === id ? { ...e, wsCategory: data.wsCategory || cat } : e
+        );
+      }
+      if (global.HwTeacherEditor?.setWsCategoryTab) {
+        global.HwTeacherEditor.setWsCategoryTab(data.wsCategory || cat);
+      }
+      invalidateCatalogCaches();
+      catalogCache = await fetchCatalog({ bypassCache: true });
+      global.HwTeacherEditor?.refreshCatalog?.(
+        catalogCache.assignments || [],
+        catalogCache.studentProfiles || {},
+        catalogCache.students || []
+      );
+      const searchInput = document.getElementById("hw-library-search");
+      renderLibraryList(
+        catalogCache.assignments || [],
+        searchInput ? searchInput.value : "",
+        window.location.hash.replace(/^#hw-/, "")
+      );
+      showToast("Moved to " + (global.HwWsCategories?.labelFor?.(cat) || cat));
+    } catch (err) {
+      showToast((err && err.message) || "Could not change category.");
+    }
+  }
+
   function renderLibraryList(entries, query, activeId) {
     const list = document.getElementById("hw-library-list");
     const meta = document.getElementById("hw-library-meta");
@@ -2144,7 +2195,16 @@
     const q = String(query || "")
       .trim()
       .toLowerCase();
-    const filtered = entries.filter((e) => !q || librarySearchText(e).includes(q));
+    const cat =
+      global.HwTeacherEditor?.getWsCategoryTab?.() || "core-japanese";
+    const inCat = entries.filter((e) => {
+      const entryCat =
+        global.HwTeacherEditor?.worksheetCategory?.(e) ||
+        global.HwWsCategories?.defaultForEntry?.(e) ||
+        "other";
+      return entryCat === cat;
+    });
+    const filtered = inCat.filter((e) => !q || librarySearchText(e).includes(q));
     filtered.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
     list.innerHTML = "";
@@ -2248,7 +2308,19 @@
         openInTeacherEditor(entry.id);
       });
 
-      actions.append(previewBtn, dl, copyJson, copyStudent, editMaker);
+      const catSelect = document.createElement("select");
+      catSelect.className = "hw-library-cat-select";
+      catSelect.setAttribute("aria-label", "Worksheet category");
+      const entryCat =
+        global.HwTeacherEditor?.worksheetCategory?.(entry) ||
+        global.HwWsCategories?.defaultForEntry?.(entry) ||
+        "other";
+      global.HwWsCategories?.populateSelect?.(catSelect, entryCat);
+      catSelect.addEventListener("change", () => {
+        void setLibraryWorksheetCategory(entry.id, catSelect.value);
+      });
+
+      actions.append(catSelect, previewBtn, dl, copyJson, copyStudent, editMaker);
       li.append(main, actions);
       list.appendChild(li);
     });
@@ -2870,7 +2942,8 @@
     if (mount.querySelector(".hw-builder") || mount.dataset.builderReady === "true") return;
     HwTeacherEditor.init({
       showToast,
-      fetchAssignmentJson: (id) => fetchAssignmentJson(id),
+      /* Always fresh — session cache kept serving old Fate Zero duplicates after library edits. */
+      fetchAssignmentJson: (id) => fetchAssignmentJson(id, { bypassCache: true }),
       fetchCatalog,
       getCatalogEntry,
       getTeacherSession: () => getTeacherSessionForApi(),
@@ -2891,6 +2964,13 @@
         }
         return ["joshs", "benm", "deme", "ivan", "benc"].includes(key);
       },
+      onWsCategoryTab: function () {
+        const searchInput = document.getElementById("hw-library-search");
+        const entries = catalogCache?.assignments || [];
+        const id = window.location.hash.replace(/^#hw-/, "");
+        renderLibraryList(entries, searchInput ? searchInput.value : "", id);
+        syncLibraryCatTabs();
+      },
       onWorksheetSaved: async function (savedId, savedAssignment) {
         invalidateCatalogCaches();
         if (savedId) {
@@ -2910,6 +2990,13 @@
             catalogCache.studentProfiles || {},
             catalogCache.students || []
           );
+          const searchInput = document.getElementById("hw-library-search");
+          renderLibraryList(
+            catalogCache.assignments || [],
+            searchInput ? searchInput.value : "",
+            window.location.hash.replace(/^#hw-/, "")
+          );
+          syncLibraryCatTabs();
         } catch {
           /* ignore */
         }
@@ -2968,7 +3055,7 @@
     const makerPanel = document.getElementById("hw-teacher-maker");
     if (makerPanel) makerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
     try {
-      const assignment = await fetchAssignmentJson(id);
+      const assignment = await fetchAssignmentJson(id, { bypassCache: true });
       HwTeacherEditor.loadAssignment(assignment, getCatalogEntry(id));
       showToast("Loaded " + id);
     } catch {
@@ -3306,7 +3393,44 @@
   let teacherReviewDraftBusy = false;
   let teacherReviewDraftTimer = null;
   let teacherReviewHasUnsaved = false;
+  /** True while full-sheet review owns a history entry (browser Back closes sheet). */
+  let teacherReviewHistoryPushed = false;
   const TEACHER_REVIEW_DRAFT_MS = 1500;
+  const TEACHER_REVIEW_QS = "tr";
+
+  function stripTeacherReviewQuery() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has(TEACHER_REVIEW_QS)) return;
+      url.searchParams.delete(TEACHER_REVIEW_QS);
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function syncTeacherReviewHistory(entryId, mode) {
+    try {
+      const url = new URL(window.location.href);
+      const id = String(entryId || "").trim();
+      if (id) url.searchParams.set(TEACHER_REVIEW_QS, id);
+      else url.searchParams.delete(TEACHER_REVIEW_QS);
+      const next = url.pathname + url.search + url.hash;
+      if (mode === "push" && !teacherReviewHistoryPushed) {
+        history.pushState({ hwTeacherReview: true, id }, "", next);
+        teacherReviewHistoryPushed = true;
+      } else {
+        history.replaceState(
+          id ? { hwTeacherReview: true, id } : history.state,
+          "",
+          next
+        );
+        if (id) teacherReviewHistoryPushed = true;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   function setTeacherReviewStatus(msg, isError, state) {
     const el = document.getElementById("hw-teacher-review-status");
@@ -3356,6 +3480,7 @@
           teacherUsername: session.username,
           submissionId: teacherReviewSubmission.id,
           comments,
+          questionMarks: global.HwHomeworkComments?.getQuestionMarks?.() || {},
           markReviewed: false,
         }),
       });
@@ -3378,7 +3503,8 @@
     }
   }
 
-  async function closeTeacherWorksheetReview() {
+  async function closeTeacherWorksheetReview(opts) {
+    const fromPopstate = Boolean(opts?.fromPopstate);
     clearTeacherReviewDraftTimer();
     if (teacherReviewHasUnsaved && teacherReviewSubmission && !teacherReviewBusy) {
       await saveTeacherReviewDraft();
@@ -3395,6 +3521,15 @@
     setTeacherReviewStatus("");
     const submitBtn = document.getElementById("hw-teacher-review-submit");
     if (submitBtn) submitBtn.disabled = false;
+
+    const hadHistory = teacherReviewHistoryPushed;
+    teacherReviewHistoryPushed = false;
+    if (hadHistory && !fromPopstate) {
+      /* Drop the review history entry without leaving Teacher Hub. */
+      history.back();
+      return;
+    }
+    stripTeacherReviewQuery();
   }
 
   /** Replies JD already used on this worksheet, keyed by question slide index. */
@@ -3488,6 +3623,7 @@
     setTeacherReviewStatus("Loading worksheet…");
     overlay.hidden = false;
     document.body.classList.add("hw-teacher-review-open");
+    syncTeacherReviewHistory(entry.id, teacherReviewHistoryPushed ? "replace" : "push");
 
     let assignment;
     try {
@@ -3531,6 +3667,7 @@
         skipOnboarding: true,
         initialComments,
         answerBank: bankSlides,
+        initialQuestionMarks: entry.questionMarks || {},
       });
     }
 
@@ -3599,6 +3736,7 @@
           teacherUsername: session.username,
           submissionId: teacherReviewSubmission.id,
           comments,
+          questionMarks: global.HwHomeworkComments?.getQuestionMarks?.() || {},
           markReviewed: true,
         }),
       });
@@ -3651,7 +3789,6 @@
   function bindTeacherReviewChrome() {
     const back = document.getElementById("hw-teacher-review-back");
     const submit = document.getElementById("hw-teacher-review-submit");
-    const overlay = document.getElementById("hw-teacher-review-overlay");
     if (back && !back.dataset.bound) {
       back.dataset.bound = "true";
       back.addEventListener("click", () => {
@@ -3670,13 +3807,12 @@
         scheduleTeacherReviewDraftSave();
       });
     }
-    if (overlay && !overlay.dataset.escapeBound) {
-      overlay.dataset.escapeBound = "true";
-      document.addEventListener("keydown", (ev) => {
-        if (ev.key !== "Escape") return;
-        if (overlay.hidden) return;
-        ev.preventDefault();
-        void closeTeacherWorksheetReview();
+    if (!document.body.dataset.teacherReviewPopBound) {
+      document.body.dataset.teacherReviewPopBound = "true";
+      window.addEventListener("popstate", () => {
+        const open = document.getElementById("hw-teacher-review-overlay");
+        if (!open || open.hidden) return;
+        void closeTeacherWorksheetReview({ fromPopstate: true });
       });
     }
   }
@@ -3870,6 +4006,7 @@
       const meta = document.getElementById("hw-library-meta");
       if (meta) meta.textContent = "Could not load worksheet library.";
       if (global.HwTeacherEditor?.bootstrap) await HwTeacherEditor.bootstrap();
+      global.HwTeacherEditor?.repaintWorksheetDropdowns?.();
       return;
     }
 
@@ -3890,6 +4027,27 @@
     if (global.HwTeacherEditor?.bootstrap) {
       HwTeacherEditor.bootstrap();
     }
+    global.HwTeacherEditor?.repaintWorksheetDropdowns?.();
+
+    const libraryCatTabs = document.getElementById("hw-library-cat-tabs");
+    if (libraryCatTabs && !libraryCatTabs.dataset.bound) {
+      libraryCatTabs.dataset.bound = "true";
+      libraryCatTabs.addEventListener("click", (ev) => {
+        if (ev.target.closest("[data-ws-cat-add]")) {
+          const newId = global.HwWsCategories?.promptAddCategory?.();
+          if (newId && global.HwTeacherEditor?.setWsCategoryTab) {
+            global.HwTeacherEditor.setWsCategoryTab(newId);
+          }
+          return;
+        }
+        const btn = ev.target.closest("[data-ws-cat]");
+        if (!btn) return;
+        if (global.HwTeacherEditor?.setWsCategoryTab) {
+          global.HwTeacherEditor.setWsCategoryTab(btn.getAttribute("data-ws-cat"));
+        }
+      });
+    }
+    syncLibraryCatTabs();
 
     const searchInput = document.getElementById("hw-library-search");
     if (searchInput && !librarySearchBound) {
@@ -4443,7 +4601,8 @@
   function returnToTeacherHub() {
     invalidateCatalogCaches();
     clearStaleSubmissionHash();
-    HwAuth.clearViewAsStudent();
+    if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+    else HwAuth.clearViewAsStudent();
     window.location.reload();
   }
 
@@ -4588,10 +4747,10 @@
       initTeacherViewAsControls();
       showTeacherHubAndBindTabs();
       bindTeacherReviewChrome();
-      void loadTeacherHub();
       requestAnimationFrame(() => {
         initTeacherEditor();
         ensureTeacherEditorMounted();
+        void loadTeacherHub();
       });
     } else if (isViewingAsStudent) {
       initTeacherViewAsControls();

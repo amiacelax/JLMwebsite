@@ -128,11 +128,12 @@
     },
   ];
 
-  const TAB_IDS = ["homework", "notebook", "lessons", "games"];
+  const TAB_IDS = ["homework", "quest", "notebook", "lessons", "games"];
   const ACCOUNT_TAB_IDS = ["profile", "subscription", "notifications"];
   const HUB_TAB_LABELS = {
     homework: "HW",
-    notebook: "Notebook",
+    quest: "Quest",
+    notebook: "Notes",
     lessons: "Lessons/Mistakes",
     games: "Games",
   };
@@ -901,6 +902,10 @@
     });
     applyTabPanels(tab);
     syncHubTabSlider();
+    if (!accountMode && tab === "quest") {
+      void global.HwHubQuests?.markSeen?.();
+      void global.HwHubQuests?.refresh?.();
+    }
 
     afterNextPaint(() => {
       if (!options?.skipPersist) writeSavedHubTab(tab);
@@ -996,7 +1001,20 @@
       btn.setAttribute("data-v5-tab", id);
       btn.setAttribute("aria-selected", id === active ? "true" : "false");
       btn.setAttribute("aria-controls", "hw-v5-panel-" + id);
-      btn.textContent = labels[id] || id;
+      const label = document.createElement("span");
+      label.className = "hw-hub-v5-tabs__label";
+      label.textContent = labels[id] || id;
+      btn.appendChild(label);
+      if (!accountMode && id === "quest") {
+        const star = document.createElement("span");
+        star.id = "hw-v5-quest-star";
+        star.className = "hw-hub-v5-tabs__star";
+        const show = !!global.HwHubQuests?.hasNewQuest?.();
+        star.hidden = !show;
+        star.setAttribute("aria-hidden", show ? "false" : "true");
+        star.textContent = "★";
+        btn.appendChild(star);
+      }
       tabs.appendChild(btn);
     });
     tabs.classList.remove("is-slider-ready");
@@ -1067,43 +1085,8 @@
   }
 
   function renderAccountSellup() {
-    const mount = document.getElementById("hw-v5-account-sellup");
-    const caption = document.getElementById("hw-v5-account-sellup-caption");
-    const frame = document.getElementById("hw-v5-account-sellup-frame");
-    const empty = document.getElementById("hw-account-plan-empty");
-    if (!mount) return;
-
-    let offers = global.HwAuth?.getPostSubmitSellupOffers?.(getActiveSession()) || [];
-    if (demoModeEnabled() && !offers.length) {
-      offers = getSellupOffers();
-    }
-    if (!gamesAndCoursesEnabled()) {
-      offers = offers.filter((o) => o.kind !== "games");
-    }
-
-    mount.replaceChildren();
-    const show = offers.length > 0;
-    mount.hidden = !show;
-    if (caption) {
-      caption.hidden = !show;
-      caption.textContent = show ? sellupCaptionText(pickSellupVariant(offers)) : "";
-    }
-    if (frame) frame.hidden = !show;
-    if (empty) empty.hidden = show;
-
-    offers.forEach((offer) => {
-      let node = null;
-      if (offer.kind === "tier" && offer.studentUltra) node = buildStudentUltraCard();
-      else if (offer.kind === "tier") node = buildTierCard(offer.plan);
-      else if (offer.kind === "weekly_homework") {
-        node = buildWeeklyHomeworkCard({ studentSpecial: offer.studentSpecial });
-      } else if (offer.kind === "lessons") node = buildLessonsCard();
-      else if (offer.kind === "games") node = buildGamesCard();
-      if (node) mount.appendChild(node);
-    });
-
-    bindTierDetailModal();
-    global.HwCheckout?.bindCheckoutControls?.(mount);
+    /* Account Subscription uses HwAccount plan cards — never the post-submit sellup. */
+    global.HwAccount?.fillPlanCopy?.();
   }
 
   function escapeHtml(s) {
@@ -1579,6 +1562,7 @@
     empty.innerHTML =
       '<h2 class="hw-hub-v5-no-hw__title" id="hw-v5-no-hw-title">Homework between lessons</h2>' +
       '<p class="hw-hub-v5-no-hw__desc">Add weekly homework for practice and feedback from JD.</p>' +
+      trialBlockHtml() +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-no-hw-sellup-caption" hidden></p>' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-no-hw-sellup-frame" hidden>' +
       '<div class="hw-hub-v5-sellup" id="hw-v5-no-hw-sellup" aria-label="Weekly homework add-on"></div>' +
@@ -1618,11 +1602,111 @@
     welcome.innerHTML =
       '<h2 class="hw-hub-v5-noplan__title" id="hw-v5-noplan-title">Your account is ready</h2>' +
       '<p class="hw-hub-v5-noplan__desc">You\u2019ve created your Homework Hub account \u2014 pick a plan below to subscribe and get your first assignment from JD.</p>' +
+      trialBlockHtml() +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-noplan-sellup-caption" hidden></p>' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-noplan-sellup-frame" hidden>' +
       '<div class="hw-hub-v5-sellup" id="hw-v5-noplan-sellup" aria-label="Homework Hub plans"></div>' +
       "</div>";
     return welcome;
+  }
+
+  function trialBlockHtml() {
+    return (
+      '<div class="hw-hub-v5-trial" data-hw-trial>' +
+      '<p class="hw-hub-v5-trial__pitch">Interested in a free trial of HomeworkHub?</p>' +
+      '<button type="button" class="hw-hub-v5-trial__link" data-hw-trial-request>Request a free trial assignment?</button>' +
+      '<div class="hw-hub-v5-trial__levels" hidden data-hw-trial-levels>' +
+      '<p class="hw-hub-v5-trial__ask">What level do you want?</p>' +
+      '<div class="hw-hub-v5-trial__row">' +
+      '<button type="button" class="hw-hub-v5-trial__level" data-hw-trial-level="beginner">Beginner</button>' +
+      '<button type="button" class="hw-hub-v5-trial__level" data-hw-trial-level="intermediate">Intermediate</button>' +
+      '<button type="button" class="hw-hub-v5-trial__level" data-hw-trial-level="advanced">Advanced</button>' +
+      "</div>" +
+      '<p class="hw-hub-v5-trial__status" hidden data-hw-trial-status></p>' +
+      "</div></div>"
+    );
+  }
+
+  function ensureTrialBlock(host) {
+    if (!host || host.querySelector("[data-hw-trial]")) return;
+    const desc = host.querySelector(".hw-hub-v5-no-hw__desc, .hw-hub-v5-noplan__desc");
+    const wrap = document.createElement("div");
+    wrap.innerHTML = trialBlockHtml();
+    const node = wrap.firstElementChild;
+    if (!node) return;
+    if (desc) desc.insertAdjacentElement("afterend", node);
+    else host.prepend(node);
+  }
+
+  function setTrialStatus(box, message, isError) {
+    const status = box?.querySelector("[data-hw-trial-status]");
+    if (!status) return;
+    status.hidden = !message;
+    status.textContent = message || "";
+    status.classList.toggle("hw-hub-v5-trial__status--error", Boolean(isError));
+  }
+
+  async function requestFreeTrial(level, box) {
+    const picked = String(level || "").trim().toLowerCase();
+    if (!picked || !box) return;
+
+    const buttons = box.querySelectorAll("[data-hw-trial-level]");
+    buttons.forEach((btn) => {
+      btn.disabled = true;
+    });
+    setTrialStatus(box, "Sending your request\u2026", false);
+
+    if (demoModeEnabled()) {
+      setTrialStatus(
+        box,
+        "This is a preview. Log in on your Homework Hub account to request a free trial assignment.",
+        true
+      );
+      buttons.forEach((btn) => {
+        btn.disabled = false;
+      });
+      return;
+    }
+
+    const session = getActiveSession();
+    const username = String(session?.username || "").trim().toLowerCase();
+    if (!username) {
+      setTrialStatus(box, "Log in first, then request a free trial assignment.", true);
+      buttons.forEach((btn) => {
+        btn.disabled = false;
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/homework-trial-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, level: picked }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Could not request a free trial assignment.");
+      }
+      setTrialStatus(box, "Your free trial assignment is on your Homework Hub\u2026", false);
+      try {
+        sessionStorage.removeItem("jlm-hw-catalog-v1");
+      } catch {
+        /* ignore */
+      }
+      const id = String(data.id || data.currentHomeworkId || "").trim();
+      window.location.hash = id ? "hw-" + id : "";
+      window.location.reload();
+    } catch (err) {
+      setTrialStatus(
+        box,
+        (err && err.message) || "Could not request a free trial assignment.",
+        true
+      );
+      buttons.forEach((btn) => {
+        btn.disabled = false;
+      });
+    }
   }
 
   function wrapBelowPanel(panelId, tabId, labelledBy, node) {
@@ -1829,10 +1913,15 @@
       panels.appendChild(homeworkPanel);
       panels.appendChild(below);
 
+      /* Keep Past HW + Feature/Bug pills visible under Homework (grid is hidden in v5). */
+      const feedbackWrap = document.getElementById("hw-hub-feedback-pill-wrap");
+      if (feedbackWrap) homeworkPanel.appendChild(feedbackWrap);
+
       app.appendChild(tabsWrap);
       app.appendChild(panels);
 
       studentOnly.insertBefore(app, studentOnly.firstChild);
+      global.HwHubQuests?.ensurePanel?.();
 
       const legacySection = document.getElementById("hw-worksheet-section");
       if (legacySection) legacySection.hidden = true;
@@ -2560,6 +2649,16 @@
     return empty;
   }
 
+  function applyMarkedNoteHtml(el, text) {
+    const raw = String(text || "");
+    const toHtml = global.HwHomeworkComments?.markedTextToHtml;
+    if (typeof toHtml === "function") {
+      el.innerHTML = toHtml(raw) || "";
+      return;
+    }
+    el.textContent = raw;
+  }
+
   function appendStudentNoteBlock(parent, comment) {
     const block = document.createElement("div");
     block.className = "hw-hub-v5-review-slide__block hw-hub-v5-review-slide__block--yours";
@@ -2575,7 +2674,7 @@
     }
     const text = document.createElement("p");
     text.className = "hw-hub-v5-review-memo__text";
-    text.textContent = comment?.text || "(No note text)";
+    applyMarkedNoteHtml(text, comment?.text || "(No note text)");
     block.appendChild(text);
     parent.appendChild(block);
   }
@@ -2600,7 +2699,7 @@
     const teacherRemark =
       comment?.teacherRemark || (options.standalone ? comment?.text : "");
     if (teacherRemark) {
-      remark.textContent = teacherRemark;
+      applyMarkedNoteHtml(remark, teacherRemark);
     } else if (comment?.teacherRemarkMedia) {
       remark.classList.add("hw-hub-v5-review-memo__remark--pending");
       remark.textContent = "JD left an audio/video reply below.";
@@ -2740,13 +2839,19 @@
 
   function renderNoPlanWelcome(show) {
     const welcome = document.getElementById("hw-v5-noplan-welcome");
-    if (welcome) welcome.hidden = !show;
+    if (welcome) {
+      if (show) ensureTrialBlock(welcome);
+      welcome.hidden = !show;
+    }
     document.body.classList.toggle("hw-hub-v5-noplan-view", show);
   }
 
   function renderNoHwEmpty(show) {
     const empty = document.getElementById("hw-v5-no-hw-empty");
-    if (empty) empty.hidden = !show;
+    if (empty) {
+      if (show) ensureTrialBlock(empty);
+      empty.hidden = !show;
+    }
     document.body.classList.toggle("hw-hub-v5-no-hw-view", show);
   }
 
@@ -2771,7 +2876,10 @@
   let notebookOpen = false;
   let notebookPageIndex = 0;
   let notebookUiBound = false;
-  let notebookBookId = "daily";
+  let notebookBookId = "hw";
+  let notebookBookSessionReady = false;
+  let notebookBooksEditUnlocked = false;
+  let notebookBookDragId = "";
   let notebookSearchQuery = "";
   let dailyNotebookDateKey = "";
   let dailyNotebookTodayKey = "";
@@ -2798,8 +2906,8 @@
   const NOTEBOOK_WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
   const NOTEBOOK_BOOK_DEFAULTS = [
+    { id: "hw", label: "HW Notes", paper: "lined" },
     { id: "daily", label: "Daily Notebook", paper: "lined" },
-    { id: "hw", label: "HW Notebook", paper: "lined" },
     { id: "kanji", label: "Kanji Notebook", paper: "kanji" },
   ];
 
@@ -2808,6 +2916,42 @@
       .trim()
       .toLowerCase();
     return username ? "hw-nb-custom-books:" + username : "hw-nb-custom-books";
+  }
+
+  function notebookBookOrderKey() {
+    const username = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return username ? "hw-nb-book-order:" + username : "hw-nb-book-order";
+  }
+
+  function notebookActiveBookSessionKey() {
+    const username = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return username ? "hw-nb-active-book:" + username : "hw-nb-active-book";
+  }
+
+  function loadSessionNotebookBookId() {
+    try {
+      const id = String(
+        sessionStorage.getItem(notebookActiveBookSessionKey()) || ""
+      ).trim();
+      if (!id) return "hw";
+      const known = getNotebookBooks().some((b) => b.id === id);
+      return known ? id : "hw";
+    } catch {
+      return "hw";
+    }
+  }
+
+  function saveSessionNotebookBookId(bookId) {
+    const id = String(bookId || "").trim() || "hw";
+    try {
+      sessionStorage.setItem(notebookActiveBookSessionKey(), id);
+    } catch {
+      /* ignore */
+    }
   }
 
   function loadCustomNotebookBooks() {
@@ -2835,13 +2979,107 @@
     }
   }
 
+  function loadNotebookBookOrder() {
+    try {
+      const raw = localStorage.getItem(notebookBookOrderKey());
+      const list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) return [];
+      const ids = list.map((id) => String(id || "").trim()).filter(Boolean);
+      /* Migrate older default order that put Daily first. */
+      if (
+        ids.length === 3 &&
+        ids[0] === "daily" &&
+        ids[1] === "hw" &&
+        ids[2] === "kanji"
+      ) {
+        return ["hw", "daily", "kanji"];
+      }
+      return ids;
+    } catch {
+      return [];
+    }
+  }
+
+  function saveNotebookBookOrder(ids) {
+    try {
+      localStorage.setItem(
+        notebookBookOrderKey(),
+        JSON.stringify(Array.isArray(ids) ? ids : [])
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
   function getNotebookBooks() {
-    return NOTEBOOK_BOOK_DEFAULTS.concat(loadCustomNotebookBooks());
+    const custom = loadCustomNotebookBooks();
+    const byId = new Map();
+    NOTEBOOK_BOOK_DEFAULTS.forEach((book) => byId.set(book.id, book));
+    custom.forEach((book) => byId.set(book.id, book));
+
+    const order = loadNotebookBookOrder();
+    const out = [];
+    const seen = new Set();
+    order.forEach((id) => {
+      const book = byId.get(id);
+      if (!book || seen.has(id)) return;
+      out.push(book);
+      seen.add(id);
+    });
+    NOTEBOOK_BOOK_DEFAULTS.concat(custom).forEach((book) => {
+      if (seen.has(book.id)) return;
+      out.push(book);
+      seen.add(book.id);
+    });
+    return out;
+  }
+
+  function isCoreNotebookBook(bookId) {
+    const id = String(bookId || "").trim();
+    return id === "daily" || id === "hw" || id === "kanji";
+  }
+
+  function deleteCustomNotebookBook(bookId) {
+    const id = String(bookId || "").trim();
+    if (!id || isCoreNotebookBook(id)) return;
+    const custom = loadCustomNotebookBooks();
+    const book = custom.find((b) => b.id === id);
+    if (!book) return;
+    const ok = window.confirm(
+      'Delete notebook "' + book.label + '"? This can’t be undone.'
+    );
+    if (!ok) return;
+    saveCustomNotebookBooks(custom.filter((b) => b.id !== id));
+    saveNotebookBookOrder(loadNotebookBookOrder().filter((x) => x !== id));
+    if (notebookBookId === id) notebookBookId = "hw";
+    ensureNotebookBookTabs(ensureNotebookDiary());
+    setNotebookBook(notebookBookId);
+  }
+
+  function reorderNotebookBook(fromId, toId) {
+    const from = String(fromId || "").trim();
+    const to = String(toId || "").trim();
+    if (!from || !to || from === to) return;
+    const ids = getNotebookBooks().map((b) => b.id);
+    const fromIdx = ids.indexOf(from);
+    const toIdx = ids.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const next = ids.slice();
+    const [item] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, item);
+    saveNotebookBookOrder(next);
+    ensureNotebookBookTabs(ensureNotebookDiary());
+  }
+
+  function setNotebookBooksEditUnlocked(unlocked) {
+    notebookBooksEditUnlocked = Boolean(unlocked);
+    notebookBookDragId = "";
+    ensureNotebookBookTabs(ensureNotebookDiary());
   }
 
   function getActiveNotebookBook() {
     const books = getNotebookBooks();
-    return books.find((b) => b.id === notebookBookId) || books[0];
+    return books.find((b) => b.id === notebookBookId) || books[0] || NOTEBOOK_BOOK_DEFAULTS[0];
   }
 
   function formatNotebookWhen(iso) {
@@ -3088,13 +3326,71 @@
     );
   }
 
-  /** Empty-note placeholder: "Ben test note" from display name "Ben M". */
+  /** Empty-note placeholder — only when we truly have no student text/answer. */
   function notebookEmptyNotePlaceholder(displayName) {
     const first =
       String(displayName || "Student")
         .trim()
         .split(/\s+/)[0] || "Student";
-    return first + " test note";
+    return first + " — no answer saved";
+  }
+
+  function notebookStudentSideText(row) {
+    const answer = String(row?.studentAnswer || "").trim();
+    if (answer) return answer;
+    const memo = String(row?.studentText || "").trim();
+    if (memo) return memo;
+    return "";
+  }
+
+  function notebookQuestionLabel(row, fallbackIndex) {
+    if (typeof row?.slideIndex === "number" && row.slideIndex >= 0) {
+      return row.slideIndex + 1 + "\u554f";
+    }
+    return fallbackIndex + 1 + "\u554f";
+  }
+
+  function notebookRowMark(row, pack) {
+    if (row?.questionMark === "correct" || row?.questionMark === "wrong") {
+      return row.questionMark;
+    }
+    if (typeof row?.slideIndex !== "number") return "";
+    const raw = pack?.questionMarks?.[String(row.slideIndex)];
+    return raw === "correct" || raw === "wrong" ? raw : "";
+  }
+
+  /** One button per worksheet question — multiple JD notes on the same slide share a 問. */
+  function groupNotebookRowsByQuestion(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    const groups = [];
+    const seen = new Map();
+    list.forEach((row, index) => {
+      const slide =
+        typeof row?.slideIndex === "number" && row.slideIndex >= 0
+          ? row.slideIndex
+          : null;
+      const key = slide != null ? "s" + slide : "r" + index;
+      let group = seen.get(key);
+      if (!group) {
+        group = {
+          slideIndex: slide,
+          rows: [],
+          label: slide != null ? slide + 1 + "\u554f" : index + 1 + "\u554f",
+        };
+        seen.set(key, group);
+        groups.push(group);
+      }
+      group.rows.push(row);
+    });
+    groups.sort((a, b) => {
+      const as = a.slideIndex == null ? 9999 : a.slideIndex;
+      const bs = b.slideIndex == null ? 9999 : b.slideIndex;
+      return as - bs;
+    });
+    groups.forEach((g, i) => {
+      if (g.slideIndex == null) g.label = i + 1 + "\u554f";
+    });
+    return groups;
   }
 
   function usableNotebookPacks(packs) {
@@ -3222,83 +3518,42 @@
     };
   }
 
-  function renderNotebookRow(pack, row) {
-    const el = document.createElement("article");
-    el.className = "hw-hub-v5-notebook__row";
-    el.dataset.commentId = row.commentId || "";
+  function stripNotebookMarkTags(text) {
+    return String(text || "")
+      .replace(/\[\[\/?r\]\]/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-    const studentName = notebookStudentName(pack);
-    const studentText = String(row.studentText || "").trim();
-    const studentAnchor = String(row.studentAnchor || "").trim();
+  /**
+   * Skip leftover JD drafts that are just a plain copy of the student’s answer
+   * (no red marks, no audio/video).
+   */
+  function isSubstantiveJdNote(row, studentAnswer) {
+    if (notebookRowMedia(row)) return true;
+    const jd = String(row?.jdText || "").trim();
+    if (!jd) return false;
+    if (/\[\[r\]\]/i.test(jd)) return true;
+    const plain = stripNotebookMarkTags(jd);
+    const ans = stripNotebookMarkTags(
+      studentAnswer || notebookStudentSideText(row)
+    );
+    if (!ans) return true;
+    return plain !== ans;
+  }
 
-    const zone1 = document.createElement("div");
-    zone1.className = "hw-hub-v5-notebook__zone1";
-    const leftLabel = document.createElement("p");
-    leftLabel.className = "hw-hub-v5-notebook__label";
-    leftLabel.textContent = studentName;
-    zone1.appendChild(leftLabel);
-
-    if (studentAnchor) {
-      const anchor = document.createElement("p");
-      anchor.className = "hw-hub-v5-notebook__anchor";
-      anchor.textContent = "“" + studentAnchor + "”";
-      zone1.appendChild(anchor);
-    }
-
-    const leftText = document.createElement("p");
-    leftText.className = "hw-hub-v5-notebook__text";
-    if (studentText) {
-      leftText.textContent = studentText;
-      zone1.appendChild(leftText);
-    } else if (!studentAnchor) {
-      leftText.textContent = notebookEmptyNotePlaceholder(studentName);
-      zone1.appendChild(leftText);
-    }
-
-    const bodyId =
-      "hw-nb-jd-" +
-      String(pack?.submissionId || "x") +
-      "-" +
-      String(row.commentId || row.slideIndex || Math.random().toString(36).slice(2, 8));
-
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "hw-hub-v5-notebook__jd-toggle";
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.setAttribute("aria-controls", bodyId);
-
-    const rightLabel = document.createElement("span");
-    rightLabel.className = "hw-hub-v5-notebook__label hw-hub-v5-notebook__label--jd";
-    rightLabel.textContent = "JD’s comment";
-
-    const chevron = document.createElement("span");
-    chevron.className = "hw-hub-v5-notebook__jd-chevron";
-    chevron.setAttribute("aria-hidden", "true");
-    chevron.textContent = "▸";
-
-    toggle.appendChild(rightLabel);
-    toggle.appendChild(chevron);
-    zone1.appendChild(toggle);
-
-    const zone2 = document.createElement("div");
-    zone2.className = "hw-hub-v5-notebook__zone2";
-
-    const body = document.createElement("div");
-    body.id = bodyId;
-    body.className = "hw-hub-v5-notebook__jd-body";
-    body.setAttribute("aria-hidden", "true");
-
+  function appendJdNoteBlock(jdBlock, row) {
     const media = notebookRowMedia(row);
     if (row.jdText) {
       const rightText = document.createElement("p");
       rightText.className = "hw-hub-v5-notebook__text";
-      rightText.textContent = row.jdText;
-      body.appendChild(rightText);
+      applyMarkedNoteHtml(rightText, row.jdText);
+      jdBlock.appendChild(rightText);
     } else if (!media) {
       const rightText = document.createElement("p");
       rightText.className = "hw-hub-v5-notebook__text";
-      rightText.textContent = "(No comment yet)";
-      body.appendChild(rightText);
+      rightText.textContent = "(No written note)";
+      jdBlock.appendChild(rightText);
     }
 
     if (media) {
@@ -3307,46 +3562,201 @@
       const mediaBtn = document.createElement("button");
       mediaBtn.type = "button";
       mediaBtn.className = "hw-hub-v5-notebook__media-link";
-      mediaBtn.tabIndex = -1;
       mediaBtn.textContent = media.kind === "video" ? "Video" : "Audio";
       mediaBtn.addEventListener("click", (ev) => {
         ev.preventDefault();
         openNotebookMediaOverlay(media);
       });
       links.appendChild(mediaBtn);
-      body.appendChild(links);
+      jdBlock.appendChild(links);
+    }
+  }
+
+  /** YOUR ANSWER + JD’S NOTES (red marks) for one worksheet question. */
+  function renderNotebookQuestionDetail(pack, group) {
+    const rows = Array.isArray(group?.rows) ? group.rows : [];
+    const primary = rows[0] || {};
+    const el = document.createElement("article");
+    el.className = "hw-hub-v5-notebook__row hw-hub-v5-notebook__row--detail";
+    el.dataset.commentId = primary.commentId || "";
+
+    const studentName = notebookStudentName(pack);
+    let studentSide = "";
+    let studentAnchor = "";
+    for (const row of rows) {
+      if (!studentSide) studentSide = notebookStudentSideText(row);
+      if (!studentAnchor) studentAnchor = String(row.studentAnchor || "").trim();
+      if (studentSide && studentAnchor) break;
+    }
+    const mark = notebookRowMark(primary, pack);
+    if (mark) el.classList.add("hw-hub-v5-notebook__row--mark-" + mark);
+
+    const studentBlock = document.createElement("div");
+    studentBlock.className =
+      "hw-hub-v5-notebook__detail-block hw-hub-v5-notebook__detail-block--student";
+    const studentLabel = document.createElement("p");
+    studentLabel.className = "hw-hub-v5-notebook__detail-label";
+    studentLabel.textContent = "Your answer";
+    studentBlock.appendChild(studentLabel);
+
+    if (studentAnchor) {
+      const anchor = document.createElement("p");
+      anchor.className = "hw-hub-v5-notebook__anchor";
+      anchor.textContent = "“" + studentAnchor + "”";
+      studentBlock.appendChild(anchor);
     }
 
-    const openBtn = document.createElement("button");
-    openBtn.type = "button";
-    openBtn.className = "hw-hub-v5-notebook__open";
-    openBtn.tabIndex = -1;
-    openBtn.textContent =
-      typeof row.slideIndex === "number"
-        ? "Open HW · Q" + (row.slideIndex + 1)
+    const leftText = document.createElement("p");
+    leftText.className = "hw-hub-v5-notebook__text";
+    leftText.textContent =
+      studentSide || notebookEmptyNotePlaceholder(studentName);
+    studentBlock.appendChild(leftText);
+
+    const openStudent = document.createElement("button");
+    openStudent.type = "button";
+    openStudent.className = "hw-hub-v5-notebook__open";
+    openStudent.textContent =
+      typeof primary.slideIndex === "number"
+        ? "Open HW · Q" + (primary.slideIndex + 1)
         : "Open this homework page";
-    openBtn.addEventListener("click", (ev) => {
+    openStudent.addEventListener("click", (ev) => {
       ev.preventDefault();
-      openNotebookRow(pack, row);
+      openNotebookRow(pack, primary);
     });
-    body.appendChild(openBtn);
-    zone2.appendChild(body);
+    studentBlock.appendChild(openStudent);
+    el.appendChild(studentBlock);
 
-    toggle.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      const open = toggle.getAttribute("aria-expanded") === "true";
-      const next = !open;
-      toggle.setAttribute("aria-expanded", next ? "true" : "false");
-      body.setAttribute("aria-hidden", next ? "false" : "true");
-      el.classList.toggle("is-expanded", next);
-      openBtn.tabIndex = next ? 0 : -1;
-      const mediaBtn = body.querySelector(".hw-hub-v5-notebook__media-link");
-      if (mediaBtn) mediaBtn.tabIndex = next ? 0 : -1;
+    const jdRows = rows.filter((row) => isSubstantiveJdNote(row, studentSide));
+    jdRows.forEach((row, i) => {
+      const jdBlock = document.createElement("div");
+      jdBlock.className =
+        "hw-hub-v5-notebook__detail-block hw-hub-v5-notebook__detail-block--jd";
+      const jdLabel = document.createElement("p");
+      jdLabel.className =
+        "hw-hub-v5-notebook__detail-label hw-hub-v5-notebook__detail-label--jd";
+      jdLabel.textContent =
+        jdRows.length > 1 ? "JD’s notes (" + (i + 1) + ")" : "JD’s notes";
+      jdBlock.appendChild(jdLabel);
+      appendJdNoteBlock(jdBlock, row);
+      el.appendChild(jdBlock);
     });
 
-    el.appendChild(zone1);
-    el.appendChild(zone2);
     return el;
+  }
+
+  /**
+   * Date card (cream) → expands to solid green 1問 2問… → click shows answer + JD notes.
+   */
+  function renderHwNotesPackPanel(pack, rows) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-hub-v5-notebook__pack-panel";
+
+    const groups = groupNotebookRowsByQuestion(rows);
+    const when =
+      formatNotebookWhen(pack.reviewedAt || pack.savedAt) || "Reviewed homework";
+    const lesson = packDisplayTitle(pack);
+    const qCount = groups.length;
+
+    const dateBtn = document.createElement("button");
+    dateBtn.type = "button";
+    dateBtn.className = "hw-hub-v5-notebook__date-btn";
+    dateBtn.setAttribute("aria-expanded", "false");
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "hw-hub-v5-notebook__date-btn-name";
+    nameEl.textContent = notebookStudentName(pack);
+
+    const whenEl = document.createElement("span");
+    whenEl.className = "hw-hub-v5-notebook__date-btn-when";
+    whenEl.textContent = when;
+
+    const lessonEl = document.createElement("span");
+    lessonEl.className = "hw-hub-v5-notebook__date-btn-lesson";
+    lessonEl.textContent = lesson || "Homework notes";
+
+    const cue = document.createElement("span");
+    cue.className = "hw-hub-v5-notebook__date-btn-cue";
+    const cueLabel = document.createElement("span");
+    cueLabel.className = "hw-hub-v5-notebook__date-btn-cue-label";
+    cueLabel.textContent =
+      qCount === 1 ? "1 question" : qCount + " questions";
+    const cueChev = document.createElement("span");
+    cueChev.className = "hw-hub-v5-notebook__date-btn-chevron";
+    cueChev.setAttribute("aria-hidden", "true");
+    cueChev.textContent = "\u25B8";
+    cue.appendChild(cueLabel);
+    cue.appendChild(cueChev);
+
+    dateBtn.appendChild(nameEl);
+    dateBtn.appendChild(whenEl);
+    dateBtn.appendChild(lessonEl);
+    dateBtn.appendChild(cue);
+
+    const body = document.createElement("div");
+    body.className = "hw-hub-v5-notebook__pack-body";
+    body.hidden = true;
+
+    const bar = document.createElement("div");
+    bar.className = "hw-hub-v5-notebook__q-bar";
+    bar.setAttribute("role", "tablist");
+    bar.setAttribute("aria-label", "Homework questions with notes");
+
+    const detail = document.createElement("div");
+    detail.className = "hw-hub-v5-notebook__q-detail";
+    detail.hidden = true;
+
+    let packOpen = false;
+    let activeIdx = -1;
+
+    function paintDetail(index) {
+      activeIdx = index;
+      bar.querySelectorAll(".hw-hub-v5-notebook__q-btn").forEach((btn, i) => {
+        const on = i === index;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      /* Replace — never stack 1問 under 2問. */
+      detail.replaceChildren();
+      if (index < 0 || !groups[index]) {
+        detail.hidden = true;
+        return;
+      }
+      detail.hidden = false;
+      detail.appendChild(renderNotebookQuestionDetail(pack, groups[index]));
+    }
+
+    function setPackOpen(open) {
+      packOpen = open;
+      dateBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      dateBtn.classList.toggle("is-open", open);
+      body.hidden = !open;
+      if (!open) paintDetail(-1);
+    }
+
+    dateBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      setPackOpen(!packOpen);
+    });
+
+    groups.forEach((group, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v5-notebook__q-btn";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", "false");
+      btn.textContent = group.label;
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        paintDetail(activeIdx === index ? -1 : index);
+      });
+      bar.appendChild(btn);
+    });
+
+    body.appendChild(bar);
+    body.appendChild(detail);
+    wrap.appendChild(dateBtn);
+    wrap.appendChild(body);
+    return wrap;
   }
 
   function ensureNotebookBookTabs(diary) {
@@ -3360,18 +3770,90 @@
     }
 
     const books = getNotebookBooks();
+    /* First/new session → HW Notes; refresh restores the last pick from this tab. */
+    if (!notebookBookSessionReady) {
+      notebookBookId = loadSessionNotebookBookId();
+      notebookBookSessionReady = true;
+    } else if (!books.some((b) => b.id === notebookBookId)) {
+      notebookBookId = "hw";
+    }
     const active = getActiveNotebookBook();
     notebookBookId = active.id;
 
+    booksNav.classList.toggle("is-unlocked", notebookBooksEditUnlocked);
     booksNav.replaceChildren();
     books.forEach((book) => {
+      const core = isCoreNotebookBook(book.id);
+      const movable = notebookBooksEditUnlocked;
+      const deletable = movable && !core;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "hw-hub-v5-notebook-books__btn";
       if (book.id === notebookBookId) btn.classList.add("is-active");
+      if (movable) btn.classList.add("is-editable");
       btn.setAttribute("data-nb-book", book.id);
       btn.setAttribute("aria-pressed", book.id === notebookBookId ? "true" : "false");
-      btn.textContent = book.label;
+      btn.draggable = movable;
+
+      const label = document.createElement("span");
+      label.className = "hw-hub-v5-notebook-books__label";
+      label.textContent = book.label;
+      btn.appendChild(label);
+
+      if (deletable) {
+        const del = document.createElement("span");
+        del.className = "hw-hub-v5-notebook-books__del";
+        del.setAttribute("data-nb-book-del", book.id);
+        del.setAttribute("role", "button");
+        del.setAttribute("tabindex", "0");
+        del.setAttribute("aria-label", "Delete " + book.label);
+        del.title = "Delete notebook";
+        del.textContent = "\u00D7";
+        btn.appendChild(del);
+      }
+
+      if (movable) {
+        btn.addEventListener("dragstart", (ev) => {
+          if (!notebookBooksEditUnlocked) {
+            ev.preventDefault();
+            return;
+          }
+          notebookBookDragId = book.id;
+          btn.classList.add("is-dragging");
+          try {
+            ev.dataTransfer.effectAllowed = "move";
+            ev.dataTransfer.setData("text/plain", book.id);
+          } catch {
+            /* ignore */
+          }
+        });
+        btn.addEventListener("dragend", () => {
+          notebookBookDragId = "";
+          btn.classList.remove("is-dragging");
+          booksNav
+            .querySelectorAll(".hw-hub-v5-notebook-books__btn.is-drop-target")
+            .forEach((el) => el.classList.remove("is-drop-target"));
+        });
+        btn.addEventListener("dragover", (ev) => {
+          if (!notebookBookDragId || notebookBookDragId === book.id) return;
+          ev.preventDefault();
+          btn.classList.add("is-drop-target");
+        });
+        btn.addEventListener("dragleave", () => {
+          btn.classList.remove("is-drop-target");
+        });
+        btn.addEventListener("drop", (ev) => {
+          ev.preventDefault();
+          btn.classList.remove("is-drop-target");
+          const from =
+            notebookBookDragId ||
+            (ev.dataTransfer && ev.dataTransfer.getData("text/plain")) ||
+            "";
+          reorderNotebookBook(from, book.id);
+          notebookBookDragId = "";
+        });
+      }
+
       booksNav.appendChild(btn);
     });
 
@@ -3382,6 +3864,28 @@
     addBtn.setAttribute("data-nb-book-add", "1");
     addBtn.textContent = "Add Notebook";
     booksNav.appendChild(addBtn);
+
+    const lockBtn = document.createElement("button");
+    lockBtn.type = "button";
+    lockBtn.className =
+      "hw-hub-v5-notebook-books__lock" +
+      (notebookBooksEditUnlocked ? " is-unlocked" : "");
+    lockBtn.setAttribute("data-nb-book-lock", "1");
+    lockBtn.setAttribute(
+      "aria-pressed",
+      notebookBooksEditUnlocked ? "true" : "false"
+    );
+    lockBtn.setAttribute(
+      "aria-label",
+      notebookBooksEditUnlocked
+        ? "Lock notebook bar"
+        : "Unlock to rearrange notebooks (only added ones can be deleted)"
+    );
+    lockBtn.title = notebookBooksEditUnlocked
+      ? "Lock bar"
+      : "Unlock to rearrange — Daily / HW / Kanji can’t be deleted";
+    lockBtn.innerHTML = LOCK_SVG;
+    booksNav.appendChild(lockBtn);
     return booksNav;
   }
 
@@ -3419,6 +3923,7 @@
       void flushKanjiNotebookSave();
     }
     notebookBookId = next.id;
+    saveSessionNotebookBookId(notebookBookId);
     if (next.id === "daily" && !dailyNotebookDateKey) {
       dailyNotebookDateKey = tokyoDateKeyFromDate();
       dailyNotebookTodayKey = dailyNotebookDateKey;
@@ -3445,6 +3950,11 @@
       Date.now().toString(36);
     custom.push({ id, label, paper: "lined" });
     saveCustomNotebookBooks(custom);
+    const order = getNotebookBooks()
+      .map((b) => b.id)
+      .filter((x) => x !== id);
+    order.push(id);
+    saveNotebookBookOrder(order);
     setNotebookBook(id);
   }
 
@@ -3509,7 +4019,7 @@
     let aria = "Search notebook";
     if (id === "hw") {
       placeholder = "Search comments, homework, dates\u2026";
-      aria = "Search HW notebook";
+      aria = "Search HW notes";
     } else if (id === "daily") {
       placeholder = "Search days, notes, dates\u2026";
       aria = "Search daily notebook";
@@ -4350,7 +4860,7 @@
         empty.textContent = "No comments or homework matched “" + query + "”.";
         page.appendChild(empty);
       } else {
-        dateEl.textContent = "HW Notebook";
+        dateEl.textContent = "HW Notes";
         if (lessonEl) {
           lessonEl.hidden = false;
           lessonEl.textContent = "Notes from reviewed homework";
@@ -4369,19 +4879,15 @@
 
     const pack = usable[notebookPageIndex];
     const when = formatNotebookWhen(pack.reviewedAt || pack.savedAt);
-    dateEl.textContent = when || "Reviewed homework";
+    dateEl.textContent = "HW Notes";
     if (lessonEl) {
       const lesson = packDisplayTitle(pack);
-      lessonEl.textContent = lesson;
-      lessonEl.hidden = !lesson;
+      lessonEl.textContent = lesson || when || "Reviewed homework";
+      lessonEl.hidden = false;
     }
 
-    const rows = document.createElement("div");
-    rows.className = "hw-hub-v5-notebook__rows";
-    pack.rows.forEach((row) => {
-      rows.appendChild(renderNotebookRow(pack, row));
-    });
-    page.appendChild(rows);
+    const rows = Array.isArray(pack.rows) ? pack.rows : [];
+    page.appendChild(renderHwNotesPackPanel(pack, rows));
     page.scrollTop = 0;
 
     if (counter) {
@@ -4537,6 +5043,19 @@
     notebookUiBound = true;
 
     document.addEventListener("click", (e) => {
+      const lockBtn = e.target.closest("[data-nb-book-lock]");
+      if (lockBtn) {
+        e.preventDefault();
+        setNotebookBooksEditUnlocked(!notebookBooksEditUnlocked);
+        return;
+      }
+      const delBtn = e.target.closest("[data-nb-book-del]");
+      if (delBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteCustomNotebookBook(delBtn.getAttribute("data-nb-book-del") || "");
+        return;
+      }
       const addBtn = e.target.closest("[data-nb-book-add]");
       if (addBtn) {
         e.preventDefault();
@@ -4546,7 +5065,7 @@
       const bookBtn = e.target.closest("[data-nb-book]");
       if (bookBtn) {
         e.preventDefault();
-        setNotebookBook(bookBtn.getAttribute("data-nb-book") || "daily");
+        setNotebookBook(bookBtn.getAttribute("data-nb-book") || "hw");
         return;
       }
       if (e.target.closest("#hw-notebook-prev")) {
@@ -5058,6 +5577,7 @@
 
   function renderAll() {
     buildV5Shell();
+    global.HwHubQuests?.ensurePanel?.();
     const status = getHubStatus();
     renderDemoBar(status);
     renderHomeworkZone(status);
@@ -5159,6 +5679,24 @@
     });
 
     document.addEventListener("click", (e) => {
+      const trialRequest = e.target.closest("[data-hw-trial-request]");
+      if (trialRequest) {
+        e.preventDefault();
+        const box = trialRequest.closest("[data-hw-trial]");
+        const levels = box?.querySelector("[data-hw-trial-levels]");
+        if (levels) levels.hidden = false;
+        trialRequest.hidden = true;
+        return;
+      }
+      const trialLevel = e.target.closest("[data-hw-trial-level]");
+      if (trialLevel) {
+        e.preventDefault();
+        void requestFreeTrial(
+          trialLevel.getAttribute("data-hw-trial-level") || "",
+          trialLevel.closest("[data-hw-trial]")
+        );
+        return;
+      }
       if (e.target.closest("#hw-v5-open-reviewed-btn")) {
         e.preventDefault();
         if (lastReviewedSubmissionId) {
@@ -5173,6 +5711,11 @@
         return;
       }
       if (e.target.closest("#hw-v5-past-btn")) {
+        e.preventDefault();
+        setActiveTab("homework", { scrollTop: true });
+        openPastHomeworkFromHub();
+      }
+      if (e.target.closest("#hw-hub-past-homework-pill")) {
         e.preventDefault();
         setActiveTab("homework", { scrollTop: true });
         openPastHomeworkFromHub();
@@ -5197,6 +5740,7 @@
         liveReviewStatusReady = false;
       }
       renderAll();
+      void global.HwHubQuests?.refresh?.();
     });
     document.addEventListener("hw-platform-homework-submitted", () => {
       hubReady = true;

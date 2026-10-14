@@ -1,0 +1,35 @@
+{
+  "id": "benm-fukuin-part1",
+  "title": "福音を伝えよう Part 1",
+  "date": "2026-08-19",
+  "register": "casual",
+  "studentLabel": "Ben M",
+  "lessonName": "Sharing the gospel in Japanese",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "christian",
+  "students": [],
+  "sections": [
+    {
+      "id": "benm-fukuin-sec",
+      "mode": "context-blank",
+      "title": "",
+      "instructions": "Write your gospel presentation in Japanese. Use the 5 core points and Ben's theological outline below as reference.",
+      "items": [
+        {
+          "id": "benm-fukuin-open",
+          "topic": "Core points (Japanese):\n1. 私たちはいい人じゃない。\n2. 自分の力で、私は天国に行けない。\n3. イエス様は神様。\n4. イエス様は私たちのつみのために死にました。そして、よみがえりました。\n5. このことを信じれば〇〇さんも救われます。\n\nReference — Ben's gospel outline (Three Ways of Sharing the Gospel):\n\n• Creation — God created everything; humanity created in his image; perfect Adam and Eve.\n• Fall — disobedience = sin; separation from God; sin = death; problems and strife in life.\n• God's plan — Old Testament Israel; the law; sacrifices could not fully pay for sin.\n• Jesus — fulfills the law; dies on the cross to pay for sins; righteousness exchange (our sin for his righteousness).\n• Resurrection — Jesus rose again; trust in him = forgiven and restored relationship with God; eternal life through faith in Jesus alone.",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "benm-fukuin-open",
+              "wide": true,
+              "multiline": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

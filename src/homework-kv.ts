@@ -15,6 +15,8 @@ import {
 export interface StudentListEntry {
   username: string;
   displayName: string;
+  /** Teacher-only dropdown label. Hub name stays on the student account. */
+  teacherListName?: string;
 }
 
 export interface CatalogFile {
@@ -48,8 +50,12 @@ const studentYoutubeKey = (username: string) => `student:${username}:youtube`;
 const studentLessonPlaylistKey = (username: string) => `student:${username}:lesson-playlist`;
 const studentCurrentHomeworkKey = (username: string) => `student:${username}:current-homework`;
 const studentHomeworkWaitingKey = (username: string) => `student:${username}:homework-waiting`;
+const homeworkDraftKey = (username: string, assignmentId: string) =>
+  `hw-draft:${username}:${assignmentId}`;
 const studentAccountSettingsKey = (username: string) => `student:${username}:account-settings`;
 const studentDiscordKey = (username: string) => `student:${username}:discord-user-id`;
+const studentTeacherListNameKey = (username: string) =>
+  `student:${username}:teacher-list-name`;
 const studentNotifyPrefsKey = (username: string) => `student:${username}:notify-prefs`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
   `student:${username}:playlist-latest-v3:${playlistId}`;
@@ -78,6 +84,8 @@ export interface StudentProfilePayload {
   tier?: AccountTier;
   /** Discord snowflake for student DMs (digits only). Empty string clears. */
   discordUserId?: string;
+  /** Teacher dropdown name only. Empty string clears (hub name stays). */
+  teacherListName?: string;
 }
 
 export interface StudentProfileView {
@@ -91,7 +99,28 @@ export interface StudentProfileView {
   currentHomeworkTitle: string;
   waitingHomeworkIds: string[];
   discordUserId: string;
+  hubDisplayName: string;
+  teacherListName: string;
+  /** Active + queued hub rows with worksheet vs notes-review status. */
+  hubSlots?: StudentHubSlotView[];
 }
+
+export type HubSlotStatus = "incomplete" | "in_progress" | "submitted" | "jd_memo";
+
+export interface StudentHubSlotView {
+  assignmentId: string;
+  title: string;
+  role: "active" | "queued";
+  status: HubSlotStatus;
+  statusLabel: string;
+}
+
+const HUB_SLOT_STATUS_LABELS: Record<HubSlotStatus, string> = {
+  incomplete: "Incomplete",
+  in_progress: "In progress",
+  submitted: "Submitted",
+  jd_memo: "JD Memo",
+};
 
 export interface SaveWorksheetPayload {
   teacherUsername?: string;
@@ -102,6 +131,106 @@ export interface SaveWorksheetPayload {
 export interface DeleteWorksheetPayload {
   teacherUsername?: string;
   worksheetId?: string;
+}
+
+export interface SetWorksheetCategoryPayload {
+  teacherUsername?: string;
+  worksheetId?: string;
+  wsCategory?: string;
+}
+
+/** Worksheet library buckets (WS courses). Built-in + custom slugs from KV. */
+export type WorksheetCategory = string;
+
+const KV_WS_CATEGORIES = "ws-categories-v1";
+const CORE_JAPANESE_DEFAULT_IDS = new Set(["sykohpath-secret-hiragana"]);
+const WS_CATEGORY_SLUG_RE = /^[a-z0-9-]{1,32}$/;
+
+export function normalizeWsCategory(raw: unknown): WorksheetCategory | undefined {
+  const key = String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+  if (key === "core-japanese" || key === "core-social-japanese" || key === "corejp") {
+    return "core-japanese";
+  }
+  if (key === "other") return "other";
+  if (key === "jlpt") return "jlpt";
+  if (key === "christian" || key === "gospel") return "christian";
+  if (WS_CATEGORY_SLUG_RE.test(key)) return key;
+  return undefined;
+}
+
+export function defaultWsCategory(id: string): WorksheetCategory {
+  return CORE_JAPANESE_DEFAULT_IDS.has(String(id || "").trim()) ? "core-japanese" : "other";
+}
+
+export function resolveWsCategory(
+  entry: { id?: unknown; wsCategory?: unknown },
+  map?: Record<string, string>
+): WorksheetCategory {
+  const id = String(entry?.id || "").trim();
+  return (
+    normalizeWsCategory(entry?.wsCategory) ||
+    normalizeWsCategory(map?.[id]) ||
+    defaultWsCategory(id)
+  );
+}
+
+async function readWsCategoryMap(kv: KVNamespace): Promise<Record<string, string>> {
+  try {
+    const raw = await kv.get(KV_WS_CATEGORIES);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: Record<string, string> = {};
+    for (const [id, value] of Object.entries(parsed)) {
+      const cat = normalizeWsCategory(value);
+      if (id && cat) out[id] = cat;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+async function writeWsCategoryMap(
+  kv: KVNamespace,
+  map: Record<string, string>
+): Promise<void> {
+  await kv.put(KV_WS_CATEGORIES, JSON.stringify(map));
+}
+
+export async function setWorksheetWsCategory(
+  data: SetWorksheetCategoryPayload,
+  env: KvEnv
+): Promise<{ id: string; wsCategory: WorksheetCategory }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.worksheetId || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+  if (!/^[a-z0-9-]+$/i.test(id)) throw new Error("INVALID_ID");
+
+  const wsCategory = normalizeWsCategory(data.wsCategory) || "other";
+  const map = await readWsCategoryMap(kv);
+  map[id] = wsCategory;
+  await writeWsCategoryMap(kv, map);
+
+  const existingRaw = await kv.get(catalogKey(id));
+  if (existingRaw) {
+    try {
+      const existing = JSON.parse(existingRaw) as Record<string, unknown>;
+      existing.wsCategory = wsCategory;
+      await kv.put(catalogKey(id), JSON.stringify(existing));
+      await upsertCatalogEntriesBlob(kv, existing);
+    } catch {
+      /* map is enough */
+    }
+  }
+
+  return { id, wsCategory };
 }
 
 interface KvEnv {
@@ -214,12 +343,16 @@ async function readStudentListBlob(
     const parsed = JSON.parse(raw) as { students?: StudentListEntry[] };
     if (!Array.isArray(parsed?.students)) return null;
     return parsed.students
-      .map((s) => ({
-        username: String(s?.username || "")
+      .map((s) => {
+        const username = String(s?.username || "")
           .trim()
-          .toLowerCase(),
-        displayName: String(s?.displayName || s?.username || "").trim(),
-      }))
+          .toLowerCase();
+        const teacherListName = String(s?.teacherListName || "").trim();
+        const displayName = String(s?.displayName || teacherListName || s?.username || "").trim();
+        const row: StudentListEntry = { username, displayName };
+        if (teacherListName) row.teacherListName = teacherListName;
+        return row;
+      })
       .filter((s) => s.username);
   } catch {
     return null;
@@ -251,6 +384,55 @@ export async function invalidateStudentListSnapshot(
   }
 }
 
+function normalizeTeacherListName(raw: unknown): string {
+  return String(raw || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 40);
+}
+
+async function readTeacherListName(kv: KVNamespace, username: string): Promise<string> {
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return "";
+  return normalizeTeacherListName(await kv.get(studentTeacherListNameKey(key)));
+}
+
+async function saveTeacherListName(
+  kv: KVNamespace,
+  username: string,
+  raw: string
+): Promise<void> {
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return;
+  const name = normalizeTeacherListName(raw);
+  const kvKey = studentTeacherListNameKey(key);
+  if (!name) {
+    await kv.delete(kvKey);
+  } else {
+    await kv.put(kvKey, name);
+  }
+  await invalidateStudentListSnapshot(kv);
+}
+
+function listEntryFromNames(
+  username: string,
+  hubDisplayName: string,
+  teacherListName: string
+): StudentListEntry {
+  const hub = String(hubDisplayName || username).trim() || username;
+  const custom = normalizeTeacherListName(teacherListName);
+  const row: StudentListEntry = {
+    username,
+    displayName: custom || hub,
+  };
+  if (custom) row.teacherListName = custom;
+  return row;
+}
+
 async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> {
   let wiped = await readWipedStudents(kv);
   let wipedChanged = false;
@@ -269,12 +451,18 @@ async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> 
   }
 
   const byUser = new Map<string, StudentListEntry>();
-  for (const username of STUDENT_ACCOUNTS) {
-    if (wiped.has(username)) continue;
-    byUser.set(username, {
-      username,
-      displayName: LEGACY_STUDENT_LABELS[username] || username,
-    });
+  const legacyRows = await Promise.all(
+    [...STUDENT_ACCOUNTS].filter((username) => !wiped.has(username)).map(async (username) => {
+      const teacherListName = await readTeacherListName(kv, username);
+      return listEntryFromNames(
+        username,
+        LEGACY_STUDENT_LABELS[username] || username,
+        teacherListName
+      );
+    })
+  );
+  for (const row of legacyRows) {
+    byUser.set(row.username, row);
   }
 
   const ids = await readRegisteredUsernames(kv);
@@ -284,7 +472,10 @@ async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> 
         .trim()
         .toLowerCase();
       if (!key || wiped.has(key)) return null;
-      const raw = await kv.get(userAccountKey(key));
+      const [raw, teacherListName] = await Promise.all([
+        kv.get(userAccountKey(key)),
+        readTeacherListName(kv, key),
+      ]);
       if (!raw) return null;
       try {
         const account = JSON.parse(raw) as {
@@ -293,14 +484,13 @@ async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> 
           role?: string;
         };
         if (account.role !== "student") return null;
-        return {
-          username: String(account.username || key)
+        return listEntryFromNames(
+          String(account.username || key)
             .trim()
             .toLowerCase(),
-          displayName: String(
-            account.displayName || account.username || key
-          ).trim(),
-        } as StudentListEntry;
+          String(account.displayName || account.username || key).trim(),
+          teacherListName
+        );
       } catch {
         return null;
       }
@@ -318,10 +508,11 @@ async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> 
           .trim()
           .toLowerCase();
         if (!key || byUser.has(key) || wiped.has(key)) continue;
-        byUser.set(key, {
-          username: key,
-          displayName: LEGACY_STUDENT_LABELS[key] || key,
-        });
+        const teacherListName = await readTeacherListName(kv, key);
+        byUser.set(
+          key,
+          listEntryFromNames(key, LEGACY_STUDENT_LABELS[key] || key, teacherListName)
+        );
       }
     }
   } catch {
@@ -645,7 +836,255 @@ export async function getStudentProfileForTeacher(
     currentHomeworkTitle,
     waitingHomeworkIds: await readHomeworkWaitingQueue(kv, student),
     discordUserId: String((await kv.get(studentDiscordKey(student))) || "").trim(),
+    hubDisplayName: String(
+      (await getUserAccount(student, env))?.displayName ||
+        LEGACY_STUDENT_LABELS[student] ||
+        student
+    ).trim(),
+    teacherListName: await readTeacherListName(kv, student),
+    hubSlots: await buildStudentHubSlots(kv, student),
   };
+}
+
+const HW_DAILY_PAID_TIERS = new Set<AccountTier>([
+  "tier1",
+  "tier2",
+  "tier3",
+  "student_special",
+]);
+
+const HW_DAILY_SKIP_USERS = new Set([
+  "demoprem",
+  "premdemo",
+  "demo",
+  "jlm",
+  "noplan",
+]);
+
+async function resolveHomeworkTitle(kv: KVNamespace, assignmentId: string): Promise<string> {
+  const id = String(assignmentId || "").trim();
+  if (!id) return "";
+  const catalogRaw = await kv.get(catalogKey(id));
+  if (catalogRaw) {
+    try {
+      const entry = JSON.parse(catalogRaw) as { title?: string };
+      const title = String(entry.title || "").trim();
+      if (title) return title;
+    } catch {
+      /* ignore */
+    }
+  }
+  const assignmentRaw = await kv.get(assignmentKey(id));
+  if (assignmentRaw) {
+    try {
+      const assignment = JSON.parse(assignmentRaw) as { title?: string };
+      return String(assignment.title || "").trim();
+    } catch {
+      /* ignore */
+    }
+  }
+  return id;
+}
+
+export type HwDailyWaitingBucket =
+  | "needs"
+  | "sent"
+  | "review"
+  | "reviewingNotes"
+  | "caughtUp";
+
+export interface HwDailyWaitingRow {
+  username: string;
+  displayName: string;
+  title?: string;
+  bucket: HwDailyWaitingBucket;
+}
+
+export interface HwDailyWaitingReport {
+  needs: HwDailyWaitingRow[];
+  sent: HwDailyWaitingRow[];
+  review: HwDailyWaitingRow[];
+  /** Teacher notes are out; student hasn’t clicked Done reviewing yet. */
+  reviewingNotes: HwDailyWaitingRow[];
+  caughtUp: HwDailyWaitingRow[];
+}
+
+function includeInHwDailyPing(
+  username: string,
+  tier: AccountTier,
+  accountLabel: AccountLabel
+): boolean {
+  if (HW_DAILY_SKIP_USERS.has(username)) return false;
+  if (username.includes("demo")) return false;
+  if (HW_DAILY_PAID_TIERS.has(tier)) return true;
+  return accountLabel === "current_student";
+}
+
+/** Snapshot for JD’s daily Discord “who needs HW / who’s waiting” ping. */
+export async function collectHwDailyWaitingReport(
+  env: KvEnv
+): Promise<HwDailyWaitingReport> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const students = await listAllStudentAccounts(kv);
+  const needs: HwDailyWaitingRow[] = [];
+  const sent: HwDailyWaitingRow[] = [];
+  const review: HwDailyWaitingRow[] = [];
+  const reviewingNotes: HwDailyWaitingRow[] = [];
+  const caughtUp: HwDailyWaitingRow[] = [];
+
+  type SubRow = Awaited<ReturnType<typeof listHomeworkSubmissions>>[number];
+  type SheetStatus = "submitted" | "reviewed" | "acknowledged" | "none";
+
+  function isOnline(sub: SubRow): boolean {
+    return !sub.type || sub.type === "online";
+  }
+
+  function isMediaOnly(sub: SubRow): boolean {
+    return sub.type === "video" || sub.type === "photo";
+  }
+
+  function newer(a: SubRow, b: SubRow): boolean {
+    return new Date(a.submittedAt || 0).getTime() > new Date(b.submittedAt || 0).getTime();
+  }
+
+  /** Prefer online sheet status; companion video/photo alone only counts if no online notes yet. */
+  function sheetStatus(subs: SubRow[]): SheetStatus {
+    let latestOnline: SubRow | null = null;
+    let mediaSubmitted = false;
+    for (const sub of subs) {
+      if (isOnline(sub)) {
+        if (!latestOnline || newer(sub, latestOnline)) latestOnline = sub;
+      } else if (isMediaOnly(sub) && sub.reviewStatus === "submitted") {
+        mediaSubmitted = true;
+      }
+    }
+    if (latestOnline) {
+      const st = String(latestOnline.reviewStatus || "").toLowerCase();
+      if (st === "submitted" || st === "reviewed" || st === "acknowledged") {
+        return st as SheetStatus;
+      }
+      return "submitted";
+    }
+    return mediaSubmitted ? "submitted" : "none";
+  }
+
+  for (const entry of students) {
+    const username = String(entry.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) continue;
+
+    const settings = await getStudentAccountSettings(username, env);
+    if (!includeInHwDailyPing(username, settings.tier, settings.accountLabel)) {
+      continue;
+    }
+
+    const displayName = String(
+      entry.teacherListName || entry.displayName || LEGACY_STUDENT_LABELS[username] || username
+    ).trim();
+
+    const currentHomeworkId = String(
+      (await kv.get(studentCurrentHomeworkKey(username))) || ""
+    ).trim();
+    const waiting = await readHomeworkWaitingQueue(kv, username);
+    const hasLive = Boolean(currentHomeworkId) || waiting.length > 0;
+
+    const submissions = await listHomeworkSubmissions(env, {
+      student: username,
+      limit: 40,
+    });
+
+    const byAssignment = new Map<string, SubRow[]>();
+    for (const sub of submissions) {
+      const aid = String(sub.assignmentId || "").trim();
+      if (!aid) continue;
+      const list = byAssignment.get(aid) || [];
+      list.push(sub);
+      byAssignment.set(aid, list);
+    }
+
+    async function titleFor(assignmentId: string, fallback?: SubRow): Promise<string | undefined> {
+      const resolved = assignmentId ? await resolveHomeworkTitle(kv, assignmentId) : "";
+      return (
+        resolved ||
+        String(fallback?.title || fallback?.lessonName || "").trim() ||
+        undefined
+      );
+    }
+
+    const currentSubs = currentHomeworkId ? byAssignment.get(currentHomeworkId) || [] : [];
+    const currentStatus = currentHomeworkId ? sheetStatus(currentSubs) : "none";
+
+    if (currentStatus === "submitted") {
+      review.push({
+        username,
+        displayName,
+        title: await titleFor(currentHomeworkId, currentSubs[0]),
+        bucket: "review",
+      });
+      continue;
+    }
+
+    if (currentStatus === "reviewed") {
+      reviewingNotes.push({
+        username,
+        displayName,
+        title: await titleFor(currentHomeworkId, currentSubs[0]),
+        bucket: "reviewingNotes",
+      });
+      continue;
+    }
+
+    let otherReviewId = "";
+    let otherReviewSub: SubRow | undefined;
+    for (const [aid, subs] of byAssignment) {
+      if (aid === currentHomeworkId) continue;
+      if (sheetStatus(subs) === "submitted") {
+        otherReviewId = aid;
+        otherReviewSub = subs[0];
+        break;
+      }
+    }
+    if (otherReviewId) {
+      review.push({
+        username,
+        displayName,
+        title: await titleFor(otherReviewId, otherReviewSub),
+        bucket: "review",
+      });
+      continue;
+    }
+
+    if (!hasLive) {
+      needs.push({ username, displayName, bucket: "needs" });
+      continue;
+    }
+
+    const currentTitle = currentHomeworkId
+      ? await resolveHomeworkTitle(kv, currentHomeworkId)
+      : waiting[0]
+        ? await resolveHomeworkTitle(kv, waiting[0])
+        : "";
+
+    sent.push({
+      username,
+      displayName,
+      title: currentTitle || undefined,
+      bucket: "sent",
+    });
+  }
+
+  const byName = (a: HwDailyWaitingRow, b: HwDailyWaitingRow) =>
+    a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" });
+  needs.sort(byName);
+  sent.sort(byName);
+  review.sort(byName);
+  reviewingNotes.sort(byName);
+  caughtUp.sort(byName);
+
+  return { needs, sent, review, reviewingNotes, caughtUp };
 }
 
 export async function saveStudentProfile(
@@ -689,6 +1128,10 @@ export async function saveStudentProfile(
 
   if (data.discordUserId !== undefined) {
     await saveStudentDiscordUserId(kv, student, data.discordUserId);
+  }
+
+  if (data.teacherListName !== undefined) {
+    await saveTeacherListName(kv, student, String(data.teacherListName || ""));
   }
 
   return { student };
@@ -754,6 +1197,41 @@ async function writeHomeworkWaitingQueue(
   await kv.put(studentHomeworkWaitingKey(user), JSON.stringify(unique));
 }
 
+export interface HomeworkWaitingQueueReorderPayload {
+  teacherUsername?: string;
+  studentUsername?: string;
+  waitingHomeworkIds?: string[];
+}
+
+export async function reorderHomeworkWaitingQueue(
+  data: HomeworkWaitingQueueReorderPayload,
+  env: KvEnv
+): Promise<{ student: string; waitingHomeworkIds: string[] }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const student = String(data.studentUsername || "")
+    .trim()
+    .toLowerCase();
+  if (!student) throw new Error("STUDENT_REQUIRED");
+  if (!(await isKnownStudentInKv(student, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const current = await readHomeworkWaitingQueue(kv, student);
+  const next = (data.waitingHomeworkIds || [])
+    .map((id) => String(id || "").trim())
+    .filter(Boolean);
+
+  if (current.length !== next.length) throw new Error("QUEUE_MISMATCH");
+  const currentSet = new Set(current);
+  for (const id of next) {
+    if (!currentSet.has(id)) throw new Error("QUEUE_MISMATCH");
+  }
+
+  await writeHomeworkWaitingQueue(kv, student, next);
+  return { student, waitingHomeworkIds: next };
+}
+
 async function getLatestOnlineSubmissionForAssignment(
   kv: KVNamespace,
   username: string,
@@ -795,6 +1273,65 @@ async function getLatestOnlineSubmissionForAssignment(
       new Date(a.submittedAt || a.reviewedAt || 0).getTime()
   );
   return matches[0] || null;
+}
+
+function draftHasSavedAnswers(raw: string | null): boolean {
+  if (!raw) return false;
+  try {
+    const draft = JSON.parse(raw) as HomeworkDraft;
+    const answers = draft.answers;
+    if (!answers || typeof answers !== "object") return false;
+    return Object.values(answers).some((value) => String(value ?? "").trim().length > 0);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveHubSlotStatus(
+  kv: KVNamespace,
+  username: string,
+  assignmentId: string
+): Promise<HubSlotStatus> {
+  const latest = await getLatestOnlineSubmissionForAssignment(kv, username, assignmentId);
+  if (!latest) {
+    const draftRaw = await kv.get(homeworkDraftKey(username, assignmentId));
+    return draftHasSavedAnswers(draftRaw) ? "in_progress" : "incomplete";
+  }
+
+  const status = String(latest.reviewStatus || "").toLowerCase();
+  if (status === "reviewed" || latest.reviewedAt || latest.teacherNotesSubmittedAt) {
+    return "jd_memo";
+  }
+  return "submitted";
+}
+
+async function buildStudentHubSlots(
+  kv: KVNamespace,
+  student: string
+): Promise<StudentHubSlotView[]> {
+  const currentHomeworkId = String(
+    (await kv.get(studentCurrentHomeworkKey(student))) || ""
+  ).trim();
+  const waiting = await readHomeworkWaitingQueue(kv, student);
+  const slots: StudentHubSlotView[] = [];
+
+  async function pushSlot(id: string, role: "active" | "queued") {
+    const assignmentId = String(id || "").trim();
+    if (!assignmentId) return;
+    const status = await resolveHubSlotStatus(kv, student, assignmentId);
+    const title = (await resolveHomeworkTitle(kv, assignmentId)) || assignmentId;
+    slots.push({
+      assignmentId,
+      title,
+      role,
+      status,
+      statusLabel: HUB_SLOT_STATUS_LABELS[status],
+    });
+  }
+
+  if (currentHomeworkId) await pushSlot(currentHomeworkId, "active");
+  for (const id of waiting) await pushSlot(id, "queued");
+  return slots;
 }
 
 /** True while student still has this sheet open (working / submitted / reading notes). */
@@ -1049,6 +1586,7 @@ export async function saveWorksheetDraft(
         summary?: string;
         forSale?: boolean;
         salePrice?: number;
+        wsCategory?: string;
       };
       const prevStudents = (existing.students || []).map((s) => String(s).toLowerCase()).filter(Boolean);
       if (prevStudents.length) catalogEntry.students = prevStudents;
@@ -1069,6 +1607,9 @@ export async function saveWorksheetDraft(
       if (catalogEntry.salePrice === undefined && existing.salePrice !== undefined) {
         catalogEntry.salePrice = existing.salePrice;
       }
+      if (catalogEntry.wsCategory === undefined && existing.wsCategory !== undefined) {
+        catalogEntry.wsCategory = existing.wsCategory;
+      }
     } catch {
       /* keep incoming catalog entry */
     }
@@ -1079,6 +1620,17 @@ export async function saveWorksheetDraft(
   if (title) {
     catalogEntry.title = title;
     assignment.title = title;
+  }
+
+  const wsCategory =
+    normalizeWsCategory(catalogEntry.wsCategory) || defaultWsCategory(id);
+  catalogEntry.wsCategory = wsCategory;
+  try {
+    const map = await readWsCategoryMap(kv);
+    map[id] = wsCategory;
+    await writeWsCategoryMap(kv, map);
+  } catch {
+    /* catalog entry still has the field */
   }
 
   await kv.put(assignmentKey(id), JSON.stringify(assignment));
@@ -1305,6 +1857,19 @@ export async function mergeCatalog(
   let assignments = [...byId.values()];
   if (studentKey) {
     assignments = assignments.filter((e) => assignmentIncludesStudent(e, studentKey));
+  }
+
+  if (kv) {
+    const catMap = await readWsCategoryMap(kv);
+    assignments = assignments.map((e) => ({
+      ...e,
+      wsCategory: resolveWsCategory(e, catMap),
+    }));
+  } else {
+    assignments = assignments.map((e) => ({
+      ...e,
+      wsCategory: resolveWsCategory(e),
+    }));
   }
 
   const merged: CatalogFile = {
@@ -2063,12 +2628,30 @@ export interface HomeworkComment {
 
 export type HomeworkReviewStatus = "submitted" | "reviewed" | "acknowledged";
 
+/** JD mark on a whole question slide (0-based index as string). */
+export type HomeworkQuestionMark = "correct" | "wrong";
+
+export function normalizeQuestionMarks(
+  raw: unknown
+): Record<string, HomeworkQuestionMark> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, HomeworkQuestionMark> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    const idx = Number(key);
+    if (!Number.isInteger(idx) || idx < 0 || idx > 200) continue;
+    if (value === "correct" || value === "wrong") out[String(idx)] = value;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** One Notebook list row: student memo + JD reply, or a standalone JD question note. */
 export interface HomeworkNotebookRow {
   id: string;
   kind: "pair" | "jd";
   studentText?: string;
   studentAnchor?: string;
+  /** Worksheet answer for this slide (when available) — preferred over empty memo placeholders. */
+  studentAnswer?: string;
   jdText?: string;
   /** True when JD left A/V without (or in addition to) text — text-first MVP. */
   hasJdMedia?: boolean;
@@ -2076,6 +2659,8 @@ export interface HomeworkNotebookRow {
   jdMedia?: HomeworkReviewMedia;
   slideIndex?: number;
   commentId: string;
+  /** Deck “Looks good” / “Not quite” mark for this slide, when present. */
+  questionMark?: HomeworkQuestionMark;
 }
 
 /**
@@ -2092,6 +2677,8 @@ export interface HomeworkNotebookPack {
   displayName?: string;
   reviewedAt: string;
   rows: HomeworkNotebookRow[];
+  /** Per-question looks-good / not-quite marks from the review deck. */
+  questionMarks?: Record<string, HomeworkQuestionMark>;
 }
 
 export interface HomeworkSubmission {
@@ -2123,6 +2710,8 @@ export interface HomeworkSubmission {
   teacherNotesSubmittedAt?: string;
   /** When the student marks JD’s notes as done / ready for new HW. */
   studentNotesAckedAt?: string;
+  /** Per-question looks-good / not-quite marks, keyed by slide index. */
+  questionMarks?: Record<string, HomeworkQuestionMark>;
 }
 
 export interface HomeworkReviewSaveInput {
@@ -2130,6 +2719,7 @@ export interface HomeworkReviewSaveInput {
   submissionId?: string;
   comments?: HomeworkComment[];
   markReviewed?: boolean;
+  questionMarks?: Record<string, HomeworkQuestionMark>;
 }
 
 export interface HomeworkReviewAckInput {
@@ -2669,6 +3259,9 @@ export async function saveHomeworkReview(
     reviewedAt: markReviewed ? now : existing.reviewedAt,
     teacherNotesSubmittedAt: now,
   };
+  if (Object.prototype.hasOwnProperty.call(data, "questionMarks")) {
+    updated.questionMarks = normalizeQuestionMarks(data.questionMarks);
+  }
 
   if (markReviewed) {
     updated.notebook = buildNotebookPack(updated, now);
@@ -2757,10 +3350,47 @@ function enrichNotebookRowsMedia(
   });
 }
 
+function answerTextForSlide(
+  submission: HomeworkSubmission,
+  slideIndex: number | undefined
+): string {
+  if (typeof slideIndex !== "number" || slideIndex < 0) return "";
+  const answers = Array.isArray(submission.answers) ? submission.answers : [];
+  const row = answers[slideIndex];
+  if (!row || typeof row !== "object") return "";
+  return String(
+    row.student || row.piecesDisplay || row.completed || row.question || ""
+  ).trim();
+}
+
+function enrichNotebookRowsFromSubmission(
+  rows: HomeworkNotebookRow[],
+  submission: HomeworkSubmission
+): HomeworkNotebookRow[] {
+  const marks = normalizeQuestionMarks(submission.questionMarks) || {};
+  return rows.map((row) => {
+    const slide =
+      typeof row.slideIndex === "number" && row.slideIndex >= 0
+        ? row.slideIndex
+        : undefined;
+    const mark =
+      slide != null && (marks[String(slide)] === "correct" || marks[String(slide)] === "wrong")
+        ? marks[String(slide)]
+        : undefined;
+    const answer = answerTextForSlide(submission, slide);
+    return {
+      ...row,
+      studentAnswer: answer || row.studentAnswer || undefined,
+      questionMark: mark || row.questionMark,
+    };
+  });
+}
+
 function buildNotebookPack(
   submission: HomeworkSubmission,
   savedAt: string
 ): HomeworkNotebookPack {
+  const marks = normalizeQuestionMarks(submission.questionMarks);
   return {
     savedAt,
     submissionId: submission.id,
@@ -2769,7 +3399,11 @@ function buildNotebookPack(
     lessonName: submission.lessonName,
     displayName: submission.displayName,
     reviewedAt: submission.reviewedAt || savedAt,
-    rows: buildNotebookRows(submission.comments),
+    rows: enrichNotebookRowsFromSubmission(
+      buildNotebookRows(submission.comments),
+      submission
+    ),
+    questionMarks: marks,
   };
 }
 
@@ -2796,6 +3430,9 @@ export async function listHomeworkNotebook(
     if (status !== "reviewed" && status !== "acknowledged") continue;
 
     if (sub.notebook?.rows) {
+      const marks = normalizeQuestionMarks(
+        sub.questionMarks || sub.notebook.questionMarks
+      );
       packs.push({
         ...sub.notebook,
         submissionId: sub.id,
@@ -2804,14 +3441,22 @@ export async function listHomeworkNotebook(
         lessonName: sub.notebook.lessonName || sub.lessonName,
         displayName: sub.notebook.displayName || sub.displayName,
         reviewedAt: sub.notebook.reviewedAt || sub.reviewedAt || sub.submittedAt,
-        rows: enrichNotebookRowsMedia(sub.notebook.rows, sub.comments),
+        rows: enrichNotebookRowsFromSubmission(
+          enrichNotebookRowsMedia(sub.notebook.rows, sub.comments),
+          sub
+        ),
+        questionMarks: marks,
       });
       continue;
     }
 
     /* Backfill for reviews saved before Phase 2 notebook packs existed. */
-    const rows = buildNotebookRows(sub.comments);
+    const rows = enrichNotebookRowsFromSubmission(
+      buildNotebookRows(sub.comments),
+      sub
+    );
     if (!rows.length) continue;
+    const marks = normalizeQuestionMarks(sub.questionMarks);
     packs.push({
       savedAt: sub.reviewedAt || sub.teacherNotesSubmittedAt || sub.submittedAt,
       submissionId: sub.id,
@@ -2821,6 +3466,7 @@ export async function listHomeworkNotebook(
       displayName: sub.displayName,
       reviewedAt: sub.reviewedAt || sub.submittedAt,
       rows,
+      questionMarks: marks,
     });
   }
 
@@ -3040,9 +3686,6 @@ export async function loadHomeworkSubmissionPhoto(
 }
 
 /** In-progress worksheet answers (synced per student account). */
-
-const homeworkDraftKey = (username: string, assignmentId: string) =>
-  `hw-draft:${username}:${assignmentId}`;
 
 export interface HomeworkDraft {
   username: string;
@@ -3290,6 +3933,174 @@ export async function saveDailyNotebook(
   await kv.put(dailyNotebookKey(username), JSON.stringify(store));
 
   return getDailyNotebook(env, { username, date });
+}
+
+/** Immersion Quest — 365 look-fors, one complete per Tokyo day. */
+
+const immersionQuestKey = (username: string) => `hw-immersion-quests:${username}`;
+
+const IMMERSION_QUEST_TOTAL = 365;
+const IMMERSION_QUEST_EXAMPLES = 5;
+const IMMERSION_QUEST_EX_MAX = 200;
+
+export interface ImmersionQuestCompletion {
+  day: number;
+  id: string;
+  key: string;
+  ymd: string;
+  examples: string[];
+}
+
+export interface ImmersionQuestProgress {
+  username: string;
+  currentIndex: number;
+  lastCompletedYmd: string;
+  seenKey: string;
+  examples: string[];
+  completed: ImmersionQuestCompletion[];
+  puzzlePieces: number[];
+  updatedAt: string;
+}
+
+function clampQuestExamples(raw: unknown): string[] {
+  const src = Array.isArray(raw) ? raw : [];
+  const out: string[] = [];
+  for (let i = 0; i < IMMERSION_QUEST_EXAMPLES; i++) {
+    out.push(String(src[i] || "").trim().slice(0, IMMERSION_QUEST_EX_MAX));
+  }
+  return out;
+}
+
+function emptyImmersionProgress(username: string): ImmersionQuestProgress {
+  return {
+    username,
+    currentIndex: 0,
+    lastCompletedYmd: "",
+    seenKey: "",
+    examples: ["", "", "", "", ""],
+    completed: [],
+    puzzlePieces: [],
+    updatedAt: "",
+  };
+}
+
+async function loadImmersionProgress(
+  env: KvEnv,
+  username: string
+): Promise<ImmersionQuestProgress> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  const blank = emptyImmersionProgress(user);
+  const raw = await kv.get(immersionQuestKey(user));
+  if (!raw) return blank;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ImmersionQuestProgress>;
+    const idx = Math.max(0, Math.min(IMMERSION_QUEST_TOTAL, Number(parsed.currentIndex) || 0));
+    const pieces = Array.isArray(parsed.puzzlePieces)
+      ? parsed.puzzlePieces.map((n) => Number(n)).filter((n) => n >= 1 && n <= IMMERSION_QUEST_TOTAL)
+      : [];
+    const completed = Array.isArray(parsed.completed) ? parsed.completed : [];
+    return {
+      username: user,
+      currentIndex: idx,
+      lastCompletedYmd: String(parsed.lastCompletedYmd || ""),
+      seenKey: String(parsed.seenKey || ""),
+      examples: clampQuestExamples(parsed.examples),
+      completed: completed.slice(0, IMMERSION_QUEST_TOTAL),
+      puzzlePieces: pieces,
+      updatedAt: String(parsed.updatedAt || ""),
+    };
+  } catch {
+    return blank;
+  }
+}
+
+async function putImmersionProgress(
+  env: KvEnv,
+  progress: ImmersionQuestProgress
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  await kv.put(immersionQuestKey(progress.username), JSON.stringify(progress));
+}
+
+export async function getImmersionQuests(
+  env: KvEnv,
+  username: string
+): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+  const progress = await loadImmersionProgress(env, user);
+  return { today: tokyoDateKey(), total: IMMERSION_QUEST_TOTAL, progress };
+}
+
+export async function saveImmersionQuestDraft(
+  env: KvEnv,
+  data: { username?: string; examples?: unknown; seenKey?: string }
+): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
+  const user = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const progress = await loadImmersionProgress(env, user);
+  if (data.examples !== undefined) progress.examples = clampQuestExamples(data.examples);
+  if (data.seenKey !== undefined) progress.seenKey = String(data.seenKey || "").slice(0, 80);
+  progress.updatedAt = new Date().toISOString();
+  await putImmersionProgress(env, progress);
+  return { today: tokyoDateKey(), total: IMMERSION_QUEST_TOTAL, progress };
+}
+
+export async function completeImmersionQuest(
+  env: KvEnv,
+  data: { username?: string; examples?: unknown; day?: unknown; key?: string }
+): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
+  const user = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const progress = await loadImmersionProgress(env, user);
+  const today = tokyoDateKey();
+  if (progress.currentIndex >= IMMERSION_QUEST_TOTAL) throw new Error("ALL_DONE");
+  if (progress.lastCompletedYmd === today) throw new Error("ALREADY_DONE_TODAY");
+
+  const day = progress.currentIndex + 1;
+  if (data.day != null && Number(data.day) !== day) throw new Error("QUEST_STALE");
+
+  const examples = clampQuestExamples(data.examples);
+  if (!examples.some((s) => s)) throw new Error("EXAMPLE_REQUIRED");
+
+  const key = String(data.key || day);
+  progress.completed.push({
+    day,
+    id: String(key.split(":")[1] || ""),
+    key,
+    ymd: today,
+    examples,
+  });
+  if (!progress.puzzlePieces.includes(day)) progress.puzzlePieces.push(day);
+  progress.currentIndex = day;
+  progress.lastCompletedYmd = today;
+  progress.seenKey = key;
+  progress.examples = ["", "", "", "", ""];
+  progress.updatedAt = new Date().toISOString();
+  await putImmersionProgress(env, progress);
+  return { today, total: IMMERSION_QUEST_TOTAL, progress };
 }
 
 /** Student Kanji Notebook — one character per genkouyoushi square, paged. */
@@ -4687,6 +5498,69 @@ export interface WipeStudentResult {
   stillInCodeDemoList: boolean;
 }
 
+export interface DeleteHomeworkSubmissionResult {
+  id: string;
+  username: string;
+}
+
+/**
+ * Teacher-only: remove one submission + photo/video blobs and drop it from
+ * the global + per-student indexes.
+ */
+export async function deleteHomeworkSubmission(
+  data: { teacherUsername?: string; submissionId?: string },
+  env: KvEnv
+): Promise<DeleteHomeworkSubmissionResult> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+
+  const id = String(data.submissionId || "").trim();
+  if (!id) throw new Error("ID_REQUIRED");
+
+  const raw = await kv.get(submissionKey(id));
+  let username = "";
+  if (raw) {
+    try {
+      username = String((JSON.parse(raw) as HomeworkSubmission).username || "")
+        .trim()
+        .toLowerCase();
+    } catch {
+      /* still delete keys / indexes */
+    }
+  }
+
+  const globalSubs = await readSubmissionsIndex(kv);
+  const inGlobal = globalSubs.includes(id);
+  if (!raw && !inGlobal) throw new Error("NOT_FOUND");
+
+  await kv.delete(submissionKey(id));
+  await kv.delete(submissionPhotoKey(id));
+  await kv.delete(submissionPhotoMetaKey(id));
+  await kv.delete(submissionVideoKey(id));
+  await kv.delete(submissionVideoMetaKey(id));
+
+  if (inGlobal) {
+    await writeSubmissionsIndex(
+      kv,
+      globalSubs.filter((sid) => sid !== id)
+    );
+  }
+
+  if (username) {
+    const studentIds = await readStudentSubmissionsIndex(kv, username);
+    if (studentIds?.includes(id)) {
+      await writeStudentSubmissionsIndex(
+        kv,
+        username,
+        studentIds.filter((sid) => sid !== id)
+      );
+    }
+  }
+
+  return { id, username };
+}
+
 /**
  * Full teacher wipe: scrub from every published sheet, delete submissions /
  * mistakes / notebooks / drafts / media / login. Confirm with confirmDelete === "DELETE".
@@ -4804,12 +5678,14 @@ export async function wipeStudentCompletely(
   /* 4. Notebooks, drafts, media, settings, playlist cache */
   await del(dailyNotebookKey(user));
   await del(kanjiNotebookKey(user));
+  await del(immersionQuestKey(user));
   await del(studentYoutubeKey(user));
   await del(studentLessonPlaylistKey(user));
   await del(studentCurrentHomeworkKey(user));
   await del(studentHomeworkWaitingKey(user));
   await del(studentAccountSettingsKey(user));
   await del(studentDiscordKey(user));
+  await del(studentTeacherListNameKey(user));
 
   for (const key of await listKvKeysWithPrefix(kv, `hw-draft:${user}:`)) {
     await del(key);

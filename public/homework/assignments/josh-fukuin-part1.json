@@ -1,0 +1,35 @@
+{
+  "id": "josh-fukuin-part1",
+  "title": "福音を伝えよう Part 1",
+  "date": "2026-08-19",
+  "register": "casual",
+  "studentLabel": "Josh",
+  "lessonName": "Sharing the gospel in Japanese",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "christian",
+  "students": [],
+  "sections": [
+    {
+      "id": "josh-fukuin-sec",
+      "mode": "context-blank",
+      "title": "",
+      "instructions": "Write your gospel presentation in Japanese. Use the 5 core points below and the English draft as reference for your own story/testimony section.",
+      "items": [
+        {
+          "id": "josh-fukuin-open",
+          "topic": "Core points (Japanese):\n1. 私たちはいい人じゃない。\n2. 自分の力で、私は天国に行けない。\n3. イエス様は神様。\n4. イエス様は私たちのつみのために死にました。そして、よみがえりました。\n5. このことを信じれば〇〇さんも救われます。\n\nReference — Josh's English draft:\n\nGod created everything created world we live on\nCreated us as humans in his image\nHe desired the most for us\nHe desired to love us.\nUnfrortunately we sinned and disobeyed god and created separation between us and god\nBecause of that separation we aren't able to experience gods love as he intended\nCaused us problems and strife in our life\nHe sent Jesus, part human part God to die on the cross for us\nBrutally murdered for our sake\nAll we have to do is accept jesus into our hearts as our savior and he will grant eternal life and connects that union with him\nLoves us wants that connection and relationship with and jesus is the only way to get to god.\n\nIn my life...grew up Christian, family led me to chuch, dunno if I believe til college. I began to question more what a relationship between me and god would look like. Not just something my fam taught me, something I believe on my own. I prayed to receive but wasn't living a life god wanted me to live. Since then ive experienced far more freedom and peace knowing that when I do give/repent to him as savior, I find God granting me that peace and love. If youre willing I can lead you into a prayer of salvation too.",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "josh-fukuin-open",
+              "wide": true,
+              "multiline": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

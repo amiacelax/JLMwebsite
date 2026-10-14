@@ -17,12 +17,13 @@
 
   /** Keep versions in sync with former platform.html cache-busts. */
   const V = {
-    builder: "20260813-penpal-ask2",
-    editor: "20260813-stealth-swap",
-    studentList: "20260813b",
+    wsCategories: "5",
+    builder: "20260824-addons-hide",
+    editor: "20260822-hwhub",
+    studentList: "20260819-listname",
     ideas: "20260610",
     mistakeFeed: "20260674",
-    submissions: "20260807a",
+    submissions: "20260825-mark",
     flashcards: "20260813-deck",
     teacherMistakes: "20260675",
     studentMistakes: "20260728",
@@ -33,10 +34,11 @@
     lookup: "24",
     checkout: "20260815-paypal-cancel",
     sachiko: "20260694",
-    hubV5: "155",
-    platform: "20260814-stuspec2",
-    hubV6: "29",
-    feedback: "3",
+    quests: "3",
+    hubV5: "164",
+    platform: "20260825-toast2",
+    hubV6: "35",
+    feedback: "10",
     glassDeck: "1",
   };
 
@@ -51,6 +53,7 @@
   }
 
   const teacherScripts = [
+    "/js/hw-ws-categories.js?v=" + V.wsCategories,
     "/js/hw-worksheet-builder.js?v=" + V.builder,
     "/js/hw-teacher-editor.js?v=" + V.editor,
     "/js/hw-student-list.js?v=" + V.studentList,
@@ -74,6 +77,7 @@
     "/js/hw-checkout.js?v=" + V.checkout,
     "/js/hw-sachiko.js?v=" + V.sachiko,
     "/js/hw-hub-feedback.js?v=" + V.feedback,
+    "/js/hw-hub-quests.js?v=" + V.quests,
   ];
 
   /** View-as needs the student picker on the teacher chrome. */

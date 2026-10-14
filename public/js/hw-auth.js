@@ -5,6 +5,9 @@
 (function (global) {
   const SESSION_KEY = "jlm-hw-session";
   const VIEW_AS_KEY = "jlm-hw-view-as";
+  /** Backup of teacher session while View as student is active (prevents clobber). */
+  const TEACHER_BACKUP_KEY = "jlm-hw-teacher-backup";
+  const TEACHER_BACKUP_REMEMBER_KEY = "jlm-hw-teacher-backup-remember";
   const VIDEO_UNLOCK_PREFIX = "jlm-hw-video-unlock-";
   const ACCOUNT_OVERRIDES_KEY = "jlm-hw-account-overrides";
   const PLATFORM_PATH = "/homework/platform.html";
@@ -253,10 +256,28 @@
 
   function getTeacherSession() {
     try {
-      const raw = readStoredSession();
-      if (!raw) return null;
+      let raw = readStoredSession();
+      if (!raw) {
+        if (getViewAsStudent() && sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+          restoreTeacherBackup();
+          if (getViewAsStudent()) backupTeacherSession();
+          raw = readStoredSession();
+        }
+        if (!raw) return null;
+      }
       const data = enrichSession(JSON.parse(raw));
-      if (!data || data.role !== "teacher") return null;
+      if (!data || data.role !== "teacher") {
+        if (getViewAsStudent() && sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+          restoreTeacherBackup();
+          if (getViewAsStudent()) backupTeacherSession();
+          const again = readStoredSession();
+          if (!again) return null;
+          const restored = enrichSession(JSON.parse(again));
+          if (!restored || restored.role !== "teacher") return null;
+          return restored;
+        }
+        return null;
+      }
       return data;
     } catch {
       return null;
@@ -273,7 +294,59 @@
   }
 
   function isViewingAsStudent() {
-    return Boolean(getTeacherSession() && getViewAsStudent());
+    if (!getViewAsStudent()) return false;
+    if (getTeacherSession()) return true;
+    try {
+      return Boolean(sessionStorage.getItem(TEACHER_BACKUP_KEY));
+    } catch {
+      return false;
+    }
+  }
+
+  function writeSessionRaw(raw, remember) {
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+    if (remember) localStorage.setItem(SESSION_KEY, raw);
+    else sessionStorage.setItem(SESSION_KEY, raw);
+  }
+
+  /** Keep a copy of the real teacher login while View as student is on. */
+  function backupTeacherSession() {
+    try {
+      const raw = readStoredSession();
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || data.role !== "teacher" || data.viewAs) return;
+      sessionStorage.setItem(TEACHER_BACKUP_KEY, raw);
+      sessionStorage.setItem(
+        TEACHER_BACKUP_REMEMBER_KEY,
+        localStorage.getItem(SESSION_KEY) ? "1" : "0"
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function restoreTeacherBackup() {
+    try {
+      const current = readStoredSessionOnly();
+      if (current?.role === "teacher" && !current.viewAs) {
+        sessionStorage.removeItem(TEACHER_BACKUP_KEY);
+        sessionStorage.removeItem(TEACHER_BACKUP_REMEMBER_KEY);
+        return current;
+      }
+      const backup = sessionStorage.getItem(TEACHER_BACKUP_KEY);
+      if (!backup) return null;
+      const data = JSON.parse(backup);
+      if (!data || data.role !== "teacher") return null;
+      const remember = sessionStorage.getItem(TEACHER_BACKUP_REMEMBER_KEY) === "1";
+      writeSessionRaw(backup, remember);
+      sessionStorage.removeItem(TEACHER_BACKUP_KEY);
+      sessionStorage.removeItem(TEACHER_BACKUP_REMEMBER_KEY);
+      return enrichSession(data);
+    } catch {
+      return null;
+    }
   }
 
   function buildStudentViewSession(username) {
@@ -316,14 +389,24 @@
 
   function setViewAsStudent(username) {
     const key = normalizeUsername(username);
-    if (!getTeacherSession()) return { ok: false, error: "Teacher login required." };
+    if (!getTeacherSession() && !sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+      return { ok: false, error: "Teacher login required." };
+    }
+    if (!getTeacherSession() && sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+      restoreTeacherBackup();
+    }
+    if (!getTeacherSession()) {
+      return { ok: false, error: "Teacher login required." };
+    }
     if (!key) {
       sessionStorage.removeItem(VIEW_AS_KEY);
+      restoreTeacherBackup();
       return { ok: true, session: getTeacherSession() };
     }
     if (!isStudentAccount(key)) {
       return { ok: false, error: "Unknown student account." };
     }
+    backupTeacherSession();
     sessionStorage.setItem(VIEW_AS_KEY, key);
     const student = buildStudentViewSession(key);
     return student ? { ok: true, session: student } : { ok: false, error: "Unknown student account." };
@@ -331,9 +414,13 @@
 
   async function setViewAsStudentAsync(username) {
     const key = normalizeUsername(username);
+    if (!getTeacherSession() && sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+      restoreTeacherBackup();
+    }
     if (!getTeacherSession()) return { ok: false, error: "Teacher login required." };
     if (!key) {
       sessionStorage.removeItem(VIEW_AS_KEY);
+      restoreTeacherBackup();
       return { ok: true, session: getTeacherSession() };
     }
     if (global.HwStudentList?.fetchStudents) {
@@ -347,11 +434,22 @@
 
   function clearViewAsStudent() {
     sessionStorage.removeItem(VIEW_AS_KEY);
+    restoreTeacherBackup();
+  }
+
+  function exitViewAsStudent() {
+    sessionStorage.removeItem(VIEW_AS_KEY);
+    const teacher = restoreTeacherBackup() || getTeacherSession();
+    return teacher;
   }
 
   function getSession() {
     try {
-      const teacher = getTeacherSession();
+      let teacher = getTeacherSession();
+      if (!teacher && getViewAsStudent() && sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
+        teacher = restoreTeacherBackup();
+        if (teacher && getViewAsStudent()) backupTeacherSession();
+      }
       if (teacher) {
         const viewAs = getViewAsStudent();
         if (viewAs) {
@@ -379,11 +477,12 @@
   }
 
   function persistSession(session, remember) {
+    if (!session || typeof session !== "object") return;
+    /* Never write a View-as overlay (or any student) over the teacher login. */
+    if (session.viewAs) return;
+    if (getViewAsStudent() && session.role !== "teacher") return;
     const payload = JSON.stringify(session);
-    sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
-    if (remember) localStorage.setItem(SESSION_KEY, payload);
-    else sessionStorage.setItem(SESSION_KEY, payload);
+    writeSessionRaw(payload, remember);
   }
 
   function isAuthenticated() {
@@ -566,6 +665,53 @@
     }
   }
 
+  async function requestPasswordResetAsync(email) {
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Could not send a reset link." };
+      }
+      return {
+        ok: true,
+        message:
+          data.message ||
+          "If that email is on an account, we sent a reset link. Check your inbox (and spam).",
+      };
+    } catch {
+      return { ok: false, error: "Could not reach the server. Try again." };
+    }
+  }
+
+  async function resetPasswordAsync(payload, remember) {
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "Could not reset the password." };
+      }
+      const session = enrichSession({
+        ...data.session,
+        loggedInAt: Date.now(),
+      });
+      if (!session) {
+        return { ok: false, error: "Password updated. Log in with the new one." };
+      }
+      persistSession(session, remember);
+      return { ok: true, session };
+    } catch {
+      return { ok: false, error: "Could not reach the server. Try again." };
+    }
+  }
+
   function hasActiveSubscription(session) {
     const s = session || getSession();
     return Boolean(s && s.tier && s.tier !== "pending");
@@ -579,6 +725,9 @@
   }
 
   function logout() {
+    sessionStorage.removeItem(VIEW_AS_KEY);
+    sessionStorage.removeItem(TEACHER_BACKUP_KEY);
+    sessionStorage.removeItem(TEACHER_BACKUP_REMEMBER_KEY);
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
   }
@@ -657,6 +806,8 @@
     login,
     loginAsync,
     signupAsync,
+    requestPasswordResetAsync,
+    resetPasswordAsync,
     hasActiveSubscription,
     hasGameHubAccess,
     logout,
@@ -678,6 +829,7 @@
     setViewAsStudent,
     setViewAsStudentAsync,
     clearViewAsStudent,
+    exitViewAsStudent,
     buildStudentViewSession,
     persistSession,
     setAccountOverride,

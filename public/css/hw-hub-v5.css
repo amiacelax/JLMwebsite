@@ -1,5 +1,11 @@
 /* Hub v5 ? student hub layout + post-submission completion zone */
 
+/* Keep hub width stable when notes open and a scrollbar appears. */
+html:has(body.subpage--platform),
+html:has(body.hw-hub-v5-page) {
+  scrollbar-gutter: stable;
+}
+
 .hw-hub-v5-loading-list {
   list-style: none;
   margin: 1.25rem 0 0;
@@ -1000,8 +1006,9 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 }
 
 .hw-hub-v5-notebook-diary {
-  max-width: none;
+  max-width: 100%;
   width: 100%;
+  min-width: 0;
   margin: 0 0 1rem;
   padding: 0;
   box-sizing: border-box;
@@ -1019,12 +1026,19 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   gap: 0.4rem;
   margin: 0 0 0.75rem;
   padding: 0;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .hw-hub-v5-notebook-books__btn {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   margin: 0;
   padding: 0.38rem 0.85rem;
+  max-width: 100%;
   border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 32%, #b7c9b8);
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-green, #4ade80) 14%, #fff);
@@ -1036,10 +1050,72 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
   transition:
     background 0.18s ease,
     color 0.18s ease,
     border-color 0.18s ease;
+}
+
+.hw-hub-v5-notebook-books__label {
+  display: inline-block;
+  max-width: 10.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.hw-hub-v5-notebook-books__btn.is-editable {
+  cursor: grab;
+  padding-right: 0.45rem;
+}
+
+.hw-hub-v5-notebook-books.is-unlocked .hw-hub-v5-notebook-books__btn:not(.hw-hub-v5-notebook-books__btn--add) {
+  cursor: grab;
+  border-style: dashed;
+}
+
+.hw-hub-v5-notebook-books.is-unlocked .hw-hub-v5-notebook-books__btn.is-active:not(.hw-hub-v5-notebook-books__btn--add) {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 18%, #fff);
+  color: #2f5f45;
+}
+
+.hw-hub-v5-notebook-books__btn.is-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.hw-hub-v5-notebook-books.is-unlocked .hw-hub-v5-notebook-books__btn.is-drop-target {
+  border-style: dashed;
+  border-color: var(--color-green, #4ade80);
+  color: #0d1b2a;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 22%, #fff);
+}
+
+.hw-hub-v5-notebook-books__del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.05rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #c1121f 14%, #fff);
+  color: #8a1c24;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-hub-v5-notebook-books__del:hover,
+.hw-hub-v5-notebook-books__del:focus-visible {
+  background: color-mix(in srgb, #c1121f 28%, #fff);
+  color: #5c1016;
+  outline: none;
 }
 
 .hw-hub-v5-notebook-books__btn:hover,
@@ -1069,6 +1145,120 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   color: #0d1b2a;
 }
 
+.hw-hub-v5-notebook-books__lock {
+  appearance: none;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--color-green, #4ade80) 40%, #b7c9b8);
+  background: color-mix(in srgb, var(--color-green, #4ade80) 8%, transparent);
+  color: #2f5f45;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.hw-hub-v5-notebook-books__lock .course-card__lock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0;
+  color: inherit;
+}
+
+.hw-hub-v5-notebook-books__lock .course-card__lock-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  transition:
+    opacity 0.3s ease,
+    transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.hw-hub-v5-notebook-books__lock .course-card__lock-svg--locked {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.hw-hub-v5-notebook-books__lock .course-card__lock-svg--unlocked {
+  opacity: 0;
+  transform: scale(0.85) rotate(-8deg);
+}
+
+/* Click-only — never unlock on hover */
+.hw-hub-v5-notebook-books__lock:hover,
+.hw-hub-v5-notebook-books__lock:focus-visible {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--color-green, #4ade80) 18%, transparent);
+  color: #0d1b2a;
+  outline: none;
+}
+
+.hw-hub-v5-notebook-books__lock:hover .course-card__lock-svg--locked,
+.hw-hub-v5-notebook-books__lock:focus-visible .course-card__lock-svg--locked {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.hw-hub-v5-notebook-books__lock:hover .course-card__lock-svg--unlocked,
+.hw-hub-v5-notebook-books__lock:focus-visible .course-card__lock-svg--unlocked {
+  opacity: 0;
+  transform: scale(0.85) rotate(-8deg);
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked {
+  border-style: solid;
+  border-color: #c1121f;
+  background: color-mix(in srgb, #c1121f 55%, #fff);
+  color: #6b0f16;
+  opacity: 1;
+  outline: 2px solid color-mix(in srgb, #c1121f 35%, transparent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked:hover,
+.hw-hub-v5-notebook-books__lock.is-unlocked:focus-visible {
+  border-color: #a00e18;
+  background: color-mix(in srgb, #c1121f 68%, #fff);
+  color: #4a0a10;
+  opacity: 1;
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked .course-card__lock {
+  color: #6b0f16;
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked .course-card__lock-svg--locked {
+  opacity: 0;
+  transform: scale(0.9) rotate(6deg);
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked .course-card__lock-svg--unlocked {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.hw-hub-v5-notebook-books__lock.is-unlocked .course-card__lock-shackle {
+  animation: course-lock-open 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+  transform-origin: 12px 11px;
+}
+
 .hw-hub-v5-notebook-diary__chrome {
   --hw-diary-paper: #f1e6d0;
   --hw-diary-paper-deep: #e4d6b8;
@@ -1087,6 +1277,9 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   position: relative;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: min(88vh, 52rem);
   max-height: none;
   padding: 0.85rem 1rem 0.85rem;
@@ -1106,6 +1299,9 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
     0 0.65rem 1.55rem rgba(0, 0, 0, 0.38);
   color: var(--hw-diary-ink);
   box-sizing: border-box;
+  overflow-x: hidden;
+  /* Keep paper width steady if the page scrollbar shows/hides. */
+  scrollbar-gutter: stable;
 }
 
 .hw-hub-v5-notebook-diary__header {
@@ -1158,6 +1354,8 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   letter-spacing: 0.01em;
   color: var(--hw-diary-ink);
   line-height: 1.25;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__date {
@@ -1172,6 +1370,10 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   font-size: 0.82rem;
   color: #6a5d4a;
   line-height: 1.35;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hw-hub-v5-notebook-diary--daily .hw-hub-v5-notebook-diary__lesson {
@@ -1306,9 +1508,11 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 .hw-hub-v5-notebook-diary__page {
   flex: 1 1 auto;
   min-height: 28rem;
+  min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0.55rem 0.55rem 1.25rem 1.05rem;
   outline: none;
   -webkit-overflow-scrolling: touch;
@@ -1548,18 +1752,19 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   animation: hw-hub-v5-bubble-ring-acked 1.9s ease-out infinite;
 }
 
-/* Diary note rows: ink on paper */
+/* Diary note rows: ink on paper — no post-it cards */
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__zone1 {
-  background: rgba(255, 252, 245, 0.55);
-  border-color: color-mix(in srgb, #8a7460 28%, rgba(28, 36, 28, 0.1));
+  background: transparent;
+  border-color: transparent;
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__label {
   color: #6a5d4a;
 }
 
-.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__label--jd {
-  color: #2f5f45;
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__label--jd,
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__detail-label--jd {
+  color: var(--hw-diary-spine, #3d5c48);
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__text,
@@ -1574,7 +1779,7 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__jd-chevron,
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__open,
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__media-link {
-  color: #2f5f45;
+  color: var(--hw-diary-spine, #3d5c48);
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__jd-toggle:hover .hw-hub-v5-notebook__label--jd,
@@ -1587,8 +1792,8 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row.is-expanded .hw-hub-v5-notebook__zone2 {
-  border-color: color-mix(in srgb, #2f5f45 28%, #8a7460);
-  background: color-mix(in srgb, #2f5f45 8%, rgba(255, 252, 245, 0.7));
+  border-color: transparent;
+  background: transparent;
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__empty {
@@ -1598,6 +1803,240 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   padding: 0.15rem 0.25rem;
   border-radius: 0.2rem;
   max-width: 28rem;
+}
+
+/* HW Notes — cream date card → solid green 1問 2問… → answer + JD notes */
+.hw-hub-v5-notebook__pack-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0.2rem 0 0.4rem;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__date-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.18rem;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem 0.7rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 22%, #cbbba0);
+  background: #fffaf2;
+  box-shadow: 0 1px 0 color-mix(in srgb, #5c4830 8%, transparent);
+  color: #1f2a22;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__date-btn:hover,
+.hw-hub-v5-notebook__date-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 45%, #cbbba0);
+  outline: none;
+}
+
+.hw-hub-v5-notebook__date-btn.is-open {
+  border-color: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 55%, #cbbba0);
+}
+
+.hw-hub-v5-notebook__date-btn-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a5d4a;
+  line-height: 1.2;
+}
+
+.hw-hub-v5-notebook__date-btn-when {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2a22;
+  line-height: 1.35;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.hw-hub-v5-notebook__date-btn-lesson {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #4a554a;
+  line-height: 1.35;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hw-hub-v5-notebook__date-btn-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hw-diary-spine, #3d5c48);
+}
+
+.hw-hub-v5-notebook__date-btn-chevron {
+  display: inline-block;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.hw-hub-v5-notebook__date-btn.is-open .hw-hub-v5-notebook__date-btn-chevron {
+  transform: translateX(0.12rem);
+}
+
+.hw-hub-v5-notebook__pack-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hw-hub-v5-notebook__pack-body[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-notebook__q-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__q-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  min-width: 3.1rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 0.4rem;
+  border: 1.5px solid var(--hw-diary-spine, #3d5c48);
+  background: var(--hw-diary-spine, #3d5c48);
+  color: #fffaf2;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__q-btn:hover,
+.hw-hub-v5-notebook__q-btn:focus-visible {
+  background: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 88%, #000);
+  border-color: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 88%, #000);
+  outline: none;
+}
+
+.hw-hub-v5-notebook__q-btn.is-active {
+  background: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 78%, #000);
+  border-color: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 78%, #000);
+  color: #fffaf2;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fffaf2 35%, transparent);
+}
+
+.hw-hub-v5-notebook__q-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 0 0.35rem;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__q-detail[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-notebook__row--detail {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.hw-hub-v5-notebook__detail-block {
+  margin: 0;
+  padding: 0.45rem 0.55rem 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.35rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__detail-block--student {
+  box-shadow: inset 3px 0 0 0 #3d6a8a;
+  background: color-mix(in srgb, #4a7a9a 11%, transparent);
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__detail-block--jd {
+  box-shadow: inset 3px 0 0 0 var(--hw-diary-spine, #3d5c48);
+  background: color-mix(in srgb, #2d6a4f 10%, transparent);
+}
+
+.hw-hub-v5-notebook__detail-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6a5d4a;
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row--mark-wrong .hw-hub-v5-notebook__detail-block--student {
+  box-shadow: inset 3px 0 0 0 #c1121f;
+  background: color-mix(in srgb, #c1121f 8%, transparent);
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row--detail .hw-hub-v5-notebook__open {
+  margin-top: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  cursor: pointer;
 }
 
 /* Past HW entry under the complete card; notebook lives in the Notebook tab. */
@@ -1841,6 +2280,14 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   line-height: 1.4;
   color: var(--color-text);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__text .hw-hc-mark {
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -2350,8 +2797,10 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   position: relative;
   z-index: 24;
   max-width: 52rem;
+  width: 100%;
   margin: 0 auto 0.85rem;
   padding: 0;
+  box-sizing: border-box;
 }
 
 /* Teacher Hub-style track + sliding green selected pill (like video/audio switch). */
@@ -2467,6 +2916,11 @@ body.hw-hub-v5-page .hw-hub-v5-app {
 .hw-hub-v5-below > .hw-hub-v5-panel {
   grid-area: 1 / 1;
   min-width: 0;
+}
+
+#hw-v5-panel-notebook {
+  min-width: 0;
+  max-width: 100%;
 }
 
 #hw-v5-panel-notebook .hw-hub-v5-notebook-diary {
@@ -2849,6 +3303,98 @@ body.hw-hub-v5-page #hw-hub-v4-homework.hw-v5-homework-zone .hw-hub-jd-memo__bod
 .hw-hub-v5-no-hw__cta .hw-hub-v5-sellup-card--weekly {
   max-width: 14rem;
   margin: 0;
+}
+
+.hw-hub-v5-trial {
+  margin: 0 auto 1.25rem;
+  max-width: 28rem;
+}
+
+.hw-hub-v5-trial__pitch {
+  margin: 0 0 0.45rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.hw-hub-v5-trial__link {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: Inter, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--color-brand-blue);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.hw-hub-v5-trial__link:hover,
+.hw-hub-v5-trial__link:focus-visible {
+  color: #8fd6f3;
+}
+
+.hw-hub-v5-trial__levels {
+  margin-top: 0.85rem;
+}
+
+.hw-hub-v5-trial__levels[hidden] {
+  display: none !important;
+}
+
+.hw-hub-v5-trial__ask {
+  margin: 0 0 0.7rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v5-trial__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.hw-hub-v5-trial__level {
+  min-width: 7.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-brand-blue) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand-blue) 12%, transparent);
+  font-family: Inter, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.hw-hub-v5-trial__level:hover,
+.hw-hub-v5-trial__level:focus-visible {
+  background: color-mix(in srgb, var(--color-brand-blue) 22%, transparent);
+}
+
+.hw-hub-v5-trial__level:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.hw-hub-v5-trial__status {
+  margin: 0.7rem 0 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-hub-v5-trial__status--error {
+  color: #f0a8a0;
 }
 
 .hw-hub-v5-noplan {
@@ -4014,8 +4560,11 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 
 .hw-account-card__sub {
   margin: 1.35rem 0 0.5rem;
-  font-size: 1rem;
+  font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-vivid);
   text-align: left;
 }
 
@@ -4035,8 +4584,22 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   text-align: left;
 }
 
-.hw-account-form .hw-login-inlay__field label {
+.hw-account-form .hw-login-inlay__field label,
+.hw-account-delete-dialog .hw-login-inlay__field label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-vivid);
   text-align: left;
+}
+
+.hw-account-form .hw-login-inlay__optional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .hw-account-form--danger {
@@ -4086,27 +4649,60 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-current-plan-tag {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
   display: inline-block;
-  margin: 0 0 0.45rem;
+  margin: 0;
   padding: 0.18rem 0.6rem;
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: #5c4714;
   background: var(--color-gold, #d4a853);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .hw-account-card--plans {
   max-width: 52rem;
   padding-left: 1rem;
   padding-right: 1rem;
+  overflow: visible;
 }
 
 .hw-account-plans.hw-hub-v5-sellup {
   max-width: 48rem;
-  margin: 0 auto;
+  margin: 0.85rem auto 0;
+  overflow: visible;
+}
+
+.hw-account-plans .hw-hub-tier-plan {
+  position: relative;
+  overflow: visible;
+  justify-content: flex-start;
+  min-height: 7.35rem;
+  padding: 0.95rem 0.5rem 0.7rem;
+}
+
+.hw-account-plans .hw-hub-tier-plan .course-card__title {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.hw-account-plans .hw-hub-tier-plan .course-card__footer {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  min-height: 2.75rem;
 }
 
 .hw-account-plans .hw-hub-tier-plan,
@@ -4170,7 +4766,11 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-account-switch-row__label {
+  font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-vivid);
 }
 
 .hw-account-switch-row__note {
@@ -4227,3 +4827,218 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   line-height: 1.4;
   text-align: left;
 }
+
+.hw-hub-v5-tabs__star {
+  position: absolute;
+  top: 0.04rem;
+  right: 0.14rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: #d4a017;
+  pointer-events: none;
+  text-shadow: 0 0 6px color-mix(in srgb, #ffe08a 70%, transparent);
+}
+
+.hw-hub-v5-tabs__btn:has(.hw-hub-v5-tabs__star:not([hidden])) {
+  padding-right: 0.95rem;
+}
+
+.hw-quest-root {
+  min-width: 0;
+}
+
+.hw-quest {
+  padding: 1rem 1.05rem 1.2rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--color-bg-card) 88%, transparent);
+  text-align: center;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.hw-quest--soon-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 2.5rem 1.25rem;
+}
+
+.hw-quest__soon-only {
+  margin: 0;
+  font-family: "Josefin Sans", Inter, sans-serif;
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+.hw-quest__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+}
+
+.hw-quest__status,
+.hw-quest__round,
+.hw-quest__lead,
+.hw-quest__prompt,
+.hw-quest__soon-note {
+  margin: 0 0 0.65rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.hw-quest__target-box {
+  margin: 0 auto 0.85rem;
+  padding: 0.85rem 0.9rem;
+  max-width: 100%;
+  border-radius: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent-soft, rgba(103, 196, 235, 0.18)) 82%, transparent),
+    color-mix(in srgb, var(--color-bg) 92%, transparent)
+  );
+  overflow: hidden;
+}
+
+.hw-quest__target {
+  margin: 0;
+  font-size: clamp(1.65rem, 7vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.08;
+  text-wrap: balance;
+  word-break: break-word;
+}
+
+.hw-quest__important-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 0.95rem;
+  width: 100%;
+  max-width: 34rem;
+  min-width: 0;
+}
+
+.hw-quest__important {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  width: 100%;
+  max-width: 34rem;
+  min-width: 0;
+}
+
+.hw-quest__important .hw-recording-tip__trigger {
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.hw-quest__important .hw-recording-tip__message {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  box-sizing: border-box;
+  margin: 0.55rem auto 0;
+  padding: 0.75rem 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--color-border-strong) 76%, transparent);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--color-bg) 96%, transparent);
+}
+
+.hw-quest__examples {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hw-quest__examples input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.hw-quest__more {
+  margin: -0.25rem 0 0.95rem;
+}
+
+.hw-quest__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-bottom: 1.1rem;
+}
+
+.hw-quest__save-msg {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.hw-quest__save-msg.is-error {
+  color: var(--color-accent, #c0392b);
+}
+
+.hw-quest__puzzle {
+  margin: 0 auto;
+  max-width: 20rem;
+}
+
+.hw-quest__puzzle-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-width: 12rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--color-border-strong) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hw-quest__puzzle-link:hover,
+.hw-quest__puzzle-link:focus-visible {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  outline: none;
+}
+
+.hw-quest__puzzle-icon {
+  font-size: 1.1rem;
+}
+
+.hw-quest__soon {
+  margin: 0 0 0.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.hw-quest__puzzle .hw-quest__soon-note {
+  margin-bottom: 0;
+}
+

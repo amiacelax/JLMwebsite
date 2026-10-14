@@ -3,11 +3,12 @@
  * Bug reports capture a screenshot (optional comment) before send.
  */
 (function (global) {
-  const HTML2CANVAS_SRC =
-    "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+  const HTML2CANVAS_SRC = "/js/vendor/html2canvas.min.js?v=pro-238";
+  const SHOT_SKIPPED = "Couldn’t capture a screenshot. You can still send a text report.";
 
   let html2canvasPromise = null;
   let pendingScreenshot = null;
+  let openInFlight = false;
 
   function sessionUser() {
     return (
@@ -24,29 +25,161 @@
   }
 
   function loadHtml2Canvas() {
-    if (global.html2canvas) return Promise.resolve(global.html2canvas);
+    if (typeof global.html2canvas === "function") {
+      return Promise.resolve(global.html2canvas);
+    }
     if (html2canvasPromise) return html2canvasPromise;
     html2canvasPromise = new Promise((resolve, reject) => {
+      const finishOk = () => {
+        if (typeof global.html2canvas === "function") resolve(global.html2canvas);
+        else reject(new Error("Screenshot tool failed to load."));
+      };
       const existing = document.querySelector('script[data-hw-html2canvas="1"]');
       if (existing) {
-        existing.addEventListener("load", () => resolve(global.html2canvas));
+        existing.addEventListener("load", finishOk);
         existing.addEventListener("error", () =>
           reject(new Error("Could not load screenshot tool."))
         );
+        if (typeof global.html2canvas === "function") finishOk();
         return;
       }
       const script = document.createElement("script");
       script.src = HTML2CANVAS_SRC;
       script.async = true;
       script.dataset.hwHtml2canvas = "1";
-      script.onload = () => {
-        if (global.html2canvas) resolve(global.html2canvas);
-        else reject(new Error("Screenshot tool failed to load."));
-      };
+      script.onload = finishOk;
       script.onerror = () => reject(new Error("Could not load screenshot tool."));
       document.head.appendChild(script);
     });
-    return html2canvasPromise;
+    const timed = Promise.race([
+      html2canvasPromise,
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error("Screenshot tool timed out.")), 8000);
+      }),
+    ]).catch((err) => {
+      html2canvasPromise = null;
+      throw err;
+    });
+    return timed;
+  }
+
+  function isDialogOpen(dialog) {
+    return Boolean(dialog && (dialog.open || dialog.hasAttribute("open")));
+  }
+
+  function showFeedbackDialog(dialog) {
+    if (!dialog || isDialogOpen(dialog)) return;
+    try {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    } catch {
+      try {
+        dialog.removeAttribute("open");
+        if (typeof dialog.showModal === "function") dialog.showModal();
+      } catch {
+        dialog.setAttribute("open", "");
+      }
+    }
+  }
+
+  function closeFeedbackDialog(dialog) {
+    if (!dialog || !isDialogOpen(dialog)) return;
+    try {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    } catch {
+      dialog.removeAttribute("open");
+    }
+  }
+
+  function setBugBtnBusy(busy) {
+    const btn = document.getElementById("hw-hub-bug-report-btn");
+    if (!btn) return;
+    if (busy) {
+      if (!btn.dataset.hwLabel) btn.dataset.hwLabel = btn.textContent || "Bug report";
+      btn.textContent = "Capturing…";
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+    } else {
+      btn.textContent = btn.dataset.hwLabel || "Bug report";
+      btn.disabled = false;
+      btn.removeAttribute("aria-busy");
+    }
+  }
+
+  function waitForImageReady(img) {
+    return new Promise((resolve) => {
+      if (!img) {
+        resolve(false);
+        return;
+      }
+      const src = img.getAttribute("src") || img.src || "";
+      if (!src) {
+        resolve(false);
+        return;
+      }
+      const finish = () => resolve(img.naturalWidth > 0 && img.naturalHeight > 0);
+      const decodeThenFinish = () => {
+        if (typeof img.decode === "function") {
+          img.decode().then(finish).catch(finish);
+        } else {
+          finish();
+        }
+      };
+      if (img.complete) {
+        if (img.naturalWidth > 0) decodeThenFinish();
+        else resolve(false);
+        return;
+      }
+      img.addEventListener("load", decodeThenFinish, { once: true });
+      img.addEventListener("error", () => resolve(false), { once: true });
+    });
+  }
+
+  function isCrossOriginUrl(url) {
+    const raw = String(url || "").trim();
+    if (!raw || raw.startsWith("data:") || raw.startsWith("blob:")) return false;
+    try {
+      const parsed = new URL(raw, global.location?.href || "http://localhost/");
+      return parsed.origin !== global.location.origin;
+    } catch {
+      return true;
+    }
+  }
+
+  function shouldSkipShotElement(el) {
+    if (!el) return false;
+    if (el.id === "hw-hub-feedback-dialog") return true;
+    const cls = el.classList;
+    if (
+      cls &&
+      (cls.contains("hw-hub-feedback-dialog") ||
+        cls.contains("hw-hub-bug-report-btn") ||
+        cls.contains("hw-platform-toast") ||
+        cls.contains("section-kumo") ||
+        cls.contains("section-kumo__img") ||
+        cls.contains("hw-mg-widget") ||
+        cls.contains("hw-hc-launcher"))
+    ) {
+      return true;
+    }
+    if (el.closest?.(".section-kumo, dialog, .hw-mg-widget, .hw-hc-bubble")) return true;
+    const tag = String(el.tagName || "").toUpperCase();
+    if (
+      tag === "IFRAME" ||
+      tag === "VIDEO" ||
+      tag === "AUDIO" ||
+      tag === "CANVAS" ||
+      tag === "EMBED" ||
+      tag === "OBJECT"
+    ) {
+      return true;
+    }
+    if (tag === "IMG" || tag === "IMAGE" || tag === "SOURCE") {
+      const src = el.currentSrc || el.src || el.href || el.getAttribute?.("href") || "";
+      if (src && isCrossOriginUrl(src)) return true;
+    }
+    return false;
   }
 
   function canvasToJpegDataUrl(canvas, maxWidth, quality) {
@@ -73,61 +206,82 @@
 
   async function captureScreenshot() {
     const h2c = await loadHtml2Canvas();
-    const dialog = document.getElementById("hw-hub-feedback-dialog");
-    const wasOpen = dialog && (dialog.open || dialog.hasAttribute("open"));
-    if (wasOpen && typeof dialog.close === "function") dialog.close();
-    else if (wasOpen) dialog.removeAttribute("open");
-
-    /* Let the dialog hide before capture. */
-    await new Promise((r) => window.setTimeout(r, 60));
-
+    const target =
+      document.getElementById("hw-platform-student-only") ||
+      document.getElementById("main") ||
+      document.body;
+    const root = document.documentElement;
+    root.classList.add("hw-shot-capture");
+    await new Promise((r) => window.setTimeout(r, 30));
     try {
-      const canvas = await h2c(document.body, {
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        scale: Math.min(1.25, global.devicePixelRatio || 1),
-        windowWidth: document.documentElement.clientWidth,
-        windowHeight: document.documentElement.clientHeight,
-        ignoreElements: (el) => {
-          if (!el || !el.classList) return false;
-          return (
-            el.id === "hw-hub-feedback-dialog" ||
-            el.classList.contains("hw-hub-feedback-dialog") ||
-            el.classList.contains("hw-platform-toast")
-          );
-        },
-      });
-      return canvasToJpegDataUrl(canvas, 1280, 0.72);
+      const canvas = await Promise.race([
+        h2c(target, {
+          useCORS: true,
+          allowTaint: false,
+          logging: false,
+          backgroundColor: "#0f1629",
+          scale: 0.5,
+          ignoreElements: shouldSkipShotElement,
+          onclone: (clonedDoc) => {
+            clonedDoc.querySelectorAll("dialog").forEach((d) => {
+              try {
+                if (typeof d.close === "function") d.close();
+              } catch {
+                /* ignore */
+              }
+              d.removeAttribute("open");
+            });
+          },
+        }),
+        new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error("Screenshot timed out.")), 8000);
+        }),
+      ]);
+      return canvasToJpegDataUrl(canvas, 960, 0.7);
     } finally {
-      if (wasOpen) {
-        if (typeof dialog.showModal === "function") dialog.showModal();
-        else dialog.setAttribute("open", "");
-      }
+      root.classList.remove("hw-shot-capture");
     }
   }
 
-  function setScreenshotPreview(dataUrl) {
+  async function setScreenshotPreview(dataUrl, options) {
+    options = options || {};
     pendingScreenshot = dataUrl || null;
     const wrap = document.getElementById("hw-hub-feedback-shot-wrap");
     const img = document.getElementById("hw-hub-feedback-shot");
     const note = document.getElementById("hw-hub-feedback-shot-note");
     if (img) {
       if (dataUrl) {
-        img.src = dataUrl;
         img.hidden = false;
+        img.src = dataUrl;
       } else {
         img.removeAttribute("src");
         img.hidden = true;
       }
     }
     if (wrap) wrap.hidden = !dataUrl;
-    if (note) {
-      note.textContent = dataUrl
-        ? "Screenshot attached — optional comment below."
-        : "Couldn’t capture a screenshot. You can still send a text report.";
-      note.hidden = false;
+    if (dataUrl && img) {
+      const loaded = await waitForImageReady(img);
+      if (!loaded) {
+        pendingScreenshot = null;
+        img.removeAttribute("src");
+        img.hidden = true;
+        if (wrap) wrap.hidden = true;
+        if (note) {
+          note.textContent = SHOT_SKIPPED;
+          note.hidden = false;
+        }
+        return false;
+      }
     }
+    if (!note) return Boolean(dataUrl);
+    if (!dataUrl && !options.attempted) {
+      note.textContent = "";
+      note.hidden = true;
+      return false;
+    }
+    note.textContent = dataUrl ? "Screenshot attached — optional comment below." : SHOT_SKIPPED;
+    note.hidden = false;
+    return Boolean(dataUrl);
   }
 
   function selectedKind(form) {
@@ -167,43 +321,53 @@
     }
   }
 
+  async function grabBugScreenshot(statusEl) {
+    setStatus(statusEl, "");
+    try {
+      const dataUrl = await captureScreenshot();
+      const ok = await setScreenshotPreview(dataUrl, { attempted: true });
+      setStatus(statusEl, ok ? "" : "Screenshot skipped — add a comment if you can.");
+      return ok;
+    } catch {
+      await setScreenshotPreview("", { attempted: true });
+      setStatus(statusEl, "Screenshot skipped — add a comment if you can.");
+      return false;
+    }
+  }
+
   async function openDialog(preferKind) {
     const dialog = document.getElementById("hw-hub-feedback-dialog");
     const form = document.getElementById("hw-hub-feedback-form");
     const statusEl = document.getElementById("hw-hub-feedback-status");
     const messageEl = document.getElementById("hw-hub-feedback-message");
     if (!dialog || !form) return;
+    if (openInFlight) return;
+    openInFlight = true;
 
-    setStatus(statusEl, "");
-    if (messageEl) messageEl.value = "";
-    pendingScreenshot = null;
-    setScreenshotPreview("");
+    try {
+      closeFeedbackDialog(dialog);
+      setStatus(statusEl, "");
+      if (messageEl) messageEl.value = "";
+      pendingScreenshot = null;
+      await setScreenshotPreview("");
 
-    const kind = preferKind === "bug" ? "bug" : "feature";
-    const radio = form.querySelector('input[name="kind"][value="' + kind + '"]');
-    if (radio) radio.checked = true;
-    syncKindUi(form);
+      const kind = preferKind === "bug" ? "bug" : "feature";
+      const radio = form.querySelector('input[name="kind"][value="' + kind + '"]');
+      if (radio) radio.checked = true;
+      syncKindUi(form);
 
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-
-    if (kind === "bug") {
-      setStatus(statusEl, "Capturing screenshot…");
-      try {
-        const dataUrl = await captureScreenshot();
-        setScreenshotPreview(dataUrl);
-        setStatus(statusEl, dataUrl ? "" : "Screenshot skipped — add a comment if you can.");
-      } catch (err) {
-        setScreenshotPreview("");
-        setStatus(
-          statusEl,
-          (err && err.message) || "Screenshot skipped — you can still send text.",
-          false
-        );
+      if (kind === "bug") {
+        setBugBtnBusy(true);
+        await grabBugScreenshot(statusEl);
+        setBugBtnBusy(false);
       }
-    }
 
-    messageEl?.focus();
+      showFeedbackDialog(dialog);
+      messageEl?.focus();
+    } finally {
+      setBugBtnBusy(false);
+      openInFlight = false;
+    }
   }
 
   function bind() {
@@ -227,27 +391,24 @@
     form.querySelectorAll('input[name="kind"]').forEach((input) => {
       input.addEventListener("change", async () => {
         syncKindUi(form);
-        if (selectedKind(form) === "bug" && !pendingScreenshot) {
-          setStatus(statusEl, "Capturing screenshot…");
-          try {
-            const dataUrl = await captureScreenshot();
-            setScreenshotPreview(dataUrl);
-            setStatus(statusEl, "");
-          } catch (err) {
-            setScreenshotPreview("");
-            setStatus(
-              statusEl,
-              (err && err.message) || "Screenshot skipped.",
-              false
-            );
-          }
+        if (selectedKind(form) !== "bug" || pendingScreenshot) return;
+        const wasOpen = isDialogOpen(dialog);
+        if (wasOpen) closeFeedbackDialog(dialog);
+        setBugBtnBusy(true);
+        await grabBugScreenshot(statusEl);
+        setBugBtnBusy(false);
+        if (wasOpen) {
+          showFeedbackDialog(dialog);
+          messageEl?.focus();
         }
       });
     });
 
     form.addEventListener("submit", (e) => {
-      /* Send is type=button; prevent accidental Enter submit validation traps. */
       e.preventDefault();
+    });
+    form.addEventListener("click", (e) => {
+      e.stopPropagation();
     });
 
     const cancelBtn = document.getElementById("hw-hub-feedback-cancel");
@@ -309,13 +470,13 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Could not send.");
-        setStatus(statusEl, data.message || "Sent to JD — thanks!");
-        global.HwToast?.show?.(data.message || "Sent to JD — thanks!");
+        setStatus(statusEl, data.message || "Thanks — your message was sent to JD.");
+        global.HwToast?.show?.(data.message || "Thanks — your message was sent to JD.");
         pendingScreenshot = null;
         window.setTimeout(() => {
           if (typeof dialog.close === "function") dialog.close();
           else dialog.removeAttribute("open");
-        }, 450);
+        }, 900);
       } catch (err) {
         setStatus(statusEl, (err && err.message) || "Could not send.", true);
       } finally {

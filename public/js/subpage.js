@@ -40,6 +40,18 @@
     link.addEventListener("click", closeMenu);
   });
 
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!navMenu?.classList.contains("is-open")) return;
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest(".nav__menu, .nav__toggle")) return;
+      closeMenu();
+    },
+    true
+  );
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeMenu();
   });

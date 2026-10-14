@@ -13,7 +13,10 @@
       .toLowerCase();
     if (!username) return null;
     const displayName = String(entry?.displayName || username).trim() || username;
-    return { username, displayName };
+    const teacherListName = String(entry?.teacherListName || "").trim();
+    const row = { username, displayName };
+    if (teacherListName) row.teacherListName = teacherListName;
+    return row;
   }
 
   function mergeStudentLists(...lists) {
@@ -154,6 +157,8 @@
   }
 
   function studentOptionLabel(account) {
+    const custom = String(account?.teacherListName || "").trim();
+    if (custom) return custom;
     const name = account.displayName || account.username;
     if (!name || name === account.username) return account.username;
     return name + " (" + account.username + ")";

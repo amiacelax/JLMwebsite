@@ -1,0 +1,21 @@
+---
+description: Preview page links must not SPA-fallback to the homepage.
+alwaysApply: true
+---
+
+# Preview links (`/preview/*`)
+
+Workers Assets uses `not_found_handling = "single-page-application"`. A missing preview path returns **homepage** `index.html` with **200** — it looks like “the live link only opens the main page.”
+
+## When sharing or linking a mockup/preview
+
+1. Prefer an **explicit HTML file**:
+   - Good: `https://japaneselanguagementor.com/preview/hw-notes-deck/index.html`
+   - Good: `https://japaneselanguagementor.com/preview/something.html`
+   - Risky: `/preview/hw-notes-deck/` (directory only) — Worker now resolves `index.html`, but always verify.
+2. After deploy, **curl the URL** and check `<title>` is the preview title — not `Japanese Language Mentor — Learn Japanese with JD`.
+3. Never assume a folder URL works until that check passes.
+
+## Worker behavior
+
+`/preview/*` (except Harris/JEM special hosts) resolves directory paths to `…/index.html` and **blocks** homepage SPA fallback (404 HTML instead of the marketing home).
