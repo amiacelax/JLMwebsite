@@ -66,7 +66,7 @@
         }
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=300">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=303">');
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
@@ -1412,7 +1412,7 @@
   <script src="/js/hw-next-update.js?v=6" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
   <script src="/js/hw-account.js?v=15" defer></script>
-  <script src="/js/hw-platform-boot.js?v=215" defer></script>
+  <script src="/js/hw-platform-boot.js?v=218" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {

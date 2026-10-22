@@ -1005,7 +1005,10 @@
 
     // offset* values are in the tab bar's own units, so the pill stays lined up
     // even when the page is scaled (fullscreen CSS zoom) — getBoundingClientRect is not.
-    const useOffsets = active.offsetParent === tablist;
+    const track = tablist.querySelector(".hw-tab-track");
+    const inTrack = !!(track && track.contains(active));
+    if (inTrack && slider.parentElement !== track) track.insertBefore(slider, track.firstChild);
+    const useOffsets = inTrack || active.offsetParent === tablist;
     const btnRect = active.getBoundingClientRect();
     const listRect = tablist.getBoundingClientRect();
     const x = useOffsets ? active.offsetLeft : btnRect.left - listRect.left + tablist.scrollLeft;
@@ -1021,6 +1024,7 @@
         tablist.classList.add("is-slider-ready");
       });
     }
+    if (inTrack) return;
     const viewLeft = tablist.scrollLeft;
     const viewRight = viewLeft + tablist.clientWidth;
     const btnLeft = active.offsetLeft;
@@ -1892,22 +1896,53 @@
     syncMobileTabSlides({ followActive: true });
   }
 
-  /** Phones: 4 tabs at a time. Swipe left for the next set. PC keeps every tab on screen. */
+  /** Phones: 4 tabs at a time. The page under the tabs turns like the old Discord swipe. */
   const TAB_SLIDE_SIZE = 4;
   let tabSlide = 0;
+  let tabSwipeBound = false;
+  let swipeBusy = false;
+  const SWIPE_GAP = 14;
+  const SWIPE_BLOCK =
+    'input, textarea, select, input[type="range"], canvas, [contenteditable="true"], [data-no-swipe], .hw-mg-armed, .hw-mg-popup, .hw-hc-memo, .hw-breakdown-modal, .hw-ex-pop, .hw-sit-flip, .hw-ex-line, dialog';
 
   function phoneTabSlides() {
     return window.matchMedia("(max-width: 820px)").matches;
   }
 
+  function hubTabSlides() {
+    const ids = visibleHubTabIds();
+    const slides = [];
+    for (let i = 0; i < ids.length; i += TAB_SLIDE_SIZE) slides.push(ids.slice(i, i + TAB_SLIDE_SIZE));
+    return slides;
+  }
+
+  function releaseTabPages(tabs) {
+    const track = tabs.querySelector(".hw-tab-track");
+    const viewport = tabs.querySelector(":scope > .hw-tab-viewport");
+    if (!track) {
+      viewport?.remove();
+      return;
+    }
+    const slider = track.querySelector(".hw-hub-v5-tabs__slider");
+    if (slider) tabs.insertBefore(slider, tabs.firstChild);
+    [...track.querySelectorAll("[data-v5-tab]")].forEach((btn) => {
+      btn.hidden = false;
+      tabs.appendChild(btn);
+    });
+    viewport?.remove();
+    track.remove();
+  }
+
   function syncMobileTabSlides(opts) {
-    bindTabBarSwipe();
+    bindPageSwipe();
     const tabs = document.getElementById("hw-v5-tabs");
     if (!tabs) return;
+    releaseTabPages(tabs);
     const buttons = [...tabs.querySelectorAll("[data-v5-tab]")];
     const pages = Math.max(1, Math.ceil(buttons.length / TAB_SLIDE_SIZE));
     const on = phoneTabSlides() && pages > 1 && !accountMode;
     document.body.classList.toggle("hw-tab-slides", on);
+    document.body.classList.toggle("hw-page-swipe", phoneTabSlides() && buttons.length > 1 && !accountMode);
     if (!on) {
       buttons.forEach((btn) => {
         btn.hidden = false;
@@ -1960,53 +1995,255 @@
     }
   }
 
-  function goMobileTabSlide(dir) {
-    if (!document.body.classList.contains("hw-tab-slides")) return;
-    const count = document.querySelectorAll("#hw-v5-tabs [data-v5-tab]").length;
-    const pages = Math.ceil(count / TAB_SLIDE_SIZE);
-    const next = Math.max(0, Math.min(pages - 1, tabSlide + dir));
-    if (next === tabSlide) return;
-    tabSlide = next;
+  function goToSlide(index) {
+    const slides = hubTabSlides();
+    if (slides.length < 2) return;
+    tabSlide = Math.max(0, Math.min(slides.length - 1, index));
     syncMobileTabSlides();
   }
 
-  function bindTabBarSwipe() {
-    if (bindTabBarSwipe.done) return;
-    bindTabBarSwipe.done = true;
-    let x0 = 0;
-    let y0 = 0;
-    let watch = false;
+  function swipeScrollsSideways(el, stop) {
+    for (let n = el; n && n !== stop && n.nodeType === 1; n = n.parentElement) {
+      const ox = getComputedStyle(n).overflowX;
+      if ((ox === "auto" || ox === "scroll") && n.scrollWidth > n.clientWidth + 2) return true;
+    }
+    return false;
+  }
+
+  function panelForTab(id) {
+    return id === "homework"
+      ? document.getElementById("hw-v5-panel-homework")
+      : document.querySelector('#hw-v5-below [data-v5-panel="' + id + '"]');
+  }
+
+  function swipeRelativeParent(g, parent) {
+    if (getComputedStyle(parent).position === "static") {
+      parent.style.position = "relative";
+      g.fixed.push(parent);
+    }
+  }
+
+  function swipeRemoveClone(g) {
+    if (g.clone) g.clone.remove();
+    g.clone = null;
+    g.cloneDir = 0;
+  }
+
+  function swipeMakeClone(g, dir, n) {
+    let clone;
+    let parent;
+    if (g.mode === "tabs") {
+      parent = g.cur.parentElement;
+      clone = document.createElement("nav");
+      clone.className = g.cur.className.replace(/\bis-(swapping|slider-ready|nudging|nudge)\b/g, "").trim();
+      const active = normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab);
+      g.slides[n].forEach((id) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "hw-hub-v5-tabs__btn" + (id === active ? " is-active" : "");
+        const label = document.createElement("span");
+        label.className = "hw-hub-v5-tabs__label";
+        label.textContent = hubTabLabel(id);
+        btn.appendChild(label);
+        clone.appendChild(btn);
+      });
+    } else {
+      const src = panelForTab(g.order[n]);
+      if (!src) return;
+      parent = src.parentElement;
+      clone = src.cloneNode(true);
+      clone.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+      clone.removeAttribute("id");
+      clone.removeAttribute("hidden");
+      clone.classList.add("is-active");
+    }
+    clone.classList.add("hw-swipe-clone");
+    clone.setAttribute("aria-hidden", "true");
+    clone.setAttribute("inert", "");
+    swipeRelativeParent(g, parent);
+    const curRect = g.cur.getBoundingClientRect();
+    const parRect = parent.getBoundingClientRect();
+    clone.style.left = curRect.left - parRect.left + dir * (g.w + SWIPE_GAP) + "px";
+    clone.style.top = curRect.top - parRect.top + "px";
+    clone.style.width = g.cur.offsetWidth + "px";
+    if (g.mode === "tabs") clone.style.height = g.cur.offsetHeight + "px";
+    parent.appendChild(clone);
+    g.clone = clone;
+    g.cloneDir = dir;
+  }
+
+  function swipeBegin(g) {
+    g.fixed = [];
+    g.clone = null;
+    g.cloneDir = 0;
+    g.ok = false;
+    if (g.mode === "tabs") {
+      const tabs = document.getElementById("hw-v5-tabs");
+      const slides = hubTabSlides();
+      if (!tabs || slides.length < 2) return;
+      g.cur = tabs;
+      g.slides = slides;
+      g.index = tabSlide;
+      g.count = slides.length;
+      g.w = tabs.offsetWidth;
+      g.host = tabs.closest(".hw-hub-v5-tabs-wrap");
+      g.host?.classList.add("is-swiping");
+    } else {
+      const order = visibleHubTabIds();
+      const active = normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab);
+      const cur = panelForTab(active);
+      const idx = order.indexOf(active);
+      if (!cur || idx < 0 || order.length < 2) return;
+      g.cur = cur;
+      g.order = order;
+      g.idx = idx;
+      g.count = order.length;
+      g.w = cur.offsetWidth;
+      document.documentElement.classList.add("hw-swiping");
+    }
+    g.cur.style.transition = "none";
+    g.cur.style.willChange = "transform";
+    g.ok = true;
+  }
+
+  function swipeMove(g, dx) {
+    const dir = dx < 0 ? 1 : -1;
+    const at = g.mode === "tabs" ? g.index : g.idx;
+    const n = at + dir;
+    g.dir = dir;
+    g.exists = n >= 0 && n < g.count;
+    let tx = dx;
+    if (!g.exists) {
+      tx = dx * 0.28;
+      swipeRemoveClone(g);
+    } else if (g.cloneDir !== dir) {
+      swipeRemoveClone(g);
+      swipeMakeClone(g, dir, n);
+    }
+    const t = "translate3d(" + tx + "px,0,0)";
+    g.cur.style.transform = t;
+    if (g.clone) {
+      g.clone.style.transition = "none";
+      g.clone.style.transform = t;
+    }
+  }
+
+  function swipeCleanup(g) {
+    swipeRemoveClone(g);
+    if (!g.cur) return;
+    g.cur.style.transition = "";
+    g.cur.style.transform = "";
+    g.cur.style.willChange = "";
+    g.fixed.forEach((el) => {
+      el.style.position = "";
+    });
+    g.host?.classList.remove("is-swiping");
+    document.documentElement.classList.remove("hw-swiping");
+  }
+
+  function swipeEnd(g, cancelled) {
+    const far = Math.abs(g.dx) > Math.min(g.w * 0.2, 90);
+    const flick = Math.abs(g.v) > 0.28 && Math.abs(g.dx) > 14 && Math.sign(g.v) === Math.sign(g.dx);
+    const commit = !cancelled && !!g.exists && (far || flick);
+    const to = commit ? -g.dir * (g.w + SWIPE_GAP) : 0;
+    const t = "translate3d(" + to + "px,0,0)";
+    const tr = "transform 230ms cubic-bezier(0.22, 0.8, 0.3, 1)";
+    swipeBusy = true;
+    g.cur.style.transition = tr;
+    g.cur.style.transform = t;
+    if (g.clone) {
+      g.clone.style.transition = tr;
+      g.clone.style.transform = t;
+    }
+    const eat = (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    document.addEventListener("click", eat, true);
+    window.setTimeout(() => document.removeEventListener("click", eat, true), 400);
+    window.setTimeout(() => {
+      swipeCleanup(g);
+      if (commit) {
+        if (g.mode === "tabs") goToSlide(g.index + g.dir);
+        else goToTab(g.order[g.idx + g.dir]);
+      }
+      swipeBusy = false;
+    }, 245);
+  }
+
+  function bindPageSwipe() {
+    if (tabSwipeBound) return;
+    tabSwipeBound = true;
+    let g = null;
     document.addEventListener(
-      "touchstart",
+      "pointerdown",
       (ev) => {
-        watch = false;
-        if (!document.body.classList.contains("hw-tab-slides")) return;
-        const t = ev.changedTouches && ev.changedTouches[0];
-        if (!t || t.clientX < 28) return;
-        const el = ev.target;
-        if (el && el.closest && el.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe], .hw-worksheet, .hw-sit-flip, .hw-ex-line")) {
-          return;
+        if (g || swipeBusy || accountMode || !phoneTabSlides()) return;
+        if (ev.pointerType === "mouse" || ev.isPrimary === false) return;
+        if (ev.clientX < 28) return;
+        if (document.body.classList.contains("is-modal-open")) return;
+        const t = ev.target;
+        if (!t || !t.closest) return;
+        const inTabs = !!t.closest(".hw-hub-v5-tabs-wrap");
+        const inPage = !inTabs && !!t.closest(".hw-hub-v5-panels");
+        if (!inTabs && !inPage) return;
+        if (inTabs && !document.body.classList.contains("hw-tab-slides")) return;
+        if (inPage && !document.body.classList.contains("hw-page-swipe")) return;
+        if (t.closest(SWIPE_BLOCK)) return;
+        const stop = inTabs ? t.closest(".hw-hub-v5-tabs-wrap") : document.getElementById("hw-v5-app");
+        if (swipeScrollsSideways(t, stop)) return;
+        g = {
+          id: ev.pointerId,
+          mode: inTabs ? "tabs" : "page",
+          sx: ev.clientX,
+          sy: ev.clientY,
+          lastX: ev.clientX,
+          lastT: performance.now(),
+          v: 0,
+          dx: 0,
+          state: "wait",
+        };
+      },
+      { passive: true }
+    );
+    document.addEventListener(
+      "pointermove",
+      (ev) => {
+        if (!g || ev.pointerId !== g.id) return;
+        const dx = ev.clientX - g.sx;
+        const dy = ev.clientY - g.sy;
+        if (g.state === "wait") {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          if (Math.abs(dx) > Math.abs(dy) * 1.25) {
+            g.state = "drag";
+            swipeBegin(g);
+            if (!g.ok) {
+              g = null;
+              return;
+            }
+          } else {
+            g = null;
+            return;
+          }
         }
-        x0 = t.clientX;
-        y0 = t.clientY;
-        watch = true;
+        const now = performance.now();
+        const dt = now - g.lastT;
+        if (dt > 0) g.v = 0.75 * g.v + 0.25 * ((ev.clientX - g.lastX) / dt);
+        g.lastX = ev.clientX;
+        g.lastT = now;
+        g.dx = dx;
+        swipeMove(g, dx);
       },
       { passive: true }
     );
-    document.addEventListener(
-      "touchend",
-      (ev) => {
-        if (!watch) return;
-        watch = false;
-        const t = ev.changedTouches && ev.changedTouches[0];
-        if (!t) return;
-        const dx = t.clientX - x0;
-        const dy = t.clientY - y0;
-        if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-        goMobileTabSlide(dx < 0 ? 1 : -1);
-      },
-      { passive: true }
-    );
+    const finish = (ev) => {
+      if (!g || ev.pointerId !== g.id) return;
+      const gesture = g;
+      g = null;
+      if (gesture.state === "drag" && gesture.ok) swipeEnd(gesture, ev.type === "pointercancel");
+    };
+    document.addEventListener("pointerup", finish, { passive: true });
+    document.addEventListener("pointercancel", finish, { passive: true });
     window.addEventListener("resize", () => syncMobileTabSlides({ followActive: true }));
   }
 

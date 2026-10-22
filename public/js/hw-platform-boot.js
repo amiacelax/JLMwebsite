@@ -40,9 +40,9 @@
     quests: "22",
     questPuzzle: "5",
     workoutsData: "6",
-    workouts: "12",
+    workouts: "13",
     localPeriod: "1",
-    hubV5: "292",
+    hubV5: "294",
     platform: "20261014-list",
     hubV6: "44",
     feedback: "11",
@@ -91,7 +91,7 @@
     "/js/hw-quest-puzzle.js?v=" + V.questPuzzle,
     "/js/hw-weekly-workouts-data.js?v=" + V.workoutsData,
     "/js/hw-hub-workouts.js?v=" + V.workouts,
-    "/js/hw-curriculum-textbook.js?v=37",
+    "/js/hw-curriculum-textbook.js?v=38",
   ];
 
   /** View-as needs the student picker on the teacher chrome. */

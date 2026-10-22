@@ -5716,63 +5716,47 @@ body:not(.hw-account-mode) #hw-v5-panel-quest:not([hidden]) ~ .hw-quest-toolbar,
   word-break: break-word;
 }
 
-/* Arm in the prompt box flips Daily Exercise over to this week's workout. */
+/* Same circle as the quest date button. Calendar icon for now. */
 .hw-hour-quest .hw-ex-arm {
   position: absolute;
-  top: auto;
-  bottom: 0.12rem;
-  right: 0.15rem;
+  top: 0.65rem;
+  left: 0.65rem;
+  right: auto;
+  bottom: auto;
   z-index: 5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: clamp(1.85rem, 9vw, 2.35rem);
-  height: clamp(1.85rem, 9vw, 2.35rem);
+  width: 2.75rem;
+  height: 2.75rem;
   margin: 0;
   padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #fff;
-  font-weight: 650;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg-card) 80%, transparent);
+  color: var(--color-text-muted);
   line-height: 1;
   cursor: pointer;
 }
 
-.hw-hour-quest .hw-ex-arm:hover {
-  filter: brightness(1.08);
-}
-
+.hw-hour-quest .hw-ex-arm:hover,
+.hw-hour-quest .hw-ex-arm:focus-visible,
 .hw-hour-quest .hw-ex-arm[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-green);
   box-shadow: none;
-  filter: drop-shadow(0 0 0.35rem var(--color-accent-vivid, #e85545));
+  filter: none;
 }
 
-.hw-hour-quest .hw-ex-arm__ico {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
+.hw-hour-quest .hw-ex-arm svg {
+  width: 1.4rem;
+  height: 1.4rem;
   pointer-events: none;
 }
 
-.hw-hour-quest.is-workout .hw-workout-pic {
-  display: block;
-  width: 100%;
-  height: 11.5rem;
-  object-fit: contain;
-  margin: 0 0 0.85rem;
-  border-radius: 0.7rem;
-  background: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 18%, var(--color-bg-elevated));
-}
-
+.hw-workout-pic,
 .hw-workout-pic[hidden] {
   display: none !important;
-}
-
-.hw-hour-quest.is-workout .hw-ex-arm {
-  top: 0.4rem;
-  bottom: auto;
 }
 
 .hw-hour-quest.is-workout .hw-quest__target-box {
@@ -6590,23 +6574,37 @@ body.hw-curriculum-hub .hw-hub-v5-tabs__btn {
   .hw-slide-dots {
     display: flex;
     justify-content: center;
-    gap: 0.35rem;
-    margin: 0.35rem 0 0;
+    gap: 0.2rem;
+    margin: 0.2rem 0 0;
   }
 
   .hw-slide-dots__dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    padding: 0;
+    appearance: none;
+    width: auto;
+    height: auto;
+    padding: 0.45rem 0.28rem;
     border: 0;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    border-radius: 0;
+    background: transparent;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .hw-slide-dots__dot.is-on {
+  .hw-slide-dots__dot::before {
+    content: "";
+    display: block;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 50%;
+    background: rgba(160, 175, 205, 0.4);
+    transition: background 0.2s ease, box-shadow 0.2s ease, width 0.2s ease;
+  }
+
+  .hw-slide-dots__dot.is-on::before {
+    width: 1.1rem;
+    border-radius: 0.3rem;
     background: var(--color-green);
-    transform: scale(1.25);
+    box-shadow: 0 0 0.45rem rgba(74, 222, 128, 0.7);
   }
 
   body.hw-tab-slides .hw-hub-v5-tabs.is-nudge {
@@ -6625,6 +6623,35 @@ body.hw-curriculum-hub .hw-hub-v5-tabs__btn {
   75% {
     transform: translateX(5px);
   }
+}
+
+/* Page-turn swipe: the next page rides in beside the one you're on. */
+body.hw-page-swipe #hw-v5-app,
+body.hw-page-swipe #hw-v5-app *:not(input[type="range"]):not(canvas):not([data-hscroll]) {
+  touch-action: pan-y pinch-zoom;
+}
+
+.hw-swipe-clone {
+  position: absolute;
+  margin: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 5;
+}
+
+html.hw-swiping,
+html.hw-swiping body {
+  overflow-x: hidden;
+}
+
+html.hw-swiping .hw-hub-v5-panels {
+  overflow: hidden;
+}
+
+.hw-hub-v5-tabs-wrap.is-swiping {
+  overflow: hidden;
 }
 
 .hw-hub-v5-tabs__arrow {

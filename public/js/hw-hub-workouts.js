@@ -138,13 +138,10 @@
             w.examples.map((ex) => "<li>" + escapeHtml(ex) + "</li>").join("") +
             "</ul></div>"
           : "";
-      const pic = w.image
-        ? '<img class="hw-workout-pic" src="' + escapeHtml(w.image) + '" alt="" draggable="false">'
-        : "";
       mount.innerHTML =
         '<article class="hw-quest hw-hour-quest is-workout">' +
         '<div class="hw-quest__target-box">' +
-        pic +
+        '<span class="hw-ex-arm" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>' +
         '<p class="hw-quest__target hw-quest__target--ask">' +
         escapeHtml(w.task || "") +
         "</p></div>" +
@@ -256,22 +253,7 @@
     const w = view.data || { title: "Workout", task: "" };
     if (titleEl) titleEl.textContent = w.task || "";
     const box = titleEl && titleEl.parentElement;
-    if (box) {
-      let hero = box.querySelector(".hw-workout-pic");
-      if (w.image) {
-        if (!hero) {
-          hero = document.createElement("img");
-          hero.className = "hw-workout-pic";
-          hero.alt = "";
-          hero.draggable = false;
-          box.insertBefore(hero, titleEl);
-        }
-        hero.src = w.image;
-        hero.hidden = false;
-      } else if (hero) {
-        hero.hidden = true;
-      }
-    }
+    if (box) box.querySelector(".hw-workout-pic")?.remove();
     mount.innerHTML =
       Array.isArray(w.examples) && w.examples.length
         ? '<ul class="hw-ex-workout__examples">' +
