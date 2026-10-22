@@ -105,8 +105,30 @@
     return true;
   }
 
+  function loggedInUsername() {
+    try {
+      const raw =
+        sessionStorage.getItem("jlm-hw-session") ||
+        localStorage.getItem("jlm-hw-session");
+      const data = raw ? JSON.parse(raw) : null;
+      return String(data?.username || "").trim().toLowerCase();
+    } catch {
+      return "";
+    }
+  }
+
   /** Hub v5 simulate/account bar — explicit opt-in only (never auto on localhost). */
   function hubV5Demo() {
+    /* demo2 is the client Curriculum login. No simulate bar. */
+    if (
+      loggedInUsername() === "demo2" ||
+      loggedInUsername() === "christian" ||
+      loggedInUsername() === "alex" ||
+      global.HwAuth?.isChristianCurriculumUser?.(loggedInUsername()) ||
+      loggedInUsername() === "noahjorton"
+    )
+      return false;
+    if (global.HwAuth?.isCurriculumTrialActive?.()) return false;
     try {
       if (new URLSearchParams(location.search).get("hubv5demo") === "0") return false;
       if (localStorage.getItem("hw-hubv5-demo") === "0") return false;
@@ -147,6 +169,27 @@
   }
 
   /**
+   * Immersion Quest へび (snake jigsaw) map.
+   * Off everywhere for now — markup and JS stay in hw-quest-puzzle.js.
+   * Re-enable later: localStorage hw-quest-snake=1 (or ?questSnake=1).
+   */
+  function questSnake() {
+    try {
+      if (localStorage.getItem("hw-quest-snake") === "0") return false;
+      if (localStorage.getItem("hw-quest-snake") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (new URLSearchParams(location.search).get("questSnake") === "0") return false;
+      if (new URLSearchParams(location.search).get("questSnake") === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  /**
    * Site Games + Courses pages / hub Games tab.
    * Backburner — off everywhere. Re-enable: localStorage hw-games-courses=1
    * (or ?gamesCourses=1).
@@ -176,6 +219,7 @@
     hubV5Demo,
     hubV6,
     designFocus,
+    questSnake,
     gamesAndCourses,
   };
 })(window);

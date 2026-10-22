@@ -1,0 +1,364 @@
+﻿[2026-10-11 10:02:36] backfill: 401 videos
+[2026-10-11 10:02:36] would do: 'Ben M 37 - JLPT N5 vocab and test strategyπÇüµ╢êπüÖ' (66 min, 2026-10-09) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 32 if' (59 min, 2026-08-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 105' (56 min, 2026-07-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 106' (60 min, 2026-07-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 30' (62 min, 2026-07-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jer 104' (65 min, 2026-07-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 153' (62 min, 2026-07-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 29 Group JLPT' (65 min, 2026-07-15) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 152' (62 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 28' (65 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 48' (61 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 27' (60 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 104' (64 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 26' (65 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 47' (63 min, 2026-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 25' (63 min, 2026-06-09) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 102' (58 min, 2026-06-09) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 103 σ░æσÑ│µ╝½τö╗1' (62 min, 2026-06-09) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 151' (63 min, 2026-06-09) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 150' (69 min, 2026-06-03) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 46 ∩╜₧πü¬πüäπü¿πüäπüæπü¬πüä' (64 min, 2026-06-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 100' (62 min, 2026-06-03) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 102' (62 min, 2026-06-03) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 45 ∩╜₧πü¬πüäπü¿πüäπüæπü¬πüä' (62 min, 2026-05-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 23' (65 min, 2026-05-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 99' (59 min, 2026-05-20) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 21 Wood & Glue' (64 min, 2026-05-15) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 149' (62 min, 2026-05-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 22' (59 min, 2026-05-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 101' (47 min, 2026-05-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 148' (58 min, 2026-05-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 147' (64 min, 2026-05-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 20 grammar refining' (62 min, 2026-04-24) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 100 πüèΦè▒Φªï' (62 min, 2026-04-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 98' (63 min, 2026-04-21) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 146 Θ½ÿµáíτöƒπü«σæèτÖ╜' (58 min, 2026-04-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 19\u3000πüèΦè▒Φªï' (59 min, 2026-04-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 43 πüƒ vs πüªπüƒ' (62 min, 2026-04-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 97 πüèπééπüíπéâ' (59 min, 2026-04-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 99 πâ₧πâ¬πé¬' (60 min, 2026-04-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 145 πü╜πéôπü╜πéô' (36 min, 2026-04-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 96' (68 min, 2026-04-07) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 18 πüÖπüìπéäπüì' (61 min, 2026-04-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 42 πü¿ and verbs' (60 min, 2026-04-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 98 πé│πâ│πâùπâ¼πââπé»πé╣' (69 min, 2026-03-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 96' (59 min, 2026-03-27) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 17 Σ╝æπéôπüºπüƒπâ╗πü»andπüî' (61 min, 2026-03-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 95 πâÇπâí' (61 min, 2026-03-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 97 µò¼Φ¬₧ pt 2' (60 min, 2026-03-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 41 πüÖπéï∩╝ïπüôπü¿' (60 min, 2026-03-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Em 94' (63 min, 2026-03-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 93' (61 min, 2026-03-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 95' (60 min, 2026-03-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 144' (59 min, 2026-03-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 92' (64 min, 2026-03-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 93' (63 min, 2026-03-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 143' (61 min, 2026-03-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 142 πü╗πü⌐' (51 min, 2026-02-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 40' (48 min, 2026-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 92' (62 min, 2026-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 91' (65 min, 2026-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 16 In japan learning advice' (63 min, 2026-02-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 91' (62 min, 2026-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 90' (66 min, 2026-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily  79' (65 min, 2026-01-30) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 39' (63 min, 2026-01-30) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jer 80' (60 min, 2026-01-27) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 141' (43 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 15 πüéπüÆπéï\u3000πüÅπéîπéï' (63 min, 2026-01-23) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 140' (41 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 14' (58 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jer 78' (67 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 139' (66 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 38' (65 min, 2026-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 89\u3000σëìπü«πü╗πüåπüîπéêπüïπüúπüƒ' (65 min, 2026-01-23) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 77 πü¬πü«πü½πâ╗πü«πü½' (66 min, 2026-01-23) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 13 πé»πâ¬πé╣πâ₧πé╣πü«Φ⌐▒ "πü«πüî"' (63 min, 2025-12-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 138 πé»πâ¬πé╣πâ₧πé╣πü«Σ╝¥τ╡▒' (77 min, 2025-12-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 76 σñºΣ╕êσñ½πüºπüéπéïπâ╗πüºπü¬πüäπü¿πüäπüæπü¬πüä' (66 min, 2025-12-16) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 88' (63 min, 2025-12-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 137 Σ╜ÖΦ¿êπü½' (55 min, 2025-12-16) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 37' (62 min, 2025-12-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 75 Σ╜Öπüúπüƒπé½πâ¼πâ╝' (57 min, 2025-12-16) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 87' (64 min, 2025-12-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 50' (67 min, 2025-12-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jeremiah thanksgiving 74' (56 min, 2025-12-05) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 12 Magnets vs Wood Pt1' (59 min, 2025-12-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 86 πü½ vs πü» πüéπéèπü╛πüÖπâ╗πüäπü╛πü¢πéô\u3000eragon' (64 min, 2025-12-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 85 Φï▒σ¢╜πü¿πü»∩╝ƒ' (66 min, 2025-11-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 136 πâüπââπâùπüúπüªπüäπüäπü«πüï∩╝ƒ' (66 min, 2025-11-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 135' (61 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 11 te form = and sometimes' (60 min, 2025-11-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jeremiah 73' (29 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 84' (60 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome michael and regina 48 Manual vs Automatic Verbs' (59 min, 2025-11-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 134' (53 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 10' (84 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 133' (62 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 36' (60 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 132' (60 min, 2025-11-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben m 9 πü«πü¿πüìπâ╗πü¿πüìπÇücan tense' (70 min, 2025-11-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 35' (62 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jer 72' (86 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 83' (64 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 34' (60 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 79 the importance of particles' (63 min, 2025-10-15) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 82' (17 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 81' (74 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 131' (60 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 8' (62 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 33' (60 min, 2025-10-15) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 80 πüíπéçπüåπü⌐πüäπüä' (63 min, 2025-10-15) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 7 kanji approach and πü⌐πüå' (39 min, 2025-10-15) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 128 πüÖπéîπü░πüÖπéïπü╗πü⌐' (62 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether duo 71 to πü« or not to πü«' (101 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 130 Θúƒπü╣τë⌐πü«πâûπâ¡πé░πéäπâ¼πé╖πâöπü«µ£ùΦ¬¡' (61 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 6 Verb Patterns' (67 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether duo 70' (63 min, 2025-08-05) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 129 σñºΘÿ¬σ»╛µ¥▒Σ║¼' (72 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 5 πü»πüÿπéüπüªΦíîπüúπüƒ' (63 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 32 πé│πé╣πâùπâ¼πü«Φ⌐▒πÇüπü½Φªïπüêπéïπâ╗πü«πéêπüå' (62 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 78 πüùπÇüpokemon µ¥Ñπéï conjugation review' (64 min, 2025-08-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jeremiah 69 Σ╜òπééπü¬πüäπÇüΣ╜òπüïπüéπéïπÇüπü⌐πüôπü½πééπüäπü¬πüä etc' (61 min, 2025-07-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 77 πüª alone does not mean  ing, navigating novels' (66 min, 2025-07-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 127 πé¿πéóπé│πâ│πÇüπüéπüúπü¿πüäπüåΘûôπÇüτ╡Éσ⌐ÜπÇüπâ₧πé╕πââπé»' (68 min, 2025-07-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 31 ∩╜₧πüùπüï∩╜₧πü¬πüä, meeting new people part 1' (57 min, 2025-07-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 4 repeat rule verb pattern 1, 2' (63 min, 2025-07-01) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jeremiah 68' (56 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 76' (62 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 126' (62 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 3' (64 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 30' (55 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 2' (67 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jeremiah 67' (60 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 75' (71 min, 2025-07-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 29 πâöπé╢Θúƒπü╣πüƒπüä∩╝ƒ' (60 min, 2025-06-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 125\u3000τ╖èµÇÑπé╗πâ│πé┐πâ╝πü«Φ⌐▒πÇüπü¬πüÄπüòπüòπéô' (61 min, 2025-06-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Ben M 1 Goals, πü»πüÿπéüπü╛πüùπüª' (67 min, 2025-06-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 124 ΘûóΦÑ┐σ╝üπü«Φ¬₧σ░╛' (66 min, 2025-06-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 123\u3000πâ₧πé╕πââπé»πé╢πâ╝πé«πâúπé╢πâ¬πâ│πé░' (58 min, 2025-06-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 66 not πüíπüúπüíπéâπüäπéé but πüíπüúπüíπéâπüäπüù, lots of everyday phrases for kids' (64 min, 2025-06-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 74 ΘûóΣ┐éπüùπüªπéïπÇüµ╝½τö╗πü«µä¢Φö╡τëê' (64 min, 2025-06-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 28 particle deep dive, the best way to learn particles is not to' (58 min, 2025-05-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 65 πü¿µÇ¥πüå vs πü¿µÇ¥πüúπüƒ organzing difficult sentences' (58 min, 2025-05-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 73 how to navigate difficult written text' (63 min, 2025-05-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 71 πüªπüäπéïπâ╗πüªπüäπü╛πüÖ need it!!' (65 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 122 ∩╜₧πü¬πüäπüºπâ╗∩╜₧πüÜ = without' (63 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 64 why πüºπüìπüƒ∩╝ƒ πüúπü▒πü¬πüù' (63 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 72 Φ¬òτöƒµùÑπÇüπâ¼πâêπâ¡πé▓πâ╝πâáπü«Φ⌐▒' (65 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 121 ΘûóΦÑ┐σ╝ü P1' (66 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 27 πüªπüƒπü¿πüìπÇü∩╜₧πüôπü¿πüéπéïπâ╗πü¬πüä' (70 min, 2025-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 120 ΘûóΦÑ┐σ╝ü intro, manga genre' (56 min, 2025-04-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 26 πüªπééπüäπüäπü¬πüÅπüªπééπüäπüä' (66 min, 2025-04-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 25 πüïπééπâ╗πüïπééπüùπéîπü¬πüä' (62 min, 2025-04-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 119 πâçπâ╝πâêπü«Φ⌐▒' (63 min, 2025-04-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 70 τî½τö░' (65 min, 2025-04-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether jer 63 πü⌐πéôπü¬' (46 min, 2025-04-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 118 ∩╜₧πüƒπü╛πüêπÇüπüïπüùπéëπÇüπüèπüïπü╛' (63 min, 2025-04-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 69  πééπüúπüªπüúπüª vs πééπüúπüªπüª' (62 min, 2025-04-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Regina sprint 1' (66 min, 2025-04-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Michael sprint 4' (66 min, 2025-04-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Michael sprint day 3' (61 min, 2025-04-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 24 would, could' (67 min, 2025-04-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Michael sprint day 2' (63 min, 2025-04-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 47' (60 min, 2025-03-25) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 62' (70 min, 2025-03-25) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Michael sprint day 1' (66 min, 2025-03-25) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 68' (66 min, 2025-03-25) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 117 πü¬πéôπüªπÇüπüáπüúπüª' (54 min, 2025-03-19) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 67\u3000σªèσ¿áπü«Φ⌐▒πÇüpipipinoτÖ║Θƒ│' (63 min, 2025-03-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 61 τëºσá┤πü«ΘûôΘüòπüäµÄóπüùπüª' (63 min, 2025-03-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 23 Why Immersion Builds Habits' (62 min, 2025-03-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 116 πé▓πâ╝πâáπéÆΣ╜£πéïπü¬πéë...' (61 min, 2025-03-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 60 "Do you wanna...Can you... Let\'s.."' (64 min, 2025-03-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 66 πâùπâ¡πé░πâ⌐πâƒπâ│πé░πéäπé▓πâ╝πâáπü«Σ╜£πéèµû╣πü«Φ⌐▒' (64 min, 2025-03-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 65' (56 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 46' (62 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 22' (62 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 115' (59 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 59' (61 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 64' (68 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome regina 45' (65 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 63' (62 min, 2025-03-04) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether em 58' (60 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 114' (61 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome michael 44' (63 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether em 57' (53 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 62' (64 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome regina 43' (87 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 113' (65 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 56' (62 min, 2025-02-18) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 42' (67 min, 2025-01-31) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 21' (65 min, 2025-01-31) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 112' (60 min, 2025-01-31) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jer 55' (63 min, 2025-01-31) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 61 ∩╜₧πüƒπüîπéï\u3000∩╜₧πüƒπüîπüúπüªπüäπéï' (61 min, 2025-01-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 60 πü¡πüô manga 1' (62 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jayy 111\u3000πé╣πâÄπâ£πü«Φ⌐▒ πü¡πüôπü╛πéôπüî' (58 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 54 VAN πüäadj πü¬adj' (20 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 59 σñºσ¡ªπü«Σ╝ÜΦ⌐▒∩╜₧' (67 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 41 πüôπü¿πüéπéï why because' (71 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 20 πü¬πü«πü»πâ╗πü«πü»πâ╗πüáπüúπüƒπü«πü» how to connect and make general statements' (70 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: "Isome regina 40 I'm doing to do X after the lesson" (52 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 110 goals of 2025' (21 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 53 immersion' (72 min, 2025-01-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 58 try πéïπü╗πüåπüîπüäπüäπÇüπüƒπü╗πüåπüîπüäπüäπÇüπüªπü┐πéïπâ╗πéêπüåπü¿πüÖπéïπÇü' (64 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 39 solo Japanese, πü«πü»πâ╗πü«πüî to connect' (74 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 109 µ▒ƒτö░σ│╢' (48 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 38 Glue for two' (55 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 19 japan recap, log it plan it try it' (61 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 108 Glue for two' (62 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 57 πüÖπéïπü«πü»Θ¢úπüùπüä' (61 min, 2024-12-31) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Joe 5 Glue for Two' (59 min, 2024-12-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome michael 37 glue for two' (48 min, 2024-12-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 18 japan prep' (64 min, 2024-12-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome regina 36 output advice at home' (74 min, 2024-12-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 17 Σ╝ÜΦ⌐▒πü«τ╖┤τ┐Æ∩╝æ' (60 min, 2024-12-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 107 As for American πéóπâíπâ¬πé½πü¿πüùπüªπü»πÇüπé¬πâ│πâ⌐πéñπâ│Φ¿ÿΣ║ï∩╝æ' (62 min, 2024-12-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 56 JLPTπüïπéëσ╕░πüúπüƒπÇüσìâµÿÄπü¿πü«πü»πüÿπéüπü╛πüùπüª' (64 min, 2024-12-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 55 jlpt n4' (67 min, 2024-12-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 16 πéêπéè (comparing things), How to Pray in Japanese' (59 min, 2024-12-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 52 πüéπüÆπéïπâ╗πüÅπéîπéïπâ╗πééπéëπüå' (65 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 105\u3000Σ┐¥Φé▓σ£Æπâ╗σ╣╝τ¿Üσ£ÆπÇüπüèΘçæπü«Φ⌐▒' (56 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 52 πü½πéêπéïπâ╗πü½πéêπüúπüªπÇüJLPT N4' (62 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 104 πü┤πü╖πéï immersion' (65 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 15 πü½Σ╝Üπüåπâ╗πü¿Σ╝ÜπüåπÇüµùÑµ£¼πü»Σ╜òπüîµÑ╜πüùπü┐∩╝ƒ' (63 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 51 σìâµÿÄπü¿πüèΦ⌐▒' (68 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 52 τ₧æµâ│πÇüσê¥Θƒ│πâƒπé»' (67 min, 2024-11-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 14 yes no πüºπü«' (62 min, 2024-11-14) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 103 πüïπüÉπéäπü▓πéü' (71 min, 2024-11-14) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 50' (58 min, 2024-11-14) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 51 yes no' (60 min, 2024-11-14) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 13 πééπü«πÇüyes and no, πüôπü¿πüîσÑ╜πüìπü¬Θúƒπü╣τë⌐πÇü∩╜₧πüïπéë' (54 min, 2024-11-08) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 12 πâ⌐πéñπâûπü«Φ⌐▒πÇüσÑ╜πüìπü¬πüôπü¿πâ╗σ½îπü¬πüôπü¿πÇüirregular CAN conjugation' (61 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 101 Θ¬¿πéÆµèÿπéîπüƒπÇüπüèτ¼æπüäπü«Φ⌐▒' (74 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 49 Sentence Structure ReviewπÇüverb CAN/potential conjugation' (65 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 102 πéêπüÅπüéπéïπüôπü¿πÇü∩╜₧πü╛πüÅπéèπÇüπüª and all its meanings' (53 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 49 µ£êµ░┤Θçæπâ╗µ£¿Θçæσ£ƒπÇüπâôπé╕πâìπé╣πü«Φ⌐▒' (42 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 50 πüª and all its meanings' (60 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 35 Yes and No' (64 min, 2024-11-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 34 Irregular Conjugations, "Can" potential form' (62 min, 2024-10-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 33 Yes No' (39 min, 2024-10-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 32\u3000πüªπüäπü╛πüÖπÇüπüªπüäπü╛πüùπüƒπÇüπâ₧πéñπé▒πâ½πü¿πü«σç║Σ╝Üπüä' (63 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 11 adventure key πüƒπüôπü¿πüéπéèπü╛πüÖπüï' (62 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 100 πéÅπüæπüºπü»πü¬πüäπÇüµ¼íτ¼¼' (75 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 48 τ╡Éσ⌐Üπü«πé½πâ╝πâëπÇülonger sentences' (36 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 48 n5 reading practice' (60 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 31 How to approach immersion' (74 min, 2024-10-11) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 10 πéêπüÅπâ╗πüéπü╛πéèπÇüπüƒπüôπü¿πüéπéïπâ╗πü¬πüä' (60 min, 2024-10-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 99' (60 min, 2024-10-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 44' (63 min, 2024-10-02) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 47 I, who likes apples. Shadow Translation, Irregular Verb conjugation' (59 min, 2024-10-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 30 ΘÇ▒πü½∩╝æσ¢₧ Irregular verb conjug' (67 min, 2024-10-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 98 πâæπé╜πé│πâ│πü«Φ⌐▒' (62 min, 2024-09-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 47 - Useful phrases when raising Children in Japanese' (60 min, 2024-09-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 46 Connecting Verbs with πü«πüîπâ╗πü«πéÆπâ╗πü«πü»πÇü' (61 min, 2024-09-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 9 πéäπüúπüƒ∩╝ƒπéäπüúπüªπü¬πüä, irregular verb conjugation' (63 min, 2024-09-25) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 29 trip to orlando, conversation mindset' (61 min, 2024-09-20) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 97 µ╡╖πü½Φíîπüúπüƒ∩╝üImmersion Day 2' (63 min, 2024-09-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 46 But & Because, Sickness/Illness vocab' (64 min, 2024-09-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 7 "because" πüáπüïπéëπâ╗πüïπéë' (61 min, 2024-09-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 8 "can" verbs "can\'t" verbs' (61 min, 2024-09-18) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 95' (59 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 45' (65 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 45' (62 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 44' (60 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Regina 29' (62 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 5' (60 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 45' (62 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 6' (64 min, 2024-09-10) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 94' (62 min, 2024-08-27) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether emily 44 ΦÑ┐σ««πü«Φ┐æπüÅπü½πÇü∩╜₧πü¬πüîπéëπâ╗Θûôπâ╗µÖé' (61 min, 2024-08-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 43 µù⌐πüä µù⌐πüÅ\u3000πü»πéäπüÅπü¡πéêπüå\u3000πüñπüïπéîπüªπÇü etc JLPT N4 Day 1' (61 min, 2024-08-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 42 πüôπü¿πüéπéïπÇüπü╕πü«πÇüπüªπéêπüïπüúπüƒ' (41 min, 2024-08-20) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 28 I want to but Φíîπüìπüƒπüäπüæπü⌐,,,' (67 min, 2024-08-19) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 43 πüáπüù\u3000πüù' (87 min, 2024-08-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 27' (60 min, 2024-08-13) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 4 Verb Conjugations (πüÅπüÉπÇüπééπü╢πü¼πÇüπüÖ)' (59 min, 2024-08-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 93 σ╣│σ▓íπüòπéôπü«σ½îπü¬πü¿πüôπéì∩╜ù' (63 min, 2024-08-06) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 41 ΘûóΦÑ┐σ╝ü' (67 min, 2024-08-06) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 26' (68 min, 2024-08-06) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 25' (61 min, 2024-08-06) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Josh 3 3 types of conjugation' (60 min, 2024-08-06) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 24  priotizing vocab VAN' (73 min, 2024-07-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 2 4 types of japanese pt 1' (62 min, 2024-07-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 92 chiaki talk' (58 min, 2024-07-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 42  µòÖΣ╝Üπü½ΦíîπüÅπü¿πüìπÇüΣ╜òπüîΣ╕Çτò¬µÑ╜πüùπüä∩╝ƒ + Chiaki' (62 min, 2024-07-30) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 40' (61 min, 2024-07-30) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 91' (61 min, 2024-07-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jeremiah 42 Σ╜òπéÆπüùπüƒ∩╝ƒ σ»¥πüªπü╗πüùπüä' (71 min, 2024-07-23) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 39 JLPT questions advice 1 µ¡îπü«Φ⌐▒' (62 min, 2024-07-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 23 τÑêπéïπâ╗Φ│¢τ╛ÄπüÖπéï' (76 min, 2024-07-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Josh 1 Greeting, Goals, Approach to Fluency' (67 min, 2024-07-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 90' (64 min, 2024-07-22) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'KaetherJeremiah 41' (66 min, 2024-07-22) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 22' (73 min, 2024-07-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 89 haikyu and kuukiyomi' (63 min, 2024-07-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 40 40' (61 min, 2024-07-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 38' (63 min, 2024-07-17) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 88 πâÉπâ¼πâ╝πü«Φ⌐▒πÇüπâÅπéñπé¡πâÑπâ╝πü«µûçµ│ò' (71 min, 2024-07-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 37' (65 min, 2024-07-05) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 21 πüíπüéπüìπüíπéâπéôπü¿πü«πâ¼πââπé╣πâ│' (75 min, 2024-07-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 36' (61 min, 2024-07-05) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 35 πü╣πüìπÇüπüúπü╜πüä' (56 min, 2024-06-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Michael 20 Verb conjugation review' (6 min, 2024-06-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 87 τöúΣ╝æπü«Φ⌐▒' (66 min, 2024-06-21) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 34 µùÑµ£¼Φ¬₧πü«σïëσ╝╖πü«Σ╗òµû╣πÇüπüªπüùπü╛πüå review' (69 min, 2024-06-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 39 40 τÑ₧µºÿπü«Φ⌐▒πÇüτ╜¬πü«Φ⌐▒πÇüµûçµ│òπü«πâ¼πâôπâÑπâ╝' (44 min, 2024-06-17) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome Regina 19 Reverse sentence structure' (74 min, 2024-06-10) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 38 Chiaki' (64 min, 2024-06-10) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 83' (61 min, 2024-06-03) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 37 Basic Sentence Structure/Particle Use, Time/Dates,' (61 min, 2024-06-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 33 πâêπâ⌐πâÖπâ⌐πâ╝πü«Φ⌐▒πÇüπüªπüùπü╛πüåπâ╗πüíπéâπüåπÇüReverse Sentence Structure' (61 min, 2024-06-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 18 Reverse Sentence Structure/Particle Placement, "When/πüäπüñ?"' (61 min, 2024-06-03) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 32 Verb Category Conjugation Review' (63 min, 2024-05-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 16 ∩╜₧πüùπÇü∩╜₧πüùπÇü ∩╜₧πüÖ verb category' (74 min, 2024-05-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 82 πâôπâ╝πâ½πü«Φ⌐▒πÇüπé½πâ¬πâûπü«Φ⌐▒' (55 min, 2024-05-24) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 36 Using πüòπéô πü⌐πüôπÇüπüäπüÅπüñπÇüverb conjugation' (66 min, 2024-05-24) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 18 Verb conjugations (jd no audio)' (62 min, 2024-05-24) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 15 Verb conjugations' (62 min, 2024-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 14 VAN conjugation πü¡πéïπÇüπüìπüÅπâ╗πüäπü¥πüÉ' (62 min, 2024-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 31\u3000Σ╣àπüùπü╢πéè∩╝üJDπü«µ£ÇΦ┐æπü«Φ⌐▒' (58 min, 2024-05-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 35 µû░πüùπüäσ«╢πÇüπü⌐πüôπü½πüéπéïπâ╗πüäπéï∩╝ƒπÇüπüäending conjugation review' (60 min, 2024-05-07) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 30 πüªπüÅπéîπüªπÇüπüªπééπéëπüåπÇüπü╗πüåπüîπüäπüä should' (65 min, 2024-05-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 81 πâÉπâ¼πâ╝πâ£πâ╝πâ½πü«Φ⌐▒πÇüΣ╝æπü┐πü«µùÑπü½Σ╜òπéÆπüùπüªπéï∩╝ƒ' (61 min, 2024-05-02) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 12 - VAN Conjugations' (71 min, 2024-04-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 13 Verb/Adjective/Noun Conjugations' (23 min, 2024-04-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 34 What is πüª form really?' (60 min, 2024-04-26) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 80' (59 min, 2024-04-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 33 σìâµÿÄπü¿πü«σåìΣ╝Ü' (25 min, 2024-04-16) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 11' (64 min, 2024-04-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 29' (64 min, 2024-04-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 79' (63 min, 2024-04-13) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 28' (61 min, 2024-04-13) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 78' (15 min, 2024-04-13) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 27' (61 min, 2024-04-13) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 9 σÑ╜πüì∩╝ƒσÑ╜πüìπüºπüÖπüï∩╝ƒ' (75 min, 2024-03-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 26' (61 min, 2024-03-22) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 6 Four Types of Japanese Part 1' (72 min, 2024-03-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 5 πü«πü¿πüìπÇüπü¿πüì' (61 min, 2024-03-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 77 πé▒πâ¬πâ╝πü¿πü«σ░åµ¥Ñπü«Φ⌐▒πÇüπü▓πüôπüäπüíπü«τë⌐Φ¬₧' (59 min, 2024-03-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 25  µùÑµ£¼πü«πé½πâòπéºπü«πé╣πâêπâ╝πâ¬πâ╝πÇüµÿöπü«πé▓πâ╝πâáπü«Φ⌐▒' (61 min, 2024-03-13) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 76 πüúπü╜πüä' (62 min, 2024-03-05) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 24 MASSIVE grammar lesson (∩╜₧πüò to make nouns, double verbs, plain πü╛πüùπéçπüå = πü¥πüå etc, ∩╜₧πéêπüåπü¿πüÖπéï) πéëπüùπüä' (64 min, 2024-03-04) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 32 πé¿πâƒπâ¬πâ╝πü«Φ¿╝' (46 min, 2024-02-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome M 4 µùÑµ£¼πüºΣ╜òπéÆπüùπü╛πüùπüƒπüï∩╝ƒπÇüPlain vs Polite' (65 min, 2024-02-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Isome R 3 µùÑµ£¼πüºΣ╜òπéÆπüùπü╛πüùπüƒπüï∩╝ƒπÇüPlain vs Polite' (60 min, 2024-02-27) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 75 Σ╕Çτò¬ and grammar review πü«πâ╗πü¬' (51 min, 2024-02-20) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 31 dinner questions, σÑ╜πüìπüúπüªµ░ùπüÑπüäπüƒ' (63 min, 2024-02-20) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 23' (61 min, 2024-02-19) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 74' (64 min, 2024-02-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Emily 30' (74 min, 2024-02-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Faye 22' (60 min, 2024-02-16) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 73 πü▓πüäπüªπéïπü¿µÇ¥πüúπüªπüƒ, πéôπüáπâ╗πü¬πéôπüá when to use them?, πüúπüªπÇü' (47 min, 2024-02-09) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 21 - πü½πü¿πüúπüªπééπÇüπüÅπü¢πÇüARπé▓πâ╝πâáπü«πé╣πâêπâ╝πâ¬πâ╝∩╝êµùÑµ£¼Φ¬₧πüîπéêπüïπüúπüƒ∩╝ü∩╝ü∩╝ë' (61 min, 2024-02-09) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 29 σñ⌐µ░ùπÇüΣ╗èµùÑΣ╜òπüùπüƒ∩╝ƒ' (61 min, 2024-02-06) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 72' (67 min, 2024-02-01) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Jay 71' (55 min, 2024-01-23) - topic + timestamps
+[2026-10-11 10:02:36] would do: 'Kaether J 28 ∩╜₧πüªπüÅπéîπüƒπÇüπü» vs πüî particles, SHE made them, WITH πü¿ my mom to church' (63 min, 2024-01-23) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Faye 20 ∩╜₧πüôπü¿πüéπéïπâ╗∩╜₧πüôπü¿πü¬πüä Have you ever....' (66 min, 2024-01-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Jay 70 using πüúπüªΦ¿Çπüúπüª vs πéÆπüäπüúπüª etc' (58 min, 2024-01-22) - keep title, add timestamps
+[2026-10-11 10:02:36] would do: 'Kaether Jeremiah 27 πüíπéâπéôπü¿πÇüπüèπüïπüÆπüºπÇüMeeting New People' (60 min, 2024-01-22) - keep title, add timestamps
+[2026-10-11 10:02:36] backfill: finished the list. 0 done, 362 left

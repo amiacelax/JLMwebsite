@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "C:\JLM Website\yt-lesson-uploader\one_off_title.py", line 5, in <module>
+    vid_id, label, n, total = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+                                                        ~~~^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'M'

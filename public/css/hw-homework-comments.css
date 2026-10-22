@@ -375,6 +375,51 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   color: var(--color-text);
 }
 
+.hw-saved-recording {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0 0.45rem;
+  padding: 0.4rem 0.45rem;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, #fff 72%, var(--hw-hc-blue, #67c4eb));
+  border: 1px solid color-mix(in srgb, var(--hw-hc-blue, #67c4eb) 45%, transparent);
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.hw-saved-recording--quiet {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.hw-saved-recording__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--hw-hc-ink, #1a2744);
+}
+
+.hw-saved-recording__play,
+.hw-saved-recording__play .hw-listen-card,
+.hw-saved-recording__play .hw-audio-chrome {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.hw-saved-recording__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hw-saved-recording__reuse {
+  margin: 0 0 0.35rem;
+}
+
 .hw-hc-memo__actions {
   display: flex;
   justify-content: flex-start;

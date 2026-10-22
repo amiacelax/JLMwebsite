@@ -8,6 +8,9 @@ import {
   normalizeAccountLabel,
   normalizeAccountTier,
   deleteUserAccount,
+  isCurriculumTrialActive,
+  curriculumTrialEndsMs,
+  CURRICULUM_TRIAL_HOMEWORK_ID,
   type AccountLabel,
   type AccountTier,
 } from "./user-accounts";
@@ -17,6 +20,8 @@ export interface StudentListEntry {
   displayName: string;
   /** Teacher-only dropdown label. Hub name stays on the student account. */
   teacherListName?: string;
+  /** Confirmed PayPal payer, or a demo login. */
+  subscriber?: boolean;
 }
 
 export interface CatalogFile {
@@ -36,6 +41,13 @@ export interface CatalogFile {
     }
   >;
   assignments?: Record<string, unknown>[];
+  /** Student-scoped catalog only. Tells the hub when a curriculum trial ends. */
+  curriculumTrial?: {
+    endsAt: string;
+    homeworkId: string;
+    baseLabel: AccountLabel;
+    baseTier: AccountTier;
+  };
 }
 
 /** Active + waiting slots per student hub. */
@@ -58,7 +70,10 @@ const studentTeacherListNameKey = (username: string) =>
   `student:${username}:teacher-list-name`;
 const studentNotifyPrefsKey = (username: string) => `student:${username}:notify-prefs`;
 const playlistLatestCacheKey = (username: string, playlistId: string) =>
-  `student:${username}:playlist-latest-v3:${playlistId}`;
+  `student:${username}:playlist-latest-v5:${playlistId}`;
+/** Last uploadDate-confirmed latest lesson — kept when YouTube bot-blocks live date reads. */
+const playlistLatestConfirmedKey = (username: string, playlistId: string) =>
+  `student:${username}:playlist-latest-confirmed:${playlistId}`;
 
 const PLAYLIST_LATEST_TTL_SEC = 3600;
 
@@ -143,7 +158,29 @@ export interface SetWorksheetCategoryPayload {
 export type WorksheetCategory = string;
 
 const KV_WS_CATEGORIES = "ws-categories-v1";
-const CORE_JAPANESE_DEFAULT_IDS = new Set(["sykohpath-secret-hiragana"]);
+const CORE_JAPANESE_DEFAULT_IDS = new Set(["sheet-secret-hiragana"]);
+
+/** Legacy worksheet ids → neutral ids (no student usernames in URLs). */
+const ASSIGNMENT_ID_ALIASES: Record<string, string> = {
+  "sykohpath-secret-hiragana": "sheet-secret-hiragana",
+};
+
+export function normalizeAssignmentId(raw: string): string {
+  const id = String(raw || "").trim();
+  return ASSIGNMENT_ID_ALIASES[id] || id;
+}
+
+export function assignmentIdLookupKeys(id: string): string[] {
+  const normalized = normalizeAssignmentId(id);
+  const keys = new Set<string>([normalized]);
+  for (const [legacy, canonical] of Object.entries(ASSIGNMENT_ID_ALIASES)) {
+    if (canonical === normalized || legacy === id) {
+      keys.add(legacy);
+      keys.add(canonical);
+    }
+  }
+  return [...keys];
+}
 const WS_CATEGORY_SLUG_RE = /^[a-z0-9-]{1,32}$/;
 
 export function normalizeWsCategory(raw: unknown): WorksheetCategory | undefined {
@@ -157,6 +194,7 @@ export function normalizeWsCategory(raw: unknown): WorksheetCategory | undefined
   if (key === "other") return "other";
   if (key === "jlpt") return "jlpt";
   if (key === "christian" || key === "gospel") return "christian";
+  if (key === "music") return "music";
   if (WS_CATEGORY_SLUG_RE.test(key)) return key;
   return undefined;
 }
@@ -248,6 +286,8 @@ const STUDENT_ACCOUNTS = new Set([
   "deme",
   "ivan",
   "benc",
+  "demo2",
+  "christian",
 ]);
 
 const LEGACY_STUDENT_LABELS: Record<string, string> = {
@@ -256,11 +296,13 @@ const LEGACY_STUDENT_LABELS: Record<string, string> = {
   deme: "Deme",
   ivan: "Ivan",
   benc: "benc",
+  demo2: "Demo3",
+  christian: "Christian",
 };
 
 const USERS_INDEX = "user-accounts-index";
 /** Fast student dropdown list — rebuilt when missing / invalidated. */
-const KV_STUDENT_LIST = "student-list-v2";
+const KV_STUDENT_LIST = "student-list-v3";
 /** Usernames removed by teacher wipe — stay off the student list even if legacy/demo. */
 const KV_WIPED_STUDENTS = "student-wiped-v1";
 /** Old demo logins retired from code — keep them off the list if a wipe already happened. */
@@ -342,6 +384,7 @@ async function readStudentListBlob(
   try {
     const parsed = JSON.parse(raw) as { students?: StudentListEntry[] };
     if (!Array.isArray(parsed?.students)) return null;
+    if (parsed.students.some((s) => typeof s?.subscriber !== "boolean")) return null;
     return parsed.students
       .map((s) => {
         const username = String(s?.username || "")
@@ -349,7 +392,7 @@ async function readStudentListBlob(
           .toLowerCase();
         const teacherListName = String(s?.teacherListName || "").trim();
         const displayName = String(s?.displayName || teacherListName || s?.username || "").trim();
-        const row: StudentListEntry = { username, displayName };
+        const row: StudentListEntry = { username, displayName, subscriber: s.subscriber };
         if (teacherListName) row.teacherListName = teacherListName;
         return row;
       })
@@ -416,6 +459,56 @@ async function saveTeacherListName(
     await kv.put(kvKey, name);
   }
   await invalidateStudentListSnapshot(kv);
+}
+
+/**
+ * Grandfathered Homework Hub access (free forever — PayPal sub model retired).
+ * Keep them in Subscribers even with no live PayPal subscription id.
+ */
+const CONFIRMED_PAYPAL_PAYERS = new Set([
+  "sykohpath",
+  "secretsister5",
+  "kaetherjk",
+  "garywgipson",
+  "nekobi",
+]);
+
+/**
+ * Pays for private lessons, not a PayPal homework checkout.
+ * Count them in the Subscribers dropdown without setting paypalPaid.
+ */
+const LESSON_PAYER_SUBSCRIBERS = new Set(["christian"]);
+
+function isRealHomeworkSubscriber(username: string, paypalPaid: boolean): boolean {
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return false;
+  if (key.includes("demo")) return true;
+  if (CONFIRMED_PAYPAL_PAYERS.has(key)) return true;
+  if (LESSON_PAYER_SUBSCRIBERS.has(key)) return true;
+  return paypalPaid;
+}
+
+async function readStudentSubscriberFlag(kv: KVNamespace, username: string): Promise<boolean> {
+  const key = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!key) return false;
+  let paypalPaid = false;
+  let trialEnds = "";
+  const raw = await kv.get(userAccountKey(key));
+  if (raw) {
+    try {
+      const account = JSON.parse(raw) as { paypalPaid?: boolean; curriculumTrialEndsAt?: string };
+      paypalPaid = account.paypalPaid === true;
+      trialEnds = String(account.curriculumTrialEndsAt || "");
+    } catch {
+      paypalPaid = false;
+    }
+  }
+  if (isRealHomeworkSubscriber(key, paypalPaid)) return true;
+  return isCurriculumTrialActive(trialEnds);
 }
 
 function listEntryFromNames(
@@ -519,9 +612,14 @@ async function rebuildStudentList(kv: KVNamespace): Promise<StudentListEntry[]> 
     /* registered accounts still usable if catalog list fails */
   }
 
-  const students = [...byUser.values()].sort((a, b) =>
-    a.username.localeCompare(b.username)
-  );
+  const students = (
+    await Promise.all(
+      [...byUser.values()].map(async (row) => ({
+        ...row,
+        subscriber: await readStudentSubscriberFlag(kv, row.username),
+      }))
+    )
+  ).sort((a, b) => a.username.localeCompare(b.username));
   try {
     await writeStudentListBlob(kv, students);
   } catch {
@@ -714,6 +812,21 @@ export async function getStudentAccountSettings(
     .toLowerCase();
   const account = await getUserAccount(user, env);
   if (account) {
+    const endsAt = String(account.curriculumTrialEndsAt || "").trim();
+    if (curriculumTrialEndsMs(endsAt) !== null) {
+      if (isCurriculumTrialActive(endsAt)) {
+        return {
+          accountLabel: "current_student",
+          tier: "student_special",
+          hasKvAccount: true,
+        };
+      }
+      return {
+        accountLabel: "homework_only",
+        tier: "pending",
+        hasKvAccount: true,
+      };
+    }
     return {
       accountLabel: account.accountLabel || "homework_only",
       tier: account.tier || "pending",
@@ -772,6 +885,7 @@ async function saveStudentAccountSettings(
     accountLabel: nextLabel || current.accountLabel,
     tier: nextTier || current.tier,
   });
+  await invalidateStudentListSnapshot(kv);
 }
 
 export async function getStudentProfileForTeacher(
@@ -859,7 +973,27 @@ const HW_DAILY_SKIP_USERS = new Set([
   "demo",
   "jlm",
   "noplan",
+  /* Inactive — stay off the weekly waiting ping and cadence reminders. */
+  "benc",
+  "drew",
+  "faye",
+  "ivan",
+  "joshs",
 ]);
+
+const HW_DAILY_SKIP_NAMES = new Set(["benc", "drew", "faye", "ivan", "josh s"]);
+
+/** Weekly HW-waiting ping and cadence reminders. Inactive students stay off both. */
+export function skipHwWaitingPing(username: string, displayName?: string): boolean {
+  const u = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!u || HW_DAILY_SKIP_USERS.has(u) || u.includes("demo")) return true;
+  const name = String(displayName || "")
+    .trim()
+    .toLowerCase();
+  return Boolean(name && HW_DAILY_SKIP_NAMES.has(name));
+}
 
 async function resolveHomeworkTitle(kv: KVNamespace, assignmentId: string): Promise<string> {
   const id = String(assignmentId || "").trim();
@@ -898,6 +1032,8 @@ export interface HwDailyWaitingRow {
   displayName: string;
   title?: string;
   bucket: HwDailyWaitingBucket;
+  /** Latest submitted sheet — used for a one-tap review link. */
+  submissionId?: string;
 }
 
 export interface HwDailyWaitingReport {
@@ -914,8 +1050,7 @@ function includeInHwDailyPing(
   tier: AccountTier,
   accountLabel: AccountLabel
 ): boolean {
-  if (HW_DAILY_SKIP_USERS.has(username)) return false;
-  if (username.includes("demo")) return false;
+  if (skipHwWaitingPing(username)) return false;
   if (HW_DAILY_PAID_TIERS.has(tier)) return true;
   return accountLabel === "current_student";
 }
@@ -984,6 +1119,7 @@ export async function collectHwDailyWaitingReport(
     const displayName = String(
       entry.teacherListName || entry.displayName || LEGACY_STUDENT_LABELS[username] || username
     ).trim();
+    if (skipHwWaitingPing(username, displayName)) continue;
 
     const currentHomeworkId = String(
       (await kv.get(studentCurrentHomeworkKey(username))) || ""
@@ -1018,11 +1154,15 @@ export async function collectHwDailyWaitingReport(
     const currentStatus = currentHomeworkId ? sheetStatus(currentSubs) : "none";
 
     if (currentStatus === "submitted") {
+      const waitingSub =
+        currentSubs.find((s) => String(s.reviewStatus || "").toLowerCase() === "submitted") ||
+        currentSubs[0];
       review.push({
         username,
         displayName,
-        title: await titleFor(currentHomeworkId, currentSubs[0]),
+        title: await titleFor(currentHomeworkId, waitingSub),
         bucket: "review",
+        submissionId: waitingSub?.id,
       });
       continue;
     }
@@ -1053,6 +1193,50 @@ export async function collectHwDailyWaitingReport(
         displayName,
         title: await titleFor(otherReviewId, otherReviewSub),
         bucket: "review",
+        submissionId: otherReviewSub?.id,
+      });
+      continue;
+    }
+
+    /* Acknowledged = they submitted, you reviewed, they finished the notes.
+       Stale current-homework still pointing at that sheet is not “needs to complete”. */
+    if (currentStatus === "acknowledged") {
+      let nextOpenId = "";
+      let nextReviewedId = "";
+      let nextReviewedSub: SubRow | undefined;
+      for (const id of waiting) {
+        const queued = byAssignment.get(id) || [];
+        const st = sheetStatus(queued);
+        if (st === "reviewed" && !nextReviewedId) {
+          nextReviewedId = id;
+          nextReviewedSub = queued[0];
+        } else if (st === "none" && !nextOpenId) {
+          nextOpenId = id;
+        }
+      }
+      if (nextReviewedId) {
+        reviewingNotes.push({
+          username,
+          displayName,
+          title: await titleFor(nextReviewedId, nextReviewedSub),
+          bucket: "reviewingNotes",
+        });
+        continue;
+      }
+      if (nextOpenId) {
+        sent.push({
+          username,
+          displayName,
+          title: await titleFor(nextOpenId),
+          bucket: "sent",
+        });
+        continue;
+      }
+      needs.push({
+        username,
+        displayName,
+        title: "finished last sheet — make a new one",
+        bucket: "needs",
       });
       continue;
     }
@@ -1396,6 +1580,24 @@ export async function getStudentNotifyPrefs(
   }
 }
 
+/** Email + display name saved on a student's account (empty when the account has none). */
+export async function getStudentContact(
+  kv: KVNamespace,
+  username: string
+): Promise<{ email: string; displayName: string }> {
+  const raw = await kv.get(userAccountKey(String(username || "").trim().toLowerCase()));
+  if (!raw) return { email: "", displayName: "" };
+  try {
+    const account = JSON.parse(raw) as { email?: string; displayName?: string };
+    return {
+      email: String(account.email || "").trim(),
+      displayName: String(account.displayName || "").trim(),
+    };
+  } catch {
+    return { email: "", displayName: "" };
+  }
+}
+
 export async function saveStudentNotifyPrefs(
   kv: KVNamespace,
   username: string,
@@ -1422,6 +1624,7 @@ export async function publishToStudentHub(
   waitingCount: number;
   currentHomeworkId: string;
   hubSlotsUsed: number;
+  newlyAssigned: boolean;
 }> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
@@ -1497,6 +1700,7 @@ export async function publishToStudentHub(
     queued: boolean;
     currentHomeworkId: string;
     waiting: string[];
+    newlyAssigned: boolean;
   }) => ({
     id,
     studentUrl: `/homework/platform.html#hw-${id}`,
@@ -1506,16 +1710,17 @@ export async function publishToStudentHub(
     waitingCount: opts.waiting.length,
     currentHomeworkId: opts.currentHomeworkId,
     hubSlotsUsed: (opts.currentHomeworkId ? 1 : 0) + opts.waiting.length,
+    newlyAssigned: opts.newlyAssigned,
   });
 
   /* Same sheet already current — refresh content only. */
   if (currentHomeworkId === id) {
-    return finish({ queued: false, currentHomeworkId, waiting });
+    return finish({ queued: false, currentHomeworkId, waiting, newlyAssigned: false });
   }
 
   /* Same sheet already waiting — refresh content only (unless forcing to current). */
   if (waiting.includes(id) && !data.forceCurrent) {
-    return finish({ queued: true, currentHomeworkId, waiting });
+    return finish({ queued: true, currentHomeworkId, waiting, newlyAssigned: false });
   }
 
   /* Finished cycle (Done reviewing) frees the current slot. */
@@ -1538,12 +1743,12 @@ export async function publishToStudentHub(
     waiting = waiting.slice(0, HUB_HOMEWORK_SLOT_MAX - 1);
     await kv.put(studentCurrentHomeworkKey(student), id);
     await writeHomeworkWaitingQueue(kv, student, waiting);
-    return finish({ queued: false, currentHomeworkId: id, waiting });
+    return finish({ queued: false, currentHomeworkId: id, waiting, newlyAssigned: true });
   }
 
   if (!currentHomeworkId) {
     await kv.put(studentCurrentHomeworkKey(student), id);
-    return finish({ queued: false, currentHomeworkId: id, waiting });
+    return finish({ queued: false, currentHomeworkId: id, waiting, newlyAssigned: true });
   }
 
   const slotsUsed = 1 + waiting.length;
@@ -1553,7 +1758,7 @@ export async function publishToStudentHub(
 
   waiting = [...waiting, id];
   await writeHomeworkWaitingQueue(kv, student, waiting);
-  return finish({ queued: true, currentHomeworkId, waiting });
+  return finish({ queued: true, currentHomeworkId, waiting, newlyAssigned: true });
 }
 
 /** Save a neutral worksheet to the library (not tied to a student yet). */
@@ -1708,18 +1913,26 @@ export async function loadPublishedAssignment(
   kv: KVNamespace,
   id: string
 ): Promise<Record<string, unknown> | null> {
-  const raw = await kv.get(assignmentKey(id));
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const { assignment, repaired } = repairAssignmentRecord(parsed);
-    if (repaired) {
-      await kv.put(assignmentKey(id), JSON.stringify(assignment));
+  for (const key of assignmentIdLookupKeys(id)) {
+    const raw = await kv.get(assignmentKey(key));
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      let { assignment, repaired } = repairAssignmentRecord(parsed);
+      const canonicalId = normalizeAssignmentId(String(assignment.id || key));
+      if (assignment.id !== canonicalId) {
+        assignment.id = canonicalId;
+        repaired = true;
+      }
+      if (repaired) {
+        await kv.put(assignmentKey(key), JSON.stringify(assignment));
+      }
+      return assignment;
+    } catch {
+      continue;
     }
-    return assignment;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 export async function getStudentYoutube(kv: KVNamespace, username: string): Promise<string | null> {
@@ -1733,46 +1946,103 @@ export async function getStudentLessonPlaylist(
   return kv.get(studentLessonPlaylistKey(username.toLowerCase()));
 }
 
+async function readConfirmedPlaylistLatest(
+  kv: KVNamespace,
+  student: string,
+  playlistId: string
+): Promise<{ url: string; title: string } | null> {
+  const raw = await kv.get(playlistLatestConfirmedKey(student.toLowerCase(), playlistId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { url?: string; title?: string };
+    const url = String(parsed.url || "").trim();
+    if (!url) return null;
+    return { url, title: String(parsed.title || "").trim() };
+  } catch {
+    return null;
+  }
+}
+
 async function resolveLatestLessonFromPlaylist(
   kv: KVNamespace | undefined,
   student: string,
   playlistUrl: string,
   bustCache = false,
   allowLiveFetch = true
-): Promise<string | null> {
+): Promise<{ url: string; title: string; dated: boolean } | null> {
   const playlistId = extractPlaylistId(playlistUrl);
   if (!playlistId) {
     /* Teacher pasted a single video into the playlist field — still enable Latest lesson. */
     const videoId = extractVideoId(playlistUrl);
-    return videoId ? `https://youtu.be/${videoId}` : null;
+    return videoId ? { url: `https://youtu.be/${videoId}`, title: "", dated: true } : null;
   }
 
-  const cacheKey = playlistLatestCacheKey(student.toLowerCase(), playlistId);
+  const user = student.toLowerCase();
+  const cacheKey = playlistLatestCacheKey(user, playlistId);
+  const confirmedKey = playlistLatestConfirmedKey(user, playlistId);
+
   if (kv && !bustCache) {
     const cached = await kv.get(cacheKey);
     if (cached) {
       try {
-        const parsed = JSON.parse(cached) as { url?: string };
-        if (parsed.url) return parsed.url;
+        const parsed = JSON.parse(cached) as { url?: string; title?: string; dated?: boolean };
+        const url = String(parsed.url || "").trim();
+        const title = String(parsed.title || "").trim();
+        if (url && parsed.dated !== false && title) return { url, title, dated: true };
+        if (url && parsed.dated !== false && !title) {
+          /* Old cache row with no title — refetch once so the hub can show it. */
+        } else if (url && parsed.dated === false) {
+          const confirmed = await readConfirmedPlaylistLatest(kv, user, playlistId);
+          if (confirmed) return { ...confirmed, dated: true };
+          return { url, title, dated: false };
+        }
       } catch {
         /* refresh */
       }
     }
   }
 
-  if (!allowLiveFetch) return null;
+  if (!allowLiveFetch) {
+    return kv ? readConfirmedPlaylistLatest(kv, user, playlistId) : null;
+  }
 
   const latest = await fetchLatestVideoFromPlaylist(playlistId);
-  if (!latest) return null;
+  if (!latest) {
+    return kv ? readConfirmedPlaylistLatest(kv, user, playlistId) : null;
+  }
 
+  const title = String(latest.title || "").trim();
   if (kv) {
+    if (latest.dated) {
+      const payload = JSON.stringify({
+        url: latest.url,
+        videoId: latest.videoId,
+        playlistId,
+        dated: true,
+        title,
+      });
+      await kv.put(cacheKey, payload, { expirationTtl: PLAYLIST_LATEST_TTL_SEC });
+      await kv.put(confirmedKey, payload);
+      return { url: latest.url, title, dated: true };
+    }
+
+    /* YouTube blocked date reads — keep last confirmed newest, don't cache a bad guess. */
+    const confirmed = await readConfirmedPlaylistLatest(kv, user, playlistId);
+    if (confirmed) return { ...confirmed, dated: true };
+
     await kv.put(
       cacheKey,
-      JSON.stringify({ url: latest.url, videoId: latest.videoId, playlistId }),
-      { expirationTtl: PLAYLIST_LATEST_TTL_SEC }
+      JSON.stringify({
+        url: latest.url,
+        videoId: latest.videoId,
+        playlistId,
+        dated: false,
+        title,
+      }),
+      { expirationTtl: Math.min(PLAYLIST_LATEST_TTL_SEC, 600) }
     );
   }
-  return latest.url;
+  return { url: latest.url, title, dated: latest.dated };
 }
 
 async function enrichProfileWithPlaylistLatest(
@@ -1793,11 +2063,88 @@ async function enrichProfileWithPlaylistLatest(
   );
   if (!fromPlaylist) return profile;
 
+  const savedUrl = String(profile.latestLessonUrl || profile.youtubeUrl || "").trim();
+  const savedTitle = String(profile.latestLessonTitle || "").trim();
+  /* A dateless guess is the end of the playlist, often the oldest lesson.
+     Keep the saved lesson until YouTube gives a real upload date. */
+  if (!fromPlaylist.dated && savedUrl) return profile;
+
+  const sameVideo =
+    savedUrl &&
+    fromPlaylist.url.replace(/\/$/, "") === savedUrl.replace(/\/$/, "");
   return {
     ...profile,
-    latestLessonUrl: fromPlaylist,
-    youtubeUrl: fromPlaylist,
+    latestLessonUrl: fromPlaylist.url,
+    youtubeUrl: fromPlaylist.url,
+    latestLessonTitle: fromPlaylist.title || (sameVideo ? savedTitle : ""),
   };
+}
+
+function cloneAssignmentForTrialStudent(
+  entry: Record<string, unknown>,
+  studentKey: string
+): Record<string, unknown> {
+  const students = Array.isArray(entry.students)
+    ? entry.students.map((s) => String(s))
+    : [];
+  const nextStudents = students.some((s) => s.toLowerCase() === studentKey)
+    ? students
+    : [...students, studentKey];
+  return { ...entry, students: nextStudents };
+}
+
+/**
+ * Trial access is the stored UTC end time plus an unpaid pending account.
+ * A confirmed PayPal payment or a real lesson-student label is left alone.
+ */
+async function readCurriculumTrialGrant(kv: KVNamespace, username: string) {
+  const account = await getUserAccount(username, { HOMEWORK_KV: kv });
+  const endsAt = String(account?.curriculumTrialEndsAt || "").trim();
+  if (!account || !endsAt || curriculumTrialEndsMs(endsAt) === null) return null;
+  const baseLabel = account.accountLabel || "homework_only";
+  const baseTier = account.tier || "pending";
+  return {
+    endsAt,
+    baseLabel,
+    baseTier,
+    homeworkId: CURRICULUM_TRIAL_HOMEWORK_ID,
+    grantAccess: account.paypalPaid !== true && isCurriculumTrialActive(endsAt),
+  };
+}
+
+async function studentReallyHasAssignment(
+  kv: KVNamespace,
+  username: string,
+  assignmentId: string
+): Promise<boolean> {
+  const current = String((await kv.get(studentCurrentHomeworkKey(username))) || "").trim();
+  if (current === assignmentId) return true;
+  const waiting = await readHomeworkWaitingQueue(kv, username);
+  if (waiting.includes(assignmentId)) return true;
+  const catalogRaw = await kv.get(catalogKey(assignmentId));
+  if (!catalogRaw) return false;
+  try {
+    const entry = JSON.parse(catalogRaw) as { students?: unknown[] };
+    return (entry.students || [])
+      .map((s) => String(s || "").toLowerCase())
+      .includes(username);
+  } catch {
+    return false;
+  }
+}
+
+/** After the trial instant, the trial sheet is not homework access for this account. */
+async function assertCurriculumTrialHomeworkAccess(
+  kv: KVNamespace,
+  username: string,
+  assignmentId: string
+): Promise<void> {
+  if (assignmentId !== CURRICULUM_TRIAL_HOMEWORK_ID) return;
+  const trial = await readCurriculumTrialGrant(kv, username);
+  if (!trial) return;
+  if (trial.grantAccess) return;
+  if (await studentReallyHasAssignment(kv, username, assignmentId)) return;
+  throw new Error("CURRICULUM_TRIAL_ENDED");
 }
 
 export interface MergeCatalogOptions {
@@ -1898,6 +2245,40 @@ export async function mergeCatalog(
         ...(currentHomeworkId ? { currentHomeworkId } : {}),
         ...(waitingHomeworkIds.length ? { waitingHomeworkIds } : {}),
       };
+    }
+
+    const trial = await readCurriculumTrialGrant(kvNs, studentKey);
+    if (trial?.grantAccess) {
+      const sheet = byId.get(CURRICULUM_TRIAL_HOMEWORK_ID);
+      if (
+        sheet &&
+        !assignments.some((entry) => String(entry.id || "") === CURRICULUM_TRIAL_HOMEWORK_ID)
+      ) {
+        assignments = [...assignments, cloneAssignmentForTrialStudent(sheet, studentKey)];
+        merged.assignments = assignments;
+      }
+      const trialProfile = merged.studentProfiles[studentKey] || {};
+      if (!String(trialProfile.currentHomeworkId || "").trim()) {
+        merged.studentProfiles[studentKey] = {
+          ...trialProfile,
+          currentHomeworkId: CURRICULUM_TRIAL_HOMEWORK_ID,
+        };
+      }
+      const withHomework = merged.studentProfiles[studentKey] || {};
+      if (!String(withHomework.lessonPlaylistUrl || "").trim()) {
+        const lessonMedia = staticCatalog.studentProfiles?.christian;
+        const lessonPlaylistUrl = String(lessonMedia?.lessonPlaylistUrl || "").trim();
+        const reviewPlaylistUrl = String(
+          lessonMedia?.reviewPlaylistUrl || lessonPlaylistUrl
+        ).trim();
+        if (lessonPlaylistUrl) {
+          merged.studentProfiles[studentKey] = {
+            ...withHomework,
+            lessonPlaylistUrl,
+            ...(reviewPlaylistUrl ? { reviewPlaylistUrl } : {}),
+          };
+        }
+      }
     }
 
     const profile = merged.studentProfiles[studentKey] || {};
@@ -2647,7 +3028,7 @@ export function normalizeQuestionMarks(
 /** One Notebook list row: student memo + JD reply, or a standalone JD question note. */
 export interface HomeworkNotebookRow {
   id: string;
-  kind: "pair" | "jd";
+  kind: "pair" | "jd" | "mark";
   studentText?: string;
   studentAnchor?: string;
   /** Worksheet answer for this slide (when available) — preferred over empty memo placeholders. */
@@ -3002,6 +3383,7 @@ export async function saveHomeworkOnlineSubmission(
 
   const assignmentId = String(data.assignmentId || "").trim();
   if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
+  await assertCurriculumTrialHomeworkAccess(kv, username, assignmentId);
 
   const section1 = Array.isArray(data.section1) ? data.section1 : [];
   const section2 = Array.isArray(data.section2) ? data.section2 : [];
@@ -3096,11 +3478,20 @@ function normalizeStoredComment(raw: HomeworkComment | Record<string, unknown>):
   };
 }
 
+/** Audio/video already saved on a question note, reused by id (no second upload). */
+export interface AnswerBankMedia {
+  id: string;
+  kind: "audio" | "video";
+  mimeType?: string;
+}
+
 /** Replies JD has already written for a given question, newest first. */
 export interface AnswerBankReply {
   text: string;
   usedAt: string;
   count: number;
+  /** Recording that went with this wording, when he saved one. */
+  media?: AnswerBankMedia;
 }
 
 export interface AnswerBank {
@@ -3108,6 +3499,11 @@ export interface AnswerBank {
   /** Keyed by question slide index, as a string. */
   slides: Record<string, AnswerBankReply[]>;
   updatedAt: string;
+  /**
+   * Set after past submissions were scanned once so older clips
+   * (saved before recordings lived in this bank) show up as suggestions.
+   */
+  recordingsBackfillAt?: string;
 }
 
 const answerBankKey = (assignmentId: string) => `answer-bank:${assignmentId}`;
@@ -3131,10 +3527,147 @@ export async function readAnswerBank(
   }
 }
 
+function normalizeAnswerBankMedia(raw: unknown): AnswerBankMedia | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const id = String((raw as AnswerBankMedia).id || "").trim();
+  if (!/^[A-Za-z0-9_-]{4,80}$/.test(id)) return undefined;
+  const kindRaw = String((raw as AnswerBankMedia).kind || "")
+    .trim()
+    .toLowerCase();
+  if (kindRaw !== "audio" && kindRaw !== "video") return undefined;
+  const mime = String((raw as AnswerBankMedia).mimeType || "").trim();
+  return {
+    id,
+    kind: kindRaw,
+    mimeType: mime ? mime.slice(0, 100) : undefined,
+  };
+}
+
+function packAnswerBankReply(raw: AnswerBankReply | undefined | null): AnswerBankReply | null {
+  if (!raw) return null;
+  const text = String(raw.text || "").trim();
+  const media = normalizeAnswerBankMedia(raw.media);
+  if (!text && !media) return null;
+  const count = Number(raw.count);
+  return {
+    text,
+    usedAt: String(raw.usedAt || ""),
+    count: Number.isFinite(count) && count > 0 ? Math.floor(count) : 1,
+    ...(media ? { media } : {}),
+  };
+}
+
+function slidesFromAnswerBank(bank: AnswerBank | null): Record<string, AnswerBankReply[]> {
+  const slides: Record<string, AnswerBankReply[]> = {};
+  if (!bank?.slides) return slides;
+  for (const [slot, list] of Object.entries(bank.slides)) {
+    if (!/^\d+$/.test(slot)) continue;
+    const clean = (Array.isArray(list) ? list : [])
+      .map((row) => packAnswerBankReply(row))
+      .filter((row): row is AnswerBankReply => Boolean(row))
+      .slice(0, ANSWER_BANK_MAX_PER_SLIDE);
+    if (clean.length) slides[slot] = clean;
+  }
+  return slides;
+}
+
+/**
+ * Pull recordings off question notes already saved for this worksheet so the
+ * next review can offer the same clip (same media id, no re-upload).
+ * One scan per assignment; later submits store the clip directly.
+ */
+async function backfillAnswerBankRecordings(
+  kv: KVNamespace,
+  assignmentId: string,
+  bank: AnswerBank | null
+): Promise<AnswerBank> {
+  const now = new Date().toISOString();
+  const next: AnswerBank = bank || {
+    assignmentId,
+    slides: {},
+    updatedAt: now,
+  };
+  next.slides = slidesFromAnswerBank(next);
+
+  let submissions: HomeworkSubmission[] = [];
+  try {
+    const ids = await readSubmissionsIndex(kv);
+    submissions = await loadSubmissionsByIds(kv, ids);
+  } catch (err) {
+    console.error("answer bank recording backfill scan failed:", err);
+    return next;
+  }
+
+  /* Index is newest first. First media we see for a wording wins. */
+  const newestMedia = new Map<string, AnswerBankMedia>();
+  for (const sub of submissions) {
+    if (String(sub.assignmentId || "").trim() !== assignmentId) continue;
+    for (const note of sub.comments || []) {
+      if (note.author !== "teacher") continue;
+      const media = normalizeAnswerBankMedia(note.teacherRemarkMedia);
+      if (!media) continue;
+      const slot = String(typeof note.slideIndex === "number" ? note.slideIndex : 0);
+      const text = String(note.text || "").trim();
+      const key = slot + "\n" + text;
+      if (!newestMedia.has(key)) newestMedia.set(key, media);
+    }
+  }
+
+  const inserts = new Map<string, AnswerBankReply[]>();
+  for (const [key, media] of newestMedia) {
+    const splitAt = key.indexOf("\n");
+    const slot = key.slice(0, splitAt);
+    const text = key.slice(splitAt + 1);
+    const list = Array.isArray(next.slides[slot]) ? next.slides[slot] : [];
+    const match = list.find((row) => row.text === text);
+    if (match) {
+      if (!match.media) match.media = media;
+      continue;
+    }
+    const extra = inserts.get(slot) || [];
+    extra.push({ text, usedAt: now, count: 1, media });
+    inserts.set(slot, extra);
+  }
+  for (const [slot, extra] of inserts) {
+    const list = Array.isArray(next.slides[slot]) ? next.slides[slot] : [];
+    /* Keep the newest wording first so text suggestions do not move. */
+    next.slides[slot] = [...list, ...extra].slice(0, ANSWER_BANK_MAX_PER_SLIDE);
+  }
+
+  next.recordingsBackfillAt = now;
+  next.updatedAt = now;
+  next.assignmentId = assignmentId;
+  try {
+    await kv.put(answerBankKey(assignmentId), JSON.stringify(next));
+  } catch (err) {
+    console.error("answer bank recording backfill save failed:", err);
+  }
+  return next;
+}
+
+/**
+ * Saved replies for review. Includes recordings from past question notes once,
+ * then the copy written on each submit.
+ */
+export async function readAnswerBankForReview(
+  kv: KVNamespace | undefined,
+  assignmentId: string
+): Promise<Record<string, AnswerBankReply[]>> {
+  const id = String(assignmentId || "").trim();
+  if (!kv || !id) return {};
+  let bank = await readAnswerBank(kv, id);
+  if (!bank?.recordingsBackfillAt) {
+    bank = await backfillAnswerBankRecordings(kv, id, bank);
+  }
+  return slidesFromAnswerBank(bank);
+}
+
 /**
  * Remember the question notes JD just wrote so the next student's review can
  * start from them. Same wording on the same question bumps its count instead of
- * piling up duplicates.
+ * piling up duplicates. A recording saved with that note is kept with it
+ * (same asset id). Deleting the clip on one student does not drop it from the
+ * bank; a newly saved clip replaces the suggestion for next time.
  */
 async function recordAnswerBank(
   kv: KVNamespace,
@@ -3144,7 +3677,9 @@ async function recordAnswerBank(
 ): Promise<void> {
   const id = String(assignmentId || "").trim();
   if (!id) return;
-  const notes = comments.filter((c) => c.author === "teacher" && c.text.trim());
+  const notes = comments.filter(
+    (c) => c.author === "teacher" && (c.text.trim() || c.teacherRemarkMedia?.id)
+  );
   if (!notes.length) return;
 
   const bank: AnswerBank = (await readAnswerBank(kv, id)) || {
@@ -3152,15 +3687,23 @@ async function recordAnswerBank(
     slides: {},
     updatedAt: now,
   };
+  bank.slides = slidesFromAnswerBank(bank);
 
   for (const note of notes) {
     const slot = String(typeof note.slideIndex === "number" ? note.slideIndex : 0);
     const text = note.text.trim();
+    const incoming = normalizeAnswerBankMedia(note.teacherRemarkMedia);
     const list = Array.isArray(bank.slides[slot]) ? bank.slides[slot] : [];
     const match = list.find((r) => r.text === text);
     const rest = list.filter((r) => r.text !== text);
+    const media = incoming || match?.media;
     bank.slides[slot] = [
-      { text, usedAt: now, count: (match?.count || 0) + 1 },
+      {
+        text,
+        usedAt: now,
+        count: (match?.count || 0) + 1,
+        ...(media ? { media } : {}),
+      },
       ...rest,
     ].slice(0, ANSWER_BANK_MAX_PER_SLIDE);
   }
@@ -3368,6 +3911,29 @@ function enrichNotebookRowsFromSubmission(
   submission: HomeworkSubmission
 ): HomeworkNotebookRow[] {
   const marks = normalizeQuestionMarks(submission.questionMarks) || {};
+  /* Marked questions with no written note still get a 問 button (✓ / ✗ + answer). */
+  const withNote = new Set(
+    rows
+      .filter((r) => r.kind !== "mark")
+      .map((r) => r.slideIndex)
+      .filter((n): n is number => typeof n === "number" && n >= 0)
+  );
+  const markOnly: HomeworkNotebookRow[] = [];
+  for (const [key, value] of Object.entries(marks)) {
+    const slide = Number(key);
+    if (!Number.isInteger(slide) || slide < 0) continue;
+    if (value !== "correct" && value !== "wrong") continue;
+    if (withNote.has(slide)) continue;
+    if (rows.some((r) => r.kind === "mark" && r.slideIndex === slide)) continue;
+    markOnly.push({
+      id: "mark-" + slide,
+      kind: "mark",
+      slideIndex: slide,
+      commentId: "",
+      questionMark: value,
+    });
+  }
+  rows = [...rows, ...markOnly];
   return rows.map((row) => {
     const slide =
       typeof row.slideIndex === "number" && row.slideIndex >= 0
@@ -3565,6 +4131,27 @@ export async function saveHomeworkPhotoSubmission(
   return { id: submission.id, photoId: photo.id };
 }
 
+/**
+ * Store a per-question audio/video answer clip without creating a teacher
+ * "waiting on notes" submission. Final hand-in still goes through online submit.
+ */
+export async function saveHomeworkInlineMedia(
+  data: HomeworkVideoSubmitInput,
+  file: File,
+  env: KvEnv
+): Promise<{ videoId: string }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+
+  const username = String(data.username || "")
+    .trim()
+    .toLowerCase();
+  if (!(await isKnownStudentInKv(username, kv))) throw new Error("UNKNOWN_STUDENT");
+
+  const video = await storeSubmissionVideo(kv, file);
+  return { videoId: video.id };
+}
+
 export async function saveHomeworkVideoSubmission(
   data: HomeworkVideoSubmitInput,
   file: File,
@@ -3739,6 +4326,7 @@ export async function saveHomeworkDraft(
 
   const assignmentId = String(data.assignmentId || "").trim();
   if (!assignmentId) throw new Error("ASSIGNMENT_REQUIRED");
+  await assertCurriculumTrialHomeworkAccess(kv, username, assignmentId);
 
   const answers =
     data.answers && typeof data.answers === "object" && !Array.isArray(data.answers)
@@ -3935,7 +4523,216 @@ export async function saveDailyNotebook(
   return getDailyNotebook(env, { username, date });
 }
 
-/** Immersion Quest — 365 look-fors, one complete per Tokyo day. */
+/** Daily Exercise sentences — one saved set per Japan calendar day. */
+
+const dailyExerciseKey = (username: string) => `hw-daily-exercise:${username}`;
+
+const DAILY_EXERCISE_MAX_LINES = 10;
+const DAILY_EXERCISE_LINE_MAX = 200;
+const DAILY_EXERCISE_KEEP = 400;
+
+export interface DailyExerciseSubmission {
+  id: string;
+  date: string;
+  submittedAt: string;
+  prompt: string;
+  lines: string[];
+  audioIds?: string[];
+}
+
+export interface DailyExerciseStore {
+  username: string;
+  submissions: DailyExerciseSubmission[];
+}
+
+function clampDailyExerciseLines(raw: unknown): string[] {
+  const src = Array.isArray(raw) ? raw : [];
+  const lines: string[] = [];
+  for (const item of src) {
+    if (lines.length >= DAILY_EXERCISE_MAX_LINES) break;
+    const text = String(item || "").replace(/\s+/g, " ").trim();
+    if (!text) continue;
+    if (text.length > DAILY_EXERCISE_LINE_MAX) throw new Error("LINE_TOO_LONG");
+    lines.push(text);
+  }
+  return lines;
+}
+
+function clampDailyExerciseAudio(raw: unknown, count: number): string[] {
+  const src = Array.isArray(raw) ? raw : [];
+  const ids: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const id = String(src[i] || "").trim();
+    ids.push(/^[A-Za-z0-9_-]{1,80}$/.test(id) ? id : "");
+  }
+  return ids;
+}
+
+async function loadDailyExerciseStore(
+  env: KvEnv,
+  username: string
+): Promise<DailyExerciseStore> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+  const raw = await kv.get(dailyExerciseKey(user));
+  if (!raw) return { username: user, submissions: [] };
+  try {
+    const parsed = JSON.parse(raw) as DailyExerciseStore;
+    const submissions = Array.isArray(parsed.submissions) ? parsed.submissions : [];
+    return {
+      username: user,
+      submissions: submissions
+        .filter((row) => row && typeof row.date === "string" && Array.isArray(row.lines))
+        .slice(0, DAILY_EXERCISE_KEEP),
+    };
+  } catch {
+    return { username: user, submissions: [] };
+  }
+}
+
+export async function listDailyExerciseSubmissions(
+  env: KvEnv,
+  username: string
+): Promise<{ submissions: DailyExerciseSubmission[] }> {
+  const store = await loadDailyExerciseStore(env, username);
+  const byDate = new Map<string, DailyExerciseSubmission>();
+  for (const row of store.submissions) {
+    const prev = byDate.get(row.date);
+    if (!prev || String(row.submittedAt || row.date).localeCompare(String(prev.submittedAt || prev.date)) > 0) {
+      byDate.set(row.date, row);
+    }
+  }
+  const submissions = Array.from(byDate.values()).sort((a, b) =>
+    String(b.submittedAt || b.date).localeCompare(String(a.submittedAt || a.date))
+  );
+  return { submissions };
+}
+
+export async function saveDailyExerciseSubmission(
+  env: KvEnv,
+  input: { username?: string; prompt?: string; lines?: unknown; audioIds?: unknown }
+): Promise<{ submission: DailyExerciseSubmission }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const user = String(input.username || "")
+    .trim()
+    .toLowerCase();
+  const store = await loadDailyExerciseStore(env, user);
+  const lines = clampDailyExerciseLines(input.lines);
+  if (!lines.length) throw new Error("LINES_REQUIRED");
+  const audioIds = clampDailyExerciseAudio(input.audioIds, lines.length);
+  const date = tokyoDateKey();
+  const prompt = String(input.prompt || "今日は何をしましたか").trim().slice(0, 80) || "今日は何をしましたか";
+  const submittedAt = new Date().toISOString();
+  const submission: DailyExerciseSubmission = {
+    id: "dex-" + date,
+    date,
+    submittedAt,
+    prompt,
+    lines,
+    audioIds,
+  };
+  const rest = store.submissions.filter((row) => row.date !== date);
+  store.submissions = [submission, ...rest].slice(0, DAILY_EXERCISE_KEEP);
+  await kv.put(dailyExerciseKey(user), JSON.stringify(store));
+  return { submission };
+}
+
+/** Situation Card recordings — one saved take per Japan calendar day. */
+
+const sitCardKey = (username: string) => `hw-sit-card:${username}`;
+
+const SIT_CARD_KEEP = 400;
+
+export interface SitCardSubmission {
+  id: string;
+  date: string;
+  submittedAt: string;
+  cardTitle: string;
+  audioId: string;
+}
+
+export interface SitCardStore {
+  username: string;
+  submissions: SitCardSubmission[];
+}
+
+async function loadSitCardStore(env: KvEnv, username: string): Promise<SitCardStore> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) throw new Error("USERNAME_REQUIRED");
+  if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
+  const raw = await kv.get(sitCardKey(user));
+  if (!raw) return { username: user, submissions: [] };
+  try {
+    const parsed = JSON.parse(raw) as SitCardStore;
+    const submissions = Array.isArray(parsed.submissions) ? parsed.submissions : [];
+    return {
+      username: user,
+      submissions: submissions
+        .filter((row) => row && typeof row.date === "string" && String(row.audioId || "").trim())
+        .slice(0, SIT_CARD_KEEP),
+    };
+  } catch {
+    return { username: user, submissions: [] };
+  }
+}
+
+export async function listSitCardSubmissions(
+  env: KvEnv,
+  username: string
+): Promise<{ submissions: SitCardSubmission[] }> {
+  const store = await loadSitCardStore(env, username);
+  const byDate = new Map<string, SitCardSubmission>();
+  for (const row of store.submissions) {
+    const prev = byDate.get(row.date);
+    if (!prev || String(row.submittedAt || row.date).localeCompare(String(prev.submittedAt || prev.date)) > 0) {
+      byDate.set(row.date, row);
+    }
+  }
+  const submissions = Array.from(byDate.values()).sort((a, b) =>
+    String(b.submittedAt || b.date).localeCompare(String(a.submittedAt || a.date))
+  );
+  return { submissions };
+}
+
+export async function saveSitCardSubmission(
+  env: KvEnv,
+  input: { username?: string; cardTitle?: string; audioId?: string }
+): Promise<{ submission: SitCardSubmission }> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) throw new Error("KV_NOT_CONFIGURED");
+  const user = String(input.username || "")
+    .trim()
+    .toLowerCase();
+  const store = await loadSitCardStore(env, user);
+  const audioId = String(input.audioId || "").trim();
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(audioId)) throw new Error("AUDIO_REQUIRED");
+  const date = tokyoDateKey();
+  const cardTitle = String(input.cardTitle || "Situation Card").trim().slice(0, 80) || "Situation Card";
+  const submittedAt = new Date().toISOString();
+  const submission: SitCardSubmission = {
+    id: "sit-" + date,
+    date,
+    submittedAt,
+    cardTitle,
+    audioId,
+  };
+  const rest = store.submissions.filter((row) => row.date !== date);
+  store.submissions = [submission, ...rest].slice(0, SIT_CARD_KEEP);
+  await kv.put(sitCardKey(user), JSON.stringify(store));
+  return { submission };
+}
+
+/** Immersion Quest — 365 look-fors, one complete per local day (client sends the 5:00 a.m. day key). */
 
 const immersionQuestKey = (username: string) => `hw-immersion-quests:${username}`;
 
@@ -3951,15 +4748,45 @@ export interface ImmersionQuestCompletion {
   examples: string[];
 }
 
+export type ImmersionQuestAdvanceMode = "auto" | "manual";
+
 export interface ImmersionQuestProgress {
   username: string;
   currentIndex: number;
+  /** Client local day (YYYY-MM-DD, 5:00 a.m. boundary) of the last advance. */
   lastCompletedYmd: string;
+  /** Monday date (YYYY-MM-DD) of the working quest instance. A new week starts fresh examples and a clear completion gate. */
+  periodKey: string;
+  /** How quests move forward: auto advances on Complete; manual waits for Next. */
+  advanceMode: ImmersionQuestAdvanceMode;
   seenKey: string;
   examples: string[];
   completed: ImmersionQuestCompletion[];
   puzzlePieces: number[];
   updatedAt: string;
+}
+
+/** Accept student PC local YYYY-MM-DD within ±2 days of UTC (timezone skew). */
+export function normalizeClientLocalYmd(raw: unknown): string | null {
+  const s = String(raw || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d || m > 12 || d > 31) return null;
+  const probe = Date.UTC(y, m - 1, d);
+  if (Number.isNaN(probe)) return null;
+  const utcToday = new Date();
+  const utcMid = Date.UTC(utcToday.getUTCFullYear(), utcToday.getUTCMonth(), utcToday.getUTCDate());
+  const diffDays = Math.abs(probe - utcMid) / 86400000;
+  if (diffDays > 2) return null;
+  return s;
+}
+
+function resolveImmersionTodayYmd(clientYmd?: unknown): string {
+  return normalizeClientLocalYmd(clientYmd) || tokyoDateKey();
+}
+
+function normalizeAdvanceMode(raw: unknown): ImmersionQuestAdvanceMode {
+  return String(raw || "").trim().toLowerCase() === "manual" ? "manual" : "auto";
 }
 
 function clampQuestExamples(raw: unknown): string[] {
@@ -3976,6 +4803,8 @@ function emptyImmersionProgress(username: string): ImmersionQuestProgress {
     username,
     currentIndex: 0,
     lastCompletedYmd: "",
+    periodKey: "",
+    advanceMode: "auto",
     seenKey: "",
     examples: ["", "", "", "", ""],
     completed: [],
@@ -4007,6 +4836,8 @@ async function loadImmersionProgress(
       username: user,
       currentIndex: idx,
       lastCompletedYmd: String(parsed.lastCompletedYmd || ""),
+      periodKey: String(parsed.periodKey || ""),
+      advanceMode: normalizeAdvanceMode(parsed.advanceMode),
       seenKey: String(parsed.seenKey || ""),
       examples: clampQuestExamples(parsed.examples),
       completed: completed.slice(0, IMMERSION_QUEST_TOTAL),
@@ -4027,9 +4858,51 @@ async function putImmersionProgress(
   await kv.put(immersionQuestKey(progress.username), JSON.stringify(progress));
 }
 
+function normalizeWeekPeriod(raw: unknown): string {
+  const s = String(raw || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+  return s;
+}
+
+/** Whole weeks between two Monday date keys (YYYY-MM-DD). At least 1. */
+function weeksBetweenMondays(fromKey: string, toKey: string): number {
+  const a = Date.parse(`${fromKey}T00:00:00Z`);
+  const b = Date.parse(`${toKey}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 1;
+  return Math.max(1, Math.round((b - a) / (7 * 86400000)));
+}
+
+/** Returns whether to save, and whether this was a week change (not a first stamp). */
+function applyImmersionPeriod(
+  progress: ImmersionQuestProgress,
+  periodRaw: unknown
+): { write: boolean; rotated: boolean } {
+  const period = normalizeWeekPeriod(periodRaw);
+  if (!period) return { write: false, rotated: false };
+  if (!progress.periodKey) {
+    progress.periodKey = period;
+    return { write: true, rotated: false };
+  }
+  if (progress.periodKey === period) return { write: false, rotated: false };
+  /* The quest follows the calendar. A week that was completed already moved on when it was
+     completed. Every other week that went by moves the quest one step. */
+  const weeks = weeksBetweenMondays(progress.periodKey, period);
+  const skipped = Math.max(0, weeks - (progress.lastCompletedYmd ? 1 : 0));
+  progress.currentIndex = Math.min(
+    IMMERSION_QUEST_TOTAL,
+    (Number(progress.currentIndex) || 0) + skipped
+  );
+  progress.periodKey = period;
+  progress.examples = ["", "", "", "", ""];
+  progress.lastCompletedYmd = "";
+  progress.seenKey = "";
+  return { write: true, rotated: true };
+}
+
 export async function getImmersionQuests(
   env: KvEnv,
-  username: string
+  username: string,
+  periodKey?: unknown
 ): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
   const user = String(username || "")
     .trim()
@@ -4039,12 +4912,23 @@ export async function getImmersionQuests(
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
   if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
   const progress = await loadImmersionProgress(env, user);
+  if (applyImmersionPeriod(progress, periodKey).write) {
+    progress.updatedAt = new Date().toISOString();
+    await putImmersionProgress(env, progress);
+  }
   return { today: tokyoDateKey(), total: IMMERSION_QUEST_TOTAL, progress };
 }
 
 export async function saveImmersionQuestDraft(
   env: KvEnv,
-  data: { username?: string; examples?: unknown; seenKey?: string }
+  data: {
+    username?: string;
+    examples?: unknown;
+    seenKey?: string;
+    advanceMode?: unknown;
+    ymd?: unknown;
+    period?: unknown;
+  }
 ): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
   const user = String(data.username || "")
     .trim()
@@ -4054,17 +4938,36 @@ export async function saveImmersionQuestDraft(
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
   if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
 
+  const today = resolveImmersionTodayYmd(data.ymd);
   const progress = await loadImmersionProgress(env, user);
-  if (data.examples !== undefined) progress.examples = clampQuestExamples(data.examples);
-  if (data.seenKey !== undefined) progress.seenKey = String(data.seenKey || "").slice(0, 80);
+  const rotated = applyImmersionPeriod(progress, data.period).rotated;
+  if (data.examples !== undefined && !rotated) progress.examples = clampQuestExamples(data.examples);
+  if (data.seenKey !== undefined && !rotated) progress.seenKey = String(data.seenKey || "").slice(0, 80);
+  if (data.advanceMode !== undefined) progress.advanceMode = normalizeAdvanceMode(data.advanceMode);
   progress.updatedAt = new Date().toISOString();
   await putImmersionProgress(env, progress);
-  return { today: tokyoDateKey(), total: IMMERSION_QUEST_TOTAL, progress };
+  return { today, total: IMMERSION_QUEST_TOTAL, progress };
 }
 
+/**
+ * Complete / advance immersion quest.
+ * - auto mode (default): Complete advances + burns the PC-local day.
+ * - manual mode + advance:false: save examples only (no advance, no day burn).
+ * - manual mode + advance:true (Next quest): advances + burns the PC-local day.
+ * Daily gate uses client-reported local ymd (validated), not Tokyo-only.
+ */
 export async function completeImmersionQuest(
   env: KvEnv,
-  data: { username?: string; examples?: unknown; day?: unknown; key?: string }
+  data: {
+    username?: string;
+    examples?: unknown;
+    day?: unknown;
+    key?: string;
+    ymd?: unknown;
+    advance?: unknown;
+    advanceMode?: unknown;
+    period?: unknown;
+  }
 ): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
   const user = String(data.username || "")
     .trim()
@@ -4075,15 +4978,31 @@ export async function completeImmersionQuest(
   if (!(await isKnownStudentInKv(user, kv))) throw new Error("UNKNOWN_STUDENT");
 
   const progress = await loadImmersionProgress(env, user);
-  const today = tokyoDateKey();
+  if (data.advanceMode !== undefined) {
+    progress.advanceMode = normalizeAdvanceMode(data.advanceMode);
+  }
+  applyImmersionPeriod(progress, data.period);
+  const today = resolveImmersionTodayYmd(data.ymd);
   if (progress.currentIndex >= IMMERSION_QUEST_TOTAL) throw new Error("ALL_DONE");
-  if (progress.lastCompletedYmd === today) throw new Error("ALREADY_DONE_TODAY");
+
+  const mode = progress.advanceMode || "auto";
+  const wantAdvance = mode === "auto" || data.advance === true;
+
+  // Manual Complete: log examples / mark practice without advancing or burning the day.
+  if (!wantAdvance) {
+    progress.examples = clampQuestExamples(data.examples);
+    progress.updatedAt = new Date().toISOString();
+    await putImmersionProgress(env, progress);
+    return { today, total: IMMERSION_QUEST_TOTAL, progress };
+  }
+
+  /* One advance per week. The week change above clears this, so a value means "done this week". */
+  if (progress.lastCompletedYmd) throw new Error("ALREADY_DONE_TODAY");
 
   const day = progress.currentIndex + 1;
   if (data.day != null && Number(data.day) !== day) throw new Error("QUEST_STALE");
 
   const examples = clampQuestExamples(data.examples);
-  if (!examples.some((s) => s)) throw new Error("EXAMPLE_REQUIRED");
 
   const key = String(data.key || day);
   progress.completed.push({
@@ -4101,6 +5020,21 @@ export async function completeImmersionQuest(
   progress.updatedAt = new Date().toISOString();
   await putImmersionProgress(env, progress);
   return { today, total: IMMERSION_QUEST_TOTAL, progress };
+}
+
+/** Explicit Next-quest advance (manual mode). Same day gate as complete-with-advance. */
+export async function advanceImmersionQuest(
+  env: KvEnv,
+  data: {
+    username?: string;
+    examples?: unknown;
+    day?: unknown;
+    key?: string;
+    ymd?: unknown;
+    advanceMode?: unknown;
+  }
+): Promise<{ today: string; total: number; progress: ImmersionQuestProgress }> {
+  return completeImmersionQuest(env, { ...data, advance: true });
 }
 
 /** Student Kanji Notebook — one character per genkouyoushi square, paged. */
@@ -5677,6 +6611,7 @@ export async function wipeStudentCompletely(
 
   /* 4. Notebooks, drafts, media, settings, playlist cache */
   await del(dailyNotebookKey(user));
+  await del(dailyExerciseKey(user));
   await del(kanjiNotebookKey(user));
   await del(immersionQuestKey(user));
   await del(studentYoutubeKey(user));

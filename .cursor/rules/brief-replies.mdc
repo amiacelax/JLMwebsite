@@ -1,0 +1,15 @@
+---
+description: Keep replies short — JD has no time to read long answers
+alwaysApply: true
+---
+
+# Brief replies
+
+JD likes the info but doesn't have time to read it all. Boil it down.
+
+- Lead with the result in a few words, like a changelog line: "Altered image - made 50% smaller".
+- Default to **3-6 short bullets or lines**. No long intros, no recap of what he asked, no tables unless asked.
+- One idea per line. Skip the "why" unless he asks or it changes his decision.
+- Put anything he must decide or do at the very end, as a short list.
+- Details (file paths, edge cases, caveats) only if they affect him. He can always ask "more".
+- Still follow match-user-language.mdc: his words first.

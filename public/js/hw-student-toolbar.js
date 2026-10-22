@@ -22,6 +22,99 @@
     return document.getElementById("hw-toolbar-bar");
   }
 
+  let lineMenuScrollEl = null;
+  let lineMenuScrollTop = 0;
+  let lineMenuWindowTop = 0;
+
+  function lineMenuEl() {
+    return document.querySelector(".hw-toolbar-line-menu");
+  }
+
+  function lineMenuScrollParent(el) {
+    let node = el?.parentElement || null;
+    while (node && node !== document.documentElement) {
+      const oy = getComputedStyle(node).overflowY;
+      if ((oy === "auto" || oy === "scroll" || oy === "overlay") && node.scrollHeight > node.clientHeight + 4) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function unbindLineMenuScroll() {
+    if (lineMenuScrollEl) {
+      lineMenuScrollEl.removeEventListener("scroll", onLineMenuScroll);
+    }
+    window.removeEventListener("scroll", onLineMenuScroll);
+    lineMenuScrollEl = null;
+  }
+
+  function onLineMenuScroll() {
+    const menu = lineMenuEl();
+    if (!menu || menu.hidden) return;
+    const pageHalf = window.innerHeight / 2;
+    if (lineMenuWindowTop - window.scrollY > pageHalf) {
+      closeLineMenu();
+      return;
+    }
+    if (!lineMenuScrollEl || lineMenuScrollEl === window) return;
+    const boxHalf = lineMenuScrollEl.clientHeight / 2;
+    if (lineMenuScrollTop - lineMenuScrollEl.scrollTop > boxHalf) closeLineMenu();
+  }
+
+  function bindLineMenuScroll(anchor) {
+    unbindLineMenuScroll();
+    const parent = lineMenuScrollParent(anchor);
+    lineMenuWindowTop = window.scrollY || 0;
+    window.addEventListener("scroll", onLineMenuScroll, { passive: true });
+    if (parent && parent !== document.documentElement && parent !== document.body) {
+      lineMenuScrollEl = parent;
+      lineMenuScrollTop = parent.scrollTop;
+      parent.addEventListener("scroll", onLineMenuScroll, { passive: true });
+    }
+  }
+
+  function closeLineMenu() {
+    const menu = lineMenuEl();
+    if (menu) menu.hidden = true;
+    unbindLineMenuScroll();
+  }
+
+  function openLineMenu(btn, form) {
+    let menu = lineMenuEl();
+    if (!menu) {
+      menu = document.createElement("div");
+      menu.className = "hw-toolbar-line-menu";
+      menu.hidden = true;
+      menu.setAttribute("role", "menu");
+      menu.innerHTML =
+        '<button type="button" role="menuitemradio" data-line-mode="once">Show once</button>' +
+        '<button type="button" role="menuitemradio" data-line-mode="all">Show all</button>';
+      document.body.appendChild(menu);
+      menu.addEventListener("click", (ev) => {
+        const choice = ev.target.closest?.("[data-line-mode]");
+        if (!choice || !menu.contains(choice)) return;
+        ev.stopPropagation();
+        const f = worksheetFormEl();
+        global.HwWorksheet?.setLineReveal?.(f, choice.getAttribute("data-line-mode"));
+        closeLineMenu();
+        syncToolbarActionState(f);
+      });
+    }
+    const mode = form?.dataset.hwLineReveal || "off";
+    menu.querySelectorAll("[data-line-mode]").forEach((choice) => {
+      const on = choice.getAttribute("data-line-mode") === mode;
+      choice.setAttribute("aria-checked", on ? "true" : "false");
+      choice.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    const rect = btn.getBoundingClientRect();
+    menu.hidden = false;
+    menu.style.left = rect.left + rect.width / 2 + "px";
+    menu.style.top = rect.top - 8 + "px";
+    bindLineMenuScroll(btn);
+  }
+
   /**
    * Glass + Cloud: every viewport arms from the toolbar icon
    * (same as mobile — no floating lens/launcher fling).
@@ -107,7 +200,9 @@
     const readOnly = f?.classList.contains("hw-worksheet--readonly") || f?.dataset.hwReadOnly === "true";
     /* Same completion gate as playtest: all blanks filled → Send + See Answers appear together. */
     const sendReady = Boolean(!readOnly && formSend && !formSend.disabled);
-    const answersReady = sendReady;
+    const lineRevealSheet =
+      (f?.getAttribute("data-assignment-id") || "") === "sheet-n5-immersion-20";
+    const answersReady = lineRevealSheet ? !readOnly : sendReady;
 
     if (sendBtn) {
       sendBtn.disabled = !formSend || formSend.disabled || readOnly;
@@ -118,7 +213,9 @@
       else sendBtn.setAttribute("tabindex", "-1");
     }
     if (answersBtn) {
-      const locked = readOnly || !formAnswers || formAnswers.hidden || formAnswers.disabled;
+      const locked = lineRevealSheet
+        ? readOnly
+        : readOnly || !formAnswers || formAnswers.hidden || formAnswers.disabled;
       answersBtn.disabled = locked;
       answersBtn.classList.toggle("is-ready", answersReady);
       answersBtn.classList.toggle("answers-ready", answersReady);
@@ -126,21 +223,31 @@
       answersBtn.setAttribute("aria-hidden", answersReady ? "false" : "true");
       if (answersReady) answersBtn.removeAttribute("tabindex");
       else answersBtn.setAttribute("tabindex", "-1");
-      answersBtn.setAttribute(
-        "aria-pressed",
-        formAnswers?.getAttribute("aria-pressed") === "true" ? "true" : "false"
-      );
+      const lineMode = lineRevealSheet ? f?.dataset.hwLineReveal || "off" : "off";
+      const lineOn = lineMode === "once" || lineMode === "all";
+      const answersOn = lineRevealSheet
+        ? lineOn
+        : formAnswers?.getAttribute("aria-pressed") === "true";
+      answersBtn.setAttribute("aria-pressed", answersOn ? "true" : "false");
+      if (lineRevealSheet) {
+        const lineLabel =
+          lineMode === "once" ? "Show once" : lineMode === "all" ? "Show all" : "Show answers";
+        answersBtn.title = lineLabel;
+        answersBtn.setAttribute("aria-label", lineLabel);
+      }
       const label = answersBtn.querySelector(".hw-toolbar-bar__label");
-      if (label && formAnswers) {
-        label.textContent =
-          formAnswers.getAttribute("aria-pressed") === "true" ? "Hide Answers" : "See Answers";
+      if (label && (formAnswers || lineRevealSheet)) {
+        label.textContent = answersOn ? "Hide Answers" : "See Answers";
       }
     }
     if (focusBtn) {
       focusBtn.disabled = readOnly;
       focusBtn.setAttribute(
         "aria-pressed",
-        document.body.classList.contains("hw-hw-focus-mode") ? "true" : "false"
+        document.body.classList.contains("hw-hw-focus-mode") ||
+          document.body.classList.contains("hw-prayer-focus")
+          ? "true"
+          : "false"
       );
     }
     if (glassBtn) {
@@ -310,6 +417,11 @@
       const tool = btn.getAttribute("data-tb-tool");
       const form = worksheetFormEl();
       if (tool === "focus") {
+        if (document.body.classList.contains("hw-prayer-toolbar")) {
+          global.HwHubV5Live?.togglePrayerFocus?.();
+          syncToolbarActionState();
+          return;
+        }
         if (document.body.classList.contains("hw-hw-focus-mode")) {
           global.HwWorksheet?.exitFocusMode?.();
         } else {
@@ -324,6 +436,20 @@
         return;
       }
       if (tool === "answers") {
+        const sheetId = form?.getAttribute("data-assignment-id") || "";
+        if (sheetId === "sheet-n5-immersion-20") {
+          const menu = lineMenuEl();
+          if (menu && !menu.hidden) {
+            closeLineMenu();
+            return;
+          }
+          if ((form?.dataset.hwLineReveal || "off") === "once") {
+            global.HwWorksheet?.setLineReveal?.(form, "off");
+            syncToolbarActionState(form);
+          }
+          openLineMenu(btn, form);
+          return;
+        }
         const answers = form?.querySelector("[data-hw-see-answers]");
         if (answers && !answers.disabled && !answers.hidden) answers.click();
         else if (form) global.HwWorksheet?.toggleTeacherAnswers?.(form);
@@ -341,6 +467,20 @@
     if (!fsHandler) {
       fsHandler = () => syncToolbarActionState();
       document.addEventListener("fullscreenchange", fsHandler);
+      document.addEventListener("click", (ev) => {
+        const menu = lineMenuEl();
+        if (!menu || menu.hidden) return;
+        if (menu.contains(ev.target)) return;
+        if (ev.target.closest?.('[data-tb-tool="answers"]')) return;
+        closeLineMenu();
+      });
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape") return;
+        const menu = lineMenuEl();
+        if (!menu || menu.hidden) return;
+        ev.preventDefault();
+        closeLineMenu();
+      });
     }
     if (!armChangeHandler) {
       armChangeHandler = () => syncToolbarActionState();
@@ -365,6 +505,8 @@
    * Mount glass + cloud tucked until toolbar pop-out (same behavior as Toolbar playtest).
    * When skipAttach is true, only tuck existing widgets (e.g. after review attach).
    */
+  let worksheetCloudAttach = null;
+
   function attachWorksheetTools(form, options) {
     options = options || {};
     const f = worksheetFormEl(form);
@@ -373,6 +515,7 @@
     const username = options.username || "";
     const assignmentId =
       options.assignmentId || f.getAttribute("data-assignment-id") || "";
+    worksheetCloudAttach = { form: f, options };
 
     if (!options.skipAttach) {
       if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
@@ -414,6 +557,11 @@
     global.HwWorksheetToolLayout?.ensureSaveHomesControl?.();
   }
 
+  function restoreCloud() {
+    if (!worksheetCloudAttach?.form) return;
+    attachWorksheetTools(worksheetCloudAttach.form, worksheetCloudAttach.options || {});
+  }
+
   function unbindFormListeners() {
     if (!boundForm) return;
     if (inputHandler) boundForm.removeEventListener("input", inputHandler);
@@ -430,7 +578,14 @@
     inputHandler = () => syncToolbarActionState(form);
     changeHandler = () => syncToolbarActionState(form);
     answerHandler = () => syncToolbarActionState(form);
-    slideHandler = () => {
+    slideHandler = (ev) => {
+      const index = ev?.detail?.index;
+      const mode = form.dataset.hwLineReveal;
+      const started = form.dataset.hwLineRevealIndex;
+      if (mode === "once" && started !== undefined && String(index) !== started) {
+        global.HwWorksheet?.clearLineRevealOnSlide?.(form);
+      }
+      closeLineMenu();
       placeToolbarUnderHwBox(form);
       syncToolbarActionState(form);
     };
@@ -472,6 +627,57 @@
     return true;
   }
 
+  /**
+   * Curriculum Prayer / Situation Cards — same Glass·Cloud pill as HW
+   * (hw-ws-toolbar), without a worksheet form. Keeps floating widgets tucked.
+   */
+  function mountOnHost(host, options) {
+    options = options || {};
+    if (!host) return false;
+    const bar = ensureBar() || barEl();
+    if (!bar) return false;
+
+    document.documentElement.classList.add(ROOT_CLASS);
+    document.body.classList.add(ROOT_CLASS);
+    bar.hidden = false;
+    global.HwToolbarQIcons?.applyToToolbar?.(bar);
+    bindToolbarActions();
+
+    const username = options.username || "";
+    const assignmentId = options.assignmentId || "";
+    worksheetCloudAttach = { form: host, options };
+
+    if (!options.skipAttach) {
+      if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
+        global.HwHomeworkComments.attachTo(host, {
+          hostElement: host,
+          username,
+          assignmentId,
+          readOnly: !!options.readOnly,
+          skipOnboarding: true,
+          useModeNeutrals: true,
+          launcherStorageKey: "hw-hc-student-toolbar-v4",
+          defaultLauncher: { x: 0, y: 579 },
+        });
+        global.HwWorksheetToolLayout?.ensureFocusNeutralWatch?.();
+      }
+      if (global.HwFeatureFlags?.magnifyingGlass?.() && global.HwMagnifyingGlass?.attachTo) {
+        global.HwMagnifyingGlass.attachTo(host, {
+          skipOnboarding: true,
+          useModeNeutrals: true,
+          storageKey: "hw-mg-student-toolbar-v5",
+          defaultLens: { x: 0, y: 497 },
+        });
+        global.HwWorksheetToolLayout?.ensureFocusNeutralWatch?.();
+      }
+    }
+
+    setGlassPopped(false);
+    setCloudPopped(false);
+    syncToolbarActionState();
+    return true;
+  }
+
   function unmount() {
     unbindFormListeners();
     setGlassPopped(false);
@@ -488,10 +694,12 @@
 
   global.HwStudentToolbar = {
     mount,
+    mountOnHost,
     unmount,
     park,
     sync: syncToolbarActionState,
     place: placeToolbarUnderHwBox,
     isActive: () => document.documentElement.classList.contains(ROOT_CLASS),
+    restoreCloud,
   };
 })(window);

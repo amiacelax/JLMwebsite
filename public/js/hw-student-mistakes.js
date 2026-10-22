@@ -448,7 +448,11 @@
   async function load(session, options) {
     options = options || {};
     const card = document.getElementById("hw-student-mistakes-card");
-    if (!session?.username) return;
+    /* Off the hub for now. The list, API, and this file stay so it can come back. */
+    if (!session?.username || card?.dataset.hwMistakesOff === "1") {
+      if (card) card.hidden = true;
+      return;
+    }
 
     bindOnce();
     sessionRef = session;

@@ -34,6 +34,7 @@
     { id: "websites", label: "Websites" },
     { id: "gamelab", label: "Game Lab" },
     { id: "ideas", label: "Ideas & Memos" },
+    { id: "missionary", label: "Missionary" },
     { id: "hubpreview", label: "Hub Preview" },
   ];
 
@@ -47,6 +48,7 @@
     gamelab: [],
     preview: [],
     ideas: ["ideas", "lookup-lexicon"],
+    missionary: ["missionary"],
     hubpreview: ["hubv2"],
   };
 
@@ -331,6 +333,10 @@
           openLabel: kind === "online" ? "Open worksheet" : "Open submission",
         });
       } else if (status === "submitted") {
+        // Skip per-question audio/video clips — only final online hand-ins.
+        if (entry.type === "photo" || entry.type === "video") {
+          return;
+        }
         items.push({
           id: baseId + "-sub",
           type: "submitted",
@@ -340,11 +346,9 @@
             who +
             " submitted “" +
             lesson +
-            "” (" +
-            (kind === "online" ? "online worksheet" : kind) +
-            ").",
+            "” (online worksheet).",
           submission: entry,
-          openLabel: kind === "online" ? "Open worksheet" : "View in Submissions",
+          openLabel: "Open worksheet",
         });
       } else if (status === "reviewed") {
         items.push({
@@ -661,6 +665,7 @@
           mistakes: "Mistakes",
           gamelab: "Game lab",
           ideas: "Ideas & memos",
+          missionary: "Missionary curriculum",
         };
         host.insertAdjacentHTML("beforeend", stubHtml(titles[mountKey] || mountKey, mountKey));
       }
@@ -712,6 +717,9 @@
     }
     if ((TAB_MOUNTS[tabId] || []).includes("lookup-lexicon")) {
       global.HwTeacherLookupLexicon?.reloadIfNeeded?.();
+    }
+    if (tabId === "missionary" || (TAB_MOUNTS[tabId] || []).includes("missionary")) {
+      global.HwMissionaryCurriculum?.mount?.();
     }
   }
 
@@ -1244,11 +1252,38 @@
     }
   }
 
-  /* ── HW Notes — pick a waiting submission, Start opens full-sheet review ── */
+  /* ── HW Notes — Start deck opens the full homework sheet ── */
 
   let reviewDeckBound = false;
   let reviewPending = [];
+  let reviewArchive = [];
   let reviewSelectedId = "";
+  let finishedOpen = false;
+  /** Ids just sent with Submit notes. Kept off the waiting list even if a follow-up load is stale. */
+  const notesDeckReleasedIds = readNotesDeckReleasedIds();
+
+  function readNotesDeckReleasedIds() {
+    try {
+      const raw = JSON.parse(sessionStorage.getItem("jlm-hw-notes-deck-released") || "[]");
+      return new Set(Array.isArray(raw) ? raw.map((id) => String(id)) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function rememberNotesDeckReleased(submissionId) {
+    const id = String(submissionId || "").trim();
+    if (!id) return;
+    notesDeckReleasedIds.add(id);
+    try {
+      sessionStorage.setItem(
+        "jlm-hw-notes-deck-released",
+        JSON.stringify([...notesDeckReleasedIds].slice(-40))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
 
   function reviewSession() {
     return teacherSession || global.HwAuth?.getTeacherSession?.() || null;
@@ -1276,6 +1311,41 @@
     }
   }
 
+  function isMediaSubmission(entry) {
+    return entry?.type === "photo" || entry?.type === "video";
+  }
+
+  async function openReviewLikeSubmissions(entry) {
+    if (!entry?.id) {
+      global.HwToast?.show?.("Could not open that submission.");
+      return;
+    }
+    if (!isMediaSubmission(entry)) {
+      const online = reviewPending.filter(
+        (row) => reviewStatus(row) === "submitted" && !isMediaSubmission(row)
+      );
+      const start = online.findIndex((row) => String(row.id) === String(entry.id));
+      const ordered =
+        start >= 0 ? online.slice(start).concat(online.slice(0, start)) : [entry];
+      if (global.HwReviewFlashcards?.openQueue) {
+        await global.HwReviewFlashcards.openQueue(ordered);
+        return;
+      }
+    }
+    if (isMediaSubmission(entry)) {
+      activateV6Tab("students");
+      const fold = document.getElementById("hw-hub-v6-fold-submissions");
+      if (fold instanceof HTMLDetailsElement) fold.open = true;
+      fold?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }
+    if (global.HwTeacherSubmissions?.reviewEntry) {
+      const ok = await global.HwTeacherSubmissions.reviewEntry(entry);
+      if (!ok) global.HwToast?.show?.("Could not open that submission.");
+      return;
+    }
+    global.HwToast?.show?.("That review isn’t loaded — hard-refresh.");
+  }
+
   async function openSelectedFullSheetReview() {
     const entry = selectedReviewEntry();
     if (!entry) {
@@ -1291,7 +1361,7 @@
       await global.HwTeacherReview.openOnlineSubmission(entry);
       return;
     }
-    global.HwToast?.show?.("Full-sheet review isn’t available yet — hard-refresh.");
+    global.HwToast?.show?.("Full sheet review isn’t loaded — hard-refresh.");
   }
 
   async function deleteReviewSubmission(submissionId, label) {
@@ -1357,6 +1427,18 @@
         void openSelectedFullSheetReview();
         return;
       }
+      if (ev.target.closest?.("#hw-hub-v6-review-finished")) {
+        ev.preventDefault();
+        finishedOpen = !finishedOpen;
+        void renderFinishedHomework();
+        return;
+      }
+      if (ev.target.closest?.("#hw-hub-v6-review-submitted")) {
+        ev.preventDefault();
+        submittedOpen = !submittedOpen;
+        renderSubmittedNotes();
+        return;
+      }
       if (ev.target.closest?.("#hw-hub-v6-review-delete")) {
         ev.preventDefault();
         const entry = selectedReviewEntry();
@@ -1389,6 +1471,8 @@
 
   async function refreshReviewDeck() {
     ensureHwNotesDeleteControls();
+    ensureFinishedHomeworkControl();
+    ensureSubmittedControl();
     const summary = document.getElementById("hw-hub-v6-review-summary");
     const list = document.getElementById("hw-hub-v6-review-list");
     const startBtn = document.getElementById("hw-hub-v6-review-start");
@@ -1412,8 +1496,18 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not load submissions.");
 
-      reviewPending = (Array.isArray(data.submissions) ? data.submissions : [])
-        .filter((s) => s?.type === "online" && reviewStatus(s) === "submitted")
+      // Final "I'm done my HW" only — not per-question audio/video clips.
+      reviewArchive = Array.isArray(data.submissions) ? data.submissions : [];
+      if (finishedOpen) void renderFinishedHomework();
+      renderSubmittedNotes();
+
+      reviewPending = reviewArchive
+        .filter(
+          (s) =>
+            reviewStatus(s) === "submitted" &&
+            !isMediaSubmission(s) &&
+            !notesDeckReleasedIds.has(String(s.id))
+        )
         .sort((a, b) => String(a.submittedAt).localeCompare(String(b.submittedAt)));
 
       if (!reviewPending.length) {
@@ -1428,7 +1522,7 @@
       summary.textContent =
         reviewPending.length +
         (reviewPending.length === 1 ? " submission" : " submissions") +
-        " waiting on your notes. Pick one, then Start deck — or Delete to remove a duplicate.";
+        " waiting on your notes. Pick one, then Start — or Delete to remove a duplicate.";
 
       if (
         reviewSelectedId &&
@@ -1441,10 +1535,17 @@
         list.replaceChildren();
         reviewPending.forEach((entry) => {
           const id = String(entry.id || "");
+          const kind =
+            entry.type === "video"
+              ? "audio/video"
+              : entry.type === "photo"
+                ? "photo"
+                : "";
           const label =
             (entry.displayName || entry.username || "Student") +
             " — " +
-            (entry.lessonName || entry.title || entry.assignmentId || "Homework");
+            (entry.lessonName || entry.title || entry.assignmentId || "Homework") +
+            (kind ? " (" + kind + ")" : "");
           const li = document.createElement("li");
           li.className = "hw-hub-v6-review-list__row";
           const btn = document.createElement("button");
@@ -1469,6 +1570,272 @@
     } catch (err) {
       summary.textContent = err?.message || "Could not load submissions.";
     }
+  }
+
+  /** Submit notes: drop this waiting row. Does not delete the student’s answers. */
+  async function releaseSubmittedNotesDeck(submissionId) {
+    const id = String(submissionId || "").trim();
+    rememberNotesDeckReleased(id);
+    if (id) {
+      reviewPending = reviewPending.filter((s) => String(s.id) !== id);
+      if (reviewSelectedId === id) reviewSelectedId = "";
+      document
+        .querySelectorAll("#hw-hub-v6-review-list [data-submission-id]")
+        .forEach((btn) => {
+          if (btn.getAttribute("data-submission-id") === id) btn.closest("li")?.remove();
+        });
+    }
+    await refreshReviewDeck();
+  }
+
+  function finishedSheetKey(entry) {
+    return String(entry?.assignmentId || entry?.id || "").trim();
+  }
+
+  function finishedWhen(entry) {
+    return String(entry?.studentNotesAckedAt || entry?.reviewedAt || entry?.submittedAt || "");
+  }
+
+  function formatFinishedWhen(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function subscriberAccounts() {
+    const list = global.HwStudentList?.getStudentsSync?.() || [];
+    return list
+      .filter((row) => row?.subscriber === true && row.username)
+      .slice()
+      .sort((a, b) => {
+        const left = global.HwStudentList?.studentOptionLabel?.(a) || a.displayName || a.username;
+        const right = global.HwStudentList?.studentOptionLabel?.(b) || b.displayName || b.username;
+        return String(left).localeCompare(String(right), undefined, { sensitivity: "base" });
+      });
+  }
+
+  function finishedSheetsFor(username) {
+    const key = String(username || "").trim().toLowerCase();
+    const bySheet = new Map();
+    reviewArchive.forEach((entry) => {
+      if (String(entry?.username || "").trim().toLowerCase() !== key) return;
+      if (isMediaSubmission(entry)) return;
+      if (reviewStatus(entry) !== "acknowledged") return;
+      const id = finishedSheetKey(entry);
+      if (!id) return;
+      const when = finishedWhen(entry);
+      const prev = bySheet.get(id);
+      if (prev && prev.when >= when) return;
+      bySheet.set(id, {
+        title: String(entry.lessonName || entry.title || id).trim() || id,
+        when,
+      });
+    });
+    return [...bySheet.values()].sort((a, b) => String(b.when).localeCompare(String(a.when)));
+  }
+
+  async function renderFinishedHomework() {
+    ensureFinishedHomeworkControl();
+    const panel = document.getElementById("hw-hub-v6-finished");
+    const btn = document.getElementById("hw-hub-v6-review-finished");
+    if (btn) btn.setAttribute("aria-expanded", finishedOpen ? "true" : "false");
+    if (!panel) return;
+    panel.hidden = !finishedOpen;
+    if (!finishedOpen) return;
+
+    const teacher = reviewSession()?.username || "";
+    if (teacher && global.HwStudentList?.fetchStudents) {
+      await global.HwStudentList.fetchStudents({ teacherUsername: teacher });
+    }
+
+    panel.replaceChildren();
+    const students = subscriberAccounts();
+    if (!students.length) {
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v6-finished__empty";
+      empty.textContent = "No subscribers yet.";
+      panel.appendChild(empty);
+      return;
+    }
+
+    const picked = String(selectedReviewEntry()?.username || "")
+      .trim()
+      .toLowerCase();
+
+    students.forEach((student) => {
+      const block = document.createElement("section");
+      block.className = "hw-hub-v6-finished__student";
+      if (student.username === picked) block.classList.add("is-picked");
+
+      const heading = document.createElement("h4");
+      heading.textContent =
+        global.HwStudentList?.studentOptionLabel?.(student) ||
+        student.displayName ||
+        student.username;
+      block.appendChild(heading);
+
+      const sheets = finishedSheetsFor(student.username);
+      if (!sheets.length) {
+        const none = document.createElement("p");
+        none.className = "hw-hub-v6-finished__none";
+        none.textContent = "Nothing finished yet.";
+        block.appendChild(none);
+      } else {
+        const ul = document.createElement("ul");
+        sheets.forEach((sheet) => {
+          const li = document.createElement("li");
+          const when = formatFinishedWhen(sheet.when);
+          li.textContent = when ? sheet.title + " — " + when : sheet.title;
+          ul.appendChild(li);
+        });
+        block.appendChild(ul);
+      }
+      panel.appendChild(block);
+    });
+  }
+
+  function ensureFinishedHomeworkControl() {
+    const actions = document.querySelector("#hw-hub-v6-pane-hwnotes .hw-hub-v6-review-actions");
+    if (actions && !document.getElementById("hw-hub-v6-review-finished")) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v6-finished-pill";
+      btn.id = "hw-hub-v6-review-finished";
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = "Finished HW";
+      const start = document.getElementById("hw-hub-v6-review-start");
+      if (start?.nextSibling) actions.insertBefore(btn, start.nextSibling);
+      else actions.appendChild(btn);
+    }
+    const pane = document.getElementById("hw-hub-v6-pane-hwnotes");
+    if (pane && !document.getElementById("hw-hub-v6-finished")) {
+      const panel = document.createElement("div");
+      panel.className = "hw-hub-v6-finished";
+      panel.id = "hw-hub-v6-finished";
+      panel.hidden = true;
+      const actionsEl = pane.querySelector(".hw-hub-v6-review-actions");
+      if (actionsEl?.nextSibling) pane.querySelector(".hw-hub-v6-section")?.insertBefore(panel, actionsEl.nextSibling);
+      else actionsEl?.parentElement?.appendChild(panel);
+    }
+  }
+
+  /* ── Submitted: check / re-send notes already sent to students ── */
+
+  let submittedOpen = false;
+
+  function ensureSubmittedControl() {
+    const actions = document.querySelector("#hw-hub-v6-pane-hwnotes .hw-hub-v6-review-actions");
+    if (actions && !document.getElementById("hw-hub-v6-review-submitted")) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v6-finished-pill";
+      btn.id = "hw-hub-v6-review-submitted";
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = "Submitted";
+      const finished = document.getElementById("hw-hub-v6-review-finished");
+      if (finished?.nextSibling) actions.insertBefore(btn, finished.nextSibling);
+      else actions.appendChild(btn);
+    }
+    const pane = document.getElementById("hw-hub-v6-pane-hwnotes");
+    if (pane && !document.getElementById("hw-hub-v6-submitted")) {
+      const panel = document.createElement("div");
+      panel.className = "hw-hub-v6-finished";
+      panel.id = "hw-hub-v6-submitted";
+      panel.hidden = true;
+      const finishedPanel = document.getElementById("hw-hub-v6-finished");
+      if (finishedPanel?.parentElement) finishedPanel.after(panel);
+      else pane.querySelector(".hw-hub-v6-section")?.appendChild(panel);
+    }
+  }
+
+  function renderSubmittedNotes() {
+    ensureSubmittedControl();
+    const panel = document.getElementById("hw-hub-v6-submitted");
+    const btn = document.getElementById("hw-hub-v6-review-submitted");
+    if (btn) btn.setAttribute("aria-expanded", submittedOpen ? "true" : "false");
+    if (!panel) return;
+    panel.hidden = !submittedOpen;
+    if (!submittedOpen) return;
+
+    panel.replaceChildren();
+    const rows = reviewArchive
+      .filter((e) => !isMediaSubmission(e) && e.type === "online")
+      .filter((e) => {
+        const st = reviewStatus(e);
+        return st === "reviewed" || st === "acknowledged";
+      })
+      .slice()
+      .sort((a, b) =>
+        String(b.teacherNotesSubmittedAt || b.reviewedAt || "").localeCompare(
+          String(a.teacherNotesSubmittedAt || a.reviewedAt || "")
+        )
+      )
+      .slice(0, 30);
+
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v6-finished__empty";
+      empty.textContent = "No notes sent yet.";
+      panel.appendChild(empty);
+      return;
+    }
+
+    const lead = document.createElement("p");
+    lead.className = "hw-hub-v6-finished__none";
+    lead.textContent =
+      "Notes you already sent. Check opens the sheet — press Submit notes there to send them again.";
+    panel.appendChild(lead);
+
+    const ul = document.createElement("ul");
+    ul.className = "hw-hub-v6-submitted__list";
+    rows.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "hw-hub-v6-submitted__row";
+      const who = entry.displayName || entry.username || "Student";
+      const lesson = entry.lessonName || entry.title || entry.assignmentId || "Homework";
+      const sentAt = entry.teacherNotesSubmittedAt || entry.reviewedAt || "";
+      const when = sentAt
+        ? new Date(sentAt).toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : "";
+      const notes = (Array.isArray(entry.comments) ? entry.comments : []).filter(
+        (c) => c && c.author === "teacher" && (String(c.text || "").trim() || c.teacherRemarkMedia)
+      ).length;
+      const marks = Object.values(entry.questionMarks || {});
+      const good = marks.filter((m) => m === "correct").length;
+      const bad = marks.filter((m) => m === "wrong").length;
+      const info = document.createElement("span");
+      info.className = "hw-hub-v6-submitted__info";
+      info.textContent =
+        who +
+        " — " +
+        lesson +
+        " · " +
+        (when ? when + " · " : "") +
+        notes +
+        (notes === 1 ? " note" : " notes") +
+        (marks.length ? " · \u2713" + good + " \u2717" + bad : "") +
+        (reviewStatus(entry) === "acknowledged" ? " · student finished" : "");
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "btn btn--ghost btn--sm";
+      open.textContent = "Check / resubmit";
+      open.addEventListener("click", () => {
+        if (global.HwTeacherReview?.openOnlineSubmission) {
+          void global.HwTeacherReview.openOnlineSubmission(entry);
+        } else {
+          global.HwToast?.show?.("Full sheet review isn’t loaded — hard-refresh.");
+        }
+      });
+      li.appendChild(info);
+      li.appendChild(open);
+      ul.appendChild(li);
+    });
+    panel.appendChild(ul);
   }
 
   function ensureHwNotesDeleteControls() {
@@ -1526,8 +1893,8 @@
       shot.className = "hw-hub-v6__report-shot";
       shot.alt = "Bug report screenshot";
       const teacher = String(
-        global.HwAuth?.getSession?.()?.username ||
-          global.HwAuth?.getTeacherSession?.()?.username ||
+        global.HwAuth?.getTeacherSession?.()?.username ||
+          global.HwAuth?.getSession?.()?.username ||
           "jlm"
       );
       shot.src =
@@ -1565,28 +1932,8 @@
   }
 
   async function openNoteTarget(note) {
-    if (note.submission?.type === "online") {
-      if (global.HwTeacherReview?.openOnlineSubmission) {
-        await global.HwTeacherReview.openOnlineSubmission(note.submission);
-        return;
-      }
-      /* Fallback: open Submissions with this student filtered if review API missing. */
-      activateV6Tab("students");
-      const fold = document.getElementById("hw-hub-v6-fold-submissions");
-      if (fold) fold.open = true;
-      const studentFilter = document.getElementById("hw-submissions-student");
-      if (studentFilter && note.submission.username) {
-        studentFilter.value = String(note.submission.username);
-        studentFilter.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-      global.HwToast?.show?.("Open Review / View submission under Submissions.");
-      return;
-    }
     if (note.submission) {
-      activateV6Tab("students");
-      const fold = document.getElementById("hw-hub-v6-fold-submissions");
-      if (fold) fold.open = true;
-      global.HwToast?.show?.("Opened Submissions under Student/Email List.");
+      await openReviewLikeSubmissions(note.submission);
       return;
     }
     if (note.promo) {
@@ -1862,13 +2209,15 @@
       "hwnotes",
       '<section class="hw-hub-v6-section">' +
         '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
-        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the same full-sheet review as Submissions → Open full sheet.</p>' +
+        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the full homework sheet.</p>' +
         '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
         '<div class="hw-hub-v6-review-actions">' +
         '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="hw-hub-v6-finished-pill" id="hw-hub-v6-review-finished" aria-expanded="false">Finished HW</button>' +
         '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-hub-v6-review-delete" disabled>Delete</button>' +
         '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
         "</div>" +
+        '<div class="hw-hub-v6-finished" id="hw-hub-v6-finished" hidden></div>' +
         '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
         "</section>"
     );
@@ -1920,6 +2269,8 @@
         '<div class="hw-hub-v6-mount" data-v6-mount="lookup-lexicon"></div>' +
         "</details>"
     );
+
+    pane("missionary", '<div class="hw-hub-v6-mount" data-v6-mount="missionary"></div>');
 
     pane("hubpreview", '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>');
   }
@@ -2053,13 +2404,15 @@
       "HW Notes",
       '<section class="hw-hub-v6-section">' +
         '<h3 class="hw-hub-v6-section__title">Homework notes</h3>' +
-        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the same full-sheet review as Submissions → Open full sheet.</p>' +
+        '<p class="hw-hub-v6-pane-lead">Pick a waiting submission, then Start deck — opens the full homework sheet.</p>' +
         '<p class="hw-hub-v6-review-summary" id="hw-hub-v6-review-summary" aria-live="polite">Loading…</p>' +
         '<div class="hw-hub-v6-review-actions">' +
         '<button type="button" class="btn btn--primary" id="hw-hub-v6-review-start" disabled>Start deck</button>' +
+        '<button type="button" class="hw-hub-v6-finished-pill" id="hw-hub-v6-review-finished" aria-expanded="false">Finished HW</button>' +
         '<button type="button" class="btn btn--ghost btn--sm hw-btn--danger" id="hw-hub-v6-review-delete" disabled>Delete</button>' +
         '<button type="button" class="btn btn--ghost btn--sm" id="hw-hub-v6-review-refresh">Refresh</button>' +
         "</div>" +
+        '<div class="hw-hub-v6-finished" id="hw-hub-v6-finished" hidden></div>' +
         '<ul class="hw-hub-v6-review-list" id="hw-hub-v6-review-list"></ul>' +
         "</section>",
       "review"
@@ -2084,6 +2437,12 @@
       "hubpreview",
       "Hub Preview",
       '<div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>'
+    );
+    ensureTabAndPane(
+      "missionary",
+      "Missionary",
+      '<div class="hw-hub-v6-mount" data-v6-mount="missionary"></div>',
+      "ideas"
     );
     const makerPane = document.getElementById("hw-hub-v6-pane-maker");
     if (makerPane && !document.getElementById("hw-hub-v6-fold-library")) {
@@ -2175,6 +2534,8 @@
   global.HwHubV6 = {
     init,
     refresh,
+    refreshReviewDeck,
+    releaseSubmittedNotesDeck,
     onTabActivated,
     enabled,
     releaseMounts,

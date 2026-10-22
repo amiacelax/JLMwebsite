@@ -460,7 +460,16 @@
 
     function stopRecording() {
       if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
+        if (global.HwCompat?.flushRecorder) global.HwCompat.flushRecorder(mediaRecorder);
+        else {
+          try {
+            mediaRecorder.stop();
+          } catch (_) {
+            finishRecording();
+          }
+        }
+      } else if (recordedChunks.length && !recordedBlob) {
+        finishRecording();
       }
       stopTimer();
     }
@@ -545,11 +554,10 @@
         };
         mediaRecorder.onstop = finishRecording;
         mediaRecorder.onerror = () => {
-          setStatus("Recording error — try again.", "error");
-          resetUi();
+          stopRecording();
         };
 
-        mediaRecorder.start(1000);
+        mediaRecorder.start(250);
         recordStartedAt = Date.now();
         showLive();
         const timerTarget = activeTimerEl();
@@ -652,6 +660,10 @@
 
     mount.querySelector(".hw-video-inline__start")?.addEventListener("click", startRecording);
     mount.querySelector(".hw-video-inline__stop")?.addEventListener("click", stopRecording);
+    global.HwCompat?.bindRecordingSurvive?.(mount, {
+      isLive: () => !!(mediaRecorder && mediaRecorder.state === "recording"),
+      flush: () => stopRecording(),
+    });
     mount.querySelector(".hw-video-inline__cancel")?.addEventListener("click", () => {
       stopRecording();
       resetUi();

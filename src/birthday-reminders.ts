@@ -4,8 +4,9 @@ import {
   formatBirthdayLabel,
   getJstYmd,
 } from "./student-birthdays";
+import { resolveRoutedWebhook, type DiscordRouteEnv } from "./discord-channels";
 
-interface BirthdayEnv {
+interface BirthdayEnv extends DiscordRouteEnv {
   HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
   DISCORD_CHANNEL_ID?: string;
@@ -71,15 +72,16 @@ async function postDiscordBirthday(
 }
 
 export async function runBirthdayReminders(env: BirthdayEnv): Promise<void> {
-  const webhookUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
+  const hook = await resolveRoutedWebhook(env, "hw");
+  const webhookUrl = hook?.url ?? null;
   if (!webhookUrl) {
-    console.error("birthday-reminders: DISCORD_WEBHOOK_URL not configured");
+    console.error("birthday-reminders: no Discord webhook configured");
     return;
   }
 
   const channelError = await getWebhookChannelMismatch(
     webhookUrl,
-    env.DISCORD_CHANNEL_ID
+    hook?.channelId
   );
   if (channelError) {
     console.error("birthday-reminders:", channelError);

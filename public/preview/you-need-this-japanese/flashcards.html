@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#0b162a">
+  <title>Core Japanese flashcards — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@400;600&family=Noto+Sans+JP:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg-2: #121f36;
+      --ink: #e8edf5;
+      --muted: #9aa8bd;
+      --line: rgba(232, 237, 245, 0.14);
+      --day: #67c4eb;
+      --teal: #3dbaa8;
+      --sun: #f0b429;
+      --font: Inter, "Noto Sans JP", system-ui, sans-serif;
+      --brand: "Josefin Sans", Inter, sans-serif;
+      --jp: "Noto Sans JP", Inter, sans-serif;
+      --pad: clamp(1rem, 4vw, 1.5rem);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 40% at 100% 0%, rgba(103, 196, 235, 0.18), transparent 50%),
+        var(--bg);
+      color-scheme: dark;
+    }
+    .shell { max-width: 40rem; margin: 0 auto; padding: var(--pad); min-height: 100%; display: flex; flex-direction: column; }
+    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.8rem; }
+    .brand { margin: 0; font-family: var(--brand); letter-spacing: 0.04em; color: var(--day); font-size: 0.92rem; }
+    .back { color: var(--muted); font-size: 0.92rem; }
+    h1 { margin: 0.35rem 0 0.6rem; font-family: var(--brand); font-weight: 600; font-size: 1.55rem; }
+    .sets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+    .sets button {
+      font: inherit;
+      color: var(--ink);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+      cursor: pointer;
+    }
+    .sets button.is-on { border-color: var(--day); color: var(--day); }
+    .stage { flex: 1; display: flex; flex-direction: column; gap: 0.75rem; }
+    .card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: color-mix(in srgb, var(--bg-2) 92%, white);
+      border: 1px solid var(--line);
+      border-radius: 1.2rem;
+      padding: 0.9rem 0.9rem 1.1rem;
+      cursor: pointer;
+      min-height: 22rem;
+    }
+    .pic-wrap {
+      width: min(100%, 22rem);
+      aspect-ratio: 1;
+      background: #f7f4ee;
+      border-radius: 1rem;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .pic-wrap img { width: 86%; height: 86%; object-fit: contain; }
+    .num {
+      position: absolute;
+      right: 0.7rem;
+      bottom: 0.35rem;
+      font-family: var(--brand);
+      font-size: 4.2rem;
+      line-height: 1;
+      color: #1d3d73;
+      text-shadow: 0 2px 0 rgba(255,255,255,0.65);
+    }
+    .jp { font-family: var(--jp); font-weight: 700; font-size: clamp(1.7rem, 6vw, 2.3rem); margin: 0.85rem 0 0.25rem; }
+    .en { margin: 0; color: var(--muted); min-height: 1.4em; font-size: 1.05rem; }
+    .card.is-hidden .en { visibility: hidden; }
+    .hint { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.82rem; }
+    .nav { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+    .nav button {
+      flex: 1;
+      font: inherit;
+      font-weight: 650;
+      font-size: 1.05rem;
+      padding: 0.85rem 0.5rem;
+      border-radius: 0.9rem;
+      border: 1px solid var(--line);
+      background: var(--bg-2);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .nav .next { background: color-mix(in srgb, var(--day) 22%, var(--bg-2)); border-color: color-mix(in srgb, var(--day) 55%, var(--line)); }
+    .prog { text-align: center; color: var(--muted); margin: 0.55rem 0 0; font-size: 0.9rem; }
+    .foot { margin: 1rem 0 0.4rem; color: var(--muted); font-size: 0.8rem; }
+    .foot a { color: var(--day); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top">
+      <p class="brand">Japanese Language Mentor</p>
+      <a class="back" href="index.html">Word list</a>
+    </div>
+    <h1>Flashcards</h1>
+    <div class="sets" id="sets"></div>
+    <div class="stage">
+      <button type="button" class="card is-hidden" id="card">
+        <div class="pic-wrap">
+          <img id="pic" alt="">
+          <span class="num" id="num" hidden></span>
+        </div>
+        <p class="jp" id="jp" lang="ja"></p>
+        <p class="en" id="en"></p>
+        <p class="hint" id="hint">Tap the card for English</p>
+      </button>
+      <div class="nav">
+        <button type="button" id="prev">Back</button>
+        <button type="button" class="next" id="next">Next</button>
+      </div>
+      <p class="prog" id="prog"></p>
+    </div>
+    <p class="foot">Pictures: <a href="https://www.irasutoya.com/" target="_blank" rel="noopener noreferrer">いらすとや</a>. Dates share a calendar. The number on the card is the day.</p>
+  </div>
+  <script>
+    var DATA = {"sets":[{"id":1,"topic":"Time","cards":[{"jp":"一昨日（おととい）","en":"day before yesterday (two days ago)","img":"calendar","num":""},{"jp":"昨日 (きのう)","en":"yesterday","img":"calendar","num":""},{"jp":"今日 (きょう)","en":"today","img":"calendar","num":""},{"jp":"明日 (あした)","en":"tomorrow","img":"calendar","num":""},{"jp":"明後日（あさって）","en":"day after tomorrow (in two days)","img":"calendar","num":""},{"jp":"先々週（せんせんしゅう）","en":"last last week (two weeks ago)","img":"week","num":""},{"jp":"先週（せんしゅう）","en":"last week","img":"week","num":""},{"jp":"今週 (こんしゅう)","en":"this week","img":"week","num":""},{"jp":"来週（らいしゅう）","en":"next week","img":"week","num":""},{"jp":"再来週（さらいしゅう）","en":"next next week (in two weeks)","img":"week","num":""},{"jp":"先々月（せんせんげつ）","en":"last last month (two months ago)","img":"calendar","num":""},{"jp":"先月（せんげつ）","en":"last month","img":"calendar","num":""},{"jp":"今月 (こんげつ)","en":"this month","img":"calendar","num":""},{"jp":"来月（らいげつ）","en":"next month","img":"calendar","num":""},{"jp":"再来月（さらいげつ）","en":"next next month (in two months)","img":"calendar","num":""},{"jp":"一昨年（おととし）","en":"year before last (two years ago)","img":"calendar","num":""},{"jp":"去年（きょねん）","en":"last year","img":"calendar","num":""},{"jp":"今年 (ことし)","en":"this year","img":"calendar","num":""},{"jp":"来年 (らいねん)","en":"next year","img":"calendar","num":""},{"jp":"再来年（さらいねん）","en":"next next year (in two years)","img":"calendar","num":""},{"jp":"平日（へいじつ）","en":"weekday(s)","img":"week","num":""},{"jp":"週末 (しゅうまつ)","en":"weekend","img":"week","num":""},{"jp":"8ヶ月前（はちかげつまえ）","en":"8 months ago · (Amount of time) ＋ ～前（まえ）","img":"calendar","num":""},{"jp":"2年前（にねんまえ）","en":"2 years ago · (Amount of time) ＋ ～前（まえ）","img":"calendar","num":""},{"jp":"3週間前（さんしゅうかんまえ）","en":"3 weeks ago · (Amount of time) ＋ ～前（まえ）","img":"week","num":""},{"jp":"一週間（いっしゅうかん）","en":"one week (amount of time)","img":"week","num":""},{"jp":"1分","en":"1 minute · いっぷん","img":"clock","num":""},{"jp":"2分","en":"2 minutes · にふん","img":"clock","num":""},{"jp":"3分","en":"3 minutes · さんぷん","img":"clock","num":""},{"jp":"4分","en":"4 minutes · よんふん or よんぷん","img":"clock","num":""},{"jp":"5分","en":"5 minutes · ごふん","img":"clock","num":""},{"jp":"6分","en":"6 minutes · ろっぷん","img":"clock","num":""},{"jp":"7分","en":"7 minutes · ななふん","img":"clock","num":""},{"jp":"8分","en":"8 minutes · はっぷん","img":"clock","num":""},{"jp":"9分","en":"9 minutes · きゅうふん","img":"clock","num":""},{"jp":"10分","en":"10 minutes · じゅっぷん","img":"clock","num":""},{"jp":"5分後に （ごふんご）","en":"in 5 minutes · (Amount of time) ＋ ～後に（ご）","img":"clock","num":""},{"jp":"毎日 (まいにち)","en":"every day","img":"calendar","num":""},{"jp":"毎週 (まいしゅう)","en":"every week","img":"week","num":""},{"jp":"毎月 (まいつき)","en":"every month","img":"calendar","num":""},{"jp":"毎年 (まいとし)","en":"every year","img":"calendar","num":""},{"jp":"今朝 (けさ)","en":"this morning","img":"morning","num":""}]},{"id":2,"topic":"Month dates","cards":[{"jp":"1日","en":"ついたち","img":"calendar","num":"1"},{"jp":"2日","en":"ふつか","img":"calendar","num":"2"},{"jp":"3日","en":"みっか","img":"calendar","num":"3"},{"jp":"4日","en":"よっか","img":"calendar","num":"4"},{"jp":"5日","en":"いつか","img":"calendar","num":"5"},{"jp":"6日","en":"むいか","img":"calendar","num":"6"},{"jp":"7日","en":"なのか","img":"calendar","num":"7"},{"jp":"8日","en":"ようか","img":"calendar","num":"8"},{"jp":"9日","en":"ここのか","img":"calendar","num":"9"},{"jp":"10日","en":"とおか","img":"calendar","num":"10"},{"jp":"11日","en":"じゅういちにち","img":"calendar","num":"11"},{"jp":"12日","en":"じゅうににち","img":"calendar","num":"12"},{"jp":"13日","en":"じゅうさんにち","img":"calendar","num":"13"},{"jp":"14日","en":"じゅうよっか","img":"calendar","num":"14"},{"jp":"15日","en":"じゅうごにち","img":"calendar","num":"15"},{"jp":"16日","en":"じゅうろくにち","img":"calendar","num":"16"},{"jp":"17日","en":"じゅうななにち · or · じゅうしちにち","img":"calendar","num":"17"},{"jp":"18日","en":"じゅうはちにち","img":"calendar","num":"18"},{"jp":"19日","en":"じゅうくにち · く not きゅう","img":"calendar","num":"19"},{"jp":"20日","en":"はつか","img":"calendar","num":"20"},{"jp":"21日","en":"にじゅういちにち","img":"calendar","num":"21"},{"jp":"22日","en":"にじゅうににち","img":"calendar","num":"22"},{"jp":"23日","en":"にじゅうさんにち","img":"calendar","num":"23"},{"jp":"24日","en":"にじゅうよっか","img":"calendar","num":"24"},{"jp":"25日","en":"にじゅうごにち","img":"calendar","num":"25"},{"jp":"26日","en":"にじゅうろくにち","img":"calendar","num":"26"},{"jp":"27日","en":"にじゅうななにち · or · にじゅうしちにち","img":"calendar","num":"27"},{"jp":"28日","en":"にじゅうはちにち","img":"calendar","num":"28"},{"jp":"29日","en":"にじゅうくにち · not きゅうにち","img":"calendar","num":"29"},{"jp":"30日","en":"さんじゅうにち","img":"calendar","num":"30"},{"jp":"31日","en":"さんじゅういちにち","img":"calendar","num":"31"}]},{"id":3,"topic":"When","cards":[{"jp":"今（いま）","en":"now, right now","img":"clock","num":""},{"jp":"さっき","en":"just now, a second/minute ago","img":"clock","num":""},{"jp":"先に （さき）","en":"Before (e.g. ahead of time), beforehand","img":"clock","num":""},{"jp":"あとで","en":"Later · (used at the beginning of a sentence)","img":"arrow","num":""},{"jp":"あとは","en":"After","img":"arrow","num":""},{"jp":"～とき、～のとき ～時、～の時","en":"when (i.e. when I went to Japan) · [often followed by に]","img":"clock","num":""},{"jp":"まだ","en":"まだ = Not yet · まだ見てない = Haven't seen [it] yet. · まだいる？ = You still there? (at the cafe etc.)\"","img":"clock","num":""},{"jp":"もう","en":"Already, anymore · もう見た = Already saw [it]. · もういない？ = You not there anymore? (at the cafe etc.)","img":"clock","num":""},{"jp":"また","en":"Again · また話しましょう Let's talk again sometime.","img":"clock","num":""},{"jp":"から まで","en":"from · [から/だから can also mean because] · until · [までに means \"by\"]","img":"arrow","num":""},{"jp":"までに","en":"by (by 5:00PM)","img":"arrow","num":""},{"jp":"これから","en":"From now on · \"About to\" (used when you're about to start doing something)","img":"arrow","num":""},{"jp":"それから","en":"Since then, after that","img":"arrow","num":""},{"jp":"もうすぐ","en":"Almost","img":"clock","num":""},{"jp":"～前（まえ）、～の前（まえ）","en":"Before · \"Before I went to Japan...\" · 日本に行く前...（にほんにいくまえ）\" · [Often followed by に]","img":"arrow","num":""},{"jp":"～あと、～のあと","en":"After (i.e. After I said that, I left.) · [often followed by は or に]","img":"arrow","num":""},{"jp":"次（つぎ）","en":"Next · [often followed by に or は]","img":"arrow","num":""},{"jp":"今度(こんど)","en":"Next time, this time (yeah I know it doesn't make sense)","img":"clock","num":""},{"jp":"一回・1回（いっかい）","en":"Once, one time","img":"calendar","num":""},{"jp":"今回(こんかい)","en":"This time","img":"clock","num":""},{"jp":"前回（ぜんかい）","en":"Last time","img":"calendar","num":""},{"jp":"最近 (さいきん)","en":"Recently, lately, as of late","img":"clock","num":""},{"jp":"最初（さいしょ）","en":"Beginning, first · 最初の漢字（さいしょのかんじ） · \"The first kanji\"","img":"clock","num":""},{"jp":"最後(さいご)","en":"End, last · 最後の言葉（さいごのことば） · \"The last word\"","img":"clock","num":""},{"jp":"初めて(はじめて)","en":"First time, first (experience) · 初めての時（はじめてのとき） · \"When it's your first time...\" · 初めて見た（はじめてみた） · \"First time I've ever seen it\"","img":"clock","num":""},{"jp":"結局(けっきょく)","en":"Eventually, in the end, after all","img":"clock","num":""},{"jp":"すぐに","en":"Immediately, right away","img":"clock","num":""},{"jp":"たまに","en":"Sometimes, ocassionally","img":"clock","num":""},{"jp":"最初らへん（さいしょらへん）","en":"Towards the beginning","img":"clock","num":""},{"jp":"最後らへん（さいごらへん）","en":"Towards the end","img":"clock","num":""},{"jp":"やっと","en":"Finally (i.e. I finally did it!)","img":"clock","num":""},{"jp":"いつ","en":"when","img":"clock","num":""},{"jp":"いつか","en":"One day, someday, eventually (in the future)","img":"clock","num":""},{"jp":"いつも","en":"Always","img":"clock","num":""},{"jp":"将来（しょうらい）","en":"Future (in your lifetime)","img":"calendar","num":""},{"jp":"何年（なんねん）？","en":"What year?","img":"calendar","num":""},{"jp":"何月（なんがつ）？","en":"What month?","img":"calendar","num":""},{"jp":"何曜日（なんようび）？","en":"What day? (of the week)","img":"calendar","num":""},{"jp":"何日（なんにち）？","en":"What day? (date)","img":"calendar","num":""},{"jp":"とりあえず","en":"For now, meanwhile, in the mean time","img":"clock","num":""},{"jp":"とにかく","en":"at any rate, anyhow, anyway","img":"clock","num":""},{"jp":"たまたま","en":"by chance","img":"clock","num":""},{"jp":"よく","en":"often, well · よく歩いてた（あるいてた） · \"I walked often\" · よく食べるね！ · \"You eat a lot!\"","img":"clock","num":""},{"jp":"あまり","en":"not really, not much, not that much","img":"clock","num":""},{"jp":"昔は (むかし)","en":"long time ago, forever ago, way back when · 昔はよく行ってた(むかしはよくいってた) · \"I used to go there all the time\"","img":"calendar","num":""}]},{"id":4,"topic":"How much","cards":[{"jp":"全部 (ぜんぶ)","en":"everything, all","img":"crowd","num":""},{"jp":"全然 (ぜんぜん)","en":"not at all, used with ～ない ending (全然いい, 全然大丈夫 exception)","img":"crowd","num":""},{"jp":"ただ","en":"just, free (cost)","img":"money","num":""},{"jp":"だけ","en":"only, just","img":"box","num":""},{"jp":"もうちょっと","en":"a little more","img":"box","num":""},{"jp":"もう一つ（ひとつ）","en":"one more (thing)","img":"crowd","num":""},{"jp":"ちょっとだけ","en":"a little bit, some","img":"box","num":""},{"jp":"一人で (ひとり)","en":"by yourself/myself/one's self","img":"alone","num":""},{"jp":"それだけ","en":"that's all/it","img":"box","num":""},{"jp":"これだけ","en":"this is all/it","img":"box","num":""},{"jp":"好きなだけ","en":"as much as you like/want","img":"heart","num":""},{"jp":"もっと","en":"more","img":"box","num":""},{"jp":"一番 (いちばん)","en":"#1, most","img":"box","num":""},{"jp":"一番好き (いちばん)(す) 一番好きな (いちばん)(す)","en":"favorite","img":"heart","num":""},{"jp":"たくさん","en":"a lot, many","img":"crowd","num":""},{"jp":"いっぱい","en":"a lot, many","img":"crowd","num":""},{"jp":"結構（けっこう）","en":"pretty, quite","img":"crowd","num":""},{"jp":"だいたい","en":"usually, generally","img":"crowd","num":""},{"jp":"ほとんど","en":"majority, almost all","img":"crowd","num":""},{"jp":"ほぼ","en":"majority, almost all","img":"crowd","num":""},{"jp":"ぐらい・くらい","en":"about (i.e. about 4 weeks)","img":"box","num":""},{"jp":"どれぐらい","en":"How much?","img":"box","num":""},{"jp":"どのぐらい","en":"How much?","img":"box","num":""},{"jp":"いくら","en":"How much? (price)","img":"money","num":""},{"jp":"もっとも","en":"Most (absolute most)","img":"box","num":""},{"jp":"全員（ぜんいん）","en":"Everyone","img":"crowd","num":""},{"jp":"少しずつ","en":"bit by bit, gradually","img":"crowd","num":""},{"jp":"部分","en":"part, piece, section","img":"crowd","num":""}]},{"id":5,"topic":"Connectors","cards":[{"jp":"同じ (おなじ)","en":"same (i.e. 同じ人 same person)","img":"crowd","num":""},{"jp":"絶対(ぜったい)","en":"definitely (i.e. 絶対行く I'm DEFINITELY going)","img":"speech","num":""},{"jp":"是非 (ぜひ)","en":"please (i.e. ぜひ来てください please come)","img":"speech","num":""},{"jp":"まあまあ","en":"kind of, so-so","img":"speech","num":""},{"jp":"ずっと","en":"forever, long way, long time","img":"speech","num":""},{"jp":"でも","en":"But (beginning of sentence)","img":"speech","num":""},{"jp":"けど","en":"but (middle of sentence)","img":"speech","num":""},{"jp":"じゃあ","en":"So...Okay...Alright, so...","img":"speech","num":""},{"jp":"では","en":"So...Okay...Alright, so... (sometimes used like 好きではない \"I don't necessarily like it\"","img":"speech","num":""},{"jp":"あのー","en":"Uhh..","img":"question","num":""},{"jp":"えっと","en":"Let's see, uhh","img":"speech","num":""},{"jp":"えー！","en":"Whaaa!","img":"speech","num":""},{"jp":"へえ","en":"Interesting...","img":"speech","num":""},{"jp":"～から、～だから","en":"because","img":"speech","num":""},{"jp":"そして・そんで","en":"Then,","img":"speech","num":""},{"jp":"そしたら","en":"And then, in that case,","img":"speech","num":""},{"jp":"それでも","en":"Even still, even then","img":"question","num":""},{"jp":"ただで","en":"for free","img":"speech","num":""},{"jp":"もし","en":"if (needs follow up grammar ～れば、～たら、～なら)","img":"speech","num":""},{"jp":"しかも、","en":"More than that,/On top of that, Plus","img":"speech","num":""},{"jp":"たぶん","en":"Probably","img":"speech","num":""},{"jp":"本当の・に (ほんとう)","en":"Real, true・Really","img":"speech","num":""},{"jp":"必ず（かなら）","en":"definitely, for sure","img":"speech","num":""},{"jp":"残念（ざんねん） 残念な","en":"Unfortunate, bummer","img":"sad","num":""},{"jp":"大変（たいへん） 大変な","en":"Hard, tough, rough, (emotionally)","img":"busy","num":""},{"jp":"正直（しょうじき） 正直な","en":"Honest, (i.e.","img":"speech","num":""},{"jp":"別（べつ） 別の・別に","en":"Different/Other (i.e. 別の日にしましょう Let's do a different day)","img":"speech","num":""},{"jp":"～かもしれない ～かも","en":"maybe (goes at end of sentence)","img":"speech","num":""},{"jp":"だれ","en":"who","img":"speech","num":""},{"jp":"なに・なんの","en":"want, which","img":"question","num":""},{"jp":"どれ","en":"which? (more than 2 subjects)","img":"question","num":""},{"jp":"どっち","en":"which one? (two subjects)","img":"question","num":""},{"jp":"どこ","en":"where","img":"map","num":""},{"jp":"なんで・なぜ・どうして","en":"why","img":"question","num":""},{"jp":"どう","en":"how (extremely wide range of uses)","img":"question","num":""},{"jp":"どうやって","en":"how (i.e. how did you do that?)","img":"question","num":""},{"jp":"この","en":"this (i.e. this person この人)","img":"question","num":""},{"jp":"その","en":"that","img":"question","num":""},{"jp":"あの","en":"that over there","img":"question","num":""},{"jp":"これ","en":"this (i.e. eat this)","img":"question","num":""},{"jp":"それ","en":"that","img":"question","num":""},{"jp":"あれ","en":"that over there","img":"question","num":""},{"jp":"倍（ばい）","en":"2倍だよ · \"It's double that\"","img":"money","num":""},{"jp":"他(ほか) 他に・他は・他の","en":"other, the other one(s)/stuff","img":"crowd","num":""},{"jp":"全体的（ぜんたいてき） 全体的に","en":"overall, altogether","img":"speech","num":""}]},{"id":6,"topic":"Adjectives","cards":[{"jp":"いい (sometimes よい)","en":"Good, nice, well, \"I like that\" \"I'm glad\"","img":"happy","num":""},{"jp":"大きい (おお)","en":"Big","img":"big","num":""},{"jp":"小さい （ちい）","en":"Small","img":"child","num":""},{"jp":"でかい","en":"Huge","img":"big","num":""},{"jp":"ちっちゃい","en":"Tiny","img":"child","num":""},{"jp":"おもしろい","en":"Interesting, fun, funny","img":"happy","num":""},{"jp":"嬉しい （うれ）","en":"Happy, glad","img":"happy","num":""},{"jp":"悲しい（かな）","en":"Sad","img":"sad","num":""},{"jp":"優しい（やさ）","en":"Kind, gentle","img":"kind","num":""},{"jp":"高い（たか）","en":"Expensive, tall","img":"building","num":""},{"jp":"低い（ひく）","en":"Low (height, amount)","img":"child","num":""},{"jp":"安い（やす）","en":"Cheap","img":"sale","num":""},{"jp":"長い（なが）","en":"Long","img":"arrow","num":""},{"jp":"短い（みじか）","en":"Short","img":"arrow","num":""},{"jp":"薄い（うす）","en":"Thin","img":"arrow","num":""},{"jp":"近い（ちか）","en":"Close","img":"happy","num":""},{"jp":"親しい（した）","en":"Close (someone you know well)","img":"happy","num":""},{"jp":"遠い（とお）","en":"Far","img":"map","num":""},{"jp":"多い（おお）","en":"A lot, many","img":"crowd","num":""},{"jp":"少ない（すく）","en":"Not a lot, little (amount)","img":"alone","num":""},{"jp":"早い/速い（はや）","en":"Early/Fast (speed)","img":"run","num":""},{"jp":"遅い（おそ）","en":"Late, slow","img":"turtle","num":""},{"jp":"難しい（むずか）","en":"Hard, difficult, tough","img":"think","num":""},{"jp":"新しい（あたら）","en":"New, different","img":"gift","num":""},{"jp":"古い（ふる）","en":"Old (not for people)","img":"oldhouse","num":""},{"jp":"珍しい（めずら）","en":"Rare (used a lot)","img":"question","num":""},{"jp":"うまい","en":"Good (skill, food)","img":"food","num":""},{"jp":"おいしい","en":"Delicious (\"tastes good\")","img":"food","num":""},{"jp":"強い（つよ）","en":"Strong","img":"muscle","num":""},{"jp":"弱い（よわ）","en":"Weak","img":"pain","num":""},{"jp":"楽しい（たの）","en":"Fun","img":"happy","num":""},{"jp":"つまらない","en":"Boring","img":"sad","num":""},{"jp":"忙しい（いそが）","en":"Busy","img":"busy","num":""},{"jp":"めんどくさい","en":"\"Pain in the butt\" (troublesome/bothersome)","img":"think","num":""},{"jp":"懐かしい（なつ）","en":"Nostalgic (used a lot in Japanese)","img":"oldhouse","num":""},{"jp":"熱い（あつ） 暑い（あつ） 厚い（あつ）","en":"hot (temperature) · hot (weather) · thick","img":"hotdrink","num":""},{"jp":"あたたかい","en":"Warm","img":"sun","num":""},{"jp":"寒い（さむ）","en":"Cold (how you feel/weather)","img":"cold","num":""},{"jp":"冷たい（つめ）","en":"Cold (to the touch)","img":"ice","num":""},{"jp":"涼しい（すず）","en":"Cool (temperature)","img":"morning","num":""},{"jp":"正しい（ただ）","en":"Correct","img":"happy","num":""},{"jp":"丸い（まる）","en":"Round","img":"ball","num":""},{"jp":"汚い（きたな）","en":"Dirty","img":"trash","num":""},{"jp":"かわいい","en":"Cute","img":"cute","num":""},{"jp":"恥ずかしい（は）","en":"Embarrassed, shy","img":"happy","num":""},{"jp":"若い（わか）","en":"Young","img":"child","num":""},{"jp":"怖い（こわ）","en":"Scary","img":"scary","num":""},{"jp":"臭い（くさ）","en":"Stinky, smelly","img":"trash","num":""},{"jp":"痛い（いた）","en":"Painful, \"Ouch\"","img":"pain","num":""},{"jp":"偉い（えら）","en":"Important (person), \"Good job\" (to kids)","img":"kind","num":""},{"jp":"甘い（あま）","en":"sweet, naïve","img":"cake","num":""},{"jp":"辛い（から）","en":"spicy","img":"chili","num":""},{"jp":"すっぱい","en":"sour","img":"food","num":""},{"jp":"苦い（にが）","en":"bitter","img":"food","num":""},{"jp":"かたい","en":"Hard (hard object), overly polite","img":"box","num":""},{"jp":"柔らかい（やわ）","en":"Soft","img":"flower","num":""},{"jp":"貧しい（まず）","en":"Poor","img":"money","num":""},{"jp":"悪い（わる）","en":"bad, evil","img":"sad","num":""},{"jp":"ひどい","en":"awful, mean","img":"sad","num":""},{"jp":"すばらしい","en":"wonderful, amazing","img":"flower","num":""},{"jp":"重い（おも）","en":"Heavy","img":"box","num":""},{"jp":"軽い（かる）","en":"Light","img":"flower","num":""},{"jp":"ずるい","en":"Not fair","img":"think","num":""},{"jp":"危ない（あぶ）","en":"dangerous","img":"danger","num":""}]},{"id":7,"topic":"Verbs","cards":[{"jp":"ある (有る)","en":"be (inanimate objects), have, happen","img":"child","num":""},{"jp":"いる (居る)","en":"be (animate objects)","img":"child","num":""},{"jp":"いる (要る)","en":"to need/want (\"Want some coffee?\")","img":"child","num":""},{"jp":"食べる （たべる）","en":"eat","img":"eat","num":""},{"jp":"飲む (のむ)","en":"drink","img":"drink","num":""},{"jp":"送る (おくる)","en":"send","img":"talk","num":""},{"jp":"買う (かう)","en":"buy","img":"shop","num":""},{"jp":"見る (みる)","en":"look, watch","img":"tv","num":""},{"jp":"見せる (みせる)","en":"show","img":"tv","num":""},{"jp":"見える （みる）","en":"can see (visible/invisible)","img":"tv","num":""},{"jp":"書く （かく）","en":"write","img":"write","num":""},{"jp":"作る （つくる）","en":"make","img":"food","num":""},{"jp":"出る （でる）","en":"exit/come out, leave","img":"door","num":""},{"jp":"出す （だす）","en":"take out","img":"door","num":""},{"jp":"使う （つかう）","en":"use","img":"phone","num":""},{"jp":"合う （あう）","en":"\"line up\", match up, fit, be right (accurate)","img":"child","num":""},{"jp":"違う （ちがう）","en":"be different, \"No\", \"Not right\"","img":"question","num":""},{"jp":"会う （あう）","en":"meet","img":"child","num":""},{"jp":"行く （いく）","en":"go","img":"walk","num":""},{"jp":"来る （くる）","en":"come","img":"door","num":""},{"jp":"帰る （かえる）","en":"go home","img":"home","num":""},{"jp":"楽しむ （たのしむ）","en":"have fun, enjoy","img":"happy","num":""},{"jp":"選ぶ （えらぶ）","en":"choose, select","img":"think","num":""},{"jp":"変える （かえる）","en":"change","img":"arrow","num":""},{"jp":"わかる","en":"to understand","img":"think","num":""},{"jp":"知る （しる）","en":"to know","img":"think","num":""},{"jp":"感じる （かんじる）","en":"feel","img":"think","num":""},{"jp":"持つ （もつ）","en":"hold, have","img":"box","num":""},{"jp":"待つ （まつ）","en":"wait","img":"clock","num":""},{"jp":"続ける （つづける）","en":"continue","img":"arrow","num":""},{"jp":"話す （はなす）","en":"speak, talk","img":"speech","num":""},{"jp":"寝る （ねる）","en":"sleep","img":"sleep","num":""},{"jp":"起きる （おきる）","en":"wake up, occur","img":"wake","num":""},{"jp":"壊れる （こわれる）","en":"something break","img":"work","num":""},{"jp":"直す （なおす）","en":"fix","img":"work","num":""},{"jp":"あげる","en":"give","img":"gift","num":""},{"jp":"くれる","en":"receive as gift","img":"gift","num":""},{"jp":"もらう","en":"receive (inherited)","img":"gift","num":""},{"jp":"上がる (あがる)","en":"go up","img":"arrow","num":""},{"jp":"下がる (さがる)","en":"go down","img":"arrow","num":""},{"jp":"上げる (あげる)","en":"raise, make go up","img":"gift","num":""},{"jp":"下げる (さげる)","en":"lower, make go down","img":"arrow","num":""},{"jp":"借りる (かりる)","en":"rent, borrow","img":"money","num":""},{"jp":"習う (ならう)","en":"learn (skill)","img":"study","num":""},{"jp":"学ぶ (まなぶ)","en":"learn (apprehend, study, a lesson, in life)","img":"study","num":""},{"jp":"慣れる (なれる)","en":"get used to","img":"child","num":""},{"jp":"思い出す (おもいだす)","en":"recall","img":"think","num":""},{"jp":"覚える (おぼえる)","en":"remember, feel (rarely)","img":"think","num":""},{"jp":"教える (おしえる)","en":"teach, tell","img":"think","num":""},{"jp":"調べる (しらべる)","en":"look up (Google)","img":"think","num":""},{"jp":"忘れる (わすれる)","en":"forget","img":"think","num":""},{"jp":"始まる (はじまる)","en":"something begins","img":"wake","num":""},{"jp":"終わる (おわる)","en":"something ends","img":"goal","num":""},{"jp":"開ける (ひらける)","en":"open","img":"door","num":""},{"jp":"閉める (しめる)","en":"close","img":"door","num":""},{"jp":"入れる (いれる)","en":"put in","img":"door","num":""},{"jp":"入る (はいる)","en":"go in/fit","img":"door","num":""},{"jp":"勝つ (かつ)","en":"win (game)","img":"muscle","num":""},{"jp":"負ける (まける)","en":"lose (game)","img":"muscle","num":""},{"jp":"止まる (とまる)","en":"(something) stops","img":"danger","num":""},{"jp":"止める (とめる)","en":"stop","img":"danger","num":""},{"jp":"泊める (とめる)","en":"stay over (person's house)","img":"home","num":""},{"jp":"やめる","en":"quit","img":"danger","num":""},{"jp":"乗る (のる)","en":"ride","img":"train","num":""},{"jp":"降りる (おりる)","en":"get off/down/out (vehicle, object, etc.)","img":"train","num":""},{"jp":"座る (すわる)","en":"sit","img":"sit","num":""},{"jp":"触る (さわる)","en":"touch","img":"child","num":""},{"jp":"洗う (あらう)","en":"wash","img":"wash","num":""},{"jp":"切る (きる)","en":"cut","img":"knife","num":""},{"jp":"着る (きる)","en":"wear (torso/dress/kimono)","img":"child","num":""},{"jp":"脱ぐ (ぬぐ)","en":"take off (clothes)","img":"child","num":""},{"jp":"取る（とる）","en":"take","img":"child","num":""},{"jp":"やる","en":"do","img":"child","num":""},{"jp":"思う (おもう)","en":"think","img":"think","num":""},{"jp":"考える (かんがえる)","en":"think about/consider","img":"think","num":""},{"jp":"動く (うごく)","en":"something move","img":"arrow","num":""},{"jp":"歩く (あるく)","en":"walk","img":"walk","num":""},{"jp":"信じる (しんじる)","en":"believe","img":"child","num":""},{"jp":"泳ぐ (およぐ)","en":"swim","img":"swim","num":""},{"jp":"言う (いう)","en":"say (pronounced ゆう)","img":"speech","num":""},{"jp":"伝える (つたえる）","en":"tell/communicate","img":"speech","num":""},{"jp":"働く(はたらく）","en":"work (general)","img":"work","num":""},{"jp":"休む(やすむ）","en":"rest","img":"holiday","num":""},{"jp":"気づく（きづく）","en":"realize, notice","img":"child","num":""},{"jp":"置く（おく）","en":"place, put down","img":"phone","num":""},{"jp":"答える（こたえる）","en":"answer","img":"speech","num":""},{"jp":"困る（こまる）","en":"be troubled (past tense can mean \"Uh-oh\" \"Shoot\")","img":"think","num":""},{"jp":"連れていく（つれていく）","en":"take someone/pet along","img":"walk","num":""},{"jp":"歌う（うたう）","en":"sing (sometimes 歌を歌う)","img":"speech","num":""},{"jp":"押す（おす）","en":"push","img":"arrow","num":""},{"jp":"引く（ひく）","en":"pull","img":"arrow","num":""},{"jp":"育てる（そだてる）","en":"take care of, bring up, grow (child, plants, etc.)","img":"child","num":""},{"jp":"戻す（もどす）","en":"put something back","img":"arrow","num":""},{"jp":"片づける（かたづける）","en":"clean up, tidy up","img":"clean","num":""},{"jp":"付き合う（つきあう）","en":"spend time with someone, date someone","img":"talk","num":""},{"jp":"生きる（いきる）","en":"live (alive, life, etc.)","img":"sun","num":""},{"jp":"かかる","en":"cost, make up, take (time, money), other various uses","img":"money","num":""},{"jp":"間違える（まちがえる）","en":"make a mistake, mess up (past tense = I messed up)","img":"think","num":""},{"jp":"返す（かえす）","en":"return something","img":"gift","num":""},{"jp":"払う（はらう）","en":"to pay","img":"money","num":""}]},{"id":8,"topic":"Also","cards":[{"jp":"つまり","en":"in other words","img":"speech","num":""},{"jp":"例えば","en":"for example","img":"book","num":""},{"jp":"わざと","en":"on purpose","img":"think","num":""}]}],"files":{"calendar":"calendar.png","clock":"clock.png","morning":"morning.png","night":"night.jpg","week":"week.png","newyear":"newyear.png","holiday":"holiday.png","happy":"happy.png","sad":"sad.png","big":"big.png","cute":"cute.png","scary":"scary.png","hot":"hot.png","cold":"cold.png","hotdrink":"hotdrink.png","ice":"ice.png","food":"food.png","trash":"trash.png","ball":"ball.png","busy":"busy.png","oldhouse":"oldhouse.png","building":"building.png","sale":"sale.png","pricetag":"pricetag.png","run":"run.png","turtle":"turtle.png","pain":"pain.png","cake":"cake.png","chili":"chili.png","box":"box.png","feather":"feather.png","child":"child.png","elder":"elder.png","danger":"danger.png","kind":"kind.png","think":"think.png","crowd":"crowd.png","alone":"alone.png","money":"money.png","map":"map.png","speech":"speech.png","arrow":"arrow.png","question":"question.png","eat":"eat.png","drink":"drink.png","sleep":"sleep.png","wake":"wake.png","walk":"walk.png","swim":"swim.png","sing":"sing.png","write":"write.png","talk":"talk.png","shop":"shop.png","tv":"tv.png","wash":"wash.png","knife":"knife.png","sit":"sit.png","door":"door.png","train":"train.png","home":"home.png","heart":"heart.jpg","gift":"gift.png","book":"book.png","study":"study.png","work":"work.png","clean":"clean.png","rain":"rain.png","sun":"sun.png","phone":"phone.png","car":"car.png","hospital":"hospital.png","music":"music.jpg","muscle":"muscle.png","flower":"flower.png","goal":"goal.png"}};
+    var setId = 1;
+    var index = 0;
+    var open = false;
+    var params = new URLSearchParams(location.search);
+    if (params.get("set")) setId = Number(params.get("set")) || 1;
+
+    var setsEl = document.getElementById("sets");
+    var cardEl = document.getElementById("card");
+    var picEl = document.getElementById("pic");
+    var numEl = document.getElementById("num");
+    var jpEl = document.getElementById("jp");
+    var enEl = document.getElementById("en");
+    var progEl = document.getElementById("prog");
+
+    function currentSet() {
+      return DATA.sets.filter(function (s) { return s.id === setId; })[0] || DATA.sets[0];
+    }
+
+    function show() {
+      var set = currentSet();
+      var cards = set.cards;
+      if (index < 0) index = cards.length - 1;
+      if (index >= cards.length) index = 0;
+      var card = cards[index];
+      var file = DATA.files[card.img] || DATA.files.calendar;
+      picEl.src = "img/" + file;
+      picEl.alt = "";
+      jpEl.textContent = card.jp;
+      enEl.textContent = card.en;
+      if (card.num) {
+        numEl.hidden = false;
+        numEl.textContent = card.num;
+      } else {
+        numEl.hidden = true;
+        numEl.textContent = "";
+      }
+      open = false;
+      cardEl.classList.add("is-hidden");
+      progEl.textContent = set.topic + "  ·  " + (index + 1) + " / " + cards.length;
+      history.replaceState(null, "", "?set=" + set.id);
+    }
+
+    DATA.sets.forEach(function (s) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = s.id === 8 ? s.topic : s.id + " " + s.topic;
+      b.dataset.id = String(s.id);
+      b.addEventListener("click", function () {
+        setId = s.id;
+        index = 0;
+        paintSets();
+        show();
+      });
+      setsEl.appendChild(b);
+    });
+
+    function paintSets() {
+      var buttons = setsEl.querySelectorAll("button");
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.toggle("is-on", Number(buttons[i].dataset.id) === setId);
+      }
+    }
+
+    cardEl.addEventListener("click", function () {
+      open = !open;
+      cardEl.classList.toggle("is-hidden", !open);
+    });
+    document.getElementById("next").addEventListener("click", function () { index += 1; show(); });
+    document.getElementById("prev").addEventListener("click", function () { index -= 1; show(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight") { index += 1; show(); }
+      if (e.key === "ArrowLeft") { index -= 1; show(); }
+      if (e.key === " ") { e.preventDefault(); cardEl.click(); }
+    });
+
+    paintSets();
+    show();
+  </script>
+</body>
+</html>

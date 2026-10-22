@@ -6,164 +6,110 @@
   "status": "draft",
   "forSale": false,
   "salePrice": 0.99,
+  "wsCategory": "core-japanese",
+  "templateType": "custom",
+  "topicExplanation": "前 = before / ago\n\n• X年前に = X years ago\n• verb dictionary form + 前に = before doing that\n\nSeed: このシャツを3年前に買った。",
+  "lessonName": "前・前に",
+  "date": "2026-07-31",
   "sections": [
     {
-      "id": "grammar",
-      "title": "Section 1 — Grammar point",
-      "instructions": "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
-      "mode": "grammar-blank",
+      "id": "sec-34iusrb",
+      "mode": "audio-listening",
+      "title": "",
+      "instructions": "Listen to the clip and write down what you think it's saying in Japanese.",
+      "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Overprotected%20Kahoko/media/Kahogo_no_Kahoko_09_0.22.13.409-0.22.17.712.mp3",
+      "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Overprotected%20Kahoko/media/Kahogo_no_Kahoko_09_0.22.13.409-0.22.17.712.jpg",
       "items": [
         {
-          "id": "s1-1",
+          "id": "blk-mae-listen-1",
           "parts": [
             {
-              "type": "text",
-              "value": ""
-            },
-            {
               "type": "blank",
-              "name": "s1-1",
+              "name": "blk-mae-listen-1",
               "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "answer": "ああ　でも　その前[まえ]に　なんか　作[つく]るよ"
             }
-          ]
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Overprotected%20Kahoko/media/Kahogo_no_Kahoko_09_0.22.13.409-0.22.17.712.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/Overprotected%20Kahoko/media/Kahogo_no_Kahoko_09_0.22.13.409-0.22.17.712.jpg",
+          "englishAnswer": "Before that, I will cook something."
         },
         {
-          "id": "s1-2",
+          "id": "blk-mae-listen-2",
           "parts": [
             {
-              "type": "text",
-              "value": ""
-            },
-            {
               "type": "blank",
-              "name": "s1-2",
+              "name": "blk-mae-listen-2",
               "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "answer": "10年[ねん]前[まえ]の自分[じぶん]と一緒[いっしょ]だったから"
             }
-          ]
-        },
-        {
-          "id": "s1-3",
-          "parts": [
-            {
-              "type": "text",
-              "value": ""
-            },
-            {
-              "type": "blank",
-              "name": "s1-3",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
-            }
-          ]
-        },
-        {
-          "id": "s1-4",
-          "parts": [
-            {
-              "type": "text",
-              "value": ""
-            },
-            {
-              "type": "blank",
-              "name": "s1-4",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
-            }
-          ]
-        },
-        {
-          "id": "s1-5",
-          "parts": [
-            {
-              "type": "text",
-              "value": ""
-            },
-            {
-              "type": "blank",
-              "name": "s1-5",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
-            }
-          ]
-        },
-        {
-          "id": "s1-6",
-          "parts": [
-            {
-              "type": "text",
-              "value": ""
-            },
-            {
-              "type": "blank",
-              "name": "s1-6",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
-            }
-          ]
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I'm%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP05_720p_HDTV_x264_AAC-KUY_0.34.32.743-0.34.37.179.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/drama/I'm%20Taking%20the%20Day%20Off/media/Kyou_wa_Kaisha_Yasumimasu_EP05_720p_HDTV_x264_AAC-KUY_0.34.32.743-0.34.37.179.jpg",
+          "englishAnswer": "She was the same person I was ten years ago."
         }
       ]
     },
     {
-      "id": "context",
-      "title": "Section 2 — Your words",
-      "instructions": "Write your own sentences using this grammar in the boxes below.",
-      "mode": "context-blank",
+      "id": "sec-gaykr9e",
+      "mode": "star-order",
+      "title": "",
+      "instructions": "Drag/drop the words to form the best answer!",
       "items": [
         {
-          "id": "s2-1",
-          "parts": [
-            {
-              "type": "blank",
-              "name": "s2-1",
-              "wide": true
-            }
-          ]
+          "id": "blk-mae-order-1",
+          "tokens": [
+            { "text": "寝る", "fixed": true },
+            { "text": "前に", "fixed": false },
+            { "text": "歯", "fixed": false },
+            { "text": "を", "fixed": false },
+            { "text": "磨いた", "fixed": false },
+            { "text": "。", "fixed": true }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": ["前に", "歯", "を", "磨いた"]
         },
         {
-          "id": "s2-2",
-          "parts": [
-            {
-              "type": "blank",
-              "name": "s2-2",
-              "wide": true
-            }
-          ]
+          "id": "blk-mae-order-2",
+          "tokens": [
+            { "text": "このシャツ", "fixed": true },
+            { "text": "を", "fixed": false },
+            { "text": "3年", "fixed": false },
+            { "text": "前に", "fixed": false },
+            { "text": "買った", "fixed": false },
+            { "text": "。", "fixed": true }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": ["を", "3年", "前に", "買った"]
         },
         {
-          "id": "s2-3",
-          "parts": [
-            {
-              "type": "blank",
-              "name": "s2-3",
-              "wide": true
-            }
-          ]
+          "id": "blk-mae-order-3",
+          "tokens": [
+            { "text": "出かける", "fixed": true },
+            { "text": "前に", "fixed": false },
+            { "text": "かぎ", "fixed": false },
+            { "text": "を", "fixed": false },
+            { "text": "かけましょう", "fixed": false },
+            { "text": "。", "fixed": true }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": ["前に", "かぎ", "を", "かけましょう"]
+        }
+      ]
+    },
+    {
+      "id": "sec-1rz0i2o",
+      "mode": "video-response",
+      "title": "",
+      "instructions": "",
+      "items": [
+        {
+          "id": "blk-mae-video-1",
+          "prompt": "出かける前に、いつも何をしますか。詳しく教えてください。",
+          "recordLabel": "Record your answer"
         }
       ]
     }

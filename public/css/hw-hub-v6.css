@@ -263,6 +263,78 @@ body.hw-hub-v6-fullpage .hw-hub-v6-exit-full {
   margin: 0.75rem 0 0;
 }
 
+.hw-hub-v6-finished-pill {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  background: #36b87a;
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hw-hub-v6-finished-pill[aria-expanded="true"] {
+  outline: 2px solid #0d1b2a;
+  outline-offset: 2px;
+}
+
+.hw-hub-v6-finished {
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 0.85rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(54, 184, 122, 0.14);
+}
+
+.hw-hub-v6-submitted__list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hw-hub-v6-submitted__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid rgba(13, 27, 42, 0.12);
+  font-size: 0.88rem;
+}
+
+.hw-hub-v6-submitted__row:first-child {
+  border-top: 0;
+}
+
+.hw-hub-v6-submitted__info {
+  min-width: 0;
+}
+
+.hw-hub-v6-finished__student + .hw-hub-v6-finished__student {
+  margin-top: 0.75rem;
+}
+
+.hw-hub-v6-finished__student h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.hw-hub-v6-finished__student.is-picked h4 {
+  color: #0d1b2a;
+}
+
+.hw-hub-v6-finished__student ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.15rem;
+}
+
+.hw-hub-v6-finished__none,
+.hw-hub-v6-finished__empty {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+}
+
 .hw-hub-v6-review-list {
   margin: 0.85rem 0 0;
   padding: 0;

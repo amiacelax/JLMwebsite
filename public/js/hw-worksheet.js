@@ -490,10 +490,24 @@
     return wrap;
   }
 
+  function hintIsEnglishGloss(text) {
+    return text && !/[\u3040-\u30ff\u4e00-\u9fff]/.test(text);
+  }
+
   function renderHintBelow(hint) {
     const span = document.createElement("span");
     span.className = "hw-conj-hint hw-conj-hint--below";
-    span.textContent = formatHint(hint);
+    const dictionary = String(hint?.dictionary || "").trim();
+    if (hintIsEnglishGloss(dictionary)) {
+      span.textContent = dictionary;
+      span.setAttribute("aria-label", "English meaning");
+      return span;
+    }
+    const shown = dictionary || "—";
+    span.appendChild(document.createTextNode("（"));
+    if (hasBracketRubyNotation(shown)) span.appendChild(renderBracketRubyText(shown));
+    else span.appendChild(document.createTextNode(shown));
+    span.appendChild(document.createTextNode("）"));
     span.setAttribute("aria-label", "Dictionary form and conjugation hint");
     return span;
   }
@@ -570,10 +584,19 @@
   function renderRubySegment(seg) {
     const text = seg.text || "";
     if (!text) return document.createTextNode("");
-    const plain = document.createElement("span");
-    plain.className = "ja-okuri";
-    plain.textContent = text;
-    return plain;
+    const rt = String(seg.rt || "").trim();
+    if (!rt) {
+      const plain = document.createElement("span");
+      plain.className = "ja-okuri";
+      plain.textContent = text;
+      return plain;
+    }
+    const ruby = document.createElement("ruby");
+    ruby.appendChild(document.createTextNode(text));
+    const rtEl = document.createElement("rt");
+    rtEl.textContent = rt;
+    ruby.appendChild(rtEl);
+    return ruby;
   }
 
   function renderTextPart(part) {
@@ -1003,7 +1026,7 @@
     img.className = "hw-listen-card__img";
     img.src = imgUrl;
     img.alt = "Anime screenshot from Immersion Kit";
-    img.loading = "lazy";
+    img.loading = "eager";
     img.decoding = "async";
     fig.appendChild(img);
     return fig;
@@ -1330,11 +1353,6 @@
     const head = document.createElement("div");
     head.className = "hw-audio-prompt__head";
 
-    const prompt = document.createElement("p");
-    prompt.className = "hw-audio-prompt__text";
-    prompt.textContent = item.prompt || "Answer this question on audio.";
-    head.appendChild(prompt);
-
     if (!renderOptions.preview && !renderOptions.readOnly) {
       head.appendChild(
         renderRecordingTip(item.id || "aud-" + (index + 1), {
@@ -1346,10 +1364,52 @@
       );
     }
 
+    const promptText = String(item.prompt || "").trim();
+    if (promptText) {
+      const prompt = document.createElement("p");
+      prompt.className = "hw-audio-prompt__text";
+      if (hasBracketRubyNotation(promptText)) prompt.appendChild(renderBracketRubyText(promptText));
+      else prompt.textContent = promptText;
+      head.appendChild(prompt);
+    }
+    const lineAnswer = String(item.typeInAnswer || "").trim();
+    if (lineAnswer) wrap.dataset.teacherAnswer = lineAnswer;
+    const lineRevealSheet =
+      String(renderOptions.assignment?.id || renderOptions.assignmentId || "").trim() ===
+      "sheet-n5-immersion-20";
+
     const englishEl = renderPromptEnglish(item);
     if (englishEl) head.appendChild(englishEl);
 
     wrap.appendChild(head);
+
+    const teacherUrl = normalizeItemAudioUrl(item);
+    if (teacherUrl) {
+      const listenRow = document.createElement("div");
+      listenRow.className = "hw-audio-prompt__listen";
+      const listenLabelText = String(item.listenLabel || "").trim();
+      if (listenLabelText) {
+        const listenLabel = document.createElement("p");
+        listenLabel.className = "hw-audio-prompt__listen-label";
+        listenLabel.textContent = listenLabelText;
+        listenRow.appendChild(listenLabel);
+      }
+      listenRow.appendChild(
+        renderListenSlideAudio(teacherUrl, {
+          ariaLabel: "Play the question audio",
+        })
+      );
+      wrap.appendChild(listenRow);
+    }
+
+    if (lineAnswer && lineRevealSheet) {
+      const reveal = document.createElement("p");
+      reveal.className = "hw-audio-prompt__line-reveal";
+      reveal.lang = "ja";
+      reveal.hidden = true;
+      reveal.textContent = lineAnswer;
+      wrap.appendChild(reveal);
+    }
 
     const typeIn = item.typeIn === true || item.typeIn === "true" || item.typeIn === 1;
     if (typeIn) {
@@ -1357,7 +1417,7 @@
       typeRow.className = "hw-audio-prompt__typein";
       const typeLabel = document.createElement("label");
       typeLabel.className = "hw-audio-prompt__typein-label";
-      typeLabel.textContent = String(item.typeInLabel || "Type your answer").trim() || "Type your answer";
+      typeLabel.textContent = String(item.typeInLabel || "Type and record your answer").trim() || "Type and record your answer";
       const typeInput = document.createElement("input");
       typeInput.type = "text";
       typeInput.className = "hw-blank hw-blank--wide hw-audio-prompt__typein-input";
@@ -1366,7 +1426,7 @@
       typeInput.setAttribute("lang", "ja");
       typeInput.setAttribute(
         "aria-label",
-        String(item.typeInLabel || "Type your answer").trim() || "Type your answer"
+        String(item.typeInLabel || "Type and record your answer").trim() || "Type and record your answer"
       );
       typeInput.autocomplete = "off";
       typeInput.spellcheck = false;
@@ -1391,7 +1451,8 @@
         assignmentId: meta.assignmentId,
         lessonName: meta.lessonName,
         promptId: item.id || "aud-" + (index + 1),
-        promptLabel: item.prompt || "",
+        promptLabel: String(item.typeInAnswer || item.prompt || "").trim(),
+        mic: true,
       });
     } else {
       recorderMount.innerHTML =
@@ -1448,6 +1509,7 @@
     if (item.typeIn) carried.typeIn = item.typeIn;
     if (item.typeInLabel) carried.typeInLabel = item.typeInLabel;
     if (item.typeInAnswer) carried.typeInAnswer = item.typeInAnswer;
+    if (item.audioUrl) carried.audioUrl = item.audioUrl;
     if (Object.keys(carried).length) wrap.dataset.carry = JSON.stringify(carried);
     return wrap;
   }
@@ -2506,13 +2568,16 @@
     const head = document.createElement("div");
     head.className = "hw-worksheet__section-head";
 
-    const heading = document.createElement("h3");
-    heading.className = "hw-worksheet__section-title";
-    heading.textContent = section.title;
-    head.appendChild(heading);
+    const titleText = String(section.title || "").trim();
+    if (titleText || authoring) {
+      const heading = document.createElement("h3");
+      heading.className = "hw-worksheet__section-title";
+      heading.textContent = titleText;
+      head.appendChild(heading);
+    }
 
     /* Students already see the question card; skip the green mode/type label for MC. */
-    if (authoring || section.mode !== "multiple-choice") {
+    if ((authoring || section.mode !== "multiple-choice") && head.childElementCount) {
       wrap.appendChild(head);
     }
 
@@ -2539,7 +2604,8 @@
     ) {
       const intro = document.createElement("p");
       intro.className = "hw-worksheet__section-intro";
-      intro.textContent = sectionIntro;
+      if (hasBracketRubyNotation(sectionIntro)) intro.appendChild(renderBracketRubyText(sectionIntro));
+      else intro.textContent = sectionIntro;
       wrap.appendChild(intro);
     }
 
@@ -2779,7 +2845,8 @@
     if (explanation) {
       const p = document.createElement("p");
       p.className = "hw-worksheet__topic-explanation";
-      p.textContent = explanation;
+      if (hasBracketRubyNotation(explanation)) p.appendChild(renderBracketRubyText(explanation));
+      else p.textContent = explanation;
       body.appendChild(p);
     }
 
@@ -2855,6 +2922,47 @@
    * @param {object} assignment
    * @returns {HTMLFormElement}
    */
+  function renderMusicSing(mount, prepared, options) {
+    options = options || {};
+    mount.innerHTML = "";
+    const form = document.createElement("form");
+    form.id = "hw-worksheet-form";
+    form.className = "hw-worksheet hw-worksheet--music-sing";
+    form.lang = "ja";
+    form.setAttribute("data-assignment-id", prepared.id || "");
+    form.dataset.title = prepared.title || "";
+    form.dataset.templateType = "music-sing";
+
+    const bar = document.createElement("div");
+    bar.className = "hw-music-sing__bar";
+    const title = document.createElement("p");
+    title.className = "hw-music-sing__title";
+    title.textContent = prepared.title || "Music";
+    const open = document.createElement("a");
+    open.className = "btn btn--ghost btn--sm";
+    open.href = prepared.singPageUrl || "/preview/music-eikou/index.html";
+    open.target = "_blank";
+    open.rel = "noopener";
+    open.textContent = "Open fullscreen";
+    bar.append(title, open);
+
+    const frame = document.createElement("iframe");
+    frame.className = "hw-music-sing__frame";
+    frame.title = prepared.title || "Music sing sheet";
+    frame.src = prepared.singPageUrl || "/preview/music-eikou/index.html";
+    frame.setAttribute("loading", "eager");
+
+    form.append(bar, frame);
+    if (options.authoring) {
+      const note = document.createElement("p");
+      note.className = "hw-music-sing__note";
+      note.textContent = "Music sing sheet — edit lyrics on the fullscreen page / assignment JSON.";
+      form.appendChild(note);
+    }
+    mount.appendChild(form);
+    return form;
+  }
+
   function render(mount, assignment, options) {
     options = options || {};
     const authoring = Boolean(options.authoring);
@@ -2863,6 +2971,14 @@
       options = { ...options, assignment: prepared };
     }
     mount.innerHTML = "";
+
+    if (
+      prepared.templateType === "music-sing" ||
+      prepared.wsCategory === "music" ||
+      (prepared.sections || []).some((s) => s.mode === "music-lyrics")
+    ) {
+      return renderMusicSing(mount, prepared, options);
+    }
 
     const form = document.createElement("form");
     form.id = "hw-worksheet-form";
@@ -2947,6 +3063,8 @@
     mount.appendChild(form);
 
     if (!authoring && !options.preview) {
+      /* Review views (JD's and the student's) never pop the Grammar description. */
+      if (options.readOnly) form.dataset.hwReviewRender = "1";
       initSlideMode(form);
       if (!options.readOnly) {
         initFocusMode(form);
@@ -3319,7 +3437,9 @@
 
   function hasListenTeacherAnswers(form) {
     return Boolean(
-      form?.querySelector(".hw-blank-wrap--listen[data-teacher-answer]")
+      form?.querySelector(
+        ".hw-blank-wrap--listen[data-teacher-answer], .hw-audio-prompt[data-teacher-answer]"
+      )
     );
   }
 
@@ -3412,7 +3532,7 @@
 
   function revealTeacherAnswers(form) {
     if (!form || !isSeeAnswersUnlocked(form)) return;
-    form.querySelectorAll(".hw-blank-wrap--listen[data-teacher-answer]").forEach((wrap) => {
+    form.querySelectorAll(".hw-blank-wrap--listen[data-teacher-answer], .hw-audio-prompt[data-teacher-answer]").forEach((wrap) => {
       if (wrap.querySelector(".hw-worksheet__teacher-answer")) return;
       const answer = String(wrap.dataset.teacherAnswer || "").trim();
       if (!answer) return;
@@ -3506,19 +3626,31 @@
   /** Card shell inside a worksheet line (listen / video / audio / slide content). */
   function questionCardHost(line) {
     if (!line || !line.querySelector) return null;
+    /* Prefer .hw-audio-prompt over nested .hw-listen-card (teacher Q audio bar). */
     return (
-      line.querySelector(".hw-listen-card") ||
-      line.querySelector(".hw-video-prompt") ||
       line.querySelector(".hw-audio-prompt") ||
       line.querySelector(".hw-audio-mimic") ||
+      line.querySelector(".hw-video-prompt") ||
+      line.querySelector(".hw-listen-card") ||
       line.querySelector(".hw-worksheet__content") ||
       null
     );
   }
 
+  function placeSubmitTrackerInActions(form, tracker) {
+    const home = form?.querySelector(".hw-worksheet__actions-primary");
+    if (!tracker || !home) return;
+    tracker.classList.remove("hw-worksheet__submit-tracker--in-card");
+    tracker.classList.remove("hw-worksheet__submit-tracker--slide-head");
+    if (tracker.parentElement !== home) {
+      home.insertBefore(tracker, home.firstChild);
+    }
+  }
+
   /**
    * Park the shared questions-left tracker near the top of the active question card
    * (e.g. .hw-listen-card with the anime still), never in the sticky grammar head.
+   * Audio prompts keep it with Send Homework — not under the JP question.
    * @param {HTMLFormElement} form
    * @param {Element|null} line
    */
@@ -3530,6 +3662,12 @@
       line ||
       form.querySelector(".hw-worksheet--slide-mode .hw-worksheet__line:not([hidden])") ||
       form.querySelector(".hw-worksheet__line:not([hidden])");
+
+    /* Audio Prompt: no "5 QUESTIONS LEFT" baked under お名前は？ / tip / type+record. */
+    if (activeLine?.querySelector?.(".hw-audio-prompt, .hw-audio-mimic")) {
+      placeSubmitTrackerInActions(form, tracker);
+      return;
+    }
 
     const host = questionCardHost(activeLine);
     tracker.classList.add("hw-worksheet__submit-tracker--in-card");
@@ -3628,19 +3766,49 @@
     }
   }
 
-  /** Open Grammar description the first time they use this homework (on question 1, when it has audio). */
+  /** First-look "Got it" — closes the Grammar description and removes itself. */
+  function addTopicBriefGotIt(brief) {
+    const body = brief?.querySelector(".hw-worksheet__topic-brief-body");
+    if (!body || body.querySelector(".hw-worksheet__topic-brief-gotit")) return;
+    const row = document.createElement("div");
+    row.className = "hw-worksheet__topic-brief-gotit";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--primary btn--sm";
+    btn.textContent = "Got it";
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      pauseTopicBriefAudio(brief);
+      brief.open = false;
+      row.remove();
+    });
+    row.appendChild(btn);
+    body.appendChild(row);
+  }
+
+  /**
+   * Open Grammar description the first time they use this homework (on question 1).
+   * With the new first-time tips (hw-onboard.js) it is flagged data-ob-first-look and the
+   * tip draws the dim + window + green Got it (Got it closes the box). Pages without the
+   * tips get a small inline Got it instead.
+   */
   function syncTopicBriefOpen(brief, onFirstQuestion, form) {
     if (!brief) return;
     const firstLook =
-      onFirstQuestion && topicBriefHasAudio(brief) && !hasSeenTopicBrief(form);
+      onFirstQuestion && form?.dataset?.hwReviewRender !== "1" && !hasSeenTopicBrief(form);
     if (firstLook) {
       markTopicBriefSeen(form);
       brief.open = true;
+      if (global.HwOnboard?.owns) brief.setAttribute("data-ob-first-look", "1");
+      else addTopicBriefGotIt(brief);
       return;
     }
     if (!onFirstQuestion) {
       if (brief.open) pauseTopicBriefAudio(brief);
       brief.open = false;
+      brief.removeAttribute("data-ob-first-look");
+      brief.querySelector(".hw-worksheet__topic-brief-gotit")?.remove();
     }
   }
 
@@ -3661,7 +3829,7 @@
     const nav = document.createElement("div");
     nav.className = "hw-worksheet__slide-nav";
     nav.setAttribute("role", "navigation");
-    nav.setAttribute("aria-label", "Homework question navigation");
+    nav.setAttribute("data-keep-clear", "");
 
     const prevBtn = document.createElement("button");
     prevBtn.type = "button";
@@ -3945,9 +4113,14 @@
     return true;
   }
 
+  /** 書[か]いた and 書いた are the same answer. Readings are for display. */
+  function stripBracketRuby(value) {
+    return String(value || "").replace(/\[[^\]]*\]/g, "");
+  }
+
   /** Normalize student input for comparison (Japanese-friendly). */
   function normalizeAnswer(value) {
-    return String(value || "")
+    return stripBracketRuby(value)
       .trim()
       .replace(/\s+/g, "")
       .replace(/[。．、，！？!?]/g, "")
@@ -4535,6 +4708,32 @@
     };
   }
 
+  function applyLineReveal(form) {
+    const mode = form?.dataset.hwLineReveal || "off";
+    const on = mode === "once" || mode === "all";
+    form?.querySelectorAll(".hw-audio-prompt__line-reveal").forEach((el) => {
+      el.hidden = !on;
+    });
+  }
+
+  /** mode: "once" (hides on the next card), "all" (stays on), or "off". Picking the mode already on turns it off. */
+  function setLineReveal(form, mode) {
+    if (!form) return "off";
+    const next = mode === "once" || mode === "all" ? mode : "off";
+    form.dataset.hwLineReveal = form.dataset.hwLineReveal === next ? "off" : next;
+    if (form.dataset.hwLineReveal === "once" || form.dataset.hwLineReveal === "all") {
+      form.dataset.hwLineRevealIndex = String(form._hwSlideIndex ?? "");
+    }
+    applyLineReveal(form);
+    return form.dataset.hwLineReveal;
+  }
+
+  function clearLineRevealOnSlide(form) {
+    if (!form || form.dataset.hwLineReveal !== "once") return;
+    form.dataset.hwLineReveal = "off";
+    applyLineReveal(form);
+  }
+
   global.HwWorksheet = {
     render,
     printBlank,
@@ -4566,6 +4765,8 @@
     hideTeacherAnswers,
     toggleTeacherAnswers,
     hasListenTeacherAnswers,
+    setLineReveal,
+    clearLineRevealOnSlide,
     exitFocusMode: exitHomeworkFocusMode,
     setFormReadOnly,
     applyAnswersMap,

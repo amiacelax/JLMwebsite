@@ -4,7 +4,7 @@
  */
 (function (global) {
   const PLATFORM_PATH = "/homework/platform.html";
-  const ACCOUNT_TABS = ["profile", "subscription", "notifications"];
+  const ACCOUNT_TABS = ["profile", "subscription", "notifications", "features"];
   let bound = false;
   let teacherAppBound = false;
   let openFromHashLock = false;
@@ -36,6 +36,9 @@
     }
     if (hash === "account-notifications" || hash === "notifications") {
       return { tab: "notifications" };
+    }
+    if (hash === "account-features" || hash === "features") {
+      return { tab: "features" };
     }
     return null;
   }
@@ -110,11 +113,13 @@
     return Boolean(session()?.paypalBilling);
   }
 
+  const PAYPAL_MANAGE_URL = "https://www.paypal.com/myaccount/autopay/";
+
   const PLAN_CARDS = [
     {
       id: "basic",
       title: "Basic",
-      price: 5,
+      price: 9,
     },
     {
       id: "premium",
@@ -186,6 +191,16 @@
     btn.classList.toggle("is-on", !!on);
     const note = document.getElementById(id + "-note");
     if (note) note.hidden = !on;
+  }
+
+  function focusDiscordIdField() {
+    open("profile", { replaceHash: true });
+    window.setTimeout(() => {
+      setProfileEditing(true);
+      const el = document.getElementById("hw-account-discord-id");
+      el?.focus();
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
   }
 
   function paintNotifySwitches() {
@@ -263,6 +278,15 @@
     article.addEventListener("pointerdown", () => armAccountPlan(article));
     const tone = article.getAttribute("data-hw-plan-tone");
     if (tone === "upgrade") {
+      if (plan.id === "student-special") {
+        /* Opens tier detail popup (Subscribe → PayPal). */
+        article.classList.add("hw-hub-v5-sellup-card--clickable");
+        return;
+      }
+      article.setAttribute("data-hw-checkout", plan.id);
+      article.classList.add("hw-hub-v5-sellup-card--clickable");
+    } else if (tone === "lesser") {
+      /* Switching down: the new plan starts now and the old PayPal plan is stopped. */
       article.setAttribute("data-hw-checkout", plan.id);
       article.classList.add("hw-hub-v5-sellup-card--clickable");
     }
@@ -274,6 +298,9 @@
     article.className = "course-card course-card--locked hw-hub-tier-plan";
     article.setAttribute("data-hw-tier-plan", plan.id);
     article.setAttribute("data-hw-plan-tone", tone);
+    if (plan.id === "student-special" && tone === "upgrade") {
+      article.setAttribute("data-hw-tier-detail", "student-special");
+    }
     article.tabIndex = 0;
     let inner = "";
     if (tone === "current") {
@@ -315,10 +342,179 @@
       return 0;
     });
     ordered.forEach((plan) => {
+      /* Student Special is kept quiet: only shown to people already on it. */
+      if (plan.id === "student-special" && currentId !== "student-special") return;
       mount.appendChild(buildAccountTierCard(plan));
     });
-    mount.appendChild(buildLessonsSlim());
+    const user = String(session()?.username || "").trim().toLowerCase();
+    const takesLessons =
+      user === "christian" ||
+      global.HwAuth?.isNoahCurriculumOpen?.(session()) ||
+      global.HwAuth?.isCurriculumTrialActive?.(session()) ||
+      session()?.accountLabel === "current_student";
+    if (!takesLessons) mount.appendChild(buildLessonsSlim());
     global.HwCheckout?.bindCheckoutControls?.(mount);
+    paintCancelBlock();
+  }
+
+  /* ---- Cancel subscription ---- */
+
+  function planNameForTier(tier) {
+    if (tier === "tier1") return "Basic";
+    if (tier === "tier2") return "Premium";
+    if (tier === "tier3") return "Ultra";
+    if (tier === "student_special") return "Student Special";
+    if (tier === "quest_only") return "Quest Only";
+    return "";
+  }
+
+  function formatPlanEnd(iso) {
+    const ms = Date.parse(String(iso || ""));
+    if (!Number.isFinite(ms)) return "";
+    try {
+      return new Date(ms).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return new Date(ms).toDateString();
+    }
+  }
+
+  function paintCancelBlock() {
+    const block = document.getElementById("hw-account-cancel-block");
+    if (!block) return;
+    const s = session();
+    const paid = hasPaidPlan() && s && s.role !== "teacher" && !s.viewAs;
+    if (!paid) {
+      block.hidden = true;
+      block.replaceChildren();
+      return;
+    }
+    const plan = planNameForTier(s.tier) || "plan";
+    const ends = formatPlanEnd(s.planEndsAt);
+    const manage =
+      '<a class="hw-account-cancel__manage" href="' +
+      PAYPAL_MANAGE_URL +
+      '" target="_blank" rel="noopener noreferrer">Manage in PayPal</a>';
+    if (ends) {
+      block.innerHTML =
+        '<h3 class="hw-account-cancel__title">Subscription cancelled</h3>' +
+        '<p class="hw-account-cancel__line"><strong>Your ' +
+        plan +
+        " plan is cancelled.</strong> It stays active until <strong>" +
+        ends +
+        "</strong>. You will not be charged again.</p>" +
+        '<p class="hw-account-cancel__line hw-account-cancel__line--soft">Changed your mind? Pick a plan above any time.</p>' +
+        '<p class="hw-account-cancel__row">' +
+        manage +
+        "</p>";
+    } else {
+      block.innerHTML =
+        '<h3 class="hw-account-cancel__title">Your subscription</h3>' +
+        '<p class="hw-account-cancel__line">Cancel anytime. Your plan stays active for 30 days after your last payment.</p>' +
+        '<p class="hw-account-cancel__row">' +
+        '<button type="button" class="btn btn--ghost" id="hw-account-cancel-open">Cancel subscription</button>' +
+        manage +
+        "</p>";
+    }
+    block.hidden = false;
+  }
+
+  function cancelDialogStep(step) {
+    const dialog = document.getElementById("hw-account-cancel-dialog");
+    if (!dialog) return;
+    dialog.querySelectorAll("[data-cancel-step]").forEach((el) => {
+      el.hidden = el.getAttribute("data-cancel-step") !== step;
+    });
+  }
+
+  function openCancelDialog() {
+    const dialog = document.getElementById("hw-account-cancel-dialog");
+    const s = session();
+    if (!dialog || !s) return;
+    const plan = planNameForTier(s.tier) || "plan";
+    const manual = !canAutoCancelPaypal();
+    dialog.querySelectorAll("[data-cancel-plan]").forEach((el) => {
+      el.textContent = plan;
+    });
+    dialog.querySelectorAll("[data-cancel-auto]").forEach((el) => {
+      el.hidden = manual;
+    });
+    dialog.querySelectorAll("[data-cancel-manual]").forEach((el) => {
+      el.hidden = !manual;
+    });
+    const pw = document.getElementById("hw-account-cancel-password");
+    if (pw) pw.value = "";
+    setStatus(document.getElementById("hw-account-cancel-status"), "", false);
+    const confirmBtn = document.getElementById("hw-account-cancel-confirm");
+    if (confirmBtn) confirmBtn.disabled = false;
+    /* Basic can just leave. Premium and Ultra get one "cheaper plan?" question first. */
+    const asksSwitch = s.tier === "tier2" || s.tier === "tier3";
+    cancelDialogStep(asksSwitch ? "switch" : "confirm");
+    dialog.hidden = false;
+    /* Quiet heads-up to JD that someone is looking at cancelling. */
+    if (!s.viewAs && !global.HwAuth?.isViewingAsStudent?.()) {
+      void fetch("/api/auth/cancel-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: s.username }),
+      }).catch(() => {});
+    }
+  }
+
+  function closeCancelDialog() {
+    const dialog = document.getElementById("hw-account-cancel-dialog");
+    if (dialog) dialog.hidden = true;
+  }
+
+  function showCheaperPlans() {
+    closeCancelDialog();
+    const mount = document.getElementById("hw-v5-account-sellup");
+    const frame = document.getElementById("hw-v5-account-sellup-frame") || mount;
+    frame?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    const cheaper = mount?.querySelectorAll('[data-hw-plan-tone="lesser"]');
+    if (cheaper && cheaper.length) {
+      armAccountPlan(cheaper[0]);
+      global.HwToast?.show?.("Tap a cheaper plan to switch to it.");
+    }
+  }
+
+  async function submitCancelSubscription() {
+    const status = document.getElementById("hw-account-cancel-status");
+    const confirmBtn = document.getElementById("hw-account-cancel-confirm");
+    const s = session();
+    if (!s?.username) return;
+    const password = String(document.getElementById("hw-account-cancel-password")?.value || "");
+    if (!password) {
+      setStatus(status, "Enter your password to cancel.", true);
+      return;
+    }
+    setStatus(status, "Cancelling…", false);
+    if (confirmBtn) confirmBtn.disabled = true;
+    try {
+      const res = await fetch("/api/auth/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: s.username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not cancel.");
+      if (data.session && global.HwAuth?.persistSession && !global.HwAuth?.isViewingAsStudent?.()) {
+        const remember = !!global.localStorage?.getItem?.("jlm-hw-session");
+        global.HwAuth.persistSession({ ...s, ...data.session, loggedInAt: Date.now() }, remember);
+      }
+      const done = document.getElementById("hw-account-cancel-done-text");
+      if (done) done.textContent = data.message || "Your subscription is cancelled.";
+      const doneEmail = document.getElementById("hw-account-cancel-done-email");
+      if (doneEmail) doneEmail.hidden = !!data.manual;
+      cancelDialogStep("done");
+      paintAccountPlans();
+    } catch (err) {
+      setStatus(status, (err && err.message) || "Could not cancel.", true);
+      if (confirmBtn) confirmBtn.disabled = false;
+    }
   }
 
   async function loadSelfExtras() {
@@ -406,6 +602,7 @@
     if (newPw) newPw.value = "";
     paintAccountPlans();
     paintNotifySwitches();
+    global.HwHubQuests?.paintFeaturesSwitch?.();
     void loadSelfExtras();
   }
 
@@ -505,12 +702,61 @@
     );
   }
 
+  function cancelDialogMarkup() {
+    return (
+      '<div class="hw-account-delete-dialog" id="hw-account-cancel-dialog" hidden>' +
+      '<div class="hw-account-delete-dialog__backdrop" data-hw-account-cancel-close></div>' +
+      '<div class="hw-account-delete-dialog__box" role="dialog" aria-modal="true" aria-labelledby="hw-account-cancel-title">' +
+      /* Premium / Ultra: one question before cancelling. */
+      '<div data-cancel-step="switch" hidden>' +
+      '<h3 class="hw-account-delete-dialog__title" id="hw-account-cancel-title">Before you go</h3>' +
+      '<p class="hw-account-delete-dialog__body">Are you sure you don\u2019t want to switch to a more affordable plan?</p>' +
+      '<div class="hw-account-delete-dialog__actions">' +
+      '<button type="button" class="btn btn--primary" data-hw-account-cancel-cheaper>Show me cheaper plans</button>' +
+      '<button type="button" class="btn btn--ghost" data-hw-account-cancel-continue>No, cancel anyway</button>' +
+      "</div>" +
+      '<p class="hw-account-delete-dialog__body"><button type="button" class="hw-account-cancel__keep" data-hw-account-cancel-close>Keep my plan</button></p>' +
+      "</div>" +
+      /* Confirm with password. */
+      '<div data-cancel-step="confirm" hidden>' +
+      '<h3 class="hw-account-delete-dialog__title">Cancel your <span data-cancel-plan>plan</span>?</h3>' +
+      '<p class="hw-account-delete-dialog__body" data-cancel-auto>You will not be charged again. Your plan stays active for 30 days after your last payment. We will show you the exact date.</p>' +
+      '<p class="hw-account-delete-dialog__body" data-cancel-manual hidden>This plan is not linked to your account yet, so it has to be cancelled in PayPal. ' +
+      '<a href="' +
+      PAYPAL_MANAGE_URL +
+      '" target="_blank" rel="noopener noreferrer">Open PayPal</a>, cancel it there, then confirm below so JD knows.</p>' +
+      '<div class="hw-login-inlay__field">' +
+      '<label for="hw-account-cancel-password">Password</label>' +
+      '<input type="password" id="hw-account-cancel-password" autocomplete="current-password">' +
+      "</div>" +
+      '<p class="hw-login-inlay__error" id="hw-account-cancel-status" hidden role="status"></p>' +
+      '<div class="hw-account-delete-dialog__actions">' +
+      '<button type="button" class="btn btn--ghost" data-hw-account-cancel-close>Keep my plan</button>' +
+      '<button type="button" class="btn hw-account-delete-btn" id="hw-account-cancel-confirm">Cancel subscription</button>' +
+      "</div>" +
+      "</div>" +
+      /* Done. */
+      '<div data-cancel-step="done" hidden>' +
+      '<h3 class="hw-account-delete-dialog__title">Subscription cancelled</h3>' +
+      '<p class="hw-account-delete-dialog__body" id="hw-account-cancel-done-text"></p>' +
+      '<p class="hw-account-delete-dialog__body" id="hw-account-cancel-done-email">A confirmation email is on its way.</p>' +
+      '<div class="hw-account-delete-dialog__actions">' +
+      '<button type="button" class="btn btn--primary" data-hw-account-cancel-close>Close</button>' +
+      "</div>" +
+      "</div>" +
+      "</div>" +
+      "</div>"
+    );
+  }
+
   function subscriptionMarkup() {
     return (
       '<article class="hw-hub-worksheet-card hw-account-card hw-account-card--plans" id="hw-account-subscription-card">' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-account-sellup-frame">' +
       '<div class="hw-hub-v5-sellup hw-account-plans" id="hw-v5-account-sellup" aria-label="Homework Hub plans"></div>' +
       "</div>" +
+      '<section class="hw-account-cancel" id="hw-account-cancel-block" hidden></section>' +
+      cancelDialogMarkup() +
       "</article>"
     );
   }
@@ -537,12 +783,30 @@
     );
   }
 
+  function featuresMarkup() {
+    return (
+      '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-features-card">' +
+      '<p class="hw-account-card__lead">Homework Hub features</p>' +
+      '<div class="hw-account-switch-row">' +
+      '<span class="hw-account-switch-row__label">Auto advance</span>' +
+      '<button type="button" class="hw-account-switch" id="hw-account-quest-auto-advance" role="switch" aria-checked="true" aria-label="Automatic quest advance">' +
+      '<span class="hw-account-switch__knob"></span></button>' +
+      "</div>" +
+      '<p class="hw-account-switch-row__note hw-account-features-note" id="hw-account-quest-auto-advance-note">' +
+      "Automatic — completing moves you to the next quest (once per day)." +
+      "</p>" +
+      "</article>"
+    );
+  }
+
   function notificationsMarkup() {
     return (
       '<article class="hw-hub-worksheet-card hw-account-card" id="hw-account-notifications-card">' +
       '<p class="hw-account-card__lead">Receive notifications regarding Homework updates</p>' +
       notifySwitchRow("hw-account-notify-discord", "Discord") +
-      '<p class="hw-account-notify-error" id="hw-account-discord-need-id" hidden>Enter your Discord ID under Profile first.</p>' +
+      '<p class="hw-account-notify-error" id="hw-account-discord-need-id" hidden>' +
+      '<a href="#account" class="hw-account-discord-need-link" id="hw-account-discord-need-link">Enter your Discord ID under Profile first.</a>' +
+      "</p>" +
       notifySwitchRow("hw-account-notify-email", "Email") +
       "</article>"
     );
@@ -582,6 +846,7 @@
       profile: "Profile",
       subscription: "Subscription",
       notifications: "Notifications",
+      features: "Features",
     };
     const active = ACCOUNT_TABS.includes(activeTab) ? activeTab : "profile";
     tabs.replaceChildren(slider);
@@ -651,6 +916,9 @@
       "</div>" +
       '<div class="hw-hub-v5-panel" id="hw-account-teacher-panel-notifications" data-hw-account-panel="notifications" role="tabpanel" aria-labelledby="hw-account-teacher-tab-notifications" hidden>' +
       notificationsMarkup() +
+      "</div>" +
+      '<div class="hw-hub-v5-panel" id="hw-account-teacher-panel-features" data-hw-account-panel="features" role="tabpanel" aria-labelledby="hw-account-teacher-tab-features" hidden>' +
+      featuresMarkup() +
       "</div>" +
       "</div>";
     teacherHub.parentNode.insertBefore(app, teacherHub.nextSibling);
@@ -886,6 +1154,31 @@
         else setProfileEditing(true);
         return;
       }
+      if (e.target.closest("#hw-account-cancel-open")) {
+        e.preventDefault();
+        openCancelDialog();
+        return;
+      }
+      if (e.target.closest("[data-hw-account-cancel-close]")) {
+        e.preventDefault();
+        closeCancelDialog();
+        return;
+      }
+      if (e.target.closest("[data-hw-account-cancel-cheaper]")) {
+        e.preventDefault();
+        showCheaperPlans();
+        return;
+      }
+      if (e.target.closest("[data-hw-account-cancel-continue]")) {
+        e.preventDefault();
+        cancelDialogStep("confirm");
+        return;
+      }
+      if (e.target.closest("#hw-account-cancel-confirm")) {
+        e.preventDefault();
+        void submitCancelSubscription();
+        return;
+      }
       if (e.target.closest("#hw-account-delete-confirm")) {
         e.preventDefault();
         void deleteAccount();
@@ -911,6 +1204,18 @@
         e.preventDefault();
         const dialog = document.getElementById("hw-account-discord-help-dialog");
         if (dialog) dialog.hidden = true;
+        return;
+      }
+      if (e.target.closest("#hw-account-discord-need-link")) {
+        e.preventDefault();
+        focusDiscordIdField();
+        return;
+      }
+      if (e.target.closest("#hw-account-quest-auto-advance")) {
+        e.preventDefault();
+        void global.HwHubQuests?.loadProgress?.().then(() => {
+          void global.HwHubQuests?.toggleAdvanceMode?.();
+        });
         return;
       }
       const notifyBtn = e.target.closest("[data-hw-notify]");
@@ -953,6 +1258,8 @@
     profileMarkup,
     subscriptionMarkup,
     notificationsMarkup,
+    featuresMarkup,
+    focusDiscordIdField,
     fillSession,
     fillPlanCopy,
     paintAccountPlans,

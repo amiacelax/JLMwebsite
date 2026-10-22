@@ -175,6 +175,53 @@
     }
   }
 
+  /** Stop a live take and keep whatever audio or video is already captured. */
+  function flushRecorder(recorder) {
+    if (!recorder || recorder.state === "inactive") return false;
+    try {
+      if (typeof recorder.requestData === "function" && recorder.state === "recording") {
+        recorder.requestData();
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    try {
+      if (recorder.state !== "inactive") recorder.stop();
+    } catch (_) {
+      /* ignore */
+    }
+    return true;
+  }
+
+  /**
+   * Clicking away, hiding the page, or leaving should finish the take, not throw it out.
+   * api.isLive() and api.flush() come from the recorder that owns the mount.
+   */
+  function bindRecordingSurvive(mount, api) {
+    if (!mount || mount.dataset.hwRecSurvive === "1" || !api) return;
+    mount.dataset.hwRecSurvive = "1";
+    const go = (ev) => {
+      let live = false;
+      try {
+        live = api.isLive() === true;
+      } catch (_) {
+        live = false;
+      }
+      if (!live) return;
+      if (ev && ev.target && mount.contains(ev.target)) return;
+      try {
+        api.flush();
+      } catch (_) {
+        /* ignore */
+      }
+    };
+    document.addEventListener("pointerdown", go, true);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) go();
+    });
+    window.addEventListener("pagehide", () => go());
+  }
+
   function stopMediaStream(stream) {
     if (!stream) return;
     if (typeof stream._hwStereoCleanup === "function") {
@@ -205,5 +252,7 @@
     enhanceVideoElement,
     getStereoUserMedia,
     stopMediaStream,
+    flushRecorder,
+    bindRecordingSurvive,
   };
 })(typeof window !== "undefined" ? window : globalThis);

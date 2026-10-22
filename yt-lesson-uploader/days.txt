@@ -1,0 +1,16 @@
+﻿IG Reels: 17
+  Mon: n=1 median views=421 median saves=0 median likes=5
+  Wed: n=3 median views=1503 median saves=16 median likes=19
+  Thu: n=6 median views=1707 median saves=24 median likes=39
+  Fri: n=3 median views=1620 median saves=24 median likes=43
+  Sat: n=3 median views=1138 median saves=11 median likes=22
+  Sun: n=1 median views=1287 median saves=25 median likes=27
+  post hours JST: [9, 10, 11, 14, 15, 18]
+YT Shorts (public): 36
+  Mon: n=5 median views=639 best=1859
+  Tue: n=8 median views=584 best=2264
+  Wed: n=7 median views=235 best=2688
+  Thu: n=7 median views=425 best=1234
+  Fri: n=4 median views=794 best=3208
+  Sat: n=3 median views=557 best=760
+  Sun: n=2 median views=1019 best=1859

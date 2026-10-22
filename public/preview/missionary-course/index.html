@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#0b162a">
+  <title>What you’ll work on — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg-2: #121f36;
+      --ink: #e8edf5;
+      --muted: #9aa8bd;
+      --line: rgba(232, 237, 245, 0.14);
+      --heart: #e85545;
+      --coral: #e07a5f;
+      --day: #67c4eb;
+      --deep: #4a8fd4;
+      --teal: #3dbaa8;
+      --sun: #f0b429;
+      --violet: #a78bfa;
+      --font: Inter, "Noto Sans JP", system-ui, sans-serif;
+      --brand: "Josefin Sans", Inter, sans-serif;
+      --jp: "Noto Sans JP", Inter, sans-serif;
+      --pad: clamp(1.1rem, 4vw, 1.75rem);
+      --max: 40rem;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 90% 55% at 100% -5%, rgba(103, 196, 235, 0.28), transparent 55%),
+        radial-gradient(ellipse 70% 45% at 0% 25%, rgba(232, 85, 69, 0.16), transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(61, 186, 168, 0.12), transparent 45%),
+        var(--bg);
+      background-attachment: fixed;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body.is-lightbox-open { overflow: hidden; }
+
+    .shell {
+      width: min(100%, var(--max));
+      margin: 0 auto;
+      padding: calc(env(safe-area-inset-top, 0px) + 1.5rem) var(--pad) 4rem;
+    }
+
+    .brand {
+      margin: 0 0 1.75rem;
+      font-family: var(--brand);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--day);
+    }
+
+    h1 {
+      margin: 0 0 0.5rem;
+      font-family: var(--brand);
+      font-size: clamp(1.85rem, 7vw, 2.4rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+
+    .lede {
+      margin: 0 0 2rem;
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 28ch;
+    }
+
+    ruby {
+      ruby-align: center;
+    }
+
+    rt {
+      font-size: 0.55em;
+      font-weight: 500;
+      color: color-mix(in srgb, var(--step, var(--day)) 70%, var(--muted));
+    }
+
+    .figs-fold {
+      margin: 0 0 0.5rem;
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      background: color-mix(in srgb, var(--day) 8%, var(--bg-2));
+      overflow: hidden;
+    }
+
+    .figs-fold__summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.95rem 1.1rem;
+      font-family: var(--brand);
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--day);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .figs-fold__summary::-webkit-details-marker { display: none; }
+    .figs-fold__summary::before {
+      content: "▸ ";
+      display: inline-block;
+      transition: transform 0.15s ease;
+    }
+    .figs-fold[open] .figs-fold__summary::before { transform: rotate(90deg); }
+
+    .figs-fold__hint {
+      font-family: var(--font);
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .figs-fold .figs { padding: 0 1rem 1rem; }
+
+    .fig { margin: 0 0 1.25rem; }
+    .figs-fold .fig:last-child { margin-bottom: 0; }
+
+    .fig img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 0.75rem;
+      border: 1px solid var(--line);
+      background: #161b26;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      cursor: zoom-in;
+    }
+
+    .fig figcaption {
+      margin: 0.55rem 0 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .fig__zoom-hint {
+      margin: 0.35rem 0 0;
+      font-size: 0.78rem;
+      color: var(--day);
+    }
+
+    /* Fullscreen lightbox — sideways (landscape) on phone */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: rgba(5, 10, 20, 0.94);
+      cursor: zoom-out;
+    }
+
+    .lightbox[hidden] { display: none; }
+
+    .lightbox__img {
+      display: block;
+      max-width: min(96vw, 1100px);
+      max-height: 92vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 0.35rem;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      cursor: zoom-out;
+    }
+
+    /* Portrait phone/tablet: rotate so diagram fills the sideways view */
+    @media (orientation: portrait) and (max-width: 900px) {
+      .lightbox__img {
+        max-width: 92vh;
+        max-height: 96vw;
+        transform: rotate(90deg);
+      }
+    }
+
+    .lightbox__close {
+      position: absolute;
+      top: max(0.75rem, env(safe-area-inset-top));
+      right: max(0.75rem, env(safe-area-inset-right));
+      z-index: 2;
+      width: 2.75rem;
+      height: 2.75rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(18, 31, 54, 0.9);
+      color: var(--ink);
+      font-size: 1.35rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .path {
+      margin: 2.5rem 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step -1;
+    }
+
+    .step {
+      counter-increment: step;
+      position: relative;
+      margin: 0 0 1.35rem;
+      padding: 1.35rem 1.15rem 1.25rem;
+      border-radius: 1rem;
+      border: 1px solid color-mix(in srgb, var(--step, var(--day)) 40%, var(--line));
+      background: color-mix(in srgb, var(--step, var(--day)) 12%, var(--bg-2));
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--step, var(--day)) 14%, transparent),
+        0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .step::before {
+      content: counter(step);
+      position: absolute;
+      top: -0.65rem;
+      left: 1rem;
+      min-width: 1.7rem;
+      height: 1.7rem;
+      padding: 0 0.35rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--brand);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #0b162a;
+      border-radius: 999px;
+      background: var(--step, var(--day));
+    }
+
+    .step--1 { --step: var(--violet); }
+    .step--2 { --step: var(--heart); }
+    .step--3 { --step: var(--coral); }
+    .step--4 { --step: var(--sun); }
+    .step--5 { --step: var(--teal); }
+    .step--6 { --step: var(--day); }
+    .step--7 { --step: var(--deep); }
+    .step--8 { --step: #94a3b8; }
+    .step--9 { --step: #f472b6; }
+    .step--10 { --step: #38bdf8; }
+    .step--11 { --step: #a3e635; }
+    .step--12 { --step: #fb923c; }
+
+    .step h2 {
+      margin: 0 0 0.65rem;
+      font-family: var(--jp);
+      font-size: clamp(1.2rem, 4.5vw, 1.4rem);
+      font-weight: 700;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+
+    .step h2 .en {
+      display: block;
+      margin-top: 0.2rem;
+      font-family: var(--font);
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .talk {
+      margin: 0.75rem 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .talk li {
+      font-family: var(--jp);
+      font-size: 1.05rem;
+      font-weight: 500;
+      line-height: 1.7;
+      padding: 0.65rem 0.85rem;
+      border-radius: 0.75rem;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--step, var(--day)) 20%, #0a1424);
+      border: 1px solid color-mix(in srgb, var(--step, var(--day)) 45%, transparent);
+    }
+
+    .aside {
+      margin: 0.85rem 0 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .aside strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .sit {
+      margin: 0.9rem 0 0;
+      padding: 0.85rem 0.95rem;
+      border-radius: 0.75rem;
+      background: color-mix(in srgb, var(--step, var(--coral)) 16%, transparent);
+      border: 1px dashed color-mix(in srgb, var(--step, var(--coral)) 55%, transparent);
+    }
+
+    .sit__label {
+      margin: 0 0 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--step, var(--coral));
+    }
+
+    .sit p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--ink);
+      line-height: 1.65;
+    }
+
+    .sit p + p {
+      margin-top: 0.35rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .rules {
+      margin: 0.75rem 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .rules li {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 0.65rem;
+      background: color-mix(in srgb, var(--violet) 14%, var(--bg-2));
+      border: 1px solid color-mix(in srgb, var(--violet) 35%, var(--line));
+    }
+
+    .rules b {
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 650;
+      color: var(--violet);
+    }
+
+    .rules span {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hw-note {
+      margin: 2.25rem 0 0;
+      padding: 1.15rem 1.2rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #1e5082 0%, #2a7a9e 45%, #3dbaa8 100%);
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .hw-note h2 {
+      margin: 0 0 0.4rem;
+      font-family: var(--brand);
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .hw-note p {
+      margin: 0;
+      font-size: 0.98rem;
+      opacity: 0.95;
+      line-height: 1.45;
+    }
+
+    .foot {
+      margin: 2rem 0 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    @media (min-width: 768px) {
+      .shell { padding-top: 2.25rem; }
+      .figs { display: grid; gap: 1.25rem; }
+    }
+
+    .edit-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0 0 1.25rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--line);
+      background: rgba(11, 22, 42, 0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .edit-bar button {
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.5rem 0.85rem;
+      border-radius: 0.55rem;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--day) 18%, var(--bg-2));
+      color: var(--ink);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .edit-bar button.edit-bar__primary {
+      background: var(--day);
+      color: #0b162a;
+      border-color: transparent;
+    }
+
+    .edit-bar button[hidden] { display: none; }
+
+    .edit-bar__status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .page-tabs {
+      display: flex;
+      gap: 0.4rem;
+      margin: 0 0 1.25rem;
+    }
+
+    .page-tabs button {
+      font: inherit;
+      font-weight: 650;
+      font-size: 0.95rem;
+      padding: 0.55rem 0.95rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .page-tabs button.is-on {
+      background: color-mix(in srgb, var(--day) 22%, var(--bg-2));
+      color: var(--ink);
+      border-color: color-mix(in srgb, var(--day) 55%, var(--line));
+    }
+
+    .word-pane[hidden],
+    #course-copy[hidden] { display: none; }
+
+    .word-pane {
+      padding-bottom: 2rem;
+    }
+
+    .word-pane h2 {
+      margin: 0 0 0.4rem;
+      font-family: var(--brand);
+      font-size: 1.45rem;
+    }
+
+    .word-pane .lede {
+      margin-bottom: 1rem;
+    }
+
+    .word-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .word-list li {
+      font-family: var(--jp);
+      font-size: 1.15rem;
+      font-weight: 600;
+      padding: 0.55rem 0.85rem;
+      border-radius: 0.7rem;
+      border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--line));
+      background: color-mix(in srgb, var(--teal) 14%, var(--bg-2));
+    }
+    .word-set-title {
+      margin: 1.6rem 0 0.4rem;
+      font-family: var(--brand);
+      font-size: 1.25rem;
+    }
+
+    .word-list--time li {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.15rem;
+      border-color: color-mix(in srgb, var(--coral) 50%, var(--line));
+      background: color-mix(in srgb, var(--coral) 16%, var(--bg-2));
+    }
+
+    .word-list--time .en {
+      font-family: var(--font);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .word-deck-link {
+      display: inline-block;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 600;
+      padding: 0.65rem 0.9rem;
+      border-radius: 0.75rem;
+      border: 1px solid color-mix(in srgb, var(--sun) 50%, var(--line));
+      background: color-mix(in srgb, var(--sun) 16%, var(--bg-2));
+    }
+
+
+
+    body.is-editing #course-copy {
+      outline: 2px dashed color-mix(in srgb, var(--day) 45%, transparent);
+      outline-offset: 6px;
+      border-radius: 0.5rem;
+    }
+
+    body.is-editing #course-copy [contenteditable="true"] {
+      caret-color: var(--day);
+    }
+
+    body.is-editing .js-lightbox-img {
+      pointer-events: none;
+      cursor: text;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="edit-bar" role="toolbar" aria-label="Edit course copy">
+      <button type="button" class="edit-bar__primary" id="edit-toggle">Edit text</button>
+      <button type="button" id="edit-save" hidden>Save</button>
+      <button type="button" id="edit-done" hidden>Done</button>
+      <button type="button" id="edit-reset" hidden>Reset to original</button>
+      <span class="edit-bar__status" id="edit-status"></span>
+    </div>
+
+    <div class="page-tabs" role="tablist" aria-label="Course pages">
+      <button type="button" class="is-on" role="tab" id="tab-course" aria-selected="true" aria-controls="course-copy">Course</button>
+      <button type="button" role="tab" id="tab-words" aria-selected="false" aria-controls="word-pane">Words</button>
+    </div>
+
+    <section class="word-pane" id="word-pane" role="tabpanel" aria-labelledby="tab-words" hidden>
+      <h2>Core Japanese</h2>
+      <p class="lede">The full core list is its own page — the Quizlet decks, plus つまり, 例えば, and わざと.</p>
+      <p><a class="word-deck-link" href="/preview/you-need-this-japanese/index.html">Core Japanese</a></p>
+    </section>
+
+    <div id="course-copy">
+    <p class="brand">Japanese Language Mentor</p>
+    <h1>What you’ll work on first</h1>
+    <p class="lede">Learn &amp; speak first. Grammar gets bigger later — when you need bigger answers. Your pace.</p>
+
+    <details class="figs-fold">
+      <summary class="figs-fold__summary">Why this path <span class="figs-fold__hint">(diagrams)</span></summary>
+      <div class="figs">
+        <figure class="fig">
+          <img class="js-lightbox-img" src="assets/building-relationships.png" alt="Building Relationships diagram" width="1200" height="900" loading="lazy">
+          <p class="fig__zoom-hint">Tap for fullscreen (tilt sideways)</p>
+          <figcaption>Talk that reaches people, not just lists.</figcaption>
+        </figure>
+        <figure class="fig">
+          <img class="js-lightbox-img" src="assets/relationship-building-japanese.png" alt="Relationship-building Japanese diagram" width="1200" height="700" loading="lazy">
+          <p class="fig__zoom-hint">Tap for fullscreen (tilt sideways)</p>
+          <figcaption>Core → Reach → Goal.</figcaption>
+        </figure>
+      </div>
+    </details>
+
+    <ol class="path">
+      <li class="step step--1">
+        <h2>0 Ground Rules for Beginner Conversation</h2>
+        <ul class="rules">
+          <li><b>The Repeat Rule</b><span>No need to think. Just repeat the question and make a minor change.</span></li>
+          <li><b>The Katakana Rule</b><span>Don't know it in Japanese? Say it in English in your best Japanese accent.</span></li>
+          <li><b>Talk now, worry later</b><span>Mistakes are good and help you learn faster.</span></li>
+          <li><b>One way to say</b><span>Sounding smart is nice, but being humble takes</span></li>
+        </ul>
+        <div class="sit">
+          <p class="sit__label">Every day</p>
+          <ul class="talk" lang="ja">
+            <li><ruby>神様<rt>かみさま</rt></ruby>、</li>
+            <li>ごめんなさい。</li>
+            <li>ありがとうございます。</li>
+            <li><ruby>日本語<rt>にほんご</rt></ruby>うまくなりたいです。<ruby>助<rt>たす</rt></ruby>けてください。</li>
+            <li>イエスキリストの<ruby>名前<rt>なまえ</rt></ruby>によって<ruby>祈<rt>いの</rt></ruby>ります。</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="step step--2">
+        <h2>1 <ruby>自己紹介<rt>じこしょうかい</rt></ruby><span class="en">Introducing yourself</span></h2>
+        <ul class="talk" lang="ja">
+          <li>お<ruby>名前<rt>なまえ</rt></ruby>は？</li>
+          <li><ruby>何才<rt>なんさい</rt></ruby>ですか？</li>
+          <li>どこに<ruby>住<rt>す</rt></ruby>んでますか？</li>
+          <li>お<ruby>仕事<rt>しごと</rt></ruby>は？</li>
+          <li><ruby>趣味<rt>しゅみ</rt></ruby>はありますか？</li>
+        </ul>
+        <div class="sit">
+          <p class="sit__label">Situation cards</p>
+          <p>Practice with your spouse. Think about it on the train.</p>
+          <p>Demo: one situation card a day (daily quest) — later.</p>
+        </div>
+      </li>
+
+      <li class="step step--3">
+        <h2>2 した — past<span class="en">Simple た・だ</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>今日<rt>きょう</rt></ruby>は<ruby>何<rt>なに</rt></ruby>をした？</li>
+          <li><ruby>昨日<rt>きのう</rt></ruby>は？　<ruby>月曜日<rt>げつようび</rt></ruby>は？</li>
+          <li><ruby>散歩<rt>さんぽ</rt></ruby>した。ご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べた。</li>
+        </ul>
+        <p class="aside">Past first. Keep it short — just get <strong>た・だ</strong> down.</p>
+        <div class="sit">
+          <p class="sit__label">One way to share it — after した</p>
+          <ul class="talk" lang="ja">
+            <li><ruby>私<rt>わたし</rt></ruby>たちはいい<ruby>人<rt>ひと</rt></ruby>じゃない。</li>
+            <li><ruby>自分<rt>じぶん</rt></ruby>の<ruby>力<rt>ちから</rt></ruby>で、<ruby>私<rt>わたし</rt></ruby>は<ruby>天国<rt>てんごく</rt></ruby>に<ruby>行<rt>い</rt></ruby>けない。</li>
+            <li>イエス<ruby>様<rt>さま</rt></ruby>は<ruby>神様<rt>かみさま</rt></ruby>。</li>
+            <li>イエス<ruby>様<rt>さま</rt></ruby>は<ruby>私<rt>わたし</rt></ruby>たちのつみのために<ruby>死<rt>し</rt></ruby>にました。</li>
+            <li>そして、よみがえりました。</li>
+            <li>このことを<ruby>信<rt>しん</rt></ruby>じれば〇〇さんも<ruby>救<rt>すく</rt></ruby>われます。</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="step step--4">
+        <h2>3 する — future / invite<span class="en">る・ます · also “wanna…?”</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>明日<rt>あした</rt></ruby>は<ruby>何<rt>なに</rt></ruby>をする？</li>
+          <li>５<ruby>日<rt>にち</rt></ruby>に<ruby>何<rt>なに</rt></ruby>をする？</li>
+          <li>ラーメン、<ruby>行<rt>い</rt></ruby>く？</li>
+        </ul>
+        <div class="sit">
+          <p class="sit__label">Situation cards (need HW + practice)</p>
+          <p>Invite your friend to a new ramen place that just opened.</p>
+          <p>Invite your neighbor to the Christmas church event.</p>
+        </div>
+      </li>
+
+      <li class="step step--5">
+        <h2>4 してる<span class="en">What are you doing right now?</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>今<rt>いま</rt></ruby><ruby>何<rt>なに</rt></ruby>をしてる？</li>
+          <li>ご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べてる。<ruby>勉強<rt>べんきょう</rt></ruby>してる。</li>
+        </ul>
+      </li>
+
+      <li class="step step--6">
+        <h2>5 Negative plain past<span class="en">しなかった · 食べなかった…</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>昨日<rt>きのう</rt></ruby>は<ruby>何<rt>なに</rt></ruby>もしなかった。</li>
+          <li><ruby>行<rt>い</rt></ruby>かなかった。<ruby>食<rt>た</rt></ruby>べなかった。</li>
+        </ul>
+      </li>
+
+      <li class="step step--7">
+        <h2>6 Negative future<span class="en">しない · 食べない…</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>明日<rt>あした</rt></ruby>はしない。</li>
+          <li><ruby>行<rt>い</rt></ruby>かない。<ruby>食<rt>た</rt></ruby>べない。</li>
+        </ul>
+      </li>
+
+      <li class="step step--8">
+        <h2>7 Four Types of Japanese<span class="en">The map — so forms stop feeling random</span></h2>
+        <ul class="talk" lang="ja">
+          <li>する　／　します</li>
+          <li>した　／　しました</li>
+          <li>しない　／　しません</li>
+          <li>しなかった　／　しませんでした</li>
+        </ul>
+        <p class="aside">You’ve already been <strong>using</strong> these. Now name the four types.</p>
+      </li>
+
+      <li class="step step--9">
+        <h2>8 ましょう<span class="en">Let’s…</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>行<rt>い</rt></ruby>きましょう。</li>
+          <li><ruby>映画<rt>えいが</rt></ruby>を<ruby>見<rt>み</rt></ruby>ましょう。</li>
+        </ul>
+        <div class="sit">
+          <p class="sit__label">Situation cards</p>
+          <p>Simple “let’s go” / “let’s go see a movie” — not made yet.</p>
+        </div>
+      </li>
+
+      <li class="step step--10">
+        <h2>9 い-adjectives<span class="en">Conjugation explanation</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>美味<rt>おい</rt></ruby>しい　→　<ruby>美味<rt>おい</rt></ruby>しかった　→　<ruby>美味<rt>おい</rt></ruby>しくない</li>
+          <li><ruby>忙<rt>いそが</rt></ruby>しい　→　<ruby>忙<rt>いそが</rt></ruby>しかった</li>
+        </ul>
+      </li>
+
+      <li class="step step--11">
+        <h2>10 Nouns &amp; な-adjectives<span class="en">Conjugation explanation</span></h2>
+        <ul class="talk" lang="ja">
+          <li><ruby>静<rt>しず</rt></ruby>か　→　<ruby>静<rt>しず</rt></ruby>かだった　→　<ruby>静<rt>しず</rt></ruby>かじゃない</li>
+          <li><ruby>先生<rt>せんせい</rt></ruby>だ　／　<ruby>先生<rt>せんせい</rt></ruby>だった</li>
+        </ul>
+      </li>
+
+      <li class="step step--12">
+        <h2>11 Verb conjugation<span class="en">Fuller explanation — once the talk is already down</span></h2>
+        <p class="aside">One of each ending type:</p>
+        <ul class="talk" lang="ja">
+          <li><ruby>聞<rt>き</rt></ruby>く ・ <ruby>泳<rt>およ</rt></ruby>ぐ</li>
+          <li>のむ ・ <ruby>選<rt>えら</rt></ruby>ぶ ・ <ruby>死<rt>し</rt></ruby>ぬ</li>
+          <li><ruby>待<rt>ま</rt></ruby>つ ・ <ruby>使<rt>つか</rt></ruby>う ・ わかる</li>
+          <li><ruby>話<rt>はな</rt></ruby>す</li>
+          <li><ruby>寝<rt>ね</rt></ruby>る</li>
+        </ul>
+      </li>
+    </ol>
+
+    <div class="hw-note">
+      <h2>Homework</h2>
+      <p>Online HW + situation cards sit under each step — not a dump of grammar up front.</p>
+    </div>
+
+    <p class="foot">Living outline — we shape it as you grow. · JD</p>
+    </div>
+  </div>
+
+  <dialog class="lightbox" id="fig-lightbox" aria-label="Fullscreen diagram">
+    <button type="button" class="lightbox__close" id="fig-lightbox-close" aria-label="Close">×</button>
+    <img class="lightbox__img" id="fig-lightbox-img" alt="">
+  </dialog>
+
+  <script>
+    (function () {
+      var STORAGE_KEY = "jlm-missionary-course-copy-v1";
+      var WORDS_KEY = "jlm-missionary-course-words-v4";
+      var copy = document.getElementById("course-copy");
+      var wordPane = document.getElementById("word-pane");
+      var toggleBtn = document.getElementById("edit-toggle");
+      var saveBtn = document.getElementById("edit-save");
+      var doneBtn = document.getElementById("edit-done");
+      var resetBtn = document.getElementById("edit-reset");
+      var statusEl = document.getElementById("edit-status");
+      if (!copy || !toggleBtn) return;
+
+      var defaultHtml = copy.innerHTML;
+      var defaultWords = wordPane ? wordPane.innerHTML : "";
+      var editing = false;
+
+      function setStatus(msg) {
+        if (statusEl) statusEl.textContent = msg || "";
+      }
+
+      function ensureVerbEndings() {
+        var steps = copy.querySelectorAll("li.step");
+        var step = null;
+        var i;
+        for (i = 0; i < steps.length; i++) {
+          var h = steps[i].querySelector("h2");
+          if (h && h.textContent.indexOf("Verb conjugation") !== -1) {
+            step = steps[i];
+            break;
+          }
+        }
+        if (!step) return;
+        var plain = step.cloneNode(true);
+        var rts = plain.querySelectorAll("rt");
+        var r;
+        for (r = 0; r < rts.length; r++) rts[r].remove();
+        var text = plain.textContent || "";
+        if (
+          text.indexOf("聞く") !== -1 &&
+          text.indexOf("泳ぐ") !== -1 &&
+          text.indexOf("死ぬ") !== -1 &&
+          text.indexOf("わかる") !== -1 &&
+          text.indexOf("話す") !== -1 &&
+          text.indexOf("寝る") !== -1
+        ) return;
+        var ul = document.createElement("ul");
+        ul.className = "talk";
+        ul.setAttribute("lang", "ja");
+        ul.innerHTML =
+          "<li><ruby>聞<rt>き</rt></ruby>く ・ <ruby>泳<rt>およ</rt></ruby>ぐ</li>" +
+          "<li>のむ ・ <ruby>選<rt>えら</rt></ruby>ぶ ・ <ruby>死<rt>し</rt></ruby>ぬ</li>" +
+          "<li><ruby>待<rt>ま</rt></ruby>つ ・ <ruby>使<rt>つか</rt></ruby>う ・ わかる</li>" +
+          "<li><ruby>話<rt>はな</rt></ruby>す</li>" +
+          "<li><ruby>寝<rt>ね</rt></ruby>る</li>";
+        step.appendChild(ul);
+      }
+
+      function ensureCoreWord(word) {
+        if (!wordPane || !word) return;
+        if ((wordPane.textContent || "").indexOf(word) !== -1) return;
+        var list = wordPane.querySelector("#word-list");
+        if (!list) return;
+        var li = document.createElement("li");
+        li.textContent = word;
+        list.appendChild(li);
+      }
+
+      function prayerAndGospelBlock(label, lines) {
+        var box = document.createElement("div");
+        box.className = "sit";
+        var p = document.createElement("p");
+        p.className = "sit__label";
+        p.textContent = label;
+        var ul = document.createElement("ul");
+        ul.className = "talk";
+        ul.setAttribute("lang", "ja");
+        ul.innerHTML = lines;
+        box.appendChild(p);
+        box.appendChild(ul);
+        return box;
+      }
+
+      function ensureDailyPieces() {
+        var steps = copy.querySelectorAll("li.step");
+        var i;
+        for (i = 0; i < steps.length; i++) {
+          var h = steps[i].querySelector("h2");
+          if (!h) continue;
+          var title = h.textContent || "";
+          if (title.indexOf("Ground Rules") !== -1 && (steps[i].textContent || "").indexOf("助けてください") === -1) {
+            steps[i].appendChild(prayerAndGospelBlock("Every day",
+              "<li><ruby>神様<rt>かみさま</rt></ruby>、</li>" +
+              "<li>ごめんなさい。</li>" +
+              "<li>ありがとうございます。</li>" +
+              "<li><ruby>日本語<rt>にほんご</rt></ruby>うまくなりたいです。<ruby>助<rt>たす</rt></ruby>けてください。</li>" +
+              "<li>イエスキリストの<ruby>名前<rt>なまえ</rt></ruby>によって<ruby>祈<rt>いの</rt></ruby>ります。</li>"));
+          }
+          if (title.indexOf("した") !== -1 && title.indexOf("past") !== -1 && (steps[i].textContent || "").indexOf("よみがえり") === -1) {
+            steps[i].appendChild(prayerAndGospelBlock("One way to share it — after した",
+              "<li><ruby>私<rt>わたし</rt></ruby>たちはいい<ruby>人<rt>ひと</rt></ruby>じゃない。</li>" +
+              "<li><ruby>自分<rt>じぶん</rt></ruby>の<ruby>力<rt>ちから</rt></ruby>で、<ruby>私<rt>わたし</rt></ruby>は<ruby>天国<rt>てんごく</rt></ruby>に<ruby>行<rt>い</rt></ruby>けない。</li>" +
+              "<li>イエス<ruby>様<rt>さま</rt></ruby>は<ruby>神様<rt>かみさま</rt></ruby>。</li>" +
+              "<li>イエス<ruby>様<rt>さま</rt></ruby>は<ruby>私<rt>わたし</rt></ruby>たちのつみのために<ruby>死<rt>し</rt></ruby>にました。</li>" +
+              "<li>そして、よみがえりました。</li>" +
+              "<li>このことを<ruby>信<rt>しん</rt></ruby>じれば〇〇さんも<ruby>救<rt>すく</rt></ruby>われます。</li>"));
+          }
+        }
+      }
+
+      function loadSaved() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            copy.innerHTML = raw;
+            setStatus("Loaded your edits");
+          }
+          var words = localStorage.getItem(WORDS_KEY);
+          if (words && wordPane) wordPane.innerHTML = words;
+          ensureVerbEndings();
+          ensureDailyPieces();
+          ensureCoreWord("わざと");
+          if (raw) return true;
+        } catch (e) { /* ignore */ }
+        return false;
+      }
+
+      function save() {
+        try {
+          localStorage.setItem(STORAGE_KEY, copy.innerHTML);
+          if (wordPane) localStorage.setItem(WORDS_KEY, wordPane.innerHTML);
+          setStatus("Saved on this device");
+        } catch (e) {
+          setStatus("Couldn’t save (storage full?)");
+        }
+      }
+
+      function setEditing(on) {
+        editing = on;
+        document.body.classList.toggle("is-editing", on);
+        copy.contentEditable = on ? "true" : "false";
+        copy.setAttribute("spellcheck", on ? "true" : "false");
+        if (wordPane) {
+          wordPane.contentEditable = on ? "true" : "false";
+          wordPane.setAttribute("spellcheck", on ? "true" : "false");
+        }
+        toggleBtn.hidden = on;
+        saveBtn.hidden = !on;
+        doneBtn.hidden = !on;
+        resetBtn.hidden = !on;
+        if (on) {
+          setStatus("Tap text to edit · Delete / type freely · then Save");
+          copy.focus();
+        } else {
+          setStatus("");
+        }
+      }
+
+      loadSaved();
+
+      var tabCourse = document.getElementById("tab-course");
+      var tabWords = document.getElementById("tab-words");
+      function showPane(which) {
+        var words = which === "words";
+        if (wordPane) wordPane.hidden = !words;
+        copy.hidden = words;
+        if (tabCourse) {
+          tabCourse.classList.toggle("is-on", !words);
+          tabCourse.setAttribute("aria-selected", words ? "false" : "true");
+        }
+        if (tabWords) {
+          tabWords.classList.toggle("is-on", words);
+          tabWords.setAttribute("aria-selected", words ? "true" : "false");
+        }
+      }
+      tabCourse && tabCourse.addEventListener("click", function () { showPane("course"); });
+      tabWords && tabWords.addEventListener("click", function () { showPane("words"); });
+
+      toggleBtn.addEventListener("click", function () {
+        setEditing(true);
+      });
+
+      saveBtn.addEventListener("click", function () {
+        save();
+      });
+
+      doneBtn.addEventListener("click", function () {
+        save();
+        setEditing(false);
+        setStatus("Saved · locked for showing");
+      });
+
+      resetBtn.addEventListener("click", function () {
+        if (!confirm("Wipe your edits and restore the original page?")) return;
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(WORDS_KEY);
+        } catch (e) { /* ignore */ }
+        copy.innerHTML = defaultHtml;
+        if (wordPane) wordPane.innerHTML = defaultWords;
+        setStatus("Back to original (not saved yet — Save if you want)");
+      });
+
+      /* lightbox */
+      var lb = document.getElementById("fig-lightbox");
+      var lbImg = document.getElementById("fig-lightbox-img");
+      var closeBtn = document.getElementById("fig-lightbox-close");
+      if (!lb || !lbImg) return;
+
+      function openLb(src, alt) {
+        if (editing) return;
+        lbImg.src = src;
+        lbImg.alt = alt || "";
+        lb.hidden = false;
+        document.body.classList.add("is-lightbox-open");
+        try {
+          if (typeof lb.showModal === "function" && !lb.open) lb.showModal();
+        } catch (e) { /* ignore */ }
+      }
+
+      function closeLb() {
+        lb.hidden = true;
+        document.body.classList.remove("is-lightbox-open");
+        try {
+          if (lb.open) lb.close();
+        } catch (e) { /* ignore */ }
+        lbImg.removeAttribute("src");
+      }
+
+      document.addEventListener("click", function (e) {
+        var img = e.target.closest && e.target.closest(".js-lightbox-img");
+        if (!img || editing) return;
+        e.preventDefault();
+        openLb(img.currentSrc || img.src, img.alt);
+      });
+
+      closeBtn && closeBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        closeLb();
+      });
+
+      lb.addEventListener("click", function (e) {
+        if (e.target === lb || e.target === lbImg) closeLb();
+      });
+
+      lb.addEventListener("cancel", function (e) {
+        e.preventDefault();
+        closeLb();
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !lb.hidden) closeLb();
+      });
+    })();
+  </script>
+</body>
+</html>

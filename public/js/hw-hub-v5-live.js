@@ -22,7 +22,7 @@
   const TIER_PLANS = {
     basic: {
       title: "Basic",
-      price: 5,
+      price: 9,
       tip: "One HW assignment a month — so anyone can join in — with written notes when you send it.",
       detail: "basic",
       featured: false,
@@ -49,9 +49,10 @@
   };
 
   const TIER_DETAIL_TITLES = {
-    basic: "Basic — $5/mo",
+    basic: "Basic — $9/mo",
     premium: "Premium — $20/mo",
     ultra: "Ultra — $49/mo",
+    "student-special": "Student Special — $10/mo",
   };
 
   const DEMO_ACCOUNTS = {
@@ -104,6 +105,20 @@
       accountLabel: "current_student",
       tier: "tier2",
     },
+    quest_only: {
+      username: "questonly",
+      displayName: "Alex",
+      role: "student",
+      accountLabel: "quest_only",
+      tier: "quest_only",
+    },
+    curriculum: {
+      username: "demo2",
+      displayName: "Demo3",
+      role: "student",
+      accountLabel: "curriculum",
+      tier: "tier2",
+    },
   };
 
   const LOCK_SVG =
@@ -128,19 +143,29 @@
     },
   ];
 
-  const TAB_IDS = ["homework", "quest", "notebook", "lessons", "games"];
-  const ACCOUNT_TAB_IDS = ["profile", "subscription", "notifications"];
+  const TAB_IDS = ["homework", "quest", "lessons", "games"];
+  const QUEST_ONLY_TAB_IDS = ["quest", "workouts"];
+  const ACCOUNT_TAB_IDS = ["profile", "subscription", "notifications", "features"];
   const HUB_TAB_LABELS = {
     homework: "HW",
     quest: "Quest",
+    workouts: "Workout",
     notebook: "Notes",
-    lessons: "Lessons/Mistakes",
+    lessons: "Lessons",
+    situations: "Situation Cards",
+    today: "To-do list",
+    prayer: "Prayer",
+    core: "Core Japanese",
+    chapters: "Chapters",
+    week: "Whole week",
+    allcards: "All cards",
     games: "Games",
   };
   const ACCOUNT_TAB_LABELS = {
     profile: "Profile",
     subscription: "Subscription",
     notifications: "Notifications",
+    features: "Features",
   };
   let accountMode = false;
   let hubTabBeforeAccount = "homework";
@@ -149,12 +174,208 @@
     return !!global.HwFeatureFlags?.gamesAndCourses?.();
   }
 
+  function isQuestOnlyAccount() {
+    const session = getActiveSession();
+    if (!session || session.role !== "student") return false;
+    return session.tier === "quest_only" || session.accountLabel === "quest_only";
+  }
+
+  function isCurriculumAccount() {
+    const session = getActiveSession();
+    if (!session || session.role !== "student") return false;
+    if (global.HwAuth?.isCurriculumTrialActive?.(session)) return true;
+    if (global.HwAuth?.isNoahCurriculumOpen?.(session)) return true;
+    if (global.HwAuth?.isChristianCurriculumUser?.(session)) return true;
+    /* Fallback if an older hw-auth.js is cached without the helper. */
+    const user = String(session.username || "")
+      .trim()
+      .toLowerCase();
+    const CHRISTIAN_CURRICULUM_USERS = {
+      christian: 1,
+      demo2: 1,
+      curriculum: 1,
+      alex: 1,
+      sykohpath: 1,
+      secretsister5: 1,
+      kaetherjk: 1,
+      benm: 1,
+      noahjorton: 1,
+      baranymatthewjr: 1,
+    };
+    if (CHRISTIAN_CURRICULUM_USERS[user]) return true;
+    return session.accountLabel === "curriculum";
+  }
+
+  /**
+   * Demo2 QuestTest (demoprem): same hub as Christian's current page,
+   * minus Prayer and Chapters. Other students only get it when listed here
+   * (Jen / nekobi moved over). Keep hw-hub-quests.js QUEST_PREVIEW_USERNAMES in step.
+   */
+  const STANDARD_HUB_USERS = new Set(["demoprem", "premdemo", "nekobi"]);
+
+  function isDemo1StandardPreview() {
+    if (isCurriculumAccount()) return false;
+    const user = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return STANDARD_HUB_USERS.has(user);
+  }
+
+  function isHubDemoUser() {
+    const user = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return (
+      user === "demo" ||
+      user === "demo1" ||
+      user === "demo2" ||
+      user === "demoprem" ||
+      user === "premdemo" ||
+      user === "curriculum" ||
+      user === "noplan" ||
+      user === "questonly"
+    );
+  }
+
+  /** Christian's current hub layout (To-do / Daily Exercise / Core / Situation). */
+  function usesCurriculumHub() {
+    return isCurriculumAccount() || isDemo1StandardPreview();
+  }
+
+  function seesPrayerTab() {
+    const user = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    if (STANDARD_HUB_USERS.has(user)) return false;
+    return isCurriculumAccount();
+  }
+
+  function seesChaptersTab() {
+    const user = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    if (STANDARD_HUB_USERS.has(user)) return false;
+    return isCurriculumAccount();
+  }
+
+  function seesSituationCards() {
+    return usesCurriculumHub();
+  }
+
+  function defaultHubTab() {
+    if (isQuestOnlyAccount()) return "quest";
+    if (usesCurriculumHub()) return "today";
+    return "homework";
+  }
+
+  /** Test accounts that get the Weekly Workouts tab next to Quest (demo1 = the 4-tab hub). */
+  const WORKOUT_TAB_USERS = new Set(["demo1", "demoprem"]);
+
+  function seesWorkoutsTab() {
+    const user = String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+    return WORKOUT_TAB_USERS.has(user);
+  }
+
   function hubTabIds() {
     if (accountMode) return ACCOUNT_TAB_IDS.slice();
-    return gamesAndCoursesEnabled()
-      ? TAB_IDS
+    if (isQuestOnlyAccount()) return QUEST_ONLY_TAB_IDS.slice();
+    if (usesCurriculumHub()) {
+      const ids = ["today", "homework", "quest"];
+      ids.push("notebook", "situations");
+      if (seesPrayerTab()) ids.push("prayer");
+      ids.push("core");
+      if (seesChaptersTab()) ids.push("chapters");
+      ids.push("lessons");
+      if (gamesAndCoursesEnabled()) ids.push("games");
+      ids.push("week", "allcards");
+      return ids;
+    }
+    const base = gamesAndCoursesEnabled()
+      ? TAB_IDS.slice()
       : TAB_IDS.filter((id) => id !== "games");
+    if (seesWorkoutsTab()) base.splice(base.indexOf("quest") + 1, 0, "workouts");
+    return base;
   }
+  function visibleHubTabIds() {
+    return hubTabIds().filter((id) => id !== "week" && id !== "allcards");
+  }
+
+  function hubTabLabel(id) {
+    const labels = accountMode ? ACCOUNT_TAB_LABELS : HUB_TAB_LABELS;
+    let label = !accountMode && id === "notebook" && usesCurriculumHub() ? "Daily Exercise" : labels[id] || id;
+    if (!accountMode && id === "prayer") label = "Build-a-prayer";
+    return label;
+  }
+
+  function goToTab(id) {
+    if (id === "notebook") sessionStorage.removeItem("jlm-ct-focus");
+    setActiveTab(id);
+    if (id === "notebook") global.HwCurriculumTextbook?.sync?.();
+  }
+
+  /** Leave arrow keys alone only while typing in a text box. */
+  function arrowKeysTyping(el) {
+    if (!el || el === document.body || el === document.documentElement) return false;
+    const tag = (el.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+      const type = String(el.getAttribute?.("type") || "text").toLowerCase();
+      if (tag === "INPUT" && (type === "button" || type === "submit" || type === "checkbox" || type === "radio" || type === "range" || type === "file")) {
+        return false;
+      }
+      return true;
+    }
+    return !!(el.isContentEditable || el.closest?.("[contenteditable='true'], .hw-hub-v5-notebook-kanji-cell"));
+  }
+
+  function moveHubTab(delta) {
+    const ids = visibleHubTabIds();
+    if (ids.length < 2) return;
+    const active = normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab);
+    let i = ids.indexOf(active);
+    if (i < 0) i = 0;
+    const id = ids[(i + delta + ids.length) % ids.length];
+    const keepFocus = document.activeElement?.closest?.("#hw-v5-tabs");
+    goToTab(id);
+    if (keepFocus) document.querySelector('#hw-v5-tabs [data-v5-tab="' + id + '"]')?.focus();
+  }
+
+  function moveHubTabSlide(dir) {
+    const buttons = [...document.querySelectorAll("#hw-v5-tabs [data-v5-tab]")].filter((b) => b.offsetParent);
+    if (buttons.length < 2) return;
+    const rows = [];
+    buttons.forEach((b) => {
+      const top = b.offsetTop;
+      let row = rows.find((r) => Math.abs(r.top - top) < 6);
+      if (!row) {
+        row = { top, buttons: [] };
+        rows.push(row);
+      }
+      row.buttons.push(b);
+    });
+    if (rows.length < 2) return;
+    rows.sort((a, b) => a.top - b.top);
+    const active = normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab);
+    let r = 0;
+    let c = 0;
+    rows.forEach((row, ri) => {
+      const ci = row.buttons.findIndex((b) => b.getAttribute("data-v5-tab") === active);
+      if (ci >= 0) {
+        r = ri;
+        c = ci;
+      }
+    });
+    const nr = r + dir;
+    if (nr < 0 || nr >= rows.length) return;
+    const target = rows[nr].buttons[Math.min(c, rows[nr].buttons.length - 1)];
+    const id = target?.getAttribute("data-v5-tab");
+    if (!id) return;
+    const keepFocus = document.activeElement?.closest?.("#hw-v5-tabs");
+    goToTab(id);
+    if (keepFocus) target.focus();
+  }
+
   let shellBuilt = false;
   let tierDetailBound = false;
   let uiBound = false;
@@ -273,6 +494,12 @@
     return /^#hw-submission-/i.test(window.location.hash || "");
   }
 
+  function curriculumUserKey(base) {
+    const user = String(getActiveSession()?.username || "").toLowerCase();
+    if (!user || user === "demo2" || user === "curriculum") return base;
+    return base + ":" + user;
+  }
+
   function readStorage(key, fallback) {
     try {
       const v = localStorage.getItem(key);
@@ -333,6 +560,7 @@
   function isNoPlanAccount() {
     const session = getActiveSession();
     if (!session || session.role !== "student") return true;
+    if (isQuestOnlyAccount()) return false;
     const label = session.accountLabel || "homework_only";
     const tier = session.tier || "pending";
     if (label === "current_student") return false;
@@ -415,6 +643,7 @@
 
     try {
       const hash = window.location.hash.replace(/^#/, "");
+      if (hash.startsWith("hw-browse-")) return "";
       if (hash && hash.startsWith("hw-") && !hash.startsWith("hw-submission-")) {
         return hash.replace(/^hw-/, "").trim();
       }
@@ -422,6 +651,11 @@
       /* ignore */
     }
 
+    const trialHw = global.HwAuth?.curriculumTrialHomeworkId?.(session);
+    if (trialHw) return trialHw;
+    if (global.HwAuth?.isNoahCurriculumOpen?.(session)) return "sheet-secret-hiragana";
+    if (user === "christian") return "sheet-secret-hiragana";
+    if (user === "demo2" || user === "curriculum") return "trial-advanced-notoki";
     return "";
   }
 
@@ -592,6 +826,7 @@
 
   function getHubStatus() {
     if (demoModeEnabled()) {
+      if (getDemoAccountKey() === "curriculum") return "in_progress";
       return readStorage(STORAGE.status, "in_progress");
     }
     return getLiveStatus();
@@ -724,6 +959,8 @@
         "account-subscription": "subscription",
         "account-notifications": "notifications",
         notifs: "notifications",
+        "account-features": "features",
+        features: "features",
       };
       const mapped = aliases[key] || key;
       return ACCOUNT_TAB_IDS.includes(mapped) ? mapped : "profile";
@@ -737,7 +974,8 @@
       notifs: "notebook",
     };
     const mapped = aliases[key] || key;
-    return hubTabIds().includes(mapped) ? mapped : "homework";
+    if (usesCurriculumHub() && mapped === "workouts") return "notebook";
+    return hubTabIds().includes(mapped) ? mapped : defaultHubTab();
   }
 
   function ensureHubTabSlider(tablist) {
@@ -759,14 +997,23 @@
     const active =
       tablist.querySelector(".hw-hub-v5-tabs__btn.is-active") ||
       tablist.querySelector('[aria-selected="true"]');
+    if (slider && !active) {
+      slider.style.width = "0px";
+      slider.style.height = "0px";
+    }
     if (!slider || !active) return;
 
-    const listRect = tablist.getBoundingClientRect();
+    // offset* values are in the tab bar's own units, so the pill stays lined up
+    // even when the page is scaled (fullscreen CSS zoom) — getBoundingClientRect is not.
+    const useOffsets = active.offsetParent === tablist;
     const btnRect = active.getBoundingClientRect();
-    const x = btnRect.left - listRect.left + tablist.scrollLeft;
-    const y = btnRect.top - listRect.top + tablist.scrollTop;
-    slider.style.width = Math.max(0, btnRect.width) + "px";
-    slider.style.height = Math.max(0, btnRect.height) + "px";
+    const listRect = tablist.getBoundingClientRect();
+    const x = useOffsets ? active.offsetLeft : btnRect.left - listRect.left + tablist.scrollLeft;
+    const y = useOffsets ? active.offsetTop : btnRect.top - listRect.top + tablist.scrollTop;
+    const bw = useOffsets ? active.offsetWidth : btnRect.width;
+    const bh = useOffsets ? active.offsetHeight : btnRect.height;
+    slider.style.width = Math.max(0, bw) + "px";
+    slider.style.height = Math.max(0, bh) + "px";
     slider.style.transform = "translate(" + x + "px, " + y + "px)";
 
     if (!tablist.classList.contains("is-slider-ready")) {
@@ -774,6 +1021,70 @@
         tablist.classList.add("is-slider-ready");
       });
     }
+    const viewLeft = tablist.scrollLeft;
+    const viewRight = viewLeft + tablist.clientWidth;
+    const btnLeft = active.offsetLeft;
+    const btnRight = btnLeft + active.offsetWidth;
+    if (btnLeft < viewLeft || btnRight > viewRight) {
+      tablist.scrollTo({ left: Math.max(0, btnLeft - 8), behavior: "smooth" });
+    }
+    syncTabArrows();
+  }
+
+  function syncTabArrows() {
+    const tabs = document.getElementById("hw-v5-tabs");
+    const wrap = tabs?.closest(".hw-hub-v5-tabs-wrap");
+    if (!tabs || !wrap) return;
+    const prev = wrap.querySelector("[data-v5-tab-prev]");
+    const next = wrap.querySelector("[data-v5-tab-next]");
+    const overflow = tabs.scrollWidth > tabs.clientWidth + 8;
+    const atStart = tabs.scrollLeft <= 6;
+    const atEnd = tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 6;
+    if (prev) prev.hidden = !overflow || atStart;
+    if (next) next.hidden = !overflow || atEnd;
+  }
+
+  function ensureTabPager() {
+    const wrap = document.querySelector(".hw-hub-v5-tabs-wrap");
+    const tabs = document.getElementById("hw-v5-tabs");
+    if (!wrap || !tabs || accountMode) return;
+    let prev = wrap.querySelector("[data-v5-tab-prev]");
+    let next = wrap.querySelector("[data-v5-tab-next]");
+    if (!prev) {
+      prev = document.createElement("button");
+      prev.type = "button";
+      prev.className = "hw-hub-v5-tabs__arrow";
+      prev.setAttribute("data-v5-tab-prev", "");
+      prev.setAttribute("aria-label", "Earlier tabs");
+      prev.textContent = "‹";
+      prev.hidden = true;
+      wrap.insertBefore(prev, tabs);
+    }
+    if (!next) {
+      next = document.createElement("button");
+      next.type = "button";
+      next.className = "hw-hub-v5-tabs__arrow";
+      next.setAttribute("data-v5-tab-next", "");
+      next.setAttribute("aria-label", "Later tabs");
+      next.textContent = "›";
+      next.hidden = true;
+      wrap.appendChild(next);
+    }
+    if (!ensureTabPager.bound) {
+      ensureTabPager.bound = true;
+      wrap.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-v5-tab-prev], [data-v5-tab-next]");
+        if (!btn || !wrap.contains(btn)) return;
+        const list = document.getElementById("hw-v5-tabs");
+        if (!list) return;
+        const dir = btn.hasAttribute("data-v5-tab-next") ? 1 : -1;
+        const step = list.querySelector(".hw-hub-v5-tabs__btn")?.offsetWidth || 140;
+        list.scrollBy({ left: dir * (step + 8), behavior: "smooth" });
+      });
+      tabs.addEventListener("scroll", syncTabArrows, { passive: true });
+      window.addEventListener("resize", syncTabArrows);
+    }
+    requestAnimationFrame(syncTabArrows);
   }
 
   function bindHubTabSliderLayout() {
@@ -810,6 +1121,11 @@
     const homework = document.getElementById("hw-v5-panel-homework");
     const below = document.getElementById("hw-v5-below");
     if (!panels) return;
+    /* Curriculum cards hug their content. Don't stretch them to the homework sheet. */
+    if (usesCurriculumHub()) {
+      panels.style.removeProperty("--hw-hub-panels-min-h");
+      return;
+    }
 
     let maxH = 0;
     if (homework) maxH = Math.max(maxH, homework.scrollHeight);
@@ -858,11 +1174,16 @@
     const username = String(getActiveSession()?.username || "")
       .trim()
       .toLowerCase();
-    return username ? STORAGE.tab + ":" + username : STORAGE.tab;
+    return username
+      ? STORAGE.tab +
+          ":" +
+          username +
+          (isCurriculumAccount() ? ":c2" : isDemo1StandardPreview() ? ":std1" : "")
+      : STORAGE.tab;
   }
 
   function readSavedHubTab() {
-    return normalizeTabId(readStorage(hubTabStorageKey(), "homework"));
+    return normalizeTabId(readStorage(hubTabStorageKey(), defaultHubTab()));
   }
 
   function writeSavedHubTab(tabId) {
@@ -883,6 +1204,8 @@
         "account-subscription": "subscription",
         "account-notifications": "notifications",
         notifs: "notifications",
+        "account-features": "features",
+        features: "features",
       };
       const mapped = aliases[raw] || raw;
       if (!ACCOUNT_TAB_IDS.includes(mapped)) return;
@@ -893,7 +1216,6 @@
     const tab = normalizeTabId(tabId);
     app.dataset.v5ActiveTab = tab;
     if (accountMode) global.HwAccount?.setHash?.(tab, "replace");
-
     /* Paint tab chrome first — this is what INP waits on. */
     document.querySelectorAll("[data-v5-tab]").forEach((btn) => {
       const active = btn.getAttribute("data-v5-tab") === tab;
@@ -902,9 +1224,17 @@
     });
     applyTabPanels(tab);
     syncHubTabSlider();
+    syncMobileTabSlides({ followActive: true });
     if (!accountMode && tab === "quest") {
       void global.HwHubQuests?.markSeen?.();
       void global.HwHubQuests?.refresh?.();
+    }
+    if (!accountMode && tabStarIds().has(tab)) {
+      markTabStarSeen(tab);
+      paintTabStar(tab);
+    }
+    if (!accountMode && tab === "workouts") {
+      void global.HwHubWorkouts?.refresh?.();
     }
 
     afterNextPaint(() => {
@@ -961,11 +1291,14 @@
     const homeworkPanel = document.getElementById("hw-v5-panel-homework");
     const belowPanels = document.querySelectorAll("#hw-v5-below [data-v5-panel]");
     const activeTab = normalizeTabId(tab);
+    const questOnly = isQuestOnlyAccount();
 
-    const onHomework = activeTab === "homework";
+    document.body.classList.toggle("hw-hub-v5-quest-only", questOnly);
+
+    const onHomework = !questOnly && activeTab === "homework";
     homeworkPanel?.classList.toggle("is-active", onHomework);
-    if (onHomework) homeworkPanel?.removeAttribute("hidden");
-    else homeworkPanel?.setAttribute("hidden", "");
+    if (questOnly || !onHomework) homeworkPanel?.setAttribute("hidden", "");
+    else homeworkPanel?.removeAttribute("hidden");
 
     belowPanels.forEach((panel) => {
       const active = panel.getAttribute("data-v5-panel") === activeTab;
@@ -973,6 +1306,527 @@
       if (active) panel.removeAttribute("hidden");
       else panel.setAttribute("hidden", "");
     });
+
+    const onQuest = !accountMode && activeTab === "quest";
+    document.body.classList.toggle("hw-quest-tab-active", onQuest);
+    const hwToolbar = document.getElementById("hw-toolbar-bar");
+    if (hwToolbar) {
+      if (onQuest) {
+        hwToolbar.hidden = true;
+      } else {
+        const wsForm = document.querySelector(
+          "#hw-v2-worksheet-mount form.hw-worksheet, #hw-v2-worksheet-mount .hw-worksheet, #hw-worksheet-form"
+        );
+        const wsSection = document.querySelector("#hw-hub-v4-homework .hw-hub-v2-worksheet");
+        hwToolbar.hidden = !wsForm || (wsSection && wsSection.hidden);
+      }
+    }
+    const questToolbar = document.getElementById("hw-quest-toolbar");
+    if (questToolbar) {
+      questToolbar.hidden = !onQuest || !global.HwHubQuests?.questLayoutEnabled?.();
+    }
+    syncPrayerToolbar(activeTab);
+    syncSitToolbar(activeTab);
+    syncCurriculumContentToolbar(activeTab);
+  }
+
+  function prayerToolHost() {
+    return (
+      document.querySelector("#hw-v5-panel-prayer .hw-prayer") ||
+      document.getElementById("hw-v5-panel-prayer")
+    );
+  }
+
+  function parkToolbarOnWorksheet(bar) {
+    const card =
+      document.getElementById("hw-v5-worksheet-card") ||
+      document.querySelector(".hw-hub-v2-worksheet.hw-hub-worksheet-card") ||
+      document.querySelector(".hw-hub-v2-worksheet");
+    const mount =
+      document.getElementById("hw-v2-worksheet-mount") ||
+      document.getElementById("hw-worksheet-mount");
+    if (!bar || !card) return;
+    if (mount && card.contains(mount)) mount.after(bar);
+    else if (bar.parentElement !== card) card.appendChild(bar);
+  }
+
+  function curriculumToolbarSession() {
+    const session = global.HwAuth?.getSession?.();
+    return {
+      username: session?.username || "",
+    };
+  }
+
+  /** Same Glass·Cloud pill Christian gets on HW — never the old floating corner tools. */
+  function mountCurriculumToolbar(host, assignmentId) {
+    if (!host || !global.HwStudentToolbar?.mountOnHost) return null;
+    const { username } = curriculumToolbarSession();
+    global.HwStudentToolbar.mountOnHost(host, {
+      username,
+      assignmentId,
+      skipOnboarding: true,
+    });
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (bar) {
+      host.appendChild(bar);
+      bar.hidden = false;
+    }
+    return bar;
+  }
+
+  function isReviewedSheetOpen() {
+    return /^#hw-submission-/i.test(String(window.location.hash || ""));
+  }
+
+  function remountWorksheetToolbar() {
+    const bar = document.getElementById("hw-toolbar-bar");
+    const form =
+      document.querySelector("#hw-v2-worksheet-mount form.hw-worksheet") ||
+      document.getElementById("hw-worksheet-form");
+    if (!form || document.body.classList.contains("hw-hub-no-linked-assignment")) return false;
+    if (bar) parkToolbarOnWorksheet(bar);
+    /* A reviewed sheet (JD's memos + ✓/✗) is already mounted by the platform —
+       re-attaching a blank Cloud here wiped the memos and marks. */
+    if (isReviewedSheetOpen()) return true;
+    const { username } = curriculumToolbarSession();
+    return global.HwStudentToolbar?.mount?.(form, {
+      username,
+      assignmentId: form.getAttribute("data-assignment-id") || "",
+      skipOnboarding: true,
+    });
+  }
+
+  /**
+   * CJ remounts Glass on HW when leaving Prayer/Situation (those hosts are
+   * visible). Demo1 has no Prayer, and both hubs open on To-do first — so the
+   * first attach hits a hidden HW panel and Glass never hooks the sheet.
+   * Re-attach to whichever tab is showing, same mountOnHost path CJ uses.
+   */
+  function syncCurriculumContentToolbar(tab) {
+    if (accountMode || !usesCurriculumHub()) {
+      document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
+      return;
+    }
+    if (tab === "prayer" || tab === "situations") {
+      document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
+      return;
+    }
+
+    /* Demo Daily Exercise keeps the page itself. The glass / cloud / focus bar stays off it. */
+    if (tab === "notebook" && isHubDemoUser()) {
+      document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
+      const bar = document.getElementById("hw-toolbar-bar");
+      if (bar) bar.hidden = true;
+      return;
+    }
+
+    /* Reviewing a marked sheet: other tabs must not re-attach a blank Cloud over JD's memos/marks. */
+    if (tab !== "homework" && isReviewedSheetOpen()) {
+      document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
+      return;
+    }
+
+    if (tab === "homework") {
+      document.body.classList.add("hw-hub-content-toolbar");
+      document.body.classList.add("hw-hub-content-toolbar--sheet");
+      remountWorksheetToolbar();
+      return;
+    }
+    document.body.classList.remove("hw-hub-content-toolbar--sheet");
+
+    const host =
+      (tab === "today" &&
+        (document.querySelector("#hw-v5-panel-today .hw-today") ||
+          document.getElementById("hw-v5-panel-today"))) ||
+      (tab === "notebook" &&
+        (document.getElementById("hw-curriculum-textbook") ||
+          document.getElementById("hw-v5-panel-notebook"))) ||
+      (tab === "core" &&
+        (document.querySelector("#hw-v5-panel-core .hw-core-page") ||
+          document.getElementById("hw-v5-panel-core"))) ||
+      (tab === "chapters" &&
+        seesChaptersTab() &&
+        (document.querySelector("#hw-v5-panel-chapters .hw-chapters") ||
+          document.getElementById("hw-v5-panel-chapters")));
+
+    if (!host) {
+      document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
+      return;
+    }
+    document.body.classList.add("hw-hub-content-toolbar");
+    mountCurriculumToolbar(host, "curriculum-" + tab);
+  }
+
+  function releaseCurriculumToolbar(bar) {
+    global.HwMagnifyingGlass?.setArmed?.(false);
+    global.HwMagnifyingGlass?.releaseOverride?.();
+    global.HwHomeworkComments?.setArmed?.(false);
+    global.HwHomeworkComments?.disarm?.();
+    const form =
+      document.querySelector("#hw-v2-worksheet-mount form.hw-worksheet") ||
+      document.getElementById("hw-worksheet-form");
+    if (form && !document.body.classList.contains("hw-hub-no-linked-assignment")) {
+      if (bar) parkToolbarOnWorksheet(bar);
+      if (isReviewedSheetOpen()) return;
+      const { username } = curriculumToolbarSession();
+      global.HwStudentToolbar?.mount?.(form, {
+        username,
+        assignmentId: form.getAttribute("data-assignment-id") || "",
+        skipOnboarding: true,
+      });
+      return;
+    }
+    global.HwStudentToolbar?.unmount?.();
+  }
+
+  let prayerFocusFs = false;
+  let prayerFocusBound = false;
+
+  function isPrayerFocus() {
+    return document.body.classList.contains("hw-prayer-focus");
+  }
+
+  function exitPrayerFocus() {
+    if (!isPrayerFocus()) return;
+    document.body.classList.remove("hw-prayer-focus");
+    if (prayerFocusFs) {
+      prayerFocusFs = false;
+      if (document.fullscreenElement) Promise.resolve(document.exitFullscreen?.()).catch(() => {});
+    }
+    global.HwStudentToolbar?.sync?.();
+  }
+
+  function enterPrayerFocus() {
+    if (isPrayerFocus() || !document.body.classList.contains("hw-prayer-toolbar")) return;
+    if (!prayerFocusBound) {
+      prayerFocusBound = true;
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && isPrayerFocus()) exitPrayerFocus();
+      });
+      document.addEventListener("fullscreenchange", () => {
+        if (prayerFocusFs && !document.fullscreenElement) {
+          prayerFocusFs = false;
+          exitPrayerFocus();
+        }
+      });
+    }
+    document.body.classList.add("hw-prayer-focus");
+    try {
+      Promise.resolve(document.documentElement.requestFullscreen?.())
+        .then(() => {
+          prayerFocusFs = !!document.fullscreenElement;
+        })
+        .catch(() => {});
+    } catch (_) {
+      /* black-background focus still works without fullscreen */
+    }
+    global.HwStudentToolbar?.sync?.();
+  }
+
+  function togglePrayerFocus() {
+    if (isPrayerFocus()) exitPrayerFocus();
+    else enterPrayerFocus();
+  }
+
+  function syncPrayerToolbar(tab) {
+    const bar = document.getElementById("hw-toolbar-bar");
+    const onPrayer = isCurriculumAccount() && tab === "prayer";
+    document.body.classList.toggle("hw-prayer-toolbar", onPrayer);
+    if (!onPrayer) {
+      exitPrayerFocus();
+      if (document.body.dataset.hwPrayerTools === "1") {
+        document.body.dataset.hwPrayerTools = "";
+        releaseCurriculumToolbar(bar);
+      }
+      return;
+    }
+    const host = prayerToolHost();
+    if (!host) return;
+    mountCurriculumToolbar(host, "curriculum-prayer");
+    document.body.dataset.hwPrayerTools = "1";
+  }
+
+  function sitToolHost() {
+    if (document.body.classList.contains("hw-sit-focus")) {
+      return document.querySelector(".hw-sit-focus__phone") || document.querySelector(".hw-sit-focus");
+    }
+    return (
+      document.querySelector("#hw-v5-panel-situations .hw-sit-cards") ||
+      document.getElementById("hw-v5-panel-situations")
+    );
+  }
+
+  let sitDeckCards = null;
+  let sitDeckOrder = [];
+  let sitDeckIndex = 0;
+  let sitDeckEn = false;
+
+  function ensureSitFocusDeck() {
+    let root = document.getElementById("hw-sit-focus");
+    if (root) return root;
+    root = document.createElement("div");
+    root.id = "hw-sit-focus";
+    root.className = "hw-sit-focus";
+    root.hidden = true;
+    root.innerHTML =
+      '<div class="hw-sit-focus__phone">' +
+      '<header class="hw-sit-focus__top">' +
+      "<h2>状況カード</h2>" +
+      '<div class="hw-sit-focus__top-right">' +
+      '<button type="button" class="hw-sit-focus__shuffle" data-sit-act="shuffle">Shuffle</button>' +
+      '<span class="hw-sit-focus__count" data-sit-count>— / —</span></div></header>' +
+      '<article class="hw-sit-focus__card">' +
+      '<header class="hw-sit-focus__head">' +
+      '<h3 data-sit-title lang="ja"></h3><p data-sit-label></p></header>' +
+      '<div class="hw-sit-focus__image"><img alt="" data-sit-img></div>' +
+      '<div class="hw-sit-focus__body">' +
+      '<p class="hw-sit-focus__ask">What do you say / do?</p>' +
+      '<p class="hw-sit-focus__text" data-sit-text lang="ja"></p>' +
+      '<p class="hw-sit-focus__en" data-sit-en hidden></p></div></article>' +
+      '<p class="hw-sit-focus__hint">Swipe · Shuffle · tap English</p>' +
+      '<nav class="hw-sit-focus__controls">' +
+      '<button type="button" data-sit-act="prev">← Prev</button>' +
+      '<button type="button" class="is-english" data-sit-act="en">English</button>' +
+      '<button type="button" data-sit-act="next">Next →</button></nav>' +
+      '<div class="hw-sit-focus__tools" data-sit-tools></div></div>';
+    document.body.appendChild(root);
+    root.addEventListener("click", (ev) => {
+      const act = ev.target.closest("[data-sit-act]");
+      if (!act || !root.contains(act)) return;
+      const kind = act.getAttribute("data-sit-act");
+      if (kind === "prev") sitDeckGo(-1);
+      else if (kind === "next") sitDeckGo(1);
+      else if (kind === "shuffle") sitDeckShuffle();
+      else if (kind === "en") {
+        sitDeckEn = !sitDeckEn;
+        paintSitDeck();
+      }
+    });
+    let startX = 0;
+    let startY = 0;
+    root.addEventListener(
+      "touchstart",
+      (e) => {
+        const t = e.changedTouches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+      },
+      { passive: true }
+    );
+    root.addEventListener(
+      "touchend",
+      (e) => {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - startX;
+        const dy = t.clientY - startY;
+        if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+        sitDeckGo(dx < 0 ? 1 : -1);
+      },
+      { passive: true }
+    );
+    return root;
+  }
+
+  function paintSitDeck() {
+    const root = document.getElementById("hw-sit-focus");
+    const cards = sitDeckCards || [];
+    if (!root || !cards.length) return;
+    const card = cards[sitDeckOrder[sitDeckIndex]];
+    if (!card) return;
+    const title = root.querySelector("[data-sit-title]");
+    const label = root.querySelector("[data-sit-label]");
+    const text = root.querySelector("[data-sit-text]");
+    const en = root.querySelector("[data-sit-en]");
+    const img = root.querySelector("[data-sit-img]");
+    const count = root.querySelector("[data-sit-count]");
+    const enBtn = root.querySelector('[data-sit-act="en"]');
+    if (title) title.textContent = card.titleJp || "";
+    if (label) label.textContent = card.label || "";
+    if (text) text.textContent = card.text || "";
+    if (en) {
+      en.textContent = card.english || "";
+      en.hidden = !(sitDeckEn && card.english);
+    }
+    if (img) img.src = "/homework/media/situation-cards-1/" + (card.image || "");
+    if (count) count.textContent = sitDeckIndex + 1 + " / " + sitDeckOrder.length;
+    if (enBtn) enBtn.textContent = sitDeckEn ? "Hide EN" : "English";
+  }
+
+  function sitDeckGo(delta) {
+    if (!sitDeckOrder.length) return;
+    sitDeckEn = false;
+    sitDeckIndex = (sitDeckIndex + delta + sitDeckOrder.length) % sitDeckOrder.length;
+    paintSitDeck();
+  }
+
+  function sitDeckShuffle() {
+    const next = sitDeckOrder.slice();
+    for (let n = next.length - 1; n > 0; n--) {
+      const j = Math.floor(Math.random() * (n + 1));
+      const tmp = next[n];
+      next[n] = next[j];
+      next[j] = tmp;
+    }
+    sitDeckOrder = next;
+    sitDeckIndex = 0;
+    sitDeckEn = false;
+    paintSitDeck();
+  }
+
+  function openSitFocus() {
+    const root = ensureSitFocusDeck();
+    const show = (cards) => {
+      sitDeckCards = cards;
+      if (!sitDeckOrder.length) sitDeckOrder = cards.map((_, idx) => idx);
+      const todayImg = SITUATION_CARDS[dailySituationIndex()]?.[0];
+      const todayAt = cards.findIndex((card) => card.image === todayImg);
+      if (todayAt >= 0) {
+        sitDeckIndex = sitDeckOrder.indexOf(todayAt);
+        if (sitDeckIndex < 0) sitDeckIndex = 0;
+      }
+      paintSitDeck();
+      root.hidden = false;
+      document.body.classList.add("hw-sit-focus");
+      syncSitToolbar("situations");
+    };
+    if (sitDeckCards) {
+      show(sitDeckCards);
+      return;
+    }
+    fetch("/homework/media/situation-cards-1/cards.json")
+      .then((res) => res.json())
+      .then((data) => show(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }
+
+  function closeSitFocus() {
+    document.getElementById("hw-sit-focus")?.setAttribute("hidden", "");
+    document.body.classList.remove("hw-sit-focus");
+  }
+
+  function syncSitToolbar(tab) {
+    const onSit = seesSituationCards() && tab === "situations";
+    document.body.classList.toggle("hw-sit-toolbar", onSit);
+    if (!onSit) {
+      if (document.body.dataset.hwSitTools === "1") {
+        document.body.dataset.hwSitTools = "";
+        closeSitFocus();
+        document.body.dataset.hwSitCloudHost = "";
+        releaseCurriculumToolbar(document.getElementById("hw-toolbar-bar"));
+      }
+      return;
+    }
+    const host = sitToolHost();
+    if (!host) return;
+    const cloudKey = document.body.classList.contains("hw-sit-focus") ? "focus" : "cards";
+    const assignmentId =
+      cloudKey === "focus" ? "curriculum-situation-focus" : "curriculum-situation";
+    const bar = mountCurriculumToolbar(host, assignmentId);
+    const slot = host.querySelector("[data-sit-tools]");
+    if (bar && slot && bar.parentElement !== slot) slot.appendChild(bar);
+    document.body.dataset.hwSitCloudHost = cloudKey;
+    document.body.dataset.hwSitTools = "1";
+    if (!document.body.dataset.hwSitFocusBound) {
+      document.body.dataset.hwSitFocusBound = "1";
+      document.addEventListener(
+        "click",
+        (ev) => {
+          const btn = ev.target.closest?.('[data-tb-tool="focus"]');
+          const liveBar = document.getElementById("hw-toolbar-bar");
+          if (!btn || !liveBar || !liveBar.contains(btn)) return;
+          if (!document.body.classList.contains("hw-sit-toolbar")) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (document.body.classList.contains("hw-sit-focus")) closeSitFocus();
+          else openSitFocus();
+          syncSitToolbar("situations");
+        },
+        true
+      );
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape" || !document.body.classList.contains("hw-sit-focus")) return;
+        closeSitFocus();
+        syncSitToolbar("situations");
+      });
+    }
+  }
+
+  const TAB_STAR_LS = "jlm-hw-tab-star-seen-v1";
+
+  function tabStarIds() {
+    const ids = new Set();
+    /* "New today" stars on tabs are switched off (no explanation for them; JD killed it in onboarding review).
+       Delete this line to bring them back. The separate new-quest star on the Quest tab is untouched. */
+    return ids;
+    // eslint-disable-next-line no-unreachable
+    if (accountMode) return ids;
+    if (usesCurriculumHub()) {
+      ids.add("notebook");
+      ids.add("core");
+      if (seesPrayerTab()) ids.add("prayer");
+    }
+    if (seesSituationCards()) ids.add("situations");
+    return ids;
+  }
+
+  function tabStarDay() {
+    return String(global.HwLocalPeriod?.dayKey?.() || "");
+  }
+
+  function tabStarUser() {
+    return String(getActiveSession()?.username || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function readTabStarSeen() {
+    const user = tabStarUser();
+    const day = tabStarDay();
+    if (!user || !day) return {};
+    try {
+      const all = JSON.parse(localStorage.getItem(TAB_STAR_LS) || "{}");
+      const today = all?.[user]?.[day];
+      return today && typeof today === "object" ? today : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function markTabStarSeen(id) {
+    const user = tabStarUser();
+    const day = tabStarDay();
+    if (!user || !day || !id) return;
+    let all = {};
+    try {
+      all = JSON.parse(localStorage.getItem(TAB_STAR_LS) || "{}");
+    } catch {
+      all = {};
+    }
+    const today =
+      all[user] && all[user][day] && typeof all[user][day] === "object" ? all[user][day] : {};
+    today[id] = 1;
+    all[user] = { [day]: today };
+    try {
+      localStorage.setItem(TAB_STAR_LS, JSON.stringify(all));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function paintTabStar(id) {
+    const star = document.getElementById("hw-v5-tab-star-" + id);
+    if (!star) return;
+    const show = !readTabStarSeen()[id];
+    star.hidden = !show;
+    star.setAttribute("aria-hidden", show ? "false" : "true");
+    const btn = document.getElementById("hw-v5-tab-" + id);
+    if (!btn) return;
+    if (show) {
+      const name = btn.querySelector(".hw-hub-v5-tabs__label")?.textContent || id;
+      btn.setAttribute("aria-label", name + ", new");
+    } else {
+      btn.removeAttribute("aria-label");
+    }
   }
 
   function initHubTabs() {
@@ -986,8 +1840,10 @@
     const tabs = document.getElementById("hw-v5-tabs");
     if (!tabs) return;
     const slider = ensureHubTabSlider(tabs);
-    const ids = hubTabIds();
-    const labels = accountMode ? ACCOUNT_TAB_LABELS : HUB_TAB_LABELS;
+    const ids = visibleHubTabIds();
+    document.body.classList.remove("hw-tab-slides");
+    document.querySelector("[data-v5-slide-switch]")?.remove();
+    document.getElementById("hw-v5-slide-dots")?.remove();
     const active = normalizeTabId(
       document.getElementById("hw-v5-app")?.dataset.v5ActiveTab
     );
@@ -1003,7 +1859,7 @@
       btn.setAttribute("aria-controls", "hw-v5-panel-" + id);
       const label = document.createElement("span");
       label.className = "hw-hub-v5-tabs__label";
-      label.textContent = labels[id] || id;
+      label.textContent = hubTabLabel(id);
       btn.appendChild(label);
       if (!accountMode && id === "quest") {
         const star = document.createElement("span");
@@ -1015,10 +1871,143 @@
         star.textContent = "★";
         btn.appendChild(star);
       }
+      if (!accountMode && tabStarIds().has(id)) {
+        const star = document.createElement("span");
+        star.id = "hw-v5-tab-star-" + id;
+        star.className = "hw-hub-v5-tabs__star";
+        const show = !readTabStarSeen()[id];
+        star.hidden = !show;
+        star.setAttribute("aria-hidden", show ? "false" : "true");
+        star.textContent = "★";
+        btn.appendChild(star);
+        if (show) btn.setAttribute("aria-label", (label.textContent || id) + ", new");
+      }
       tabs.appendChild(btn);
     });
     tabs.classList.remove("is-slider-ready");
     tabs.setAttribute("aria-label", accountMode ? "Account Settings" : "Hub sections");
+    document.querySelectorAll(".hw-hub-v5-tabs__arrow").forEach((arrow) => {
+      arrow.hidden = true;
+    });
+    syncMobileTabSlides({ followActive: true });
+  }
+
+  /** Phones: 4 tabs at a time. Swipe left for the next set. PC keeps every tab on screen. */
+  const TAB_SLIDE_SIZE = 4;
+  let tabSlide = 0;
+
+  function phoneTabSlides() {
+    return window.matchMedia("(max-width: 820px)").matches;
+  }
+
+  function syncMobileTabSlides(opts) {
+    bindTabBarSwipe();
+    const tabs = document.getElementById("hw-v5-tabs");
+    if (!tabs) return;
+    const buttons = [...tabs.querySelectorAll("[data-v5-tab]")];
+    const pages = Math.max(1, Math.ceil(buttons.length / TAB_SLIDE_SIZE));
+    const on = phoneTabSlides() && pages > 1 && !accountMode;
+    document.body.classList.toggle("hw-tab-slides", on);
+    if (!on) {
+      buttons.forEach((btn) => {
+        btn.hidden = false;
+      });
+      document.getElementById("hw-v5-slide-dots")?.remove();
+      return;
+    }
+    if (opts && opts.followActive) {
+      const active = buttons.findIndex((btn) => btn.classList.contains("is-active"));
+      if (active >= 0) tabSlide = Math.floor(active / TAB_SLIDE_SIZE);
+    }
+    tabSlide = Math.max(0, Math.min(pages - 1, tabSlide));
+    buttons.forEach((btn, i) => {
+      btn.hidden = Math.floor(i / TAB_SLIDE_SIZE) !== tabSlide;
+    });
+    paintTabSlideDots(pages);
+    if (!syncMobileTabSlides.nudged && !sessionStorage.getItem("hw-tab-swipe-nudge")) {
+      syncMobileTabSlides.nudged = true;
+      sessionStorage.setItem("hw-tab-swipe-nudge", "1");
+      tabs.classList.add("is-nudge");
+      window.setTimeout(() => tabs.classList.remove("is-nudge"), 800);
+    }
+    syncHubTabSlider();
+  }
+
+  function paintTabSlideDots(pages) {
+    const wrap = document.querySelector(".hw-hub-v5-tabs-wrap");
+    if (!wrap) return;
+    let dots = document.getElementById("hw-v5-slide-dots");
+    if (!dots) {
+      dots = document.createElement("div");
+      dots.id = "hw-v5-slide-dots";
+      dots.className = "hw-slide-dots";
+      dots.setAttribute("role", "tablist");
+      dots.setAttribute("aria-label", "More tabs");
+      wrap.appendChild(dots);
+    }
+    dots.replaceChildren();
+    for (let i = 0; i < pages; i += 1) {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "hw-slide-dots__dot" + (i === tabSlide ? " is-on" : "");
+      dot.setAttribute("aria-label", "Tab group " + (i + 1));
+      dot.setAttribute("aria-selected", i === tabSlide ? "true" : "false");
+      dot.addEventListener("click", () => {
+        tabSlide = i;
+        syncMobileTabSlides();
+      });
+      dots.appendChild(dot);
+    }
+  }
+
+  function goMobileTabSlide(dir) {
+    if (!document.body.classList.contains("hw-tab-slides")) return;
+    const count = document.querySelectorAll("#hw-v5-tabs [data-v5-tab]").length;
+    const pages = Math.ceil(count / TAB_SLIDE_SIZE);
+    const next = Math.max(0, Math.min(pages - 1, tabSlide + dir));
+    if (next === tabSlide) return;
+    tabSlide = next;
+    syncMobileTabSlides();
+  }
+
+  function bindTabBarSwipe() {
+    if (bindTabBarSwipe.done) return;
+    bindTabBarSwipe.done = true;
+    let x0 = 0;
+    let y0 = 0;
+    let watch = false;
+    document.addEventListener(
+      "touchstart",
+      (ev) => {
+        watch = false;
+        if (!document.body.classList.contains("hw-tab-slides")) return;
+        const t = ev.changedTouches && ev.changedTouches[0];
+        if (!t || t.clientX < 28) return;
+        const el = ev.target;
+        if (el && el.closest && el.closest("input, textarea, select, [contenteditable='true'], [data-no-swipe], .hw-worksheet, .hw-sit-flip, .hw-ex-line")) {
+          return;
+        }
+        x0 = t.clientX;
+        y0 = t.clientY;
+        watch = true;
+      },
+      { passive: true }
+    );
+    document.addEventListener(
+      "touchend",
+      (ev) => {
+        if (!watch) return;
+        watch = false;
+        const t = ev.changedTouches && ev.changedTouches[0];
+        if (!t) return;
+        const dx = t.clientX - x0;
+        const dy = t.clientY - y0;
+        if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+        goMobileTabSlide(dx < 0 ? 1 : -1);
+      },
+      { passive: true }
+    );
+    window.addEventListener("resize", () => syncMobileTabSlides({ followActive: true }));
   }
 
   function ensureAccountPanels() {
@@ -1038,6 +2027,12 @@
         "hw-v5-tab-notifications",
         global.HwAccount.notificationsMarkup,
       ],
+      [
+        "hw-v5-panel-features",
+        "features",
+        "hw-v5-tab-features",
+        global.HwAccount.featuresMarkup,
+      ],
     ];
     specs.forEach(([panelId, tabId, labelledBy, htmlFn]) => {
       if (document.getElementById(panelId)) return;
@@ -1053,7 +2048,7 @@
     if (!app) return;
     if (!accountMode) {
       const current = String(app.dataset.v5ActiveTab || "homework");
-      hubTabBeforeAccount = TAB_IDS.includes(current) ? current : "homework";
+      hubTabBeforeAccount = hubTabIds().includes(current) ? current : "homework";
     }
     accountMode = true;
     document.body.classList.add("hw-account-mode");
@@ -1062,6 +2057,9 @@
     paintHubTabButtons();
     global.HwAccount?.fillSession?.();
     global.HwAccount?.fillPlanCopy?.();
+    void global.HwHubQuests?.loadProgress?.().then(() => {
+      global.HwHubQuests?.paintFeaturesSwitch?.();
+    });
     setActiveTab(tabId || "profile", { skipPersist: true, skipFocus: true });
     renderAccountSellup();
     afterNextPaint(() => {
@@ -1230,6 +2228,7 @@
       "course-card course-card--locked hw-addon-card hw-hub-v5-sellup-card hw-hub-v5-sellup-card--weekly hw-hub-v5-sellup-card--clickable";
     article.tabIndex = 0;
     article.setAttribute("role", "link");
+    article.setAttribute("data-hw-tier-detail", "student-special");
     article.setAttribute(
       "aria-label",
       "Unlock weekly homework — Student Special $" + price + " per month"
@@ -1252,34 +2251,7 @@
       "</span>" +
       "</div>";
 
-    function goStudentSpecialCheckout() {
-      if (global.HwCheckout?.startCheckout) {
-        global.HwCheckout.startCheckout("student-special", { forcePaypal: true });
-        try {
-          sessionStorage.removeItem("jlm-stuspec-focus");
-        } catch {
-          /* ignore */
-        }
-        return;
-      }
-      alert(
-        "Weekly homework for lesson students ($" +
-          price +
-          "/mo; standalone Premium is $" +
-          comparePrice +
-          "/mo) — open Student Special checkout after login."
-      );
-    }
-
-    article.addEventListener("click", (event) => {
-      event.preventDefault();
-      goStudentSpecialCheckout();
-    });
-    article.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      goStudentSpecialCheckout();
-    });
+    /* Opens Student Special tier detail (Subscribe → PayPal). */
     return article;
   }
 
@@ -1426,15 +2398,12 @@
     return session?.displayName || session?.username || "there";
   }
 
-  function jdReviewGreeting(name) {
-    const who = String(name || "there").trim() || "there";
-    return "Hey " + who + "! I finished reviewing your homework.";
-  }
-
   function ensureCompleteCard() {
     let card = document.getElementById("hw-v5-complete-card");
     if (card) {
       ensureReviewZoneSlideChrome(card);
+      card.querySelector("#hw-v5-reviewed-banner")?.remove();
+      card.querySelector("#hw-v2-feedback")?.remove();
       return card;
     }
 
@@ -1444,11 +2413,6 @@
     card.hidden = true;
     card.setAttribute("aria-labelledby", "hw-v5-complete-title");
     card.innerHTML =
-      '<div class="hw-hub-v5-reviewed-banner" id="hw-v5-reviewed-banner" hidden>' +
-      '<section class="hw-hub-v2-feedback hw-hub-jd-memo hw-hub-jd-memo--overlap" id="hw-v2-feedback" aria-labelledby="hw-v2-feedback-body">' +
-      '<div class="hw-hub-jd-memo__sheet">' +
-      '<p class="hw-hub-jd-memo__body hw-hub-v2-feedback__body" id="hw-v2-feedback-body"></p>' +
-      "</div></section></div>" +
       '<h2 class="hw-hub-v5-complete__title" id="hw-v5-complete-title">You\'ve finished your assignment!</h2>' +
       '<div class="hw-hub-v5-status-ping-host hw-hub-v5-status-ping-host--complete" id="hw-v5-complete-ping-host" hidden></div>' +
       '<div class="hw-hub-v5-pending" id="hw-v5-pending-note" hidden>' +
@@ -1488,7 +2452,7 @@
       '<div class="hw-hub-v5-complete__actions">' +
       '<button type="button" class="btn btn--primary btn--full" id="hw-v5-open-reviewed-btn" hidden>' +
       "Open reviewed worksheet</button>" +
-      '<button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">Browse past homework</button>' +
+      '<button type="button" class="btn btn--ghost btn--full" id="hw-v5-past-btn">Past submissions</button>' +
       "</div>";
     return card;
   }
@@ -1590,6 +2554,332 @@
     return card;
   }
 
+  function isHomeScreenApp() {
+    return (
+      global.matchMedia?.("(display-mode: standalone)")?.matches === true ||
+      global.navigator.standalone === true
+    );
+  }
+
+  const STUDY_REMINDER_KEY = "jlm-hw-study-reminder-v1";
+  const STUDY_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  let studyVapidKey = "";
+
+  function loadStudyReminder() {
+    try {
+      const raw = localStorage.getItem(STUDY_REMINDER_KEY);
+      const data = raw ? JSON.parse(raw) : null;
+      if (!data || !/^\d{2}:\d{2}$/.test(String(data.time || ""))) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function saveStudyReminderLocal(data) {
+    localStorage.setItem(STUDY_REMINDER_KEY, JSON.stringify(data));
+  }
+
+  function reminderStudent() {
+    const session = global.HwAuth?.getSession?.();
+    if (!session || session.role === "teacher") return null;
+    const username = String(session.username || "").trim().toLowerCase();
+    if (!username) return null;
+    return { username };
+  }
+
+  function reminderClock(time) {
+    const parts = String(time || "20:00").split(":").map(Number);
+    const sample = new Date();
+    sample.setHours(parts[0] || 0, parts[1] || 0, 0, 0);
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(sample);
+  }
+
+  function reminderSummary(data) {
+    const when = reminderClock(data.time);
+    const message = String(data.message || "Time to relax with Japanese");
+    if (data.repeat === "weekdays") return "Weekdays at " + when + ". " + message;
+    if (data.repeat === "weekly") {
+      const day = STUDY_DAYS[Number(data.weekday)] || "Monday";
+      return "Every " + day + " at " + when + ". " + message;
+    }
+    if (data.repeat === "once") return "Once, at " + when + ". " + message;
+    return "Every day at " + when + ". " + message;
+  }
+
+  function urlBase64ToBytes(value) {
+    const pad = "=".repeat((4 - (value.length % 4)) % 4);
+    const b64 = (value + pad).replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  async function loadStudyVapid() {
+    if (studyVapidKey) return studyVapidKey;
+    const res = await fetch("/api/study-reminder");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.publicKey) throw new Error(data.error || "Phone pings are not set up yet.");
+    studyVapidKey = String(data.publicKey);
+    return studyVapidKey;
+  }
+
+  async function subscribeStudyPhone() {
+    if (!("Notification" in global) || !("serviceWorker" in global.navigator) || !("PushManager" in global)) {
+      throw new Error("On iPhone, open the hub from the home-screen icon, then save the reminder.");
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") throw new Error("Allow notifications, then save again.");
+    const publicKey = await loadStudyVapid();
+    const reg = await global.navigator.serviceWorker.ready;
+    const appKey = urlBase64ToBytes(publicKey);
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      try {
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
+      } catch (err) {
+        if (/iPad|iPhone|iPod/.test(global.navigator.userAgent || "") && !isHomeScreenApp()) {
+          throw new Error("On iPhone, open the hub from the home-screen icon, then save the reminder.");
+        }
+        throw err;
+      }
+    }
+    const json = sub.toJSON();
+    if (!json.endpoint || !json.keys) throw new Error("This phone did not accept the reminder.");
+    return json;
+  }
+
+  function studyReminderModal() {
+    let modal = document.getElementById("hw-study-reminder");
+    if (modal) return modal;
+    modal = document.createElement("div");
+    modal.className = "hw-breakdown-modal";
+    modal.id = "hw-study-reminder";
+    modal.hidden = true;
+    modal.innerHTML =
+      '<div class="hw-breakdown-modal__backdrop" data-reminder-close aria-hidden="true"></div>' +
+      '<div class="hw-breakdown-modal__dialog hw-study-reminder__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-study-reminder-title">' +
+      '<button class="hw-breakdown-modal__close" type="button" data-reminder-close aria-label="Close">×</button>' +
+      '<p class="section__eyebrow">Add to phone</p>' +
+      '<h2 class="hw-breakdown-modal__title" id="hw-study-reminder-title">Reminder</h2>' +
+      '<div data-reminder-ask>' +
+      '<p class="hw-study-reminder__lead">Want a daily reminder too? It pings this phone at the time you pick.</p>' +
+      '<div class="hw-study-reminder__actions">' +
+      '<button type="button" class="btn btn--primary" data-reminder-yes>Yes</button>' +
+      '<button type="button" class="btn btn--ghost" data-reminder-close>Not now</button>' +
+      "</div></div>" +
+      '<form class="hw-study-reminder__form" data-reminder-form hidden>' +
+      "<label>Message<input name=\"message\" maxlength=\"180\" value=\"Time to relax with Japanese\"></label>" +
+      '<label>Time<input name="time" type="time" value="20:00" required></label>' +
+      "<label>How often<select name=\"repeat\">" +
+      '<option value="daily">Every day</option>' +
+      '<option value="weekdays">Weekdays</option>' +
+      '<option value="weekly">Once a week</option>' +
+      "</select></label>" +
+      '<label data-reminder-day hidden>Which day<select name="weekday">' +
+      STUDY_DAYS.map((name, index) => '<option value="' + index + '">' + name + "</option>").join("") +
+      "</select></label>" +
+      '<p class="hw-study-reminder__note" data-reminder-note></p>' +
+      '<div class="hw-study-reminder__actions">' +
+      '<button type="submit" class="btn btn--primary">Save reminder</button>' +
+      '<button type="button" class="btn btn--ghost" data-reminder-close>Not now</button>' +
+      "</div></form>" +
+      "</div>";
+    document.body.appendChild(modal);
+
+    const ask = modal.querySelector("[data-reminder-ask]");
+    const form = modal.querySelector("[data-reminder-form]");
+    const dayField = modal.querySelector("[data-reminder-day]");
+    const note = modal.querySelector("[data-reminder-note]");
+    const repeat = form.querySelector('[name="repeat"]');
+
+    function showStep(step) {
+      ask.hidden = step !== "ask";
+      form.hidden = step !== "form";
+    }
+
+    modal.querySelectorAll("[data-reminder-close]").forEach((el) => {
+      el.addEventListener("click", () => {
+        modal.hidden = true;
+        document.body.classList.remove("is-modal-open");
+      });
+    });
+    modal.querySelector("[data-reminder-yes]").addEventListener("click", () => {
+      const saved = loadStudyReminder();
+      if (saved) {
+        form.elements.message.value = !saved.message || saved.message === "Time to study Japanese" ? "Time to relax with Japanese" : saved.message;
+        form.elements.time.value = saved.time;
+        form.elements.repeat.value = saved.repeat && saved.repeat !== "once" ? saved.repeat : "daily";
+        form.elements.weekday.value = String(saved.weekday == null ? 1 : saved.weekday);
+      }
+      dayField.hidden = repeat.value !== "weekly";
+      if (note) {
+        note.classList.remove("is-error");
+        note.textContent = "";
+      }
+      void loadStudyVapid().catch(() => {});
+      showStep("form");
+    });
+    repeat.addEventListener("change", () => {
+      dayField.hidden = repeat.value !== "weekly";
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = String(form.elements.message.value || "").trim() || "Time to relax with Japanese";
+      const time = String(form.elements.time.value || "");
+      const submitBtn = form.querySelector('[type="submit"]');
+      if (!/^\d{2}:\d{2}$/.test(time)) {
+        note.classList.add("is-error");
+        note.textContent = "Pick a time.";
+        return;
+      }
+      const student = reminderStudent();
+      if (!student) {
+        note.classList.add("is-error");
+        note.textContent = "Log in, then save the reminder.";
+        return;
+      }
+      const data = {
+        message,
+        time,
+        repeat: form.elements.repeat.value || "daily",
+        weekday: Number(form.elements.weekday.value),
+      };
+      note.classList.remove("is-error");
+      note.textContent = "Saving…";
+      if (submitBtn) submitBtn.disabled = true;
+      void (async () => {
+        try {
+          const subscription = await subscribeStudyPhone();
+          const res = await fetch("/api/study-reminder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: student.username,
+              message: data.message,
+              time: data.time,
+              repeat: data.repeat,
+              weekday: data.weekday,
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Tokyo",
+              subscription,
+            }),
+          });
+          const saved = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(saved.error || "Could not save that reminder.");
+          saveStudyReminderLocal(data);
+          modal.querySelector("[data-reminder-summary]").textContent = "Saved. " + reminderSummary(data);
+          showStep("done");
+        } catch (err) {
+          note.classList.add("is-error");
+          note.textContent = err && err.message ? err.message : "Could not save that reminder.";
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      })();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || modal.hidden) return;
+      modal.hidden = true;
+      document.body.classList.remove("is-modal-open");
+    });
+    modal.showStep = showStep;
+    return modal;
+  }
+
+  function openStudyReminderAsk() {
+    const modal = studyReminderModal();
+    modal.showStep("ask");
+    modal.hidden = false;
+    document.body.classList.add("is-modal-open");
+  }
+
+  function ensurePhoneHomeButton() {
+    const row = document.querySelector("#hw-platform-footer-nav .hw-platform-footer-nav__row");
+    if (!row || document.getElementById("hw-add-phone") || isHomeScreenApp()) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "hw-add-phone";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--ghost";
+    btn.id = "hw-add-phone";
+    btn.textContent = "Add to phone";
+
+    const note = document.createElement("p");
+    note.id = "hw-add-phone-note";
+    note.className = "hw-add-phone-note";
+    note.hidden = true;
+
+    let deferred = null;
+    global.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferred = event;
+    });
+
+    btn.addEventListener("click", async () => {
+      if (deferred) {
+        deferred.prompt();
+        try {
+          await deferred.userChoice;
+        } catch {
+          /* ignore */
+        }
+        deferred = null;
+        note.hidden = true;
+      } else {
+        const ios = /iPad|iPhone|iPod/.test(global.navigator.userAgent || "");
+        note.hidden = false;
+        note.textContent = ios
+          ? "On iPhone, tap Share, then Add to Home Screen."
+          : "In the browser menu, choose Add to Home screen or Install app.";
+      }
+      openStudyReminderAsk();
+    });
+
+    wrap.append(btn, note);
+    row.insertBefore(wrap, row.firstChild);
+
+    if ("serviceWorker" in global.navigator) {
+      global.navigator.serviceWorker.register("/homework/hw-sw.js?v=3").catch(() => {});
+    }
+  }
+
+  /* Tutorial button next to "Add to phone": plays every onboarding tip again.
+     New tips only need to be added to STEPS in hw-onboard.js. */
+  function ensureTutorialButton() {
+    const row = document.querySelector("#hw-platform-footer-nav .hw-platform-footer-nav__row");
+    if (!row || document.getElementById("hw-tutorial-btn")) return;
+    const wrap = document.createElement("div");
+    wrap.className = "hw-tutorial";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--ghost";
+    btn.id = "hw-tutorial-btn";
+    btn.textContent = "Tutorial";
+    const note = document.createElement("p");
+    note.className = "hw-add-phone-note";
+    note.hidden = true;
+    btn.addEventListener("click", () => {
+      note.hidden = true;
+      setActiveTab("homework", { scrollTop: true });
+      setTimeout(() => {
+        const sheet = document.querySelector("form.hw-worksheet");
+        if (!sheet || sheet.getClientRects().length === 0) {
+          note.hidden = false;
+          note.textContent = "Open a homework sheet first, then tap Tutorial.";
+          return;
+        }
+        global.HwOnboard?.replay?.();
+      }, 350);
+    });
+    wrap.append(btn, note);
+    const phone = row.querySelector(".hw-add-phone");
+    if (phone) phone.after(wrap);
+    else row.insertBefore(wrap, row.firstChild);
+  }
+
   function ensureNoPlanWelcome() {
     let welcome = document.getElementById("hw-v5-noplan-welcome");
     if (welcome) return welcome;
@@ -1601,16 +2891,31 @@
     welcome.setAttribute("aria-labelledby", "hw-v5-noplan-title");
     welcome.innerHTML =
       '<h2 class="hw-hub-v5-noplan__title" id="hw-v5-noplan-title">Your account is ready</h2>' +
-      '<p class="hw-hub-v5-noplan__desc">You\u2019ve created your Homework Hub account \u2014 pick a plan below to subscribe and get your first assignment from JD.</p>' +
+      '<p class="hw-hub-v5-noplan__desc">' +
+        (global.HwCheckout?.isHubPaused?.()
+          ? "Homework Hub is full for new students right now. Your account is saved \u2014 tap a plan to leave your email and I\u2019ll tell you when spots open."
+          : "You\u2019ve created your Homework Hub account \u2014 pick a plan below to subscribe and get your first assignment from JD.") +
+        "</p>" +
       trialBlockHtml() +
       '<p class="hw-hub-v5-sellup-caption" id="hw-v5-noplan-sellup-caption" hidden></p>' +
       '<div class="hw-hub-v5-sellup-frame" id="hw-v5-noplan-sellup-frame" hidden>' +
       '<div class="hw-hub-v5-sellup" id="hw-v5-noplan-sellup" aria-label="Homework Hub plans"></div>' +
-      "</div>";
+      "</div>" +
+      '<aside class="hw-tier-student-bar" aria-label="Student Special">' +
+      '<div class="hw-tier-student-bar__main">' +
+      '<p class="hw-tier-student-bar__eyebrow">Student Special</p>' +
+      '<p class="hw-tier-student-bar__price"><span class="hw-tier-student-bar__price-main">$10</span><span class="hw-tier-student-bar__price-suffix">/mo</span></p>' +
+      '<p class="hw-tier-student-bar__text">Currently a student? Enjoy the premium subscription at $10/mo.</p>' +
+      "</div>" +
+      '<button class="btn btn--primary hw-tier-student-bar__cta" type="button" data-hw-checkout="student-special">Join Student Special</button>' +
+      "</aside>";
+    global.HwCheckout?.bindCheckoutControls?.(welcome);
     return welcome;
   }
 
   function trialBlockHtml() {
+    /* New students are paused, so no free-trial request either. */
+    if (global.HwCheckout?.isHubPaused?.()) return "";
     return (
       '<div class="hw-hub-v5-trial" data-hw-trial>' +
       '<p class="hw-hub-v5-trial__pitch">Interested in a free trial of HomeworkHub?</p>' +
@@ -1694,8 +2999,7 @@
       } catch {
         /* ignore */
       }
-      const id = String(data.id || data.currentHomeworkId || "").trim();
-      window.location.hash = id ? "hw-" + id : "";
+      window.location.hash = "";
       window.location.reload();
     } catch (err) {
       setTrialStatus(
@@ -1706,6 +3010,1942 @@
       buttons.forEach((btn) => {
         btn.disabled = false;
       });
+    }
+  }
+
+  /* Full Quizlet core list. The word changes with the local 5:00 a.m. day. */
+  const CORE_LIST_URL = "/preview/you-need-this-japanese/core-list.json?v=20261021-1pun";
+  const CORE_SAYS_URL = "/preview/you-need-this-japanese/core-says.json";
+  let coreCards = [];
+  let coreSays = [];
+
+  function loadCoreCards() {
+    if (loadCoreCards.promise) return loadCoreCards.promise;
+    loadCoreCards.promise = fetch(CORE_LIST_URL)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => {
+        coreCards = Array.isArray(list) ? list : [];
+        return coreCards;
+      })
+      .catch(() => {
+        coreCards = [];
+        return coreCards;
+      });
+    return loadCoreCards.promise;
+  }
+
+  function loadCoreSays() {
+    if (loadCoreSays.promise) return loadCoreSays.promise;
+    loadCoreSays.promise = fetch(CORE_SAYS_URL)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => {
+        coreSays = Array.isArray(list) ? list : [];
+        return coreSays;
+      })
+      .catch(() => {
+        coreSays = [];
+        return coreSays;
+      });
+    return loadCoreSays.promise;
+  }
+
+  function localDayKey() {
+    return global.HwLocalPeriod.dayKey();
+  }
+
+  function localWeekKey() {
+    return global.HwLocalPeriod.weekKey();
+  }
+
+  function localDayOfYear() {
+    return global.HwLocalPeriod.dayOfYear();
+  }
+
+  function coreDaySerial() {
+    const parts = localDayKey().split("-").map(Number);
+    if (parts.length !== 3 || !parts[0]) return 0;
+    return Math.floor(Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000);
+  }
+
+  function todaysCoreCard() {
+    if (!coreCards.length) return null;
+    const n = coreCards.length;
+    const idx = ((coreDaySerial() % n) + n) % n;
+    return coreCards[idx];
+  }
+
+  /* Card accents follow the student presentation. Chapter 1 uses site gold (--color-gold). */
+  const CH_TONE = [
+    "#a78bfa",
+    "#d4a853",
+    "#e07a5f",
+    "#f0b429",
+    "#3dbaa8",
+    "#67c4eb",
+    "#4a8fd4",
+    "#94a3b8",
+    "#f472b6",
+    "#38bdf8",
+    "#a3e635",
+    "#fb923c",
+  ];
+
+  const CHAPTERS = [
+    {
+      n: 0,
+      title: "Ground Rules for Beginner Conversation",
+      rules: [
+        ["The Repeat Rule", "No need to think. Just repeat the question and make a minor change."],
+        ["The Katakana Rule", "Don't know it in Japanese? Say it in English in your best Japanese accent."],
+        ["Talk now, worry later", "Mistakes are good and help you learn faster."],
+        ["One way to say", "Sounding smart is nice, but being humble takes"],
+      ],
+    },
+    {
+      n: 1,
+      titleHtml: '1 <ruby>自己紹介<rt>じこしょうかい</rt></ruby>',
+      en: "Introducing yourself",
+      linesHtml: [
+        "お<ruby>名前<rt>なまえ</rt></ruby>は？",
+        "<ruby>何才<rt>なんさい</rt></ruby>ですか？",
+        "どこに<ruby>住<rt>す</rt></ruby>んでますか？",
+        "お<ruby>仕事<rt>しごと</rt></ruby>は？",
+        "<ruby>趣味<rt>しゅみ</rt></ruby>はありますか？",
+      ],
+    },
+    { n: 2, title: "した — past", en: "Simple た・だ" },
+    { n: 3, title: "する — future / invite", en: "る・ます · also “wanna…?”" },
+    { n: 4, title: "してる", en: "What are you doing right now?" },
+    { n: 5, title: "Negative plain past", en: "しなかった · 食べなかった…" },
+    { n: 6, title: "Negative future", en: "しない · 食べない…" },
+    { n: 7, title: "Four Types of Japanese", en: "The map — so forms stop feeling random" },
+    { n: 8, title: "ましょう", en: "Let’s…" },
+    { n: 9, title: "い-adjectives", en: "Conjugation explanation" },
+    { n: 10, title: "Nouns & な-adjectives", en: "Conjugation explanation" },
+    { n: 11, title: "Verb conjugation", en: "Fuller explanation — once the talk is already down" },
+  ];
+
+  function todayCoreStripHtml() {
+    const item = todaysWordItem();
+    const gloss = item.en ? "<span>" + escapeHtml(item.en) + "</span>" : "";
+    return (
+      '<aside class="hw-core-strip">' +
+      "<p>Today's Core Japanese — use these in the grammar line and on today's situation card.</p>" +
+      '<p class="hw-core-today-word">Today\'s Word = ' +
+      escapeHtml(item.word) +
+      "</p>" +
+      '<ul class="hw-core-row">' +
+      '<li class="hw-core-chip hw-core-chip--green"><b>' +
+      escapeHtml(item.word) +
+      "</b> " +
+      gloss +
+      "</li></ul></aside>"
+    );
+  }
+
+  function paintCoreStrips() {
+    document.querySelectorAll(".hw-core-strip").forEach((el) => {
+      const holder = document.createElement("div");
+      holder.innerHTML = todayCoreStripHtml();
+      el.replaceWith(holder.firstElementChild);
+    });
+  }
+
+  function curriculumChapterIndex() {
+    const saved = Number(readStorage(curriculumUserKey("jlm-hw-curriculum-chapter"), "0"));
+    if (!Number.isFinite(saved) || saved < 0 || saved > 11) return 0;
+    return saved;
+  }
+
+  function curriculumChapterBody(n) {
+    const chapter = CHAPTERS[n] || CHAPTERS[0];
+    const tone = CH_TONE[chapter.n] || CH_TONE[0];
+    const title = chapter.titleHtml
+      ? chapter.titleHtml
+      : escapeHtml(chapter.n + " " + chapter.title);
+    let inner = "";
+    if (chapter.en) {
+      inner += '<p class="hw-ch-card__en">' + escapeHtml(chapter.en) + "</p>";
+    }
+    if (chapter.rules) {
+      inner +=
+        '<ul class="hw-ch-rules">' +
+        chapter.rules
+          .map((pair) => "<li><b>" + escapeHtml(pair[0]) + "</b><span>" + escapeHtml(pair[1]) + "</span></li>")
+          .join("") +
+        "</ul>";
+    } else if (chapter.linesHtml) {
+      inner +=
+        '<ul class="hw-ch-lines" lang="ja">' +
+        chapter.linesHtml.map((line) => "<li>" + line + "</li>").join("") +
+        "</ul>";
+    } else {
+      inner += '<p class="hw-ch-later">Links for this chapter come later.</p>';
+    }
+    return (
+      '<article class="hw-ch-card" style="--ch:' +
+      tone +
+      '">' +
+      '<span class="hw-ch-card__badge" aria-hidden="true">' +
+      chapter.n +
+      "</span>" +
+      '<h3 class="hw-ch-card__title">' +
+      title +
+      "</h3>" +
+      inner +
+      "</article>"
+    );
+  }
+
+  function paintCurriculumChapter(root) {
+    if (!root) return;
+    const n = curriculumChapterIndex();
+    root.querySelectorAll("[data-chapter]").forEach((btn) => {
+      const on = Number(btn.getAttribute("data-chapter")) === n;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    const body = root.querySelector("[data-chapter-body]");
+    if (body) body.innerHTML = curriculumChapterBody(n);
+  }
+
+  function todayChecks() {
+    const today = localDayKey();
+    const week = localWeekKey();
+    let bag = {};
+    try {
+      bag = JSON.parse(readStorage(curriculumUserKey("jlm-hw-curriculum-today-checks"), "{}")) || {};
+    } catch {
+      bag = {};
+    }
+    if (!bag.done || typeof bag.done !== "object") bag.done = {};
+    const questStillThisWeek = bag.week === week && !!bag.done.quest;
+    if (bag.date !== today) {
+      bag = { date: today, week: week, done: {} };
+      if (questStillThisWeek) bag.done.quest = true;
+      saveTodayChecks(bag);
+    } else if (bag.week !== week) {
+      bag.week = week;
+      delete bag.done.quest;
+      saveTodayChecks(bag);
+    }
+    return bag;
+  }
+
+  function saveTodayChecks(bag) {
+    writeStorage(curriculumUserKey("jlm-hw-curriculum-today-checks"), JSON.stringify(bag));
+  }
+
+  function completeTodayTask(taskId, opts) {
+    const id = String(taskId || "").trim();
+    if (!id) return;
+    const bag = todayChecks();
+    bag.done[id] = true;
+    saveTodayChecks(bag);
+    const row = document.querySelector('#hw-v5-panel-today [data-task="' + id + '"]');
+    if (row) {
+      row.classList.add("is-done");
+      const box = row.querySelector('input[type="checkbox"]');
+      if (box) box.checked = true;
+    }
+    if (opts && opts.stay) {
+      if (opts.toast) global.HwToast?.show?.(opts.toast);
+      return;
+    }
+    setActiveTab("today", { scrollTop: true });
+  }
+
+  function completeTaskButton(taskId) {
+    return "";
+  }
+
+  /* The card reading is the whole word (乗る = のる). Kana already in the word is okurigana, so it is not furigana. 乗る / のる → 乗 + の, then る. Never のる on top of 乗る. */
+  function furiganaPieces(word, reading) {
+    const value = String(word || "");
+    const yomi = String(reading || "").replace(/\s+/g, "");
+    if (!yomi || !/[\u4E00-\u9FFF]/.test(value) || /^[\u30A0-\u30FF\u30FC]+$/.test(yomi)) {
+      return [{ text: value, rt: "" }];
+    }
+    const groups = value.match(/[\u4E00-\u9FFF]+|[^\u4E00-\u9FFF]+/g) || [value];
+    let rest = yomi;
+    return groups.map((group, index) => {
+      if (!/[\u4E00-\u9FFF]/.test(group)) {
+        if (rest.startsWith(group)) rest = rest.slice(group.length);
+        return { text: group, rt: "" };
+      }
+      let rt = rest;
+      const nextKana = groups
+        .slice(index + 1)
+        .find((part) => /^[\u3040-\u309F\u30A0-\u30FF]+$/.test(part));
+      if (!nextKana) {
+        rest = "";
+      } else {
+        const at = rest.indexOf(nextKana);
+        if (at > 0) {
+          rt = rest.slice(0, at);
+          rest = rest.slice(at);
+        } else if (at === 0) {
+          rt = "";
+        } else {
+          rest = "";
+        }
+      }
+      return { text: group, rt: rt };
+    });
+  }
+
+  function furiMarkup(word, reading) {
+    const pieces = furiganaPieces(word, reading);
+    if (!pieces.some((piece) => piece.rt)) return "<b class=\"hw-word-write\">" + escapeHtml(word) + "</b>";
+    return (
+      '<b class="hw-word-write">' +
+      pieces
+        .map((piece) => {
+        if (!piece.rt) return escapeHtml(piece.text);
+        return (
+          '<span class="hw-furi">' +
+          escapeHtml(piece.text) +
+          "<i>" +
+          escapeHtml(piece.rt) +
+          "</i></span>"
+        );
+      })
+      .join("") +
+    "</b>"
+    );
+  }
+
+  function kanjiRuby(text, reading) {
+    const inner = furiganaPieces(text, reading)
+      .map((piece) => {
+        if (!piece.rt) return escapeHtml(piece.text);
+        return "<ruby>" + escapeHtml(piece.text) + "<rt>" + escapeHtml(piece.rt) + "</rt></ruby>";
+      })
+      .join("");
+    return '<b class="hw-word-write">' + inner + "</b>";
+  }
+
+  /* ---- 今日は2026年10月9日、金曜日です (furigana on, numbers stay numbers) ---- */
+  const DATE_DAYS = [
+    "", "ついたち", "ふつか", "みっか", "よっか", "いつか", "むいか", "なのか", "ようか", "ここのか", "とおか",
+    "じゅういちにち", "じゅうににち", "じゅうさんにち", "じゅうよっか", "じゅうごにち", "じゅうろくにち", "じゅうしちにち",
+    "じゅうはちにち", "じゅうくにち", "はつか", "にじゅういちにち", "にじゅうににち", "にじゅうさんにち", "にじゅうよっか",
+    "にじゅうごにち", "にじゅうろくにち", "にじゅうしちにち", "にじゅうはちにち", "にじゅうくにち", "さんじゅうにち", "さんじゅういちにち",
+  ];
+  const DATE_WEEKDAYS = [
+    ["日曜日", "にちようび"], ["月曜日", "げつようび"], ["火曜日", "かようび"], ["水曜日", "すいようび"],
+    ["木曜日", "もくようび"], ["金曜日", "きんようび"], ["土曜日", "どようび"],
+  ];
+
+  /** The real calendar date where the student is. Changes at midnight (not 5 a.m.). */
+  function todayDateParts() {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), weekday: d.getDay() };
+  }
+
+  function todayDateKey() {
+    const t = todayDateParts();
+    return t.year + "-" + t.month + "-" + t.day;
+  }
+
+  /* Furigana only where it helps: 年 (ねん), 月 (がつ), 10-12 month numbers, 11+ day numbers, the odd day names (ついたち...), and the weekday. */
+  const DATE_ODD_DAYS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 20, 24]);
+
+  /** The date line itself (with the few furigana), no wrapper. */
+  function todayDateInner() {
+    const t = todayDateParts();
+    const wd = DATE_WEEKDAYS[t.weekday];
+    const ruby = (text, rt) => "<ruby>" + text + "<rt>" + rt + "</rt></ruby>";
+    // One ruby per unit (10月 = じゅうがつ, 11日 = じゅういちにち) so the furigana stays tight.
+    const dayHtml = ruby(t.day + "日", DATE_DAYS[t.day]);
+    const monthReadings = { 10: "じゅうがつ", 11: "じゅういちがつ", 12: "じゅうにがつ" };
+    const monthHtml = monthReadings[t.month]
+      ? ruby(t.month + "月", monthReadings[t.month])
+      : t.month + ruby("月", "がつ");
+    return (
+      t.year + ruby("年", "ねん") +
+      monthHtml +
+      dayHtml +
+      "、" + ruby(wd[0], wd[1])
+    );
+  }
+
+  function todayDateHtml() {
+    return '<p class="hw-datebar" lang="ja" data-date="' + todayDateKey() + '">' + todayDateInner() + "</p>";
+  }
+
+  /** The Quest tab (4-tab hub) shows the date inside its big box on request. */
+  global.HwTodayDate = {
+    inner: todayDateInner,
+    enabled: () => !usesCurriculumHub() && !isQuestOnlyAccount(),
+  };
+
+  /** Keep every date line on the real date. Runs when the page changes and as midnight passes. */
+  function refreshDateBars() {
+    const key = todayDateKey();
+    const html = todayDateHtml();
+    document.querySelectorAll(".hw-datebar").forEach((el) => {
+      if (el.getAttribute("data-date") === key) return;
+      el.outerHTML = html;
+    });
+  }
+
+  /** Shrink the date text a little when a narrow phone can't fit it on one line. */
+  function fitDateBar(el) {
+    if (!el || !el.isConnected) return;
+    el.style.fontSize = "";
+    const avail = el.clientWidth;
+    if (!avail) return;
+    const need = el.scrollWidth;
+    if (need > avail + 1) {
+      const base = parseFloat(getComputedStyle(el).fontSize) || 23;
+      el.style.fontSize = Math.max(10, Math.floor(base * (avail / need) * 0.97 * 10) / 10) + "px";
+    }
+  }
+
+  let dateFitQueued = false;
+  function queueDateFit() {
+    if (dateFitQueued) return;
+    dateFitQueued = true;
+    window.requestAnimationFrame(() => {
+      dateFitQueued = false;
+      document.querySelectorAll(".hw-datebar").forEach(fitDateBar);
+    });
+  }
+
+  let dateFitStarted = false;
+  function startDateFit() {
+    if (dateFitStarted || !document.body) return;
+    dateFitStarted = true;
+    window.addEventListener("resize", queueDateFit);
+    new MutationObserver(queueDateFit).observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden", "class"],
+    });
+    queueDateFit();
+  }
+
+  let dateBarTimer = 0;
+  function startDateBarClock() {
+    if (dateBarTimer) return;
+    dateBarTimer = window.setInterval(refreshDateBars, 30000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshDateBars();
+    });
+  }
+
+  /** 4-tab hub: the date sits at the top of the HW tab. Curriculum hubs show it in the To-do list. */
+  function ensureDateStrip() {
+    startDateBarClock();
+    startDateFit();
+    /* 4-tab hub: no strip on the HW tab any more (date lives behind a button on the Quest tab). */
+    document.getElementById("hw-datebar-hw")?.remove();
+    refreshDateBars();
+  }
+
+  function curriculumTodayMarkup() {    const bag = todayChecks();
+    const word = todaysWordItem();
+    const wordLabel = "Word of the Day: " + (word.word || "");
+    /* Cafe hour: short order. Start at the top. The map is last, not the work. */
+    const exercise =
+      global.HwCurriculumTextbook?.dailyPrompt?.() || "今日は何をしましたか";
+    const exerciseLabel =
+      "Daily Exercise: " + exercise + (/[？?。]$/.test(exercise) || !/[\u3000-\u9FFF]$/.test(exercise) ? "" : "。");
+    const steps = [];
+    const hwStep = ["hw", "homework", "", "Homework"];
+    if (seesPrayerTab()) {
+      steps.push(["pray", "prayer", "", "Pray in Japanese"]);
+      steps.push(hwStep);
+    } else {
+      steps.push(hwStep);
+    }
+    steps.push(
+      ["core", "core", "", "Word of the Day: " + kanjiRuby(word.word, word.reading), "html"],
+      ["grammar", "notebook", "shita", exerciseLabel],
+      ["card", "situations", "", "Situation of the Day"],
+      ["quest", "quest", "", "Weekly Quest"]
+    );
+    const rows = steps
+      .map((task) => {
+        const done = !!bag.done[task[0]];
+        return (
+          '<li class="hw-today__row' +
+          (done ? " is-done" : "") +
+          '" data-task="' +
+          task[0] +
+          '">' +
+          '<label class="hw-today__box"><input type="checkbox"' +
+          (done ? " checked" : "") +
+          ' aria-label="Done: ' +
+          escapeHtml(task[4] === "html" ? wordLabel : task[3]) +
+          '"></label>' +
+          '<button type="button" class="hw-today__go" data-go="' +
+          task[1] +
+          '"' +
+          (task[2] ? ' data-focus="' + task[2] + '"' : "") +
+          ">" +
+          (task[4] === "html" ? task[3] : escapeHtml(task[3])) +
+          "</button></li>"
+        );
+      })
+      .join("");
+    return (
+      '<section class="hw-today">' +
+      todayDateHtml() +
+      "<ol>" +
+      rows +
+      "</ol></section>"
+    );
+  }
+
+  function openCurriculumPlace(tab, focus) {
+    if (tab === "notebook" && focus) sessionStorage.setItem("jlm-ct-focus", focus);
+    setActiveTab(tab, { scrollTop: true });
+    global.HwCurriculumTextbook?.sync?.();
+    if (!focus) return;
+    window.setTimeout(() => {
+      document.querySelector('#hw-v5-panel-notebook [data-page="' + focus + '"]')?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+      });
+    }, 60);
+  }
+
+  function bindCurriculumToday(section) {
+    if (section.dataset.bound === "1") return;
+    section.dataset.bound = "1";
+    section.addEventListener("change", (ev) => {
+      const box = ev.target;
+      if (!box || box.type !== "checkbox") return;
+      const row = box.closest("[data-task]");
+      if (!row) return;
+      const id = row.getAttribute("data-task");
+      const bag = todayChecks();
+      bag.done[id] = box.checked;
+      saveTodayChecks(bag);
+      row.classList.toggle("is-done", box.checked);
+    });
+    section.addEventListener("click", (ev) => {
+      const go = ev.target.closest("[data-go]");
+      if (!go || !section.contains(go)) return;
+      openCurriculumPlace(go.getAttribute("data-go"), go.getAttribute("data-focus") || "");
+    });
+  }
+
+  function scriptureToday() {
+    /* Public-domain 口語訳 (1954–55). Kanji only get furigana. */
+    const verses = [
+      [
+        "ヨハネ 3:16",
+        "<ruby>神<rt>かみ</rt></ruby>はそのひとり<ruby>子<rt>こ</rt></ruby>を<ruby>賜<rt>たま</rt></ruby>わったほどに、この<ruby>世<rt>よ</rt></ruby>を<ruby>愛<rt>あい</rt></ruby>して<ruby>下<rt>くだ</rt></ruby>さった。それは<ruby>御子<rt>みこ</rt></ruby>を<ruby>信<rt>しん</rt></ruby>じる<ruby>者<rt>もの</rt></ruby>がひとりも<ruby>滅<rt>ほろ</rt></ruby>びないで、<ruby>永遠<rt>えいえん</rt></ruby>の<ruby>命<rt>いのち</rt></ruby>を<ruby>得<rt>え</rt></ruby>るためである。",
+      ],
+      [
+        "<ruby>詩篇<rt>しへん</rt></ruby> 23:1",
+        "<ruby>主<rt>しゅ</rt></ruby>はわたしの<ruby>牧者<rt>ぼくしゃ</rt></ruby>であって、わたしには<ruby>乏<rt>とぼ</rt></ruby>しいことがない。",
+      ],
+      [
+        "<ruby>詩篇<rt>しへん</rt></ruby> 119:105",
+        "あなたのみ<ruby>言葉<rt>ことば</rt></ruby>はわが<ruby>足<rt>あし</rt></ruby>のともしび、わが<ruby>道<rt>みち</rt></ruby>の<ruby>光<rt>ひかり</rt></ruby>です。",
+      ],
+      [
+        "マタイ 11:28",
+        "すべて<ruby>重荷<rt>おもに</rt></ruby>を<ruby>負<rt>お</rt></ruby>うて<ruby>苦労<rt>くろう</rt></ruby>している<ruby>者<rt>もの</rt></ruby>は、わたしのもとにきなさい。あなたがたを<ruby>休<rt>やす</rt></ruby>ませてあげよう。",
+      ],
+    ];
+    const day = localDayOfYear();
+    return verses[((day % verses.length) + verses.length) % verses.length];
+  }
+
+  function isPrayerBuilderAccount() {
+    const session = global.HwAuth?.getSession?.();
+    if (global.HwAuth?.isChristianCurriculumUser?.(session)) return true;
+    const user = String(session?.username || "").trim().toLowerCase();
+    return user === "demo2" || user === "christian" || user === "alex";
+  }
+
+  function prayerPartHtml(part) {
+    const slot = part.giftPieces
+      ? '<span class="hw-star-block__slot" data-slot-index="0" data-accept="gift" aria-label="What did God give?" hidden></span>' +
+        '<span class="hw-prayer-part__fixed" data-prayer-wo hidden>を</span>' +
+        '<span class="hw-star-block__slot" data-slot-index="1" data-accept="verb" aria-label="' +
+        escapeHtml(part.label) +
+        '"></span>'
+      : '<span class="hw-star-block__slot" data-slot-index="0" aria-label="' +
+        escapeHtml(part.label) +
+        '"></span>';
+    const chipHtml = (marked, index, poolName, startHidden) => {
+      const piece = String(marked).replace(/\{[^{}]+\}/g, "");
+      const color = (index % 4) + 1;
+      return (
+        '<div class="hw-star-block__chip hw-star-block__chip--' +
+        color +
+        '" data-piece="' +
+        escapeHtml(piece) +
+        '" data-color="' +
+        color +
+        (poolName ? '" data-pool="' + poolName : "") +
+        '" draggable="true" role="button" tabindex="0"' +
+        (startHidden ? " hidden" : "") +
+        ">" +
+        sitRubyHtml(marked) +
+        "</div>"
+      );
+    };
+    const chips = part.pieces
+      .map((marked, index) => chipHtml(marked, index, part.giftPieces ? "verb" : "", false))
+      .concat((part.giftPieces || []).map((marked, index) => chipHtml(marked, index, "gift", true)))
+      .join("");
+    const before = part.before
+      ? '<span class="hw-prayer-part__fixed">' + escapeHtml(part.before) + "</span>"
+      : "";
+    const after = part.after
+      ? '<span class="hw-prayer-part__fixed">' + escapeHtml(part.after) + "</span>"
+      : "";
+    const beforeAttr = part.before ? ' data-before="' + escapeHtml(part.before) + '"' : "";
+    const afterAttr = part.after ? ' data-after="' + escapeHtml(part.after) + '"' : "";
+    return (
+      '<section class="hw-prayer-part"' +
+      beforeAttr +
+      afterAttr +
+      (part.role ? ' data-prayer-role="' + escapeHtml(part.role) + '"' : "") +
+      (part.hidden ? " hidden" : "") +
+      ">" +
+      '<p class="hw-prayer-part__label">' +
+      escapeHtml(part.label) +
+      "</p>" +
+      '<div class="hw-worksheet__line hw-worksheet__line--star" data-prayer-star>' +
+      '<div class="hw-worksheet__content">' +
+      '<div class="hw-star-block__sentence hw-prayer-part__spoken" lang="ja">' +
+      before +
+      slot +
+      after +
+      "</div>" +
+      '<div class="hw-star-block__pool" role="list" aria-label="' +
+      escapeHtml(part.label) +
+      '">' +
+      chips +
+      "</div>" +
+      '<button type="button" class="btn btn--ghost btn--sm hw-star-block__reset">Reset</button>' +
+      '<input type="hidden" class="hw-star-block__answer" value="">' +
+      "</div></div></section>"
+    );
+  }
+
+  function prayerBuilderHtml() {
+    const parts = [
+      {
+        label: "Opening",
+        pieces: [
+          "天{てん}におられる神{かみ}様{さま}",
+          "天{てん}なる父{ちち}よ",
+          "神{かみ}様{さま}",
+          "天{てん}のお父{とう}様{さま}",
+          "父{ちち}なる神{かみ}様{さま}",
+          "主{しゅ}よ",
+        ],
+        after: "、",
+      },
+      {
+        label: "Saying Thanks",
+        role: "thankful",
+        pieces: ["与{あた}えて", "守{まも}って", "導{みちび}いて", "教{おし}えて", "癒{いや}して"],
+        giftPieces: ["知{ち}恵{え}", "平{へい}和{わ}", "お金{かね}", "友{とも}達{だち}", "この日{ひ}", "命{いのち}"],
+        after: "くれてありがとうございます。",
+      },
+      {
+        label: "Saying sorry",
+        pieces: [
+          "怒{おこ}って",
+          "嘘{うそ}をついて",
+          "罪{つみ}を犯{おか}して",
+          "忘{わす}れて",
+          "人{ひと}を傷{きず}つけて",
+          "文{もん}句{く}を言{い}って",
+        ],
+        after: "ごめんなさい。",
+      },
+      {
+        label: "Asking for help",
+        pieces: [
+          "友{とも}達{だち}",
+          "今日{きょう}出{で}会{あ}った人{ひと}",
+          "お母{かあ}さん",
+          "お父{とう}さん",
+          "家{か}族{ぞく}",
+          "病{びょう}気{き}の人{ひと}",
+        ],
+        after: "を助けてください。",
+      },
+      {
+        label: "Closing the prayer",
+        pieces: [
+          "主{しゅ}イエス・キリストの御名{みな}によってお祈{いの}ります。",
+          "イエスの名{な}前{まえ}によって祈{いの}ります。",
+          "イエス様{さま}の御名{みな}によって祈{いの}ります。",
+          "主{しゅ}の御名{みな}によってお祈{いの}ります。",
+        ],
+      },
+    ];
+    return (
+      '<div class="hw-prayer-build" data-prayer-build>' +
+      '<div class="hw-worksheet__slide-nav-row">' +
+      '<div class="hw-worksheet__slide-nav hw-prayer-nav" role="navigation" data-keep-clear>' +
+      '<button type="button" class="hw-worksheet__slide-btn" data-prayer-prev aria-label="Previous question" disabled>←</button>' +
+      '<p class="hw-worksheet__slide-counter" data-prayer-count aria-live="polite">1 of ' +
+      parts.length +
+      "</p>" +
+      '<button type="button" class="hw-worksheet__slide-btn" data-prayer-next aria-label="Next question">→</button>' +
+      "</div></div>" +
+      parts
+        .map((part, index) => prayerPartHtml(Object.assign({ hidden: index !== 0 }, part)))
+        .join("") +
+      '<button type="button" class="btn hw-prayer-create" data-prayer-create hidden>Create Prayer</button>' +
+      "</div>" +
+      '<div class="hw-prayer-result" data-prayer-result hidden>' +
+      '<div class="hw-today__row hw-prayer__sheet" lang="ja" data-prayer-lines></div>' +
+      '<button type="button" class="btn btn--ghost hw-prayer-change" data-prayer-change>Change</button>' +
+      "</div>"
+    );
+  }
+
+  function prayerMarkup() {
+    const verse = scriptureToday();
+    return (
+      '<section class="hw-prayer">' +
+      "<h2>Pray to God in Japanese</h2>" +
+      prayerBuilderHtml() +
+      '<div class="hw-prayer__scripture">' +
+      '<p class="hw-prayer__verse-label">Verse of the Day</p>' +
+      '<button type="button" class="hw-today__row hw-prayer__verse" data-verse aria-expanded="false">' +
+      verse[0] +
+      " · 口語訳</button>" +
+      '<p class="hw-prayer__scripture-text" lang="ja" hidden>' +
+      verse[1] +
+      "</p></div>" +
+      completeTaskButton("pray") +
+      "</section>"
+    );
+  }
+
+  function bindPrayer(section) {
+    if (!section || section.dataset.bound === "1") return;
+    section.dataset.bound = "1";
+    section.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-verse]");
+      if (!btn || !section.contains(btn)) return;
+      const text = btn.parentElement?.querySelector(".hw-prayer__scripture-text");
+      if (!text) return;
+      const open = text.hasAttribute("hidden");
+      text.toggleAttribute("hidden", !open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    section.querySelectorAll("[data-prayer-star]").forEach((line) => {
+      if (global.HwStarBlock?.initLine) global.HwStarBlock.initLine(line);
+    });
+    const build = section.querySelector("[data-prayer-build]");
+    const result = section.querySelector("[data-prayer-result]");
+    const linesHost = section.querySelector("[data-prayer-lines]");
+    const createBtn = section.querySelector("[data-prayer-create]");
+    const countEl = section.querySelector("[data-prayer-count]");
+    const prevBtn = section.querySelector("[data-prayer-prev]");
+    const nextBtn = section.querySelector("[data-prayer-next]");
+    if (!build || !result || !linesHost || !createBtn || !countEl || !prevBtn || !nextBtn) return;
+    const parts = () => Array.from(build.querySelectorAll(".hw-prayer-part"));
+    const thankPart = () => build.querySelector('[data-prayer-role="thankful"]');
+    let page = 0;
+    function slotValue(slot) {
+      return slot ? String(slot.dataset.value || "").trim() : "";
+    }
+    function chosen(part) {
+      if (!part) return "";
+      const verb = part.querySelector('[data-accept="verb"]');
+      const slot = verb || part.querySelector(".hw-star-block__slot");
+      return slotValue(slot);
+    }
+    function giftValue(part) {
+      return slotValue(part && part.querySelector('[data-accept="gift"]'));
+    }
+    function shownPiece(part, piece) {
+      const chip = Array.from(part.querySelectorAll(".hw-star-block__chip")).find(
+        (el) => el.getAttribute("data-piece") === piece
+      );
+      return chip && chip.querySelector("ruby") ? chip.innerHTML : escapeHtml(piece);
+    }
+    function giving() {
+      const thank = thankPart();
+      return Boolean(thank && chosen(thank) === "与えて");
+    }
+    function releaseSlot(slot) {
+      const piece = slotValue(slot);
+      if (!slot || !piece) return;
+      const pool = slot.closest("[data-prayer-star]")?.querySelector(".hw-star-block__pool");
+      slot.dataset.value = "";
+      delete slot.dataset.color;
+      slot.className = "hw-star-block__slot";
+      slot.draggable = false;
+      slot.replaceChildren();
+      slot.setAttribute("aria-label", "Blank");
+      const chip = pool && pool.querySelector('.hw-star-block__chip[data-piece="' + piece + '"]');
+      if (chip) {
+        chip.classList.remove("hw-star-block__chip--placed");
+        chip.removeAttribute("aria-hidden");
+      }
+    }
+    function syncGift() {
+      const thank = thankPart();
+      if (!thank) return;
+      const giftSlot = thank.querySelector('[data-accept="gift"]');
+      const wo = thank.querySelector("[data-prayer-wo]");
+      const pool = thank.querySelector(".hw-star-block__pool");
+      if (!giftSlot || !wo || !pool) return;
+      const on = chosen(thank) === "与えて";
+      if (!on) releaseSlot(giftSlot);
+      giftSlot.hidden = !on;
+      wo.hidden = !on;
+      pool.querySelectorAll(".hw-star-block__chip").forEach((chip) => {
+        const isGift = chip.getAttribute("data-pool") === "gift";
+        chip.hidden = on ? !isGift : isGift;
+      });
+    }
+    function showPage(next) {
+      const list = parts();
+      if (!list.length) return;
+      page = Math.max(0, Math.min(next, list.length - 1));
+      list.forEach((part, index) => {
+        part.hidden = index !== page;
+      });
+      countEl.textContent = page + 1 + " of " + list.length;
+      prevBtn.disabled = page <= 0;
+      nextBtn.disabled = page >= list.length - 1;
+      syncGift();
+    }
+    function refreshCreate() {
+      const ready = parts().every((part) => chosen(part));
+      const thank = thankPart();
+      const giftOk = !giving() || Boolean(thank && giftValue(thank));
+      createBtn.hidden = !(ready && giftOk);
+    }
+    const thankReset = thankPart()?.querySelector(".hw-star-block__reset");
+    if (thankReset) {
+      thankReset.addEventListener(
+        "click",
+        () => {
+          thankPart()
+            ?.querySelectorAll('.hw-star-block__chip[data-pool="verb"]')
+            .forEach((chip) => {
+              chip.hidden = false;
+            });
+        },
+        true
+      );
+    }
+    prevBtn.addEventListener("click", () => showPage(page - 1));
+    nextBtn.addEventListener("click", () => showPage(page + 1));
+    build.addEventListener("input", (ev) => {
+      if (!ev.target.classList || !ev.target.classList.contains("hw-star-block__answer")) return;
+      syncGift();
+      refreshCreate();
+    });
+    createBtn.addEventListener("click", () => {
+      const list = parts();
+      const thank = thankPart();
+      if (!list.every((part) => chosen(part))) return;
+      if (giving() && !(thank && giftValue(thank))) return;
+      const lines = list.map((part) => {
+        const piece = chosen(part);
+        let shown = shownPiece(part, piece);
+        if (part.getAttribute("data-prayer-role") === "thankful" && giving()) {
+          shown = shownPiece(part, giftValue(part)) + "を" + shown;
+        }
+        return escapeHtml(part.dataset.before || "") + shown + escapeHtml(part.dataset.after || "");
+      });
+      lines.push("アーメン");
+      linesHost.innerHTML = lines.map((line) => "<p>" + line + "</p>").join("");
+      build.hidden = true;
+      result.hidden = false;
+    });
+    const changeBtn = section.querySelector("[data-prayer-change]");
+    if (changeBtn) {
+      changeBtn.addEventListener("click", () => {
+        result.hidden = true;
+        build.hidden = false;
+      });
+    }
+    showPage(0);
+  }
+
+  function coreKindListHtml(kind) {
+    const kinds = [
+      ["i", "い-ending"],
+      ["na", "な-adjective"],
+      ["noun", "noun"],
+      ["verb", "verb"],
+    ];
+    return (
+      '<p class="hw-core-kind-list">' +
+      kinds
+        .map((pair) => "<span" + (pair[0] === kind ? ' class="is-on"' : "") + ">" + pair[1] + "</span>")
+        .join("") +
+      "</p>"
+    );
+  }
+
+const GODAN_RU = ["帰る", "切る", "走る", "入る", "知る", "要る", "喋る", "滑る", "減る", "焦る", "限る", "握る", "蹴る"];
+const EI = "いきしちにひびみりえけせてねへべめれぎじぢびぴげぜでべぺ";
+
+function endsWord(s, word) {
+  return s.endsWith(word);
+}
+
+function godanRu(s) {
+  return GODAN_RU.some((word) => endsWord(s, word));
+}
+
+function pastToMasu(s) {
+  if (s.endsWith("行った")) return s.slice(0, -3) + "行きました";
+  if (s.endsWith("あった") && !s.endsWith("なかった")) return s.slice(0, -3) + "ありました";
+  if (s.endsWith("った")) return s.slice(0, -2) + "いました";
+  if (s.endsWith("いだ")) return s.slice(0, -2) + "ぎました";
+  if (s.endsWith("した") && !s.endsWith("でした") && !s.endsWith("ました")) return s.slice(0, -2) + "しました";
+  if (s.endsWith("いた") && !s.endsWith("ていた")) return s.slice(0, -2) + "きました";
+  const nda = [
+    [/死んだ$/, "死にました"],
+    [/読んだ$/, "読みました"],
+    [/飲んだ$/, "飲みました"],
+    [/呼んだ$/, "呼びました"],
+    [/飛んだ$/, "飛びました"],
+    [/遊んだ$/, "遊びました"],
+    [/選んだ$/, "選びました"],
+    [/学んだ$/, "学びました"],
+    [/休んだ$/, "休みました"],
+    [/頼んだ$/, "頼みました"],
+    [/住んだ$/, "住みました"],
+    [/運んだ$/, "運びました"],
+  ];
+  for (const [re, rep] of nda) {
+    if (re.test(s)) return s.replace(re, rep);
+  }
+  if (s.endsWith("んだ")) return s.slice(0, -2) + "みました";
+  if (s.endsWith("来た")) return s.slice(0, -1) + "ました";
+  if (s.endsWith("見た")) return s.slice(0, -1) + "ました";
+  if (s.endsWith("着た")) return s.slice(0, -1) + "ました";
+  if (s.endsWith("出た")) return s.slice(0, -1) + "ました";
+  if (s.endsWith("寝た")) return s.slice(0, -1) + "ました";
+  if (s.endsWith("できた")) return s.slice(0, -1) + "ました";
+  if (new RegExp("[" + EI + "]た$").test(s) && !s.endsWith("った")) return s.slice(0, -1) + "ました";
+  return "";
+}
+
+function dictToMasu(s) {
+  if (s.endsWith("来る")) return s.slice(0, -1) + "ます";
+  if (s.endsWith("くる") && !s.endsWith("つくる")) return s.slice(0, -2) + "きます";
+  if (s.endsWith("する")) return s.slice(0, -2) + "します";
+  if (s.endsWith("行く")) return s.slice(0, -1) + "きます";
+  if (s.endsWith("ある") && !s.endsWith("である")) return s.slice(0, -2) + "あります";
+  if (godanRu(s)) return s.slice(0, -1) + "ります";
+  if (new RegExp("[" + EI + "]る$").test(s)) return s.slice(0, -1) + "ます";
+  const map = { う: "います", く: "きます", ぐ: "ぎます", す: "します", つ: "ちます", ぬ: "にます", ぶ: "びます", む: "みます", る: "ります" };
+  const last = s.slice(-1);
+  if (map[last]) return s.slice(0, -1) + map[last];
+  return "";
+}
+
+function volitional(s) {
+  const map = {
+    こう: "きます",
+    ごう: "ぎます",
+    そう: "します",
+    とう: "ちます",
+    のう: "にます",
+    ぼう: "びます",
+    もう: "みます",
+    ろう: "ります",
+    おう: "います",
+  };
+  const key = s.slice(-2);
+  if (!map[key]) return "";
+  return s.slice(0, -2) + map[key];
+}
+
+function conjugateEnd(s) {
+  if (!s) return s;
+  if (/(です|ます|でした|ました)$/.test(s)) return s;
+  if (s.endsWith("なかった")) return s + "です";
+  if (s.endsWith("くない") || s.endsWith("てない") || s.endsWith("でない") || s.endsWith("ない")) return s + "です";
+  if (s.endsWith("だった")) return s.slice(0, -3) + "でした";
+  if (s.endsWith("だ") && !s.endsWith("まだ")) return s.slice(0, -1) + "です";
+  if (s.endsWith("かった")) return s + "です";
+  if (s.endsWith("ちゃった")) return s.slice(0, -4) + "ちゃいました";
+  if (s.endsWith("じゃった")) return s.slice(0, -4) + "じゃいました";
+  if (s.endsWith("ちゃう")) return s.slice(0, -3) + "ちゃいます";
+  if (s.endsWith("じゃう")) return s.slice(0, -3) + "じゃいます";
+  if (s.endsWith("てた")) return s.slice(0, -2) + "ていました";
+  if (s.endsWith("でた")) return s.slice(0, -2) + "でいました";
+  if (s.endsWith("ていた")) return s.slice(0, -3) + "ていました";
+  if (s.endsWith("でいた")) return s.slice(0, -3) + "でいました";
+  if (s.endsWith("てる")) return s.slice(0, -2) + "ています";
+  if (s.endsWith("でる") && s.length > 2 && "てで".includes(s.slice(-3, -2))) return s.slice(0, -2) + "でいます";
+  if (s.endsWith("ている")) return s.slice(0, -3) + "ています";
+  if (s.endsWith("でいる")) return s.slice(0, -3) + "でいます";
+  if (s.endsWith("とく")) return s.slice(0, -2) + "ときます";
+  if (s.endsWith("どく")) return s.slice(0, -2) + "どきます";
+  if (s.endsWith("といた")) return s.slice(0, -3) + "ときました";
+  if (s.endsWith("どいた")) return s.slice(0, -3) + "どきました";
+  if (s.endsWith("よう")) return s.slice(0, -2) + "ます";
+  if (/(こう|ごう|そう|とう|のう|ぼう|もう|ろう|おう)$/.test(s)) {
+    const next = volitional(s);
+    if (next) return next;
+  }
+  const past = pastToMasu(s);
+  if (past) return past;
+  const dict = dictToMasu(s);
+  if (dict) return dict;
+  if (s.endsWith("って")) return conjugateEnd(s.slice(0, -2));
+  if (s.endsWith("て") || s.endsWith("で") || s.endsWith("ないで")) return s;
+  if (s.endsWith("い")) return s + "です";
+  if (s.endsWith("だけ")) return s + "です";
+  if (s.endsWith("とこ")) return s.slice(0, -2) + "ところです";
+  return s + "です";
+}
+
+function politeFromPlain(raw) {
+  const chunks = String(raw || "")
+    .split("。")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!chunks.length) return "";
+  return chunks.map((part) => politeClause(part)).join("");
+}
+
+function politeClause(raw) {
+  let s = String(raw || "").trim();
+  if (!s) return "";
+  let q = /[？?]$/.test(s);
+  s = s.replace(/[。！？?]+$/g, "");
+  let tail = "";
+  if (s.endsWith("じゃん")) {
+    s = s.slice(0, -3);
+    tail = "ね";
+  } else if (s.endsWith("よね")) {
+    s = s.slice(0, -2);
+    tail = "よね";
+  } else if (s.endsWith("っけ")) {
+    s = s.slice(0, -2);
+    tail = "っけ";
+  } else if (s.endsWith("かな")) {
+    s = s.slice(0, -2);
+    q = true;
+  } else if (/[よね]$/.test(s)) {
+    tail = s.slice(-1);
+    s = s.slice(0, -1);
+  }
+  if (q && s.endsWith("の")) s = s.slice(0, -1);
+  const bits = s.split("、");
+  const tag = bits.length > 1 ? bits[bits.length - 1] : "";
+  if (tag && tag.length <= 8 && !/(た|る|い|だ|て|で)$/.test(tag)) {
+    bits.pop();
+    let head = bits.join("、");
+    let headTail = "";
+    if (head.endsWith("よね")) {
+      headTail = "よね";
+      head = head.slice(0, -2);
+    } else if (head.endsWith("じゃん")) {
+      headTail = "ね";
+      head = head.slice(0, -3);
+    } else if (/[よね]$/.test(head)) {
+      headTail = head.slice(-1);
+      head = head.slice(0, -1);
+    }
+    s = conjugateEnd(head) + headTail + "、" + tag;
+    tail = "";
+  } else {
+    s = conjugateEnd(s);
+  }
+  if (tail) s += tail;
+  if (q && !s.endsWith("か")) s += "か";
+  if (!/[。]$/.test(s)) s += "。";
+  return s;
+}
+
+
+  function coreSaysFor(item) {
+    const word = (item && item.word) || "";
+    const raw = (item && item.jp) || "";
+    const hit =
+      coreSays.find((row) => row && (row.jp === raw || row.word === word)) ||
+      (word
+        ? coreSays.find((row) => row && String(row.word || row.jp || "").startsWith(word))
+        : null);
+    const plain = (hit && hit.plain) || (word === "大変" ? "今日、本当に大変だった。" : "");
+    const kind = (hit && hit.kind) || (word === "大変" ? "na" : "");
+    if (!plain) return { kind: "", plain: "", polite: "" };
+    return { kind: kind, plain: plain, polite: politeFromPlain(plain) };
+  }
+
+  function coreWordTitleHtml(item) {
+    const word = (item && item.word) || "";
+    const reading = (item && item.reading) || "";
+    if (!word) return "";
+    if (reading && /[\u4e00-\u9fff]/.test(word)) return furiMarkup(word, reading);
+    return word ? "<b>" + escapeHtml(word) + "</b>" : "";
+  }
+
+  function coreStaticPill() {
+    return (
+      '<span class="hw-word-pill">' +
+      '<span class="hw-word-play__row">' +
+      '<span class="hw-core-chip hw-core-chip--green" data-core-gloss>' +
+      wordChipInner(todaysWordItem()) +
+      "</span></span>" +
+      '<span class="hw-word-pill__note">Try using today\'s word so you\'ll remember it better!</span></span>'
+    );
+  }
+
+  function coreMarkup() {
+    const says = coreSaysFor(todaysWordItem());
+    return (
+      '<section class="hw-core-page hw-quest">' +
+      '<div class="hw-quest__target-box"><p class="hw-quest__target" data-core-word>' +
+      coreWordTitleHtml(todaysWordItem()) +
+      "</p></div>" +
+      coreKindListHtml(says.kind) +
+      '<div class="hw-quest__important-wrap">' +
+      coreStaticPill() +
+      "</div>" +
+      '<div class="hw-core-says">' +
+      '<p class="hw-say hw-say--plain"><b class="hw-say__label">Plain/Casual</b><span class="hw-say__line" data-say="plain">' +
+      escapeHtml(says.plain) +
+      "</span></p>" +
+      '<p class="hw-say hw-say--polite"><b class="hw-say__label">Polite</b><span class="hw-say__line" data-say="polite">' +
+      escapeHtml(says.polite) +
+      "</span></p></div>" +
+      completeTaskButton("core") +
+      "</section>"
+    );
+  }
+
+  function paintCorePage() {
+    const section = document.querySelector("#hw-v5-panel-core .hw-core-page");
+    if (!section) return;
+    const item = todaysWordItem();
+    const says = coreSaysFor(item);
+    const gloss = section.querySelector("[data-core-gloss]");
+    if (gloss) gloss.innerHTML = wordChipInner(item);
+    const title = section.querySelector("[data-core-word]");
+    if (title && item.word) title.innerHTML = coreWordTitleHtml(item);
+    section.querySelector(".hw-quest__na")?.remove();
+    const list = section.querySelector(".hw-core-kind-list");
+    if (list) list.outerHTML = coreKindListHtml(says.kind || "");
+    const plain = section.querySelector('[data-say="plain"]');
+    const polite = section.querySelector('[data-say="polite"]');
+    if (plain) plain.textContent = says.plain || "";
+    if (polite) polite.textContent = says.polite || "";
+  }
+
+  function chaptersMarkup() {
+    const nums = CHAPTERS.map((chapter) => {
+      return (
+        '<button type="button" data-chapter="' +
+        chapter.n +
+        '">' +
+        chapter.n +
+        "</button>"
+      );
+    }).join("");
+    return (
+      '<section class="hw-chapters">' +
+      "<h2>Curriculum Overview</h2>" +
+      '<p class="hw-ch-note">Click a number. Only that chapter is shown.</p>' +
+      '<div class="hw-ch-nums">' +
+      nums +
+      '</div><div data-chapter-body></div></section>'
+    );
+  }
+
+  function mountPanel(id, tabId, html, bind) {
+    const below = document.getElementById("hw-v5-below");
+    if (!below || document.getElementById(id)) return document.querySelector("#" + id + " > *");
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    const section = host.firstElementChild;
+    if (bind) bind(section);
+    below.appendChild(wrapBelowPanel(id, tabId, "hw-v5-tab-" + tabId, section));
+    return section;
+  }
+
+  function mountCoreStrips() {
+    /* Situation tab used to show the Core Japanese intro above the card. That text stays off this tab. */
+  }
+
+  /* Temporary extra words. Not saved. A refresh, or the next 5:00 a.m. local day, clears it. */
+  let wordPlay = null;
+  let wordPlayBusy = false;
+
+  function coreWordParts(card) {
+    const raw = String((card && card.jp) || "").trim();
+    const matched = raw.match(/^([^（(]+)[（(]([^）)]+)[）)]/);
+    let word = raw;
+    let reading = "";
+    if (matched) {
+      word = matched[1].trim();
+      reading = matched[2].trim();
+    } else {
+      word = raw.split(/\s+/)[0] || raw;
+    }
+    let en = String((card && card.en) || "").trim();
+    const short = en.split(" · ")[0].trim();
+    if (short) en = short;
+    return { jp: raw || word, word: word, reading: reading, en: en };
+  }
+
+  function todaysWordItem() {
+    const card = todaysCoreCard();
+    if (!card) return { jp: "", word: "", reading: "", en: "" };
+    const parts = coreWordParts(card);
+    if (parts.word === "大変" && !parts.reading) parts.reading = "たいへん";
+    if (parts.word === "大変" && !parts.en) parts.en = "Hard, tough, rough, (emotionally)";
+    return parts;
+  }
+
+  function wordChipInner(item) {
+    const word = item.word || "";
+    const reading = item.reading || "";
+    const label = word ? furiMarkup(word, reading) : "";
+    return label + (item.en ? " <span>" + escapeHtml(item.en) + "</span>" : "");
+  }
+
+  function wordPlayShell(chipInnerHtml) {
+    return (
+      '<span class="hw-word-pill" data-word-play>' +
+      '<span class="hw-word-play__row">' +
+      '<button type="button" class="hw-word-play__arrow" data-word-dir="-1" hidden aria-label="Previous word">←</button>' +
+      '<span class="hw-core-chip hw-core-chip--green" data-word-chip role="button" tabindex="0">' +
+      chipInnerHtml +
+      "</span>" +
+      '<button type="button" class="hw-word-play__arrow" data-word-dir="1" hidden aria-label="Next word">→</button>' +
+      "</span>" +
+      '<span class="hw-word-pill__note">Try using today\'s word so you\'ll remember it better!</span>' +
+      '<span class="hw-word-pill__more">Click the green button for more words!</span></span>'
+    );
+  }
+
+  function ensureWordPlay() {
+    const day = localDayKey();
+    const item = todaysWordItem();
+    const pin = item.jp || item.word || "";
+    if (!wordPlay || wordPlay.day !== day) {
+      wordPlay = { day: day, pin: pin, items: [item], index: 0 };
+      return wordPlay;
+    }
+    if (pin && wordPlay.pin !== pin && wordPlay.items.length <= 1 && wordPlay.index === 0) {
+      wordPlay.pin = pin;
+      wordPlay.items = [item];
+    }
+    return wordPlay;
+  }
+
+  function paintTodayWordRow() {
+    const item = todaysWordItem();
+    if (!item.word) return;
+    const row = document.querySelector('#hw-v5-panel-today [data-task="core"]');
+    if (!row) return;
+    const btn = row.querySelector(".hw-today__go");
+    if (btn) btn.innerHTML = "Word of the Day: " + kanjiRuby(item.word, item.reading);
+    const box = row.querySelector("input");
+    if (box) box.setAttribute("aria-label", "Done: Word of the Day: " + item.word);
+  }
+
+  function paintWordPlay() {
+    const play = ensureWordPlay();
+    const item = play.items[play.index] || play.items[0];
+    const many = play.items.length > 1;
+    document.querySelectorAll("[data-word-chip]").forEach((chip) => {
+      chip.innerHTML = wordChipInner(item);
+    });
+    document.querySelectorAll("[data-word-play]").forEach((host) => {
+      host.querySelectorAll("[data-word-dir]").forEach((btn) => {
+        const dir = Number(btn.getAttribute("data-word-dir"));
+        const atEnd = dir < 0 ? play.index <= 0 : play.index >= play.items.length - 1;
+        btn.hidden = !many;
+        btn.disabled = !many || atEnd;
+      });
+    });
+    paintTodayWordRow();
+  }
+
+  function shiftWordPlay(dir) {
+    const play = ensureWordPlay();
+    const next = play.index + dir;
+    if (next < 0 || next >= play.items.length) return;
+    play.index = next;
+    paintWordPlay();
+  }
+
+  function addRandomWord() {
+    if (wordPlayBusy) return;
+    wordPlayBusy = true;
+    loadCoreCards()
+      .then(() => {
+        const play = ensureWordPlay();
+        if (play.items.length === 1) play.items[0] = todaysWordItem();
+        const used = new Set(play.items.map((item) => item.jp));
+        const pool = coreCards.filter((card) => card && card.jp && !used.has(String(card.jp)));
+        if (!pool.length) return;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        play.items.push(coreWordParts(pick));
+        play.index = play.items.length - 1;
+        paintWordPlay();
+      })
+      .finally(() => {
+        wordPlayBusy = false;
+      });
+  }
+
+  function bindWordPills() {
+    if (document.body.dataset.wordPill === "1") return;
+    document.body.dataset.wordPill = "1";
+    let wordChipPress = null;
+    document.addEventListener(
+      "pointerdown",
+      (ev) => {
+        const chip = ev.target.closest?.("[data-word-chip]");
+        if (!chip || chip.closest(".hw-core-page")) {
+          wordChipPress = null;
+          return;
+        }
+        wordChipPress = { id: ev.pointerId, t: Date.now(), x: ev.clientX, y: ev.clientY, skip: false };
+      },
+      true
+    );
+    document.addEventListener(
+      "pointerup",
+      (ev) => {
+        if (!wordChipPress || wordChipPress.id !== ev.pointerId) return;
+        const held = Date.now() - wordChipPress.t;
+        const dist = Math.hypot(ev.clientX - wordChipPress.x, ev.clientY - wordChipPress.y);
+        wordChipPress.skip = held >= 420 || dist > 10;
+      },
+      true
+    );
+    document.addEventListener("click", (ev) => {
+      const arrow = ev.target.closest("[data-word-dir]");
+      if (arrow) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (arrow.disabled) return;
+        shiftWordPlay(Number(arrow.getAttribute("data-word-dir")));
+        return;
+      }
+      const chip = ev.target.closest("[data-word-chip]");
+      if (chip) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const press = wordChipPress;
+        wordChipPress = null;
+        if (chip.closest(".hw-core-page")) return;
+        if (press?.skip) return;
+        if (ev.target.closest(".hw-mg-armed, .hw-hc-armed")) return;
+        if (document.querySelector(".hw-mg-armed, .hw-hc-armed")) return;
+        const sel = document.getSelection?.();
+        if (sel && !sel.isCollapsed && String(sel).trim()) return;
+        addRandomWord();
+        return;
+      }
+      if (ev.target.closest(".hw-word-pill__more")) return;
+      const pill = ev.target.closest(".hw-word-pill");
+      document.querySelectorAll(".hw-word-pill.is-open").forEach((el) => {
+        if (el !== pill) el.classList.remove("is-open");
+      });
+      if (!pill) return;
+      pill.classList.toggle("is-open");
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      const chip = ev.target.closest("[data-word-chip]");
+      if (!chip || chip.closest(".hw-core-page")) return;
+      ev.preventDefault();
+      addRandomWord();
+    });
+    loadCoreCards().then(() => {
+      paintWordPlay();
+      paintCorePage();
+    });
+    loadCoreSays().then(() => paintCorePage());
+  }
+
+  function ensureCurriculumHome() {
+    bindWordPills();
+    const below = document.getElementById("hw-v5-below");
+    if (!usesCurriculumHub() || !below) return;
+    let todayPanel = document.getElementById("hw-v5-panel-today");
+    if (todayPanel && (todayPanel.getAttribute("data-rev") !== "cafe5" || todayPanel.getAttribute("data-day") !== localDayKey())) {
+      todayPanel.remove();
+      todayPanel = null;
+    }
+    if (!todayPanel) {
+      mountPanel("hw-v5-panel-today", "today", curriculumTodayMarkup(), bindCurriculumToday);
+      const todayEl = document.getElementById("hw-v5-panel-today");
+      todayEl?.setAttribute("data-rev", "cafe5");
+      todayEl?.setAttribute("data-day", localDayKey());
+    }
+    let prayerPanel = document.getElementById("hw-v5-panel-prayer");
+    if (!seesPrayerTab()) {
+      prayerPanel?.remove();
+    } else {
+      if (prayerPanel && (prayerPanel.getAttribute("data-rev") !== "pray17" || prayerPanel.getAttribute("data-day") !== localDayKey())) {
+        prayerPanel.remove();
+        prayerPanel = null;
+      }
+      if (!prayerPanel) {
+        mountPanel("hw-v5-panel-prayer", "prayer", prayerMarkup(), bindPrayer);
+        const prayerEl = document.getElementById("hw-v5-panel-prayer");
+        prayerEl?.setAttribute("data-rev", "pray17");
+        prayerEl?.setAttribute("data-day", localDayKey());
+      }
+    }
+    let corePanel = document.getElementById("hw-v5-panel-core");
+    if (corePanel && (corePanel.getAttribute("data-rev") !== "core8" || corePanel.getAttribute("data-day") !== localDayKey())) {
+      corePanel.remove();
+      corePanel = null;
+    }
+    if (!corePanel) {
+      mountPanel("hw-v5-panel-core", "core", coreMarkup());
+      const coreEl = document.getElementById("hw-v5-panel-core");
+      coreEl?.setAttribute("data-rev", "core8");
+      coreEl?.setAttribute("data-day", localDayKey());
+      loadCoreSays().then(() => paintCorePage());
+    }
+    if (!document.getElementById("hw-v5-panel-week")) {
+      const section = document.createElement("section");
+      section.id = "hw-curriculum-week";
+      below.appendChild(wrapBelowPanel("hw-v5-panel-week", "week", "hw-v5-tab-week", section));
+    }
+    let chapters = document.getElementById("hw-v5-panel-chapters");
+    if (!seesChaptersTab()) {
+      chapters?.remove();
+    } else if (!chapters) {
+      const section = mountPanel("hw-v5-panel-chapters", "chapters", chaptersMarkup(), (root) => {
+        root.addEventListener("click", (ev) => {
+          const btn = ev.target.closest("[data-chapter]");
+          if (!btn || !root.contains(btn)) return;
+          writeStorage(curriculumUserKey("jlm-hw-curriculum-chapter"), btn.getAttribute("data-chapter") || "0");
+          paintCurriculumChapter(root);
+        });
+      });
+      paintCurriculumChapter(section);
+    }
+    paintWordPlay();
+  }
+
+  const SITUATION_CARDS = [
+    ["sit-1-fever.png", "熱", "あなたは今起きました。頭を触ってみるとやっぱりあつい。まず、どうしますか？", "Fever", "You just woke up. You touch your forehead — yeah, you’re hot. What do you do first?"],
+    ["sit-2-doctor.png", "病院", "熱が40度を越えてしまいました。どうしますか？", "Doctor", "Your fever went over 40°C. What do you do?"],
+    ["sit-3-seat.png", "席", "あなたの席がこの人に取られました。言ってやってください！", "Seat", "Someone took your seat! Say something!"],
+    ["sit-4-konbini.png", "コンビニ", "お弁当を温めようとしたら、財布を家に忘れたことに気づきました。店員さんの岩崎さんに何と言いますか？", "Konbini", "You were about to heat your bento and realized you left your wallet at home. What do you say to Iwazaki-san?"],
+    ["sit-5-train.png", "電車", "友達のりかちゃんとの大事な約束に間に合いません。次の電車まで８分。友達に何を伝えますか？", "Train", "You’ll miss an important meetup with Rika-chan. Next train is in 8 minutes. What do you tell her?"],
+    ["sit-6-restaurant.png", "アレルギー", "色々な食べ物のアレルギーがあります。注文の前に、店員さんにちゃんと伝えてください。", "Allergy", "You have several food allergies. Tell the staff clearly before ordering."],
+    ["sit-7-noise.png", "騒音", "夜中なのに隣がうるさいです。明日仕事があります。どうしますか？言ってみてください。", "Noise", "It’s the middle of the night and the neighbors are loud. You have work tomorrow. What do you do / say?"],
+    ["sit-11-cafe.png", "カフェ", "頼んだものと違う飲み物が来ました。怒らずに、でもはっきり言ってください。", "Cafe", "The wrong drink arrived. Correct the order without sounding angry."],
+    ["sit-h1-birthday.png", "誕生日", "今日は友達のセラの誕生日です。大事なプレゼントを考えて買ったんだけど、渡す前に何と言いますか？", "Birthday", "It’s your friend Sera’s birthday. You bought a thoughtful gift — what do you say before handing it over?"],
+      ["sit-h3-thanks.png", "お礼", "店員さんの大和さんがドライヤーを買うのにとても親切でした。お礼を言ってください。", "Thanks", "Yamato-san at the store was really kind while you bought a hair dryer. Say thanks."],
+    ["sit-h4-reunion.png", "再会", "久しぶりに会えた友達の家族とばったり会いました。最初に何と言いますか？", "Reunion", "You bump into a friend’s family you haven’t seen in a long time. What do you say first?"],
+    ["sit-12-first-meet.png", "初対面", "初めて会う人です。自己紹介をしてください。", "First meeting", "You’re meeting someone for the first time. Introduce yourself."],
+    ["sit-13-keychain.png", "落とし物", "向こうの人がキーホルダーを落としました。本人は気づかずに、とても急いで歩いて行きます。どうしますか？", "Dropped keys", "You just saw someone drop their keychain. They didn’t notice and they’re walking away very quickly. What do you do?"],
+    ["sit-14-rain-child.png", "雨・子供", "雨が降っています。コンビニの前に、傘を持っていない悲しそうな子どもがいます。どうしますか？", "Rain · child", "It’s raining. You see a sad child by a konbini without an umbrella. What do you do?"],
+    ["sit-15-rain-station.png", "雨・駅", "駅へ向かって歩いているけど、急に雨が降り始めました。家に傘があるけど、戻るのはめんどくさいです。どうしますか？", "Rain · station", "It’s raining, but you already started walking to the train station. You don’t feel like going back inside for your umbrella. What do you do?"],
+    ["sit-16-priority-seat.png", "優先座席", "優先座席に、スマホを見ている若い人が座っています。妊婦さんが立っています。席をゆずってもらうように、その人に言ってください。", "Priority seat", "A young man is on his phone in the priority seats. A pregnant woman is standing. Ask him to give her his seat."],
+    ["sit-17-lost-keys.png", "鍵", "鍵が見つかりません。自分に何と言いますか？", "Keys", "You can't find your keys. What do you say to yourself?"],
+  ];
+
+  function sitRubyHtml(marked) {
+    const raw = String(marked || "");
+    return escapeHtml(raw).replace(
+      /([\u4E00-\u9FFF]+)\{([^{}]+)\}/g,
+      "<ruby>$1<rt>$2</rt></ruby>"
+    );
+  }
+
+  function sitReadingHtml(title, text) {
+    const markedTitle = SIT_RUBY[title] ? SIT_RUBY[title].title : title;
+    const markedText = SIT_RUBY[title] ? SIT_RUBY[title].text : text;
+    return (
+      '<span class="hw-sit-flip__title" lang="ja">' + sitRubyHtml(markedTitle) + "</span>" +
+      '<span class="hw-sit-flip__text" lang="ja">' + sitMark(markedText) + "</span>"
+    );
+  }
+
+  function sitMark(marked) {
+    const raw = String(marked || "");
+    const plain = escapeHtml(raw.replace(/\{[^{}]+\}/g, ""));
+    const ruby = escapeHtml(raw).replace(
+      /([\u4E00-\u9FFF]+)\{([^{}]+)\}/g,
+      "<ruby>$1<rt>$2</rt></ruby>"
+    );
+    return '<span class="hw-sit-plain">' + plain + '</span><span class="hw-sit-ruby">' + ruby + "</span>";
+  }
+
+  const SIT_RUBY = {
+    "熱": { title: "熱{ねつ}", text: "あなたは今{いま}起{お}きました。頭{あたま}を触{さわ}ってみるとやっぱりあつい。まず、どうしますか？" },
+    "病院": { title: "病院{びょういん}", text: "熱{ねつ}が40度{ど}を越{こ}えてしまいました。どうしますか？" },
+    "席": { title: "席{せき}", text: "あなたの席{せき}がこの人{ひと}に取{と}られました。言{い}ってやってください！" },
+    "コンビニ": { title: "コンビニ", text: "お弁当{べんとう}を温{あたた}めようとしたら、財布{さいふ}を家{いえ}に忘{わす}れたことに気{き}づきました。店員{てんいん}さんの岩崎{いわさき}さんに何{なに}と言{い}いますか？" },
+    "電車": { title: "電車{でんしゃ}", text: "友達{ともだち}のりかちゃんとの大事{だいじ}な約束{やくそく}に間{ま}に合{あ}いません。次{つぎ}の電車{でんしゃ}まで８分{ぷん}。友達{ともだち}に何{なに}を伝{つた}えますか？" },
+    "アレルギー": { title: "アレルギー", text: "色々{いろいろ}な食{た}べ物{もの}のアレルギーがあります。注文{ちゅうもん}の前{まえ}に、店員{てんいん}さんにちゃんと伝{つた}えてください。" },
+    "騒音": { title: "騒音{そうおん}", text: "夜中{よなか}なのに隣{となり}がうるさいです。明日{あした}仕事{しごと}があります。どうしますか？言{い}ってみてください。" },
+    "カフェ": { title: "カフェ", text: "頼{たの}んだものと違{ちが}う飲{の}み物{もの}が来{き}ました。怒{おこ}らずに、でもはっきり言{い}ってください。" },
+    "誕生日": { title: "誕生日{たんじょうび}", text: "今日{きょう}は友達{ともだち}のセラの誕生日{たんじょうび}です。大事{だいじ}なプレゼントを考{かんが}えて買{か}ったんだけど、渡{わた}す前{まえ}に何{なに}と言{い}いますか？" },
+    "お礼": { title: "お礼{れい}", text: "店員{てんいん}さんの大和{やまと}さんがドライヤーを買{か}うのにとても親切{しんせつ}でした。お礼{れい}を言{い}ってください。" },
+    "再会": { title: "再会{さいかい}", text: "久{ひさ}しぶりに会{あ}えた友達{ともだち}の家族{かぞく}とばったり会{あ}いました。最初{さいしょ}に何{なに}と言{い}いますか？" },
+    "初対面": { title: "初対面{しょたいめん}", text: "初{はじ}めて会{あ}う人{ひと}です。自己紹介{じこしょうかい}をしてください。" },
+    "落とし物": { title: "落{お}とし物{もの}", text: "向{む}こうの人{ひと}がキーホルダーを落{お}としました。本人{ほんにん}は気{き}づかずに、とても急{いそ}いで歩{ある}いて行{い}きます。どうしますか？" },
+    "雨・子供": { title: "雨{あめ}・子供{こども}", text: "雨{あめ}が降{ふ}っています。コンビニの前{まえ}に、傘{かさ}を持{も}っていない悲{かな}しそうな子{こ}どもがいます。どうしますか？" },
+    "雨・駅": { title: "雨{あめ}・駅{えき}", text: "駅{えき}へ向{む}かって歩{ある}いているけど、急{きゅう}に雨{あめ}が降{ふ}り始{はじ}めました。家{いえ}に傘{かさ}があるけど、戻{もど}るのはめんどくさいです。どうしますか？" },
+    "優先座席": { title: "優先座席{ゆうせんざせき}", text: "優先座席{ゆうせんざせき}に、スマホを見{み}ている若{わか}い人{ひと}が座{すわ}っています。妊婦{にんぷ}さんが立{た}っています。席{せき}をゆずってもらうように、その人{ひと}に言{い}ってください。" },
+    "鍵": { title: "鍵{かぎ}", text: "鍵{かぎ}が見つかりません。自分{じぶん}に何{なに}と言{い}いますか？" },
+  };
+
+  function situationFuriButton() {
+    return '<p class="hw-sit-furi"><button type="button" class="btn btn--ghost btn--sm" data-sit-furi aria-pressed="false">Show furigana</button></p>';
+  }
+
+  function situationCardHtml(card) {
+    const image = "/homework/media/situation-cards-1/" + card[0];
+    return (
+      '<div class="hw-sit-flip" role="button" tabindex="0" aria-pressed="false">' +
+      '<span class="hw-sit-flip__inner">' +
+      '<span class="hw-sit-flip__face hw-sit-flip__face--jp">' +
+      '<img src="' + escapeHtml(image) + '" alt="">' +
+      sitReadingHtml(card[1], card[2]) +
+      "</span>" +
+      '<span class="hw-sit-flip__face hw-sit-flip__face--en">' +
+      '<img src="' + escapeHtml(image) + '" alt="">' +
+      '<span class="hw-sit-flip__title">' + escapeHtml(card[3]) + "</span>" +
+      '<span class="hw-sit-flip__text">' + escapeHtml(card[4]) + "</span>" +
+      "</span></span></div>"
+    );
+  }
+
+  function dailySituationIndex() {
+    const day = localDayOfYear();
+    return ((day % SITUATION_CARDS.length) + SITUATION_CARDS.length) % SITUATION_CARDS.length;
+  }
+
+  function bindFlip(section) {
+    if (!section || section.dataset.flipBound === "1") return;
+    section.dataset.flipBound = "1";
+    section.addEventListener("click", (ev) => {
+      const furi = ev.target.closest("[data-sit-furi]");
+      if (furi && section.contains(furi)) {
+        const on = section.classList.toggle("is-furi");
+        furi.textContent = on ? "Hide furigana" : "Show furigana";
+        furi.setAttribute("aria-pressed", on ? "true" : "false");
+        return;
+      }
+      const go = ev.target.closest("[data-go]");
+      if (go && section.contains(go)) {
+        openCurriculumPlace(go.getAttribute("data-go") || "today", "");
+        return;
+      }
+      const card = ev.target.closest(".hw-sit-flip");
+      if (!card || !section.contains(card)) return;
+      if (
+        document.querySelector(".hw-hc-armed") &&
+        ev.target.closest(".hw-sit-flip__face--jp")
+      ) {
+        return;
+      }
+      const on = card.classList.toggle("is-flipped");
+      card.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    section.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      const card = ev.target.closest(".hw-sit-flip");
+      if (!card || !section.contains(card)) return;
+      ev.preventDefault();
+      card.click();
+    });
+  }
+
+  function situationCardsMarkup() {
+    const card = SITUATION_CARDS[dailySituationIndex()];
+    const markedTitle = SIT_RUBY[card[1]] ? SIT_RUBY[card[1]].title : card[1];
+    return (
+      '<section class="hw-sit-cards hw-sit-cards--one">' +
+      /* The title sits in the same green box as the Quest / Daily Exercise prompt (always with furigana). */
+      '<div class="hw-quest__target-box hw-sit-titlebox">' +
+      '<p class="hw-quest__target hw-quest__target--ask" lang="ja">' + sitRubyHtml(markedTitle) + "</p>" +
+      "</div>" +
+      '<p class="hw-sit-flip-hint">Click card for English</p>' +
+      situationCardHtml(card) +
+      '<form class="hw-sit-rec" onsubmit="return false;">' +
+      '<p class="hw-sit-rec__label">Say it out loud</p>' +
+      '<div class="hw-sit-rec__mount" data-sit-rec></div></form>' +
+      completeTaskButton("card") +
+      "</section>"
+    );
+  }
+
+  /** One audio recorder under the card; the take is kept for today's card. */
+  function mountSitRecorder(section) {
+    const mountEl = section && section.querySelector("[data-sit-rec]");
+    if (!mountEl || mountEl.dataset.bound === "true" || !global.HwAudioInline?.mount) return;
+    const session = getActiveSession();
+    const user = String(session?.username || "").trim().toLowerCase();
+    const dayKey = localDayKey();
+    const storeKey = "jlm-sit-audio:" + user + ":" + dayKey;
+    try {
+      const saved = localStorage.getItem(storeKey) || "";
+      if (saved) mountEl.dataset.mediaId = saved;
+    } catch (_) {
+      /* ignore */
+    }
+    global.HwAudioInline.mount(mountEl, {
+      username: user,
+      displayName: session?.displayName || user,
+      assignmentId: "situation-cards",
+      lessonName: "Situation Card",
+      promptId: "sit-" + dayKey,
+      promptLabel: "Situation card",
+      startLabel: "Record",
+      mic: true,
+    });
+    mountEl.closest("form")?.addEventListener("hw-worksheet-answer", () => {
+      try {
+        const id = mountEl.dataset.mediaId || "";
+        if (id) localStorage.setItem(storeKey, id);
+        else localStorage.removeItem(storeKey);
+      } catch (_) {
+        /* ignore */
+      }
+    });
+  }
+
+  /** "See all cards" + "Show furigana" sit under the blue box, like Submit under Daily Exercise. */
+  function ensureSitActions(panel) {
+    let el = document.getElementById("hw-sit-actions");
+    if (!panel) {
+      el?.remove();
+      return;
+    }
+    if (el && el.getAttribute("data-rev") !== "sit-act2") {
+      el.remove();
+      el = null;
+    }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "hw-sit-actions";
+      el.className = "hw-ex-actions hw-sit-actions";
+      el.setAttribute("data-rev", "sit-act2");
+      el.innerHTML =
+        '<button type="button" class="btn btn--primary hw-ex-actions__btn" data-sit-done>Submit</button>' +
+        '<button type="button" class="btn btn--ghost hw-ex-actions__btn" data-sit-past>Past submissions</button>' +
+        '<button type="button" class="btn btn--ghost hw-ex-actions__btn" data-go="allcards">See all cards</button>' +
+        '<button type="button" class="btn btn--ghost hw-ex-actions__btn" data-sit-furi aria-pressed="false">Show furigana</button>' +
+        '<p class="hw-quest__save-msg" data-sit-note role="status"></p>';
+      el.addEventListener("click", (ev) => {
+        if (ev.target.closest("[data-sit-done]")) {
+          void submitSitCard(ev.target.closest("[data-sit-done]"));
+          return;
+        }
+        if (ev.target.closest("[data-sit-past]")) {
+          void toggleSitPast();
+          return;
+        }
+        const furi = ev.target.closest("[data-sit-furi]");
+        if (furi) {
+          const sec = document.querySelector("#hw-v5-panel-situations .hw-sit-cards");
+          if (!sec) return;
+          const on = sec.classList.toggle("is-furi");
+          furi.textContent = on ? "Hide furigana" : "Show furigana";
+          furi.setAttribute("aria-pressed", on ? "true" : "false");
+          return;
+        }
+        const go = ev.target.closest("[data-go]");
+        if (go) openCurriculumPlace(go.getAttribute("data-go") || "today", "");
+      });
+    }
+    if (el.previousElementSibling !== panel) panel.insertAdjacentElement("afterend", el);
+  }
+
+  function formatSitWhen(row) {
+    const date = String(row?.date || "");
+    const parts = date.split("-").map(Number);
+    let label = date;
+    if (parts.length === 3 && parts.every((n) => Number.isFinite(n))) {
+      label = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])));
+    }
+    const title = String(row?.cardTitle || "").trim();
+    return title ? label + " · " + title : label;
+  }
+
+  function paintSitPastList(rows) {
+    const list = document.getElementById("hw-sit-past-modal-list");
+    const meta = document.getElementById("hw-sit-past-modal-meta");
+    const intro = document.getElementById("hw-sit-past-modal-intro");
+    const detail = document.getElementById("hw-sit-past-modal-detail");
+    if (!list) return;
+    if (detail) {
+      detail.hidden = true;
+      detail.replaceChildren();
+    }
+    if (intro) intro.hidden = false;
+    list.hidden = false;
+    if (meta) {
+      meta.hidden = false;
+      meta.textContent = rows.length
+        ? rows.length + (rows.length === 1 ? " day" : " days")
+        : "No submissions yet.";
+    }
+    list.replaceChildren();
+    if (!rows.length) {
+      const empty = document.createElement("li");
+      empty.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
+      empty.textContent = "Nothing sent yet.";
+      list.appendChild(empty);
+      return;
+    }
+    rows.forEach((row) => {
+      const li = document.createElement("li");
+      li.className = "hw-hub-v2-past-list__item";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v2-past-list__btn";
+      btn.innerHTML = "<span>" + escapeHtml(formatSitWhen(row)) + "</span><time>1 recording</time>";
+      btn.addEventListener("click", () => showSitPastDetail(row));
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  function showSitPastDetail(row) {
+    const list = document.getElementById("hw-sit-past-modal-list");
+    const meta = document.getElementById("hw-sit-past-modal-meta");
+    const intro = document.getElementById("hw-sit-past-modal-intro");
+    const detail = document.getElementById("hw-sit-past-modal-detail");
+    if (!detail) return;
+    detail.replaceChildren();
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "btn btn--ghost btn--sm";
+    back.textContent = "All days";
+    back.addEventListener("click", () => {
+      detail.hidden = true;
+      if (list) list.hidden = false;
+      if (meta) meta.hidden = false;
+      if (intro) intro.hidden = false;
+    });
+    const heading = document.createElement("p");
+    heading.className = "hw-past-assignments-modal__intro";
+    heading.textContent = formatSitWhen(row);
+    const wrap = document.createElement("div");
+    const id = String(row?.audioId || "").trim();
+    if (id && /^[A-Za-z0-9_-]{1,80}$/.test(id)) {
+      const audio = document.createElement("audio");
+      audio.controls = true;
+      audio.className = "hw-ex-clip";
+      audio.src = "/api/hw-m/" + encodeURIComponent(id);
+      wrap.appendChild(audio);
+    } else {
+      wrap.textContent = "No recording on this one.";
+    }
+    detail.append(back, heading, wrap);
+    detail.hidden = false;
+    if (list) list.hidden = true;
+    if (meta) meta.hidden = true;
+    if (intro) intro.hidden = true;
+  }
+
+  function closeSitPast() {
+    const modal = document.getElementById("hw-sit-past-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove("is-modal-open");
+  }
+
+  function bindSitPastModal() {
+    const modal = document.getElementById("hw-sit-past-modal");
+    if (!modal || modal.dataset.bound === "1") return;
+    modal.dataset.bound = "1";
+    modal.querySelectorAll("[data-hw-sit-past-close]").forEach((el) => {
+      el.addEventListener("click", closeSitPast);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Escape" || modal.hidden) return;
+      ev.preventDefault();
+      closeSitPast();
+    });
+  }
+
+  async function loadSitPast() {
+    const meta = document.getElementById("hw-sit-past-modal-meta");
+    const session = getActiveSession();
+    const user = String(session?.username || "").trim().toLowerCase();
+    if (!user) {
+      paintSitPastList([]);
+      if (meta) meta.textContent = "Log in to see past submissions.";
+      return;
+    }
+    if (meta) meta.textContent = "Loading…";
+    try {
+      const res = await fetch("/api/sit-card?username=" + encodeURIComponent(user));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not load submissions.");
+      paintSitPastList(Array.isArray(data.submissions) ? data.submissions : []);
+    } catch (err) {
+      paintSitPastList([]);
+      if (meta) meta.textContent = err && err.message ? err.message : "Could not load submissions.";
+    }
+  }
+
+  async function toggleSitPast() {
+    bindSitPastModal();
+    const modal = document.getElementById("hw-sit-past-modal");
+    if (!modal) return;
+    modal.hidden = false;
+    document.body.classList.add("is-modal-open");
+    await loadSitPast();
+  }
+
+  async function submitSitCard(btn) {
+    const note = document.querySelector("#hw-sit-actions [data-sit-note]");
+    const mountEl = document.querySelector("[data-sit-rec]");
+    const audioId = String(mountEl?.dataset.mediaId || "").trim();
+    if (note) {
+      note.classList.remove("is-error");
+      note.textContent = "";
+    }
+    if (!audioId) {
+      if (note) {
+        note.classList.add("is-error");
+        note.textContent = "Record first.";
+      }
+      return;
+    }
+    const session = getActiveSession();
+    const user = String(session?.username || "").trim().toLowerCase();
+    if (!user) {
+      if (note) {
+        note.classList.add("is-error");
+        note.textContent = "Log in, then submit again.";
+      }
+      return;
+    }
+    if (btn?.disabled) return;
+    if (btn) btn.disabled = true;
+    if (note) note.textContent = "Saving…";
+    const card = SITUATION_CARDS[dailySituationIndex()] || [];
+    try {
+      const res = await fetch("/api/sit-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: user,
+          displayName: session.displayName || user,
+          cardTitle: card[1] || card[3] || "Situation Card",
+          audioId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Could not save that recording.");
+      if (note) note.textContent = "";
+      completeTodayTask("card", { stay: true, toast: "Situation Card submitted" });
+    } catch (err) {
+      if (note) {
+        note.classList.add("is-error");
+        note.textContent = err && err.message ? err.message : "Could not save that recording.";
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function consumeStudentGo() {
+    let params;
+    try {
+      params = new URLSearchParams(window.location.search);
+    } catch {
+      return;
+    }
+    const tab = String(params.get("tab") || "").trim();
+    const memo = String(params.get("memo") || "").trim();
+    const sitpast = params.get("sitpast") === "1";
+    if (tab) setActiveTab(tab, { scrollTop: true });
+    if (sitpast) {
+      window.setTimeout(() => {
+        void toggleSitPast();
+      }, 400);
+    }
+    if (!memo) return;
+    let tries = 0;
+    const tick = () => {
+      if (global.HwHomeworkComments?.focusComment?.(memo)) return;
+      if (tries++ > 20) return;
+      window.setTimeout(tick, 200);
+    };
+    window.setTimeout(tick, 500);
+  }
+
+  function situationAllMarkup() {
+    return (
+      '<section class="hw-sit-cards">' +
+      "<h2>All situation cards</h2>" +
+      situationFuriButton() +
+      '<p class="hw-sit-cards__lede">Japanese side first. Click a card to flip it to English.</p>' +
+      '<p class="hw-today__overview"><button type="button" class="hw-today__go" data-go="situations">Back to today</button></p>' +
+      '<div class="hw-sit-cards__grid">' +
+      SITUATION_CARDS.map(situationCardHtml).join("") +
+      "</div></section>"
+    );
+  }
+
+  function ensureSituationsPanel() {
+    document.body.classList.toggle("hw-curriculum-hub", usesCurriculumHub());
+    document.body.classList.toggle("hw-demo1-standard", isDemo1StandardPreview());
+    const below = document.getElementById("hw-v5-below");
+    if (!seesSituationCards()) {
+      document.getElementById("hw-v5-panel-situations")?.remove();
+      document.getElementById("hw-v5-panel-allcards")?.remove();
+      document.getElementById("hw-sit-actions")?.remove();
+      return;
+    }
+    if (!below) return;
+    const stale = document.getElementById("hw-v5-panel-situations");
+    if (stale && (stale.getAttribute("data-rev") !== "sit13" || stale.getAttribute("data-day") !== localDayKey())) stale.remove();
+    if (!document.getElementById("hw-v5-panel-situations")) {
+      const host = document.createElement("div");
+      host.innerHTML = situationCardsMarkup();
+      const section = host.firstElementChild;
+      bindFlip(section);
+      const panel = wrapBelowPanel(
+        "hw-v5-panel-situations",
+        "situations",
+        "hw-v5-tab-situations",
+        section
+      );
+      panel.setAttribute("data-rev", "sit13");
+      panel.setAttribute("data-day", localDayKey());
+      below.appendChild(panel);
+      mountSitRecorder(section);
+      paintWordPlay();
+    }
+    ensureSitActions(document.getElementById("hw-v5-panel-situations"));
+    const allcards = document.getElementById("hw-v5-panel-allcards");
+    if (allcards && allcards.getAttribute("data-rev") !== "sit11") allcards.remove();
+    if (!document.getElementById("hw-v5-panel-allcards")) {
+      const host = document.createElement("div");
+      host.innerHTML = situationAllMarkup();
+      const section = host.firstElementChild;
+      bindFlip(section);
+      const panel = wrapBelowPanel("hw-v5-panel-allcards", "allcards", "hw-v5-tab-allcards", section);
+      panel.setAttribute("data-rev", "sit11");
+      below.appendChild(panel);
     }
   }
 
@@ -1735,29 +4975,26 @@
     }
 
     const makeLink = (id, extraClass, label) => {
-      let a = document.getElementById(id);
-      if (a && a.tagName !== "A") {
-        a.remove();
-        a = null;
+      let el = document.getElementById(id);
+      if (el && el.tagName !== "BUTTON") {
+        el.remove();
+        el = null;
       }
-      if (!a) {
-        a = document.createElement("a");
-        a.id = id;
-        a.href = "#";
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.setAttribute("aria-disabled", "true");
+      if (!el) {
+        el = document.createElement("button");
+        el.type = "button";
+        el.id = id;
       }
-      a.className =
-        "hw-hub-v5-lesson-tabs__btn" + (extraClass ? " " + extraClass : "");
-      a.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
-      a.removeAttribute("role");
-      a.removeAttribute("aria-selected");
-      a.removeAttribute("aria-controls");
-      a.removeAttribute("data-lesson-pane");
-      a.removeAttribute("type");
-      a.textContent = label;
-      return a;
+      el.className = "hw-hub-v5-lesson-tabs__btn" + (extraClass ? " " + extraClass : "");
+      el.classList.remove("btn", "btn--primary", "btn--ghost", "btn--full", "btn--sm");
+      el.removeAttribute("role");
+      el.removeAttribute("aria-selected");
+      el.removeAttribute("aria-controls");
+      el.removeAttribute("data-lesson-pane");
+      el.removeAttribute("href");
+      el.removeAttribute("target");
+      el.textContent = label;
+      return el;
     };
 
     const latest = makeLink("hw-latest-lesson", "", "Latest lesson");
@@ -1778,18 +5015,24 @@
     document.getElementById("hw-lesson-playlist-meta")?.remove();
 
     const lessonsTab = document.getElementById("hw-v5-tab-lessons");
-    if (lessonsTab) lessonsTab.textContent = "Lessons/Mistakes";
+    if (lessonsTab) {
+      const name = lessonsTab.querySelector(".hw-hub-v5-tabs__label");
+      if (name) name.textContent = "Lessons";
+      else lessonsTab.textContent = "Lessons";
+    }
 
     return tabs;
   }
 
   function ensureLessonsStack(gridStack, mistakesCard) {
+    /* Mistakes stay in the code, off the hub, until JD asks for them again. */
+    if (mistakesCard) {
+      mistakesCard.hidden = true;
+      mistakesCard.dataset.hwMistakesOff = "1";
+    }
     const existing = document.getElementById("hw-v5-lessons-stack");
     if (existing) {
       ensureLessonLinkPills(existing);
-      if (mistakesCard && !existing.contains(mistakesCard)) {
-        existing.appendChild(mistakesCard);
-      }
       return existing;
     }
 
@@ -1797,7 +5040,6 @@
     stack.className = "hw-hub-v5-lessons-stack";
     stack.id = "hw-v5-lessons-stack";
     ensureLessonLinkPills(stack);
-    if (mistakesCard) stack.appendChild(mistakesCard);
 
     /* Drop emptied grid stack leftovers (offline already moved into HW zone). */
     if (gridStack && gridStack.parentNode) {
@@ -1825,9 +5067,10 @@
       const notebookDiary = ensureNotebookDiary();
 
       const orphanFeedback = document.getElementById("hw-v2-feedback");
-      if (orphanFeedback && completeCard && !completeCard.contains(orphanFeedback)) {
+      if (orphanFeedback) {
         orphanFeedback.remove();
       }
+      document.getElementById("hw-v5-reviewed-banner")?.remove();
 
       /* Insert status/empty shells into the DOM first — later insertBefore
          calls need them as live children of v4Homework. */
@@ -1922,6 +5165,10 @@
 
       studentOnly.insertBefore(app, studentOnly.firstChild);
       global.HwHubQuests?.ensurePanel?.();
+      global.HwHubWorkouts?.ensurePanel?.();
+      if (isQuestOnlyAccount()) {
+        app.dataset.v5ActiveTab = "quest";
+      }
 
       const legacySection = document.getElementById("hw-worksheet-section");
       if (legacySection) legacySection.hidden = true;
@@ -1938,6 +5185,8 @@
 
       shellBuilt = true;
       v4Homework.hidden = false;
+      ensurePhoneHomeButton();
+      ensureTutorialButton();
     } catch (err) {
       console.error("[hw-hub-v5] shell build failed", err);
       shellBuilt = false;
@@ -2396,7 +5645,13 @@
       }
     }
     if (pastBtn) {
-      pastBtn.textContent = "Browse past homework";
+      const u = String(getActiveSession()?.username || "")
+        .trim()
+        .toLowerCase();
+      pastBtn.textContent =
+        u === "demoprem" || u === "premdemo"
+          ? "Browse all worksheets"
+          : "Past submissions";
     }
     let ultraNote = document.getElementById("hw-v5-ultra-practice-note");
     if (ultra && !reviewed && !acknowledged) {
@@ -2808,28 +6063,18 @@
   }
 
   function renderFeedback(status) {
-    const banner = document.getElementById("hw-v5-reviewed-banner");
-    const feedback = document.getElementById("hw-v2-feedback");
-    const body = document.getElementById("hw-v2-feedback-body");
-    const reviewZone = document.getElementById("hw-v5-review-zone");
     const openReviewedBtn = document.getElementById("hw-v5-open-reviewed-btn");
-    /* Hub entry only — the reviewed worksheet itself (all HW slides + notes)
-       is opened like the teacher review view. */
+    const reviewZone = document.getElementById("hw-v5-review-zone");
+    /* Reviewed JD sticky note removed — open worksheet via button only. */
+    document.getElementById("hw-v5-reviewed-banner")?.remove();
+    document.getElementById("hw-v2-feedback")?.remove();
+
     const show = status === "reviewed" && !isArchiveMode();
 
-    if (banner) banner.hidden = !show;
-    if (feedback) feedback.hidden = !show;
-    /* Do not use the old note-note slide deck — notes live on the worksheet. */
     if (reviewZone) reviewZone.hidden = true;
     if (openReviewedBtn) {
       openReviewedBtn.hidden = !show;
       openReviewedBtn.textContent = "Open reviewed worksheet";
-    }
-
-    if (body && show) {
-      body.textContent =
-        jdReviewGreeting(getStudentDisplayName()) +
-        " Open your worksheet to see the same slides as me on every question, with my notes on yours."; /* lined-note wrap */
     }
 
     reviewCommentsGen += 1;
@@ -2908,7 +6153,7 @@
   const NOTEBOOK_BOOK_DEFAULTS = [
     { id: "hw", label: "HW Notes", paper: "lined" },
     { id: "daily", label: "Daily Notebook", paper: "lined" },
-    { id: "kanji", label: "Kanji Notebook", paper: "kanji" },
+    { id: "quest", label: "Quest Notebook", paper: "lined" },
   ];
 
   function notebookCustomBooksKey() {
@@ -2934,10 +6179,11 @@
 
   function loadSessionNotebookBookId() {
     try {
-      const id = String(
+      let id = String(
         sessionStorage.getItem(notebookActiveBookSessionKey()) || ""
       ).trim();
       if (!id) return "hw";
+      if (id === "kanji") id = "quest";
       const known = getNotebookBooks().some((b) => b.id === id);
       return known ? id : "hw";
     } catch {
@@ -2990,11 +6236,11 @@
         ids.length === 3 &&
         ids[0] === "daily" &&
         ids[1] === "hw" &&
-        ids[2] === "kanji"
+        (ids[2] === "kanji" || ids[2] === "quest")
       ) {
-        return ["hw", "daily", "kanji"];
+        return ["hw", "daily", "quest"];
       }
-      return ids;
+      return ids.map((id) => (id === "kanji" ? "quest" : id));
     } catch {
       return [];
     }
@@ -3036,7 +6282,7 @@
 
   function isCoreNotebookBook(bookId) {
     const id = String(bookId || "").trim();
-    return id === "daily" || id === "hw" || id === "kanji";
+    return id === "daily" || id === "hw" || id === "quest";
   }
 
   function deleteCustomNotebookBook(bookId) {
@@ -3589,7 +6835,14 @@
       if (studentSide && studentAnchor) break;
     }
     const mark = notebookRowMark(primary, pack);
-    if (mark) el.classList.add("hw-hub-v5-notebook__row--mark-" + mark);
+    if (mark) {
+      el.classList.add("hw-hub-v5-notebook__row--mark-" + mark);
+      const badge = document.createElement("span");
+      badge.className = "hw-hub-v5-notebook__mark-badge hw-hub-v5-notebook__mark-badge--" + mark;
+      badge.setAttribute("aria-label", mark === "correct" ? "Looks good" : "Not quite");
+      badge.textContent = mark === "correct" ? "\u2713" : "\u2717";
+      el.appendChild(badge);
+    }
 
     const studentBlock = document.createElement("div");
     studentBlock.className =
@@ -3744,7 +6997,20 @@
       btn.className = "hw-hub-v5-notebook__q-btn";
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", "false");
+      const groupMark = notebookRowMark(group.rows[0] || {}, pack);
       btn.textContent = group.label;
+      if (groupMark) {
+        btn.classList.add("hw-hub-v5-notebook__q-btn--" + groupMark);
+        const glyph = document.createElement("span");
+        glyph.className = "hw-hub-v5-notebook__q-mark";
+        glyph.setAttribute("aria-hidden", "true");
+        glyph.textContent = groupMark === "correct" ? "\u2713" : "\u2717";
+        btn.appendChild(glyph);
+        btn.setAttribute(
+          "aria-label",
+          group.label + (groupMark === "correct" ? " — looks good" : " — not quite")
+        );
+      }
       btn.addEventListener("click", (ev) => {
         ev.preventDefault();
         paintDetail(activeIdx === index ? -1 : index);
@@ -3757,6 +7023,198 @@
     wrap.appendChild(dateBtn);
     wrap.appendChild(body);
     return wrap;
+  }
+
+  const QUEST_NOTEBOOK_EXAMPLE_LABELS = [
+    "1つ目",
+    "2つ目",
+    "3つ目",
+    "4つ目",
+    "5つ目",
+  ];
+
+  function renderQuestExampleDetail(exampleText, index) {
+    const el = document.createElement("article");
+    el.className =
+      "hw-hub-v5-notebook__row hw-hub-v5-notebook__row--detail hw-hub-v5-notebook__row--quest-ex";
+    const block = document.createElement("div");
+    block.className =
+      "hw-hub-v5-notebook__detail-block hw-hub-v5-notebook__detail-block--student";
+    const label = document.createElement("p");
+    label.className = "hw-hub-v5-notebook__detail-label";
+    label.textContent = QUEST_NOTEBOOK_EXAMPLE_LABELS[index] || "Example";
+    block.appendChild(label);
+    const text = document.createElement("p");
+    text.className = "hw-hub-v5-notebook__text";
+    const trimmed = String(exampleText || "").trim();
+    text.textContent = trimmed
+      ? trimmed
+      : "Nothing here yet — write this on the Quest tab.";
+    block.appendChild(text);
+    el.appendChild(block);
+    return el;
+  }
+
+  /**
+   * Quest notebook — cream target card → green 1つ目 2つ目… → example text.
+   */
+  function renderQuestNotebookPanel(snap) {
+    const wrap = document.createElement("div");
+    wrap.className = "hw-hub-v5-notebook__pack-panel hw-hub-v5-notebook__pack-panel--quest";
+
+    const examples = Array.isArray(snap?.examples) ? snap.examples : [];
+    const filled = examples.filter((s) => String(s || "").trim()).length;
+
+    const dateBtn = document.createElement("button");
+    dateBtn.type = "button";
+    dateBtn.className = "hw-hub-v5-notebook__date-btn";
+    dateBtn.setAttribute("aria-expanded", "false");
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "hw-hub-v5-notebook__date-btn-name";
+    nameEl.textContent = "Today's look-for";
+
+    const whenEl = document.createElement("span");
+    whenEl.className = "hw-hub-v5-notebook__date-btn-when hw-hub-v5-notebook__date-btn-when--quest";
+    whenEl.textContent = String(snap?.title || "—");
+
+    const lessonEl = document.createElement("span");
+    lessonEl.className = "hw-hub-v5-notebook__date-btn-lesson";
+    lessonEl.textContent =
+      'Look and listen for "' + String(snap?.look || snap?.title || "") + '"';
+
+    const cue = document.createElement("span");
+    cue.className = "hw-hub-v5-notebook__date-btn-cue";
+    const cueLabel = document.createElement("span");
+    cueLabel.className = "hw-hub-v5-notebook__date-btn-cue-label";
+    cueLabel.textContent =
+      filled === 1 ? "1 example" : filled + " of 5 examples";
+    const cueChev = document.createElement("span");
+    cueChev.className = "hw-hub-v5-notebook__date-btn-chevron";
+    cueChev.setAttribute("aria-hidden", "true");
+    cueChev.textContent = "\u25B8";
+    cue.appendChild(cueLabel);
+    cue.appendChild(cueChev);
+
+    dateBtn.appendChild(nameEl);
+    dateBtn.appendChild(whenEl);
+    dateBtn.appendChild(lessonEl);
+    dateBtn.appendChild(cue);
+
+    const body = document.createElement("div");
+    body.className = "hw-hub-v5-notebook__pack-body";
+    body.hidden = true;
+
+    const bar = document.createElement("div");
+    bar.className = "hw-hub-v5-notebook__q-bar";
+    bar.setAttribute("role", "tablist");
+    bar.setAttribute("aria-label", "Quest examples");
+
+    const detail = document.createElement("div");
+    detail.className = "hw-hub-v5-notebook__q-detail";
+    detail.hidden = true;
+
+    let packOpen = false;
+    let activeIdx = -1;
+
+    function paintDetail(index) {
+      activeIdx = index;
+      bar.querySelectorAll(".hw-hub-v5-notebook__q-btn").forEach((btn, i) => {
+        const on = i === index;
+        btn.classList.toggle("is-active", on);
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      detail.replaceChildren();
+      if (index < 0) {
+        detail.hidden = true;
+        return;
+      }
+      detail.hidden = false;
+      detail.appendChild(
+        renderQuestExampleDetail(examples[index] || "", index)
+      );
+    }
+
+    function setPackOpen(open) {
+      packOpen = open;
+      dateBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      dateBtn.classList.toggle("is-open", open);
+      body.hidden = !open;
+      if (!open) paintDetail(-1);
+    }
+
+    dateBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      setPackOpen(!packOpen);
+    });
+
+    QUEST_NOTEBOOK_EXAMPLE_LABELS.forEach((label, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-hub-v5-notebook__q-btn hw-hub-v5-notebook__q-btn--quest";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", "false");
+      btn.textContent = label;
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        paintDetail(activeIdx === index ? -1 : index);
+      });
+      bar.appendChild(btn);
+    });
+
+    body.appendChild(bar);
+    body.appendChild(detail);
+    wrap.appendChild(dateBtn);
+    wrap.appendChild(body);
+    return wrap;
+  }
+
+  async function renderQuestNotebookPage() {
+    const page = document.getElementById("hw-notebook-diary-page");
+    const dateEl = document.getElementById("hw-notebook-diary-date");
+    const lessonEl = document.getElementById("hw-notebook-diary-lesson");
+    const pagerRow = document.getElementById("hw-notebook-pager-row");
+    const searchWrap = document.getElementById("hw-notebook-search-wrap");
+    if (!page || !dateEl) return;
+
+    if (searchWrap) searchWrap.hidden = true;
+    if (pagerRow) pagerRow.hidden = true;
+    document.getElementById("hw-notebook-daily-status")?.remove();
+
+    try {
+      await global.HwHubQuests?.loadProgress?.();
+    } catch {
+      /* local progress still ok */
+    }
+
+    const snap = global.HwHubQuests?.getNotebookSnapshot?.();
+    if (!snap) {
+      dateEl.textContent = "Quest Notebook";
+      if (lessonEl) {
+        lessonEl.hidden = false;
+        lessonEl.textContent = "Immersion Quest";
+      }
+      page.replaceChildren();
+      const empty = document.createElement("p");
+      empty.className = "hw-hub-v5-notebook__empty";
+      empty.textContent =
+        "Quest notes will show here when Immersion Quest is available for your account.";
+      page.appendChild(empty);
+      return;
+    }
+
+    dateEl.textContent = "Quest Notebook";
+    if (lessonEl) {
+      lessonEl.hidden = false;
+      lessonEl.textContent =
+        "Day " +
+        snap.day +
+        (snap.round > 1 ? " · Round " + snap.round : "") +
+        " — examples from your quest";
+    }
+
+    page.replaceChildren();
+    page.appendChild(renderQuestNotebookPanel(snap));
   }
 
   function ensureNotebookBookTabs(diary) {
@@ -3912,7 +7370,8 @@
 
   function setNotebookBook(bookId) {
     const books = getNotebookBooks();
-    const next = books.find((b) => b.id === bookId);
+    const pick = bookId === "kanji" ? "quest" : bookId;
+    const next = books.find((b) => b.id === pick);
     if (!next) return;
     if (notebookBookId === "daily" && next.id !== "daily") {
       window.clearTimeout(dailyNotebookSaveTimer);
@@ -3922,7 +7381,7 @@
       window.clearTimeout(kanjiNotebookSaveTimer);
       void flushKanjiNotebookSave();
     }
-    notebookBookId = next.id;
+    notebookBookId = next.id === "kanji" ? "quest" : next.id;
     saveSessionNotebookBookId(notebookBookId);
     if (next.id === "daily" && !dailyNotebookDateKey) {
       dailyNotebookDateKey = tokyoDateKeyFromDate();
@@ -4023,9 +7482,9 @@
     } else if (id === "daily") {
       placeholder = "Search days, notes, dates\u2026";
       aria = "Search daily notebook";
-    } else if (id === "kanji") {
-      placeholder = "Search kanji pages\u2026";
-      aria = "Search kanji notebook";
+    } else if (id === "quest" || id === "kanji") {
+      placeholder = "Search coming soon\u2026";
+      aria = "Search quest notebook";
     } else {
       placeholder = "Search notebook\u2026";
       aria = "Search " + (book?.label || "notebook");
@@ -4345,8 +7804,8 @@
       void renderDailyNotebookPage();
       return;
     }
-    if (book.id === "kanji") {
-      void renderKanjiNotebookPage();
+    if (book.id === "quest" || book.id === "kanji") {
+      void renderQuestNotebookPage();
       return;
     }
 
@@ -4906,7 +8365,8 @@
     if (notebookOpen) {
       renderNotebookDiaryPage(notebookCachePacks || []);
     }
-    /* Status ping remount is owned by setActiveTab / renderHomeworkZone. */
+    /* Curriculum swaps this diary for the daily textbook after every paint. */
+    global.HwCurriculumTextbook?.sync?.();
   }
 
   function openNotebook() {
@@ -4922,9 +8382,7 @@
   }
 
   /**
-   * Leave Notebook tab / empty archive chrome, then open the Past HW list.
-   * Opening Past HW while the diary owned the status slot left archive hash +
-   * empty mount with Past HW permanently hidden.
+   * Past HW entry from hub buttons — Past assignments popup.
    */
   function openPastHomeworkFromHub() {
     if (notebookOpen) {
@@ -4933,24 +8391,15 @@
     if (isArchiveMode()) {
       exitArchiveMode();
     }
-    renderAll();
 
-    const fold = document.getElementById("hw-student-past-fold");
-    if (!fold) return;
-    fold.hidden = false;
-    const entryRow = document.getElementById("hw-hub-v5-entry-row");
-    if (entryRow) entryRow.hidden = false;
-    fold.open = true;
-    if (global.HwStudentPast?.reload) {
-      void global.HwStudentPast.reload({ bypassCache: true });
-    } else {
-      document.dispatchEvent(new CustomEvent("hw-platform-reload-past"));
+    if (global.HwStudentPast?.openPicker) {
+      void global.HwStudentPast.openPicker();
+      return;
     }
-    try {
-      fold.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch {
-      /* ignore */
-    }
+
+    /* Fallback if modal markup is missing — keep hub usable. */
+    renderAll();
+    document.dispatchEvent(new CustomEvent("hw-platform-reload-past"));
   }
 
   let postSubmitNextModalBound = false;
@@ -5025,8 +8474,7 @@
       void stepDailyNotebookDay(delta);
       return;
     }
-    if (book?.id === "kanji") {
-      void stepKanjiNotebookPage(delta);
+    if (book?.id === "quest" || book?.id === "kanji") {
       return;
     }
     if (book?.id !== "hw") return;
@@ -5041,6 +8489,11 @@
   function bindNotebookUi() {
     if (notebookUiBound) return;
     notebookUiBound = true;
+
+    document.addEventListener("hw-quest-examples-changed", () => {
+      if (!notebookOpen || notebookBookId !== "quest") return;
+      void renderQuestNotebookPage();
+    });
 
     document.addEventListener("click", (e) => {
       const lockBtn = e.target.closest("[data-nb-book-lock]");
@@ -5097,8 +8550,8 @@
       renderNotebookDiaryPage(notebookCachePacks || []);
     } else if (id === "daily") {
       void applyDailyNotebookSearch();
-    } else if (id === "kanji") {
-      void applyKanjiNotebookSearch();
+    } else if (id === "quest" || id === "kanji") {
+      void renderQuestNotebookPage();
     } else {
       renderNotebookBlankPage(book);
     }
@@ -5362,16 +8815,22 @@
       v2Title.textContent = "";
     }
 
-    global.HwStudentToolbar?.unmount?.();
-    const toolbar = document.getElementById("hw-toolbar-bar");
-    if (toolbar) toolbar.hidden = true;
+    const curriculumToolsOn =
+      document.body.classList.contains("hw-prayer-toolbar") ||
+      document.body.classList.contains("hw-sit-toolbar") ||
+      document.body.classList.contains("hw-hub-content-toolbar");
+    if (!curriculumToolsOn) {
+      global.HwStudentToolbar?.unmount?.();
+      const toolbar = document.getElementById("hw-toolbar-bar");
+      if (toolbar) toolbar.hidden = true;
 
-    document.querySelectorAll(".hw-mg-widget, .hw-hc-launcher").forEach((el) => {
-      el.hidden = true;
-      el.setAttribute("aria-hidden", "true");
-      el.style.display = "none";
-    });
-    document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
+      document.querySelectorAll(".hw-mg-widget, .hw-hc-launcher").forEach((el) => {
+        el.hidden = true;
+        el.setAttribute("aria-hidden", "true");
+        el.style.display = "none";
+      });
+      document.documentElement.classList.remove("hw-tb-glass-out", "hw-tb-cloud-out");
+    }
   }
 
   function renderAssignmentLanding(show) {
@@ -5385,10 +8844,21 @@
       "#hw-hub-v4-homework .hw-hub-v2-worksheet"
     );
     const completeCard = document.getElementById("hw-v5-complete-card");
-    const pastFold = document.getElementById("hw-student-past-fold");
     const offlineCard = document.getElementById("hw-offline-tools-card");
     const hasAssignment = studentHasActiveAssignment();
     const ready = hubReady || demoModeEnabled();
+
+    if (isQuestOnlyAccount()) {
+      bindHubBootDismiss();
+      clearHubBootGate();
+      if (worksheetSection) worksheetSection.hidden = true;
+      if (completeCard) completeCard.hidden = true;
+      renderNoPlanWelcome(false);
+      renderNoHwEmpty(false);
+      renderPlanWaiting(false);
+      document.body.classList.remove("hw-hub-v5-complete-view", "hw-hub-v5-noplan-view");
+      return;
+    }
 
     /* While the platform is still loading, keep the normal Loading… /
        hourglass worksheet chrome — never flash empty/upsell shells. */
@@ -5396,9 +8866,6 @@
       bindHubBootDismiss();
       if (worksheetSection) worksheetSection.hidden = false;
       if (completeCard) completeCard.hidden = true;
-      if (pastFold) pastFold.hidden = true;
-      const entryBoot = document.getElementById("hw-hub-v5-entry-row");
-      if (entryBoot) entryBoot.hidden = true;
       renderNoPlanWelcome(false);
       renderNoHwEmpty(false);
       renderPlanWaiting(false);
@@ -5443,19 +8910,10 @@
             showPlanWaiting);
     }
     if (completeCard) completeCard.hidden = !showComplete;
-    if (pastFold) {
-      pastFold.hidden =
-        archive || !showComplete || showNoHw || showNoPlan || showPlanWaiting;
-    }
     queueNotebookRefresh();
-    const entryRow = document.getElementById("hw-hub-v5-entry-row");
-    if (entryRow) {
-      const pastVisible = pastFold && !pastFold.hidden;
-      entryRow.hidden = !pastVisible;
-    }
     applyNotebookOpenUi();
     if (offlineCard) {
-      /* Print moved to footer menu — photo shell only when capturing. */
+      /* Photo shell only when capturing. */
       offlineCard.hidden = !offlineCard.classList.contains("is-capturing");
     }
     const printMenu = document.getElementById("hw-print-menu");
@@ -5577,7 +9035,15 @@
 
   function renderAll() {
     buildV5Shell();
+    ensureSituationsPanel();
+    ensureCurriculumHome();
+    ensureDateStrip();
+    syncCurriculumContentToolbar(
+      normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab)
+    );
     global.HwHubQuests?.ensurePanel?.();
+    global.HwHubWorkouts?.ensurePanel?.();
+    paintHubTabButtons();
     const status = getHubStatus();
     renderDemoBar(status);
     renderHomeworkZone(status);
@@ -5588,81 +9054,24 @@
       setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "profile");
       renderAccountSellup();
     } else {
-      setActiveTab(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab || "homework");
+      const app = document.getElementById("hw-v5-app");
+      let tab = app?.dataset.v5ActiveTab || defaultHubTab();
+      if (!hubTabIds().includes(normalizeTabId(tab))) tab = defaultHubTab();
+      setActiveTab(tab);
     }
     /* Re-assert diary after every paint so async hub refreshes can't flash status. */
     applyNotebookOpenUi();
+    global.HwCurriculumTextbook?.sync?.();
+    mountCoreStrips();
+    loadCoreCards().then(() => paintCoreStrips());
     queueLiveReviewRefresh();
     ensureReviewPoll(status);
-  }
-
-  function bindPastHomeworkFold() {
-    const fold = document.getElementById("hw-student-past-fold");
-    if (!fold || fold.dataset.v5PastBound === "1") return;
-    fold.dataset.v5PastBound = "1";
-
-    const surfacePastUnavailable = (message) => {
-      const meta = document.getElementById("hw-student-past-meta");
-      const list = document.getElementById("hw-student-past-list");
-      const msg = message || "Past homework is unavailable. Hard-refresh the page.";
-      if (meta) meta.textContent = msg;
-      if (!list) return;
-      list.replaceChildren();
-      const li = document.createElement("li");
-      li.className = "hw-hub-v2-past-list__item hw-hub-v2-past-list__item--empty";
-      li.textContent = msg;
-      list.appendChild(li);
-    };
-
-    const ensurePastList = () => {
-      if (!fold.open || fold.hidden) return;
-
-      /* Wait a frame so open details content is in layout before paint/fetch. */
-      requestAnimationFrame(() => {
-        if (!fold.open || fold.hidden) return;
-        const list = document.getElementById("hw-student-past-list");
-        if (!list) {
-          surfacePastUnavailable("Past homework list is missing from the page.");
-          return;
-        }
-        if (global.HwStudentPast?.reload) {
-          void global.HwStudentPast.reload({ bypassCache: true });
-          return;
-        }
-        /* Stale platform without HwStudentPast.reload — event listener still loads. */
-        document.dispatchEvent(new CustomEvent("hw-platform-reload-past"));
-      });
-    };
-
-    fold.addEventListener("toggle", () => {
-      if (!fold.open) return;
-      /* Diary + Past HW together corrupts the status slot — leave diary first. */
-      if (notebookOpen) {
-        openPastHomeworkFromHub();
-        return;
-      }
-      ensurePastList();
-    });
-
-    /* Flex-row sibling boxes: clicks in padding/dead space should still open. */
-    fold.addEventListener("click", (ev) => {
-      if (fold.open && !notebookOpen) return;
-      if (ev.target.closest("summary, a, button, input, label")) return;
-      ev.preventDefault();
-      if (notebookOpen) {
-        openPastHomeworkFromHub();
-        return;
-      }
-      fold.open = true;
-      ensurePastList();
-    });
   }
 
   function bindUi() {
     if (uiBound) return;
     uiBound = true;
     bindNotebookUi();
-    bindPastHomeworkFold();
 
     document.querySelectorAll("[data-v5-demo-status]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -5725,8 +9134,30 @@
     document.getElementById("hw-v5-tabs")?.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-v5-tab]");
       if (!btn) return;
-      setActiveTab(btn.getAttribute("data-v5-tab") || (accountMode ? "profile" : "homework"));
+      const id = btn.getAttribute("data-v5-tab") || (accountMode ? "profile" : "homework");
+      if (id === "notebook") sessionStorage.removeItem("jlm-ct-focus");
+      setActiveTab(id);
+      if (id === "notebook") global.HwCurriculumTextbook?.sync?.();
     });
+
+    if (!moveHubTab.bound) {
+      moveHubTab.bound = true;
+      document.addEventListener(
+        "keydown",
+        (ev) => {
+          if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight" && ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+          if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+          if (!document.getElementById("hw-v5-app") || !document.getElementById("hw-v5-tabs")) return;
+          if (arrowKeysTyping(ev.target) || arrowKeysTyping(document.activeElement)) return;
+          ev.preventDefault();
+          if (ev.key === "ArrowLeft") moveHubTab(-1);
+          else if (ev.key === "ArrowRight") moveHubTab(1);
+          else if (ev.key === "ArrowUp") moveHubTabSlide(-1);
+          else moveHubTabSlide(1);
+        },
+        true
+      );
+    }
 
     document.addEventListener("hw-platform-student-ready", () => {
       hubReady = true;
@@ -5812,13 +9243,27 @@
     if (tierPick) tierPick.hidden = true;
   }
 
+  function applyDemoLaunchQuery() {
+    if (!demoModeEnabled()) return;
+    try {
+      const q = new URLSearchParams(location.search);
+      const account = q.get("account");
+      if (account && DEMO_ACCOUNTS[account]) writeStorage(STORAGE.account, account);
+      if (q.get("tab") === "textbook") writeStorage(STORAGE.tab, "notebook");
+    } catch {
+      /* ignore */
+    }
+  }
+
   function init() {
+    applyDemoLaunchQuery();
     activateChrome();
     buildV5Shell();
     bindUi();
     bindHubTabSliderLayout();
     initHubTabs();
     renderAll();
+    consumeStudentGo();
     if (wantsStuspecFocus()) {
       clearStuspecFocusParam();
       window.setTimeout(function () {
@@ -5835,10 +9280,46 @@
     /* Safety: never leave the boot veil forever if ready events stall. */
     window.setTimeout(clearHubBootGate, 4500);
     global.HwAccount?.onHubReady?.();
+    document.addEventListener("click", (ev) => {
+      const done = ev.target && ev.target.closest && ev.target.closest("[data-complete-task]");
+      if (!done) return;
+      completeTodayTask(done.getAttribute("data-complete-task"));
+    });
+    scheduleLocalPeriodRollover();
+  }
+
+  let localPeriodTimer = 0;
+
+  function refreshLocalPeriods() {
+    ensureCurriculumHome();
+    ensureSituationsPanel();
+    syncCurriculumContentToolbar(
+      normalizeTabId(document.getElementById("hw-v5-app")?.dataset.v5ActiveTab)
+    );
+    paintWordPlay();
+    paintCorePage();
+    void global.HwHubQuests?.refresh?.();
+    global.HwHubWorkouts?.refresh?.();
+    global.HwCurriculumTextbook?.sync?.();
+  }
+
+  function scheduleLocalPeriodRollover() {
+    window.clearTimeout(localPeriodTimer);
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+    localPeriodTimer = window.setTimeout(() => {
+      refreshLocalPeriods();
+      scheduleLocalPeriodRollover();
+    }, Math.max(1000, next.getTime() - now.getTime() + 250));
   }
 
   /** Durable notebook open state for platform refresh paths. */
   global.HwHubV5Live = {
+    /** Tick a to-do item and show a toast, without leaving the current tab. */
+    completeTask(id, toast) {
+      completeTodayTask(id, { stay: true, toast: toast || "" });
+    },
     isNotebookOpen() {
       return notebookOpen;
     },
@@ -5852,6 +9333,20 @@
     isAccountMode() {
       return accountMode;
     },
+    isQuestOnlyAccount,
+    isCurriculumAccount,
+    togglePrayerFocus,
+    isPrayerFocus,
+    usesCurriculumHub,
+    isDemo1StandardPreview,
+    openCurriculumPlace,
+    coreJapaneseList() {
+      return coreCards.slice();
+    },
+    todaysCoreWord() {
+      return todaysWordItem().word;
+    },
+    paintWordPlay,
   };
 
   if (document.readyState === "loading") {

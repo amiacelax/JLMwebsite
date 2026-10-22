@@ -18,7 +18,7 @@ export interface PayPalEnv {
 }
 
 const PLAN_IDS: Record<HwCheckoutPlan, string> = {
-  basic: "P-3BS11069X4737034MNJ563OA",
+  basic: "P-3C015132V3458352HNLDR7AY",
   premium: "P-7RC25164AJ430933DNJ564GY",
   ultra: "P-9VC563511T5680357NJ565KA",
   "student-special": "P-34B653300B452420GNJ565WQ",

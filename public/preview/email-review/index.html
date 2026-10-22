@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Email review — edit the student emails</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; background: #0f1630; color: #e9edf7; }
+  header { padding: 14px 20px; border-bottom: 1px solid #25305a; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .hint { color: #9fb0d6; font-size: 13px; max-width: 60ch; }
+  .layout { display: grid; grid-template-columns: 190px minmax(320px, 440px) 1fr; gap: 0; min-height: calc(100vh - 62px); }
+  nav { border-right: 1px solid #25305a; padding: 12px; }
+  nav button { display: block; width: 100%; text-align: left; margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid #2d3a6b; background: #17204a; color: inherit; font: inherit; cursor: pointer; }
+  nav button.on { background: #1f6f9f; border-color: #1f6f9f; color: #fff; }
+  nav button small { display: block; color: #9fb0d6; font-size: 12px; }
+  nav button.on small { color: #d8ecf8; }
+  nav .edited { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 99px; background: #a8741a; color: #fff; font-size: 11px; }
+  .editor { padding: 16px; border-right: 1px solid #25305a; overflow: auto; }
+  .editor h2 { margin: 0 0 10px; font-size: 16px; }
+  .field { margin: 0 0 14px; }
+  .field label { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: #9fb0d6; margin-bottom: 4px; }
+  .field label em { font-style: normal; color: #6f82b4; }
+  .field textarea { width: 100%; min-height: 56px; resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid #2d3a6b; background: #0b1128; color: #fff; font: inherit; }
+  .field textarea.changed { border-color: #d4a853; box-shadow: 0 0 0 1px #d4a85355; }
+  .field .reset { border: 0; background: none; color: #d4a853; cursor: pointer; font-size: 12px; padding: 0; }
+  .section { margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid #25305a; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #9fb0d6; }
+  .preview { padding: 16px; overflow: auto; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; }
+  .bar label { font-size: 13px; color: #9fb0d6; }
+  .bar input[type=text] { width: 9rem; padding: 6px 8px; border-radius: 8px; border: 1px solid #2d3a6b; background: #0b1128; color: #fff; font: inherit; }
+  .bar select { padding: 6px 8px; border-radius: 8px; border: 1px solid #2d3a6b; background: #0b1128; color: #fff; font: inherit; }
+  .btn { padding: 8px 14px; border-radius: 99px; border: 1px solid #2d3a6b; background: #17204a; color: #fff; font: inherit; cursor: pointer; }
+  .btn.primary { background: #1f6f9f; border-color: #1f6f9f; font-weight: 600; }
+  .subject { margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; background: #17204a; border: 1px solid #2d3a6b; }
+  .subject b { color: #9fb0d6; font-weight: 600; margin-right: 6px; }
+  iframe { width: 100%; height: 560px; border: 0; border-radius: 12px; background: #f4f1ea; }
+  pre { margin: 0; padding: 14px; border-radius: 12px; background: #0b1128; border: 1px solid #2d3a6b; white-space: pre-wrap; font: 13.5px/1.5 ui-monospace, Consolas, monospace; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1f7a4d; color: #fff; padding: 10px 18px; border-radius: 99px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid #25305a; } .editor { border-right: 0; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Student emails — edit the words</h1>
+  <div class="hint">Change any box on the left and the email on the right updates. Edits save in this browser. When you are done, press <b>Copy my edits</b> and paste it to me.</div>
+  <button class="btn primary" id="copyEdits">Copy my edits</button>
+  <button class="btn" id="resetAll">Reset everything</button>
+</header>
+<div class="layout">
+  <nav id="nav"></nav>
+  <section class="editor" id="editor"></section>
+  <section class="preview">
+    <div class="bar">
+      <label>Name <input type="text" id="sampleName" value="Jen"></label>
+      <label>Homework <input type="text" id="sampleTitle" value="Introducing Yourself"></label>
+      <label id="reasonWrap">Footer
+        <select id="reason"><option value="no_discord">No Discord ID</option><option value="opted_in">Email notifications on</option></select>
+      </label>
+      <label>View <select id="view"><option value="html">Looks like</option><option value="text">Plain text</option></select></label>
+    </div>
+    <div class="subject"><b>Subject</b><span id="subject"></span></div>
+    <div id="out"></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+<script src="email-text.js"></script>
+<script>
+(function () {
+  var E = window.JLMEmail;
+  var DEFAULT = JSON.parse(JSON.stringify(E.EMAIL_COPY));
+  var KEY = "jlm-email-copy-edits-v2";
+  var copy = JSON.parse(JSON.stringify(DEFAULT));
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved) Object.keys(saved).forEach(function (g) { Object.keys(saved[g]).forEach(function (f) { if (copy[g] && f in copy[g]) copy[g][f] = saved[g][f]; }); });
+  } catch (e) {}
+
+  var EMAILS = [
+    { id: "reviewed", name: "Review is ready", note: "after you finish a review", kind: "reviewed" },
+    { id: "assigned", name: "New homework", note: "you send homework now", kind: "assigned" },
+    { id: "queued", name: "Next homework", note: "waiting behind current one", kind: "queued" },
+    { id: "cancelled", name: "Subscription cancelled", note: "after Cancel subscription", kind: "cancelled" }
+  ];
+  var FIELDS = {
+    reviewed: [["subject", "Subject (with homework name)", "{title} = homework name"], ["subjectNoTitle", "Subject (no homework name)"], ["headline", "Big headline"], ["lead", "First line", "{title}"], ["leadNoTitle", "First line (no homework name)"], ["after", "Second line"], ["button", "Button"]],
+    cancelled: [["subject", "Subject"], ["headline", "Big headline"], ["lead", "First line", "{plan} = Premium plan"], ["afterDate", "Second line (we know the date)", "{date}"], ["afterNoDate", "Second line (no date)"], ["rejoin", "Third line"], ["button", "Button"], ["why", "Small print at the bottom"]]
+  };
+  FIELDS.assigned = FIELDS.reviewed; FIELDS.queued = FIELDS.reviewed;
+  var COMMON = [["greeting", "Greeting", "{name}"], ["signoff", "Sign-off"], ["org", "Name under sign-off"], ["whyNoDiscord", "Small print: no Discord ID"], ["whyOptedIn", "Small print: Email notifications on"], ["ignore", "Small print: last line"]];
+
+  var current = "reviewed";
+  var nav = document.getElementById("nav");
+  var editor = document.getElementById("editor");
+
+  function toast(msg) { var t = document.getElementById("toast"); t.textContent = msg; t.className = "toast on"; setTimeout(function () { t.className = "toast"; }, 1800); }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(copy)); } catch (e) {} }
+  function changed(g, f) { return copy[g][f] !== DEFAULT[g][f]; }
+  function groupEdited(g) { return Object.keys(DEFAULT[g]).some(function (f) { return changed(g, f); }); }
+  function anyCommonEdited() { return groupEdited("common"); }
+
+  function drawNav() {
+    nav.innerHTML = "";
+    EMAILS.forEach(function (m) {
+      var b = document.createElement("button");
+      b.className = m.id === current ? "on" : "";
+      b.innerHTML = m.name + (groupEdited(m.id) ? '<span class="edited">edited</span>' : "") + "<small>" + m.note + "</small>";
+      b.onclick = function () { current = m.id; drawAll(); };
+      nav.appendChild(b);
+    });
+  }
+
+  function fieldBlock(g, spec) {
+    var f = spec[0];
+    var wrap = document.createElement("div"); wrap.className = "field";
+    var label = document.createElement("label");
+    label.innerHTML = "<span>" + spec[1] + "</span><em>" + (spec[2] || "") + "</em>";
+    var ta = document.createElement("textarea");
+    ta.value = copy[g][f];
+    ta.className = changed(g, f) ? "changed" : "";
+    ta.rows = Math.min(6, Math.max(1, Math.ceil(ta.value.length / 52)));
+    ta.oninput = function () { copy[g][f] = ta.value; ta.className = changed(g, f) ? "changed" : ""; persist(); drawNav(); drawPreview(); };
+    var reset = document.createElement("button"); reset.type = "button"; reset.className = "reset"; reset.textContent = "undo";
+    reset.onclick = function () { copy[g][f] = DEFAULT[g][f]; persist(); drawAll(); };
+    if (changed(g, f)) label.appendChild(reset);
+    wrap.appendChild(label); wrap.appendChild(ta);
+    return wrap;
+  }
+
+  function drawEditor() {
+    editor.innerHTML = "";
+    var m = EMAILS.filter(function (x) { return x.id === current; })[0];
+    var h = document.createElement("h2"); h.textContent = m.name; editor.appendChild(h);
+    FIELDS[current].forEach(function (spec) { editor.appendChild(fieldBlock(current, spec)); });
+    if (current !== "cancelled") {
+      var s = document.createElement("div"); s.className = "section"; s.textContent = "Shared by every email"; editor.appendChild(s);
+      COMMON.forEach(function (spec) { editor.appendChild(fieldBlock("common", spec)); });
+    } else {
+      var s2 = document.createElement("div"); s2.className = "section"; s2.textContent = "Shared by every email"; editor.appendChild(s2);
+      COMMON.slice(0, 3).forEach(function (spec) { editor.appendChild(fieldBlock("common", spec)); });
+    }
+  }
+
+  function drawPreview() {
+    var name = document.getElementById("sampleName").value;
+    var title = document.getElementById("sampleTitle").value;
+    var reason = document.getElementById("reason").value;
+    var view = document.getElementById("view").value;
+    var url = "https://japaneselanguagementor.com/homework.html?user=nekobi";
+    var mail = current === "cancelled"
+      ? E.buildCancellationEmail({ name: name, planName: "Premium", endsOn: "November 6, 2026", loginUrl: url }, copy)
+      : E.buildStudentHomeworkEmail({ kind: current, name: name, title: title, loginUrl: url, reason: reason }, copy);
+    document.getElementById("subject").textContent = mail.subject;
+    document.getElementById("reasonWrap").style.display = current === "cancelled" ? "none" : "";
+    var out = document.getElementById("out");
+    out.innerHTML = "";
+    if (view === "text") {
+      var pre = document.createElement("pre"); pre.textContent = mail.text; out.appendChild(pre);
+    } else {
+      var fr = document.createElement("iframe");
+      fr.srcdoc = '<!doctype html><meta charset="utf-8"><body style="margin:0">' + mail.html + "</body>";
+      out.appendChild(fr);
+    }
+  }
+
+  function drawAll() { drawNav(); drawEditor(); drawPreview(); }
+
+  function editsText() {
+    var lines = [];
+    Object.keys(DEFAULT).forEach(function (g) {
+      Object.keys(DEFAULT[g]).forEach(function (f) {
+        if (changed(g, f)) {
+          lines.push("[" + g + "." + f + "]");
+          lines.push("WAS: " + DEFAULT[g][f]);
+          lines.push("NOW: " + copy[g][f]);
+          lines.push("");
+        }
+      });
+    });
+    return lines.length ? lines.join("\n") : "(no edits — everything is as it was)";
+  }
+
+  document.getElementById("copyEdits").onclick = function () {
+    var text = "EMAIL EDITS\n\n" + editsText() + "\nFULL JSON:\n" + JSON.stringify(copy, null, 2);
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast("Copied. Paste it to me."); }, function () {
+      var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); toast("Copied. Paste it to me."); } catch (e) { toast("Could not copy"); } ta.remove();
+    });
+  };
+  document.getElementById("resetAll").onclick = function () {
+    if (!confirm("Throw away all your edits and go back to the original wording?")) return;
+    copy = JSON.parse(JSON.stringify(DEFAULT)); persist(); drawAll();
+  };
+  ["sampleName", "sampleTitle", "reason", "view"].forEach(function (id) { document.getElementById(id).addEventListener("input", drawPreview); });
+  drawAll();
+})();
+</script>
+</body>
+</html>

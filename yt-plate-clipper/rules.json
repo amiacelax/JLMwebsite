@@ -1,0 +1,19 @@
+{
+  "_help": "Auto-skip rules for the weekly check. Times are JST (this PC). A lesson matching a rule is still LISTED in the weekly check, marked auto-skipped, and you can override it. weekdays: Mon Tue Wed Thu Fri Sat Sun (omit = any day). from_hour/to_hour are 0-23 on the lesson START time (to_hour omit = until midnight). match = optional text that must appear in the filename.",
+  "rules": [
+    {
+      "name": "Faye (Mon 9pm+)",
+      "weekdays": [
+        "Mon"
+      ],
+      "from_hour": 21
+    }
+  ],
+  "skip_students": [
+    "Mo",
+    "CJ",
+    "Christian",
+    "Faye"
+  ],
+  "_skip_help": "skip_students: first word of the student's lesson label (from the YouTube title) - these are never clipped, even if listed. Edit freely."
+}

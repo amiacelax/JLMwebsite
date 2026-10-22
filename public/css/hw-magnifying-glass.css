@@ -397,9 +397,10 @@ body.hw-mg-onboarding-active .hw-mg-lens {
 
 .hw-mg-popup__word {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  line-height: 1.5;
   flex: 1;
   min-width: 0;
 }
@@ -455,6 +456,55 @@ body.hw-mg-onboarding-active .hw-mg-lens {
   line-height: 1.25;
   color: var(--color-green, #2d6a4f);
   letter-spacing: 0.03em;
+}
+
+/* furigana over the word in the popup title: green */
+.hw-mg-popup__word ruby {
+  ruby-align: center;
+}
+.hw-mg-popup__word rt {
+  color: var(--color-green, #2d6a4f);
+  font-size: 0.52em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hw-mg-popup__readings {
+  min-width: 0;
+}
+
+.hw-mg-popup__grammar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: center;
+  margin-left: 0.5rem;
+  padding: 0.12rem 0.5rem 0.12rem 0.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.5);
+  color: var(--color-green, #4ade80);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.hw-mg-popup__grammar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: rgba(74, 222, 128, 0.2);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.hw-mg-popup__root {
+  font-size: 0.55em;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted, #8b96b0);
 }
 
 .hw-mg-popup__def {

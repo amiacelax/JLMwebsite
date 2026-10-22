@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0f1629">
+  <title>Situation Cards — practice deck</title>
+  <style>
+    :root {
+      --navy: #1a2744;
+      --navy-deep: #0f1629;
+      --cream: #faf6ef;
+      --gold: #d4a853;
+      --muted: #94a3b8;
+      --ink: #e8edf5;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --jp: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--navy-deep);
+      color: var(--ink);
+      font-family: var(--font);
+      overscroll-behavior: none;
+    }
+    body.app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      min-height: 100vh;
+    }
+    .topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: calc(0.65rem + var(--safe-top)) 1rem 0.55rem;
+      background: color-mix(in srgb, var(--navy) 92%, #000);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 0.78rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      color: var(--gold);
+    }
+    .topbar__right {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .topbar .progress {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .topbar .shuffle {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      min-height: 34px;
+      padding: 0.35rem 0.75rem;
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      background: #243556;
+      cursor: pointer;
+    }
+    .topbar .shuffle:active {
+      transform: scale(0.97);
+    }
+    .topbar .shuffle:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .stage {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 0.75rem 0.85rem 0.35rem;
+      touch-action: pan-y;
+    }
+    .card {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--navy);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.45);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .card__head {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1.1rem 0.65rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: #161f35;
+    }
+    .card__title {
+      font-family: var(--jp);
+      font-size: clamp(1.2rem, 5vw, 1.55rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.65;
+      color: var(--gold);
+      margin: 0;
+    }
+    .card__title ruby,
+    .card__text ruby {
+      ruby-position: over;
+      ruby-align: center;
+    }
+    .card__title rt,
+    .card__text rt {
+      font-size: 0.42em;
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    .card__title rt { color: #f3e2b0; }
+    .card__text rt { color: #c5d0e0; }
+    .card.is-en .card__title {
+      font-family: var(--font);
+      letter-spacing: 0;
+    }
+    .card__image {
+      position: relative;
+      flex: 0 1 38%;
+      min-height: 140px;
+      max-height: 42dvh;
+      margin: 0.85rem 0.9rem 0;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0b1222;
+      overflow: hidden;
+    }
+    .card__image img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      pointer-events: none;
+    }
+    .card__image img.is-on {
+      opacity: 1;
+    }
+    .card__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 1rem 1.15rem 1.25rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .card__ask {
+      margin: 0 0 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card__text {
+      margin: 0;
+      font-family: var(--jp);
+      font-size: clamp(1.05rem, 4.4vw, 1.28rem);
+      line-height: 1.75;
+      color: var(--ink);
+    }
+    .card.is-furi .card__text {
+      line-height: 2.15;
+    }
+    .controls {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 0.55rem;
+      padding: 0.65rem 0.85rem calc(0.85rem + var(--safe-bot));
+    }
+    .controls button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      min-height: 48px;
+      padding: 0.7rem 0.6rem;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 650;
+      color: var(--ink);
+      background: #243556;
+      cursor: pointer;
+    }
+    .controls button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .controls .primary {
+      background: var(--gold);
+      color: #1a2744;
+      border-color: transparent;
+    }
+    .hint {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 0 1rem 0.35rem;
+    }
+    .boot {
+      margin: auto;
+      padding: 2rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .boot[hidden] { display: none !important; }
+
+    /* On a computer, show the phone layout instead of a full-width page. */
+    @media (min-width: 520px) {
+      html {
+        background: #070b14;
+      }
+      body.app {
+        width: 390px;
+        height: min(844px, calc(100dvh - 48px));
+        min-height: 0;
+        margin: 24px auto;
+        border-radius: 36px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      }
+    }
+  </style>
+</head>
+<body class="app">
+  <header class="topbar">
+    <h1>状況カード</h1>
+    <div class="topbar__right">
+      <button type="button" class="shuffle" id="shuffle" disabled>Shuffle</button>
+      <div class="progress" id="progress">—</div>
+    </div>
+  </header>
+  <p class="boot" id="boot">Loading cards…</p>
+  <main class="stage" id="stage" hidden>
+    <article class="card" id="card" aria-live="polite">
+      <header class="card__head">
+        <h2 class="card__title" id="titleJp"></h2>
+      </header>
+      <div class="card__image">
+        <img id="imageA" alt="" decoding="async" />
+        <img id="imageB" alt="" decoding="async" />
+      </div>
+      <div class="card__body">
+        <p class="card__ask">What do you say / do?</p>
+        <p class="card__text" id="text"></p>
+      </div>
+    </article>
+  </main>
+    <p class="hint" id="hint" hidden>Tap the card for English · Show furigana</p>
+  <nav class="controls" id="controls" hidden>
+    <button type="button" id="prev" aria-label="Previous card">← Prev</button>
+    <button type="button" class="primary" id="peek" aria-pressed="false">Show</button>
+    <button type="button" id="next" aria-label="Next card">Next →</button>
+  </nav>
+  <script>
+    (function () {
+      const MEDIA = "/homework/media/situation-cards-1/";
+      const els = {
+        boot: document.getElementById("boot"),
+        stage: document.getElementById("stage"),
+        hint: document.getElementById("hint"),
+        controls: document.getElementById("controls"),
+        progress: document.getElementById("progress"),
+        card: document.getElementById("card"),
+        titleJp: document.getElementById("titleJp"),
+        imageA: document.getElementById("imageA"),
+        imageB: document.getElementById("imageB"),
+        text: document.getElementById("text"),
+        prev: document.getElementById("prev"),
+        next: document.getElementById("next"),
+        peek: document.getElementById("peek"),
+        shuffle: document.getElementById("shuffle"),
+      };
+
+      const RUBY = {
+        "01": {
+          title: "熱{ねつ}",
+          text: "あなたは今{いま}起{お}きました。頭{あたま}を触{さわ}ってみるとやっぱりあつい。まず、どうしますか？",
+        },
+        "02": {
+          title: "病院{びょういん}",
+          text: "熱{ねつ}が40度{ど}を越{こ}えてしまいました。どうしますか？",
+        },
+        "03": {
+          title: "席{せき}",
+          text: "あなたの席{せき}がこの人{ひと}に取{と}られました。言{い}ってやってください！",
+        },
+        "04": {
+          title: "コンビニ",
+          text: "お弁当{べんとう}を温{あたた}めようとしたら、財布{さいふ}を家{いえ}に忘{わす}れたことに気{き}づきました。店員{てんいん}さんの岩崎{いわさき}さんに何{なに}と言{い}いますか？",
+        },
+        "05": {
+          title: "電車{でんしゃ}",
+          text: "友達{ともだち}のりかちゃんとの大事{だいじ}な約束{やくそく}に間{ま}に合{あ}いません。次{つぎ}の電車{でんしゃ}まで８分{ぷん}。友達{ともだち}に何{なに}を伝{つた}えますか？",
+        },
+        "06": {
+          title: "アレルギー",
+          text: "色々{いろいろ}な食{た}べ物{もの}のアレルギーがあります。注文{ちゅうもん}の前{まえ}に、店員{てんいん}さんにちゃんと伝{つた}えてください。",
+        },
+        "07": {
+          title: "騒音{そうおん}",
+          text: "夜中{よなか}なのに隣{となり}がうるさいです。明日{あした}仕事{しごと}があります。どうしますか？言{い}ってみてください。",
+        },
+        "08": {
+          title: "カフェ",
+          text: "頼{たの}んだものと違{ちが}う飲{の}み物{もの}が来{き}ました。怒{おこ}らずに、でもはっきり言{い}ってください。",
+        },
+        "09": {
+          title: "誕生日{たんじょうび}",
+          text: "今日{きょう}は友達{ともだち}のセラの誕生日{たんじょうび}です。大事{だいじ}なプレゼントを考{かんが}えて買{か}ったんだけど、渡{わた}す前{まえ}に何{なに}と言{い}いますか？",
+        },
+        "10": {
+          title: "お礼{れい}",
+          text: "店員{てんいん}さんの大和{やまと}さんがドライヤーを買{か}うのにとても親切{しんせつ}でした。お礼{れい}を言{い}ってください。",
+        },
+        "11": {
+          title: "再会{さいかい}",
+          text: "久{ひさ}しぶりに会{あ}えた友達{ともだち}の家族{かぞく}とばったり会{あ}いました。最初{さいしょ}に何{なに}と言{い}いますか？",
+        },
+        "12": {
+          title: "初対面{しょたいめん}",
+          text: "初{はじ}めて会{あ}う人{ひと}です。自己紹介{じこしょうかい}をしてください。",
+        },
+        "13": {
+          title: "落{お}とし物{もの}",
+          text: "向{む}こうの人{ひと}がキーホルダーを落{お}としました。本人{ほんにん}は気{き}づかずに、とても急{いそ}いで歩{ある}いて行{い}きます。どうしますか？",
+        },
+        "14": {
+          title: "雨{あめ}・子供{こども}",
+          text: "雨{あめ}が降{ふ}っています。コンビニの前{まえ}に、傘{かさ}を持{も}っていない悲{かな}しそうな子{こ}どもがいます。どうしますか？",
+        },
+        "15": {
+          title: "雨{あめ}・駅{えき}",
+          text: "駅{えき}へ向{む}かって歩{ある}いているけど、急{きゅう}に雨{あめ}が降{ふ}り始{はじ}めました。家{いえ}に傘{かさ}があるけど、戻{もど}るのはめんどくさいです。どうしますか？",
+        },
+        "16": {
+          title: "優先座席{ゆうせんざせき}",
+          text: "優先座席{ゆうせんざせき}に、スマホを見{み}ている若{わか}い人{ひと}が座{すわ}っています。妊婦{にんぷ}さんが立{た}っています。席{せき}をゆずってもらうように、その人{ひと}に言{い}ってください。",
+        },
+        "17": {
+          title: "鍵{かぎ}",
+          text: "鍵{かぎ}が見つかりません。自分{じぶん}に何{なに}と言{い}いますか？",
+        },
+      };
+
+      let cards = [];
+      let order = [];
+      let i = 0;
+      let showEn = false;
+      let showFuri = false;
+      let shuffled = false;
+      let suppressCardClick = false;
+      let activeImg = els.imageA;
+      let idleImg = els.imageB;
+      let renderToken = 0;
+      const preloadCache = new Map();
+
+      function clampIndex(n) {
+        if (!order.length) return 0;
+        return ((n % order.length) + order.length) % order.length;
+      }
+
+      function currentCard() {
+        return cards[order[i]];
+      }
+
+      function cardUrl(card) {
+        return MEDIA + (card.image || "");
+      }
+
+      function preload(url) {
+        if (!url) return Promise.resolve(null);
+        if (preloadCache.has(url)) return preloadCache.get(url);
+        const p = new Promise((resolve) => {
+          const img = new Image();
+          img.decoding = "async";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
+        preloadCache.set(url, p);
+        return p;
+      }
+
+      function warmAround(idx) {
+        [-2, -1, 0, 1, 2].forEach((off) => {
+          const c = cards[order[clampIndex(idx + off)]];
+          if (c) preload(cardUrl(c));
+        });
+      }
+
+      function preloadAll() {
+        cards.forEach((c) => preload(cardUrl(c)));
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function withRuby(src) {
+        return escapeHtml(src).replace(
+          /([\u4E00-\u9FFF]+)\{([^{}]+)\}/g,
+          (_, base, rt) =>
+            "<ruby>" + base + "<rt>" + rt + "</rt></ruby>"
+        );
+      }
+
+      function plainJp(src) {
+        return escapeHtml(src).replace(/\{[^{}]+\}/g, "");
+      }
+
+      function englishTitle(card) {
+        return String(card.label || "")
+          .replace(/^\s*\d+\s*·\s*/, "")
+          .trim();
+      }
+
+      function freshOrder(avoidFirst) {
+        const next = cards.map((_, idx) => idx);
+        for (let n = next.length - 1; n > 0; n--) {
+          const j = Math.floor(Math.random() * (n + 1));
+          const tmp = next[n];
+          next[n] = next[j];
+          next[j] = tmp;
+        }
+        if (next.length > 1 && next[0] === avoidFirst) {
+          const swapWith = 1 + Math.floor(Math.random() * (next.length - 1));
+          const tmp = next[0];
+          next[0] = next[swapWith];
+          next[swapWith] = tmp;
+        }
+        return next;
+      }
+
+      function shuffleOrder() {
+        const avoid = order.length ? order[i] : -1;
+        order = freshOrder(avoid);
+        shuffled = true;
+        i = 0;
+        showEn = false;
+      }
+
+      function showImage(url, alt) {
+        const token = ++renderToken;
+        const target = idleImg;
+        warmAround(i);
+
+        function reveal() {
+          if (token !== renderToken) return;
+          target.alt = alt || "Situation";
+          target.classList.add("is-on");
+          activeImg.classList.remove("is-on");
+          const swap = activeImg;
+          activeImg = target;
+          idleImg = swap;
+        }
+
+        if (target.src === url || target.getAttribute("src") === url) {
+          reveal();
+          return;
+        }
+
+        target.onload = () => {
+          target.onload = null;
+          if (target.decode) {
+            target.decode().then(reveal).catch(reveal);
+          } else {
+            reveal();
+          }
+        };
+        target.onerror = () => {
+          target.onerror = null;
+          if (token === renderToken) reveal();
+        };
+        target.src = url;
+        if (target.complete && target.naturalWidth) {
+          target.onload = null;
+          reveal();
+        }
+      }
+
+      function render() {
+        const c = currentCard();
+        if (!c) return;
+        const ruby = RUBY[c.n] || {};
+        const titleSrc = ruby.title || c.titleJp || "";
+        const textSrc = ruby.text || c.text || "";
+        els.card.classList.toggle("is-en", showEn);
+        els.card.classList.toggle("is-furi", showFuri && !showEn);
+        if (showEn) {
+          els.titleJp.textContent = englishTitle(c) || c.titleJp || "";
+          els.text.textContent = c.english || "";
+        } else {
+          els.titleJp.innerHTML = withRuby(titleSrc);
+          els.text.innerHTML = showFuri ? withRuby(textSrc) : plainJp(textSrc);
+        }
+        els.peek.setAttribute("aria-pressed", showFuri ? "true" : "false");
+        els.peek.textContent = showFuri ? "Hide" : "Show";
+        els.progress.textContent = i + 1 + " / " + order.length;
+        els.prev.disabled = order.length < 2 || (shuffled && i <= 0);
+        els.next.disabled = order.length < 2;
+        els.shuffle.disabled = order.length < 2;
+        showImage(cardUrl(c), showEn ? englishTitle(c) : c.titleJp || "Situation");
+      }
+
+      function go(delta) {
+        if (!order.length) return;
+        showEn = false;
+        if (shuffled && delta > 0 && i >= order.length - 1) {
+          const avoid = order[i];
+          order = freshOrder(avoid);
+          i = 0;
+          render();
+          return;
+        }
+        if (shuffled && delta < 0 && i <= 0) return;
+        i = shuffled ? i + delta : clampIndex(i + delta);
+        render();
+      }
+
+      els.prev.addEventListener("click", () => go(-1));
+      els.next.addEventListener("click", () => go(1));
+      els.shuffle.addEventListener("click", () => {
+        shuffleOrder();
+        render();
+      });
+      els.peek.addEventListener("click", () => {
+        showFuri = !showFuri;
+        render();
+      });
+      els.card.addEventListener("click", () => {
+        if (suppressCardClick) {
+          suppressCardClick = false;
+          return;
+        }
+        showEn = !showEn;
+        render();
+      });
+
+      // Swipe
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+      els.stage.addEventListener(
+        "touchstart",
+        (e) => {
+          const t = e.changedTouches[0];
+          startX = t.clientX;
+          startY = t.clientY;
+          tracking = true;
+        },
+        { passive: true }
+      );
+      els.stage.addEventListener(
+        "touchend",
+        (e) => {
+          if (!tracking) return;
+          tracking = false;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - startX;
+          const dy = t.clientY - startY;
+          if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy)) return;
+          suppressCardClick = true;
+          go(dx < 0 ? 1 : -1);
+        },
+        { passive: true }
+      );
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === " ") {
+          e.preventDefault();
+          go(1);
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          go(-1);
+        } else if (e.key === "e" || e.key === "E") {
+          showEn = !showEn;
+          render();
+        } else if (e.key === "f" || e.key === "F") {
+          showFuri = !showFuri;
+          render();
+        } else if (e.key === "r" || e.key === "R") {
+          shuffleOrder();
+          render();
+        }
+      });
+
+      fetch(MEDIA + "cards.json")
+        .then((r) => {
+          if (!r.ok) throw new Error("Could not load cards");
+          return r.json();
+        })
+        .then((data) => {
+          cards = Array.isArray(data) ? data : [];
+          if (!cards.length) throw new Error("No cards");
+          order = cards.map((_, idx) => idx);
+          preloadAll();
+          els.boot.hidden = true;
+          els.stage.hidden = false;
+          els.hint.hidden = false;
+          els.controls.hidden = false;
+          render();
+        })
+        .catch((err) => {
+          els.boot.textContent = (err && err.message) || "Could not load cards.";
+        });
+    })();
+  </script>
+</body>
+</html>

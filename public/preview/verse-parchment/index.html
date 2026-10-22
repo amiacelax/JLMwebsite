@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verse parchment samples</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@450;600&family=Noto+Serif+JP:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 2rem 1.25rem 3rem;
+      background:
+        radial-gradient(ellipse 60% 40% at 12% 8%, rgba(103, 196, 235, 0.16), transparent 55%),
+        #0e1628;
+      color: #f4f7fb;
+      font-family: "Noto Sans JP", Inter, sans-serif;
+    }
+    h1 { margin: 0 0 0.35rem; font-size: 1.35rem; font-weight: 600; }
+    .lede { margin: 0 0 1.5rem; max-width: 40rem; color: #c5d0e0; line-height: 1.5; }
+    .grid {
+      display: grid;
+      gap: 1.5rem;
+      max-width: 40rem;
+    }
+    .sample h2 {
+      margin: 0 0 0.45rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .ref { margin: 0 0 0.55rem; color: #d4a853; font-size: 0.95rem; }
+    .paper {
+      margin: 0;
+      padding: 1.15rem 1.2rem 1rem;
+      font-family: "Noto Serif JP", serif;
+      font-size: 1.08rem;
+      font-weight: 500;
+      line-height: 2.05;
+      border-radius: 0.35rem;
+    }
+    .paper ruby { ruby-position: over; }
+    .paper rt { font-size: 0.5em; font-weight: 500; }
+    .a {
+      color: #3d2914;
+      background: #f3e6c8;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(92, 58, 24, 0.18);
+    }
+    .b {
+      color: #2c1b0e;
+      background:
+        radial-gradient(ellipse at center, #f0ddb0 0%, #d7b98a 72%, #b08a58 100%);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 0 28px rgba(92, 48, 12, 0.28);
+    }
+    .c {
+      color: #2a241c;
+      background-color: #faf6ee;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(90, 70, 40, 0.035) 0 1px, transparent 1px 7px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(70, 55, 30, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <h1>Verse on paper — pick one</h1>
+  <p class="lede">Same line, three papers. The prayer page is still the green memo until you choose. Reply 1, 2, or 3.</p>
+  <div class="grid">
+    <section class="sample">
+      <h2>1. Cream sheet</h2>
+      <p class="ref"><ruby>詩篇<rt>しへん</rt></ruby> 23:1 · 口語訳</p>
+      <p class="paper a"><ruby>主<rt>しゅ</rt></ruby>はわたしの<ruby>牧者<rt>ぼくしゃ</rt></ruby>であって、わたしには<ruby>乏<rt>とぼ</rt></ruby>しいことがない。</p>
+    </section>
+    <section class="sample">
+      <h2>2. Old page</h2>
+      <p class="ref"><ruby>詩篇<rt>しへん</rt></ruby> 23:1 · 口語訳</p>
+      <p class="paper b"><ruby>主<rt>しゅ</rt></ruby>はわたしの<ruby>牧者<rt>ぼくしゃ</rt></ruby>であって、わたしには<ruby>乏<rt>とぼ</rt></ruby>しいことがない。</p>
+    </section>
+    <section class="sample">
+      <h2>3. Light washi</h2>
+      <p class="ref"><ruby>詩篇<rt>しへん</rt></ruby> 23:1 · 口語訳</p>
+      <p class="paper c"><ruby>主<rt>しゅ</rt></ruby>はわたしの<ruby>牧者<rt>ぼくしゃ</rt></ruby>であって、わたしには<ruby>乏<rt>とぼ</rt></ruby>しいことがない。</p>
+    </section>
+  </div>
+</body>
+</html>

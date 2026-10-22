@@ -20,15 +20,26 @@
     "sykohpath": {
       "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67",
       "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLWim1UU6-V6BEYaYldfIdxbrvWAB0FU67"
+    },
+    "christian": {
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLNz4IuNYLyFo",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLNz4IuNYLyFo"
+    },
+    "baranymatthewjr": {
+      "lessonPlaylistUrl": "https://www.youtube.com/playlist?list=PLBbpXYqyNuVU",
+      "reviewPlaylistUrl": "https://www.youtube.com/playlist?list=PLBbpXYqyNuVU",
+      "latestLessonUrl": "https://youtu.be/b5c90SJzQ_0",
+      "youtubeUrl": "https://youtu.be/b5c90SJzQ_0",
+      "latestLessonTitle": "Matt 5 - Past tense ました、Yes/No questions"
     }
   },
   "assignments": [
     {
-      "id": "faye-situation-cards-1",
+      "id": "situation-cards-1",
       "title": "Situation Cards 1 — 日本での一日",
       "date": "2026-08-24",
       "lessonName": "Situation Cards 1",
-      "studentLabel": "Faye",
+      "studentLabel": "",
       "students": [],
       "forSale": false,
       "salePrice": 0.99,
@@ -37,10 +48,47 @@
         "situation-cards",
         "speaking",
         "roleplay",
-        "faye",
         "draft"
       ],
-      "summary": "Library draft — 8 Situation Cards (mix of sticky + happy). Look at the picture, read JP, record what you'd say. NOT assigned to Faye yet."
+      "summary": "Library draft — 15 Situation Cards (includes first meeting, dropped keychain, rainy konbini child, rainy walk to station). Look at the picture, read JP, record what you'd say. Mobile deck: /preview/sit-cards-deck/index.html"
+    },
+    {
+      "id": "sheet-introducing-yourself",
+      "title": "Introducing Yourself",
+      "date": "2026-09-16",
+      "lessonName": "Introducing Yourself",
+      "studentLabel": "",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "tags": [
+        "self-intro",
+        "speaking",
+        "listening",
+        "beginner",
+        "draft"
+      ],
+      "summary": "Draft — お名前は？何才ですか？どこに住んでますか？お仕事は？趣味はありますか？ Record each question in the Audio Prompt block, then students type + record."
+    },
+    {
+      "id": "sheet-intro-circle",
+      "title": "Intro Circle — 10 People",
+      "date": "2026-09-16",
+      "lessonName": "Intro Circle",
+      "studentLabel": "",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "tags": [
+        "self-intro",
+        "listening",
+        "irasutoya",
+        "skeleton",
+        "draft"
+      ],
+      "summary": "Skeleton — 10 people introduce themselves (irasutoya pics + audio TBD). Media folder: /homework/media/intro-circle/."
     },
     {
       "id": "faye-aiko-reply-15y",
@@ -69,7 +117,7 @@
       "students": [],
       "forSale": false,
       "salePrice": 0.99,
-      "wsCategory": "core-japanese",
+      "wsCategory": "other",
       "freeTrial": true,
       "trialLevel": "beginner",
       "tags": [
@@ -88,7 +136,7 @@
       "students": [],
       "forSale": false,
       "salePrice": 0.99,
-      "wsCategory": "core-japanese",
+      "wsCategory": "other",
       "freeTrial": true,
       "trialLevel": "intermediate",
       "tags": [
@@ -104,10 +152,12 @@
       "title": "Free trial — 〜時、〜の時",
       "date": "2026-08-18",
       "lessonName": "Free trial — Advanced",
-      "students": [],
+      "students": [
+        "demo2"
+      ],
       "forSale": false,
       "salePrice": 0.99,
-      "wsCategory": "core-japanese",
+      "wsCategory": "other",
       "freeTrial": true,
       "trialLevel": "advanced",
       "tags": [
@@ -119,11 +169,14 @@
       "summary": "Short free-trial のとき sheet: 使うときは, 子どもよく遊んだ, childhood video prompt."
     },
     {
-      "id": "sykohpath-secret-hiragana",
+      "id": "sheet-secret-hiragana",
       "title": "Secret Hiragana / Katakana",
       "date": "2026-08-22",
       "lessonName": "Secret Hiragana / Katakana",
-      "students": ["demoprem"],
+      "students": [
+        "demoprem",
+        "christian"
+      ],
       "forSale": false,
       "salePrice": 0.99,
       "wsCategory": "core-japanese",
@@ -154,7 +207,8 @@
         "grammar",
         "draft"
       ],
-      "summary": "Library draft — もし・～たら only (if / when / after / once). Conjugation practice (新しかったら, 見上げたら, …) + 3 open sentences. No ～なら / ～れば."
+      "summary": "Library draft — もし・～たら only (if / when / after / once). Conjugation practice (新しかったら, 見上げたら, …) + 3 open sentences. No ～なら / ～れば.",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1dhaiqs",
@@ -175,7 +229,8 @@
         "grammar",
         "draft"
       ],
-      "summary": "あとにしよう — empty 以 sheet (ignore 上記・下記). Seeds: 以降 — 6月以降。 (June and later) | 以外 — 明日以外は行けます。 (except for / other than) | 以上 — 20歳以上じゃないとダメ。 / これ以上ある。 | 以内 — 5分以内に完食。 | 以下 — 5歳以下のお子様は無料。 (5 and under free) | 未満 — 5歳未満のお子様は無料。 (under 5 free)"
+      "summary": "あとにしよう — empty 以 sheet (ignore 上記・下記). Seeds: 以降 — 6月以降。 (June and later) | 以外 — 明日以外は行けます。 (except for / other than) | 以上 — 20歳以上じゃないとダメ。 / これ以上ある。 | 以内 — 5分以内に完食。 | 以下 — 5歳以下のお子様は無料。 (5 and under free) | 未満 — 5歳未満のお子様は無料。 (under 5 free)",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1sgburc",
@@ -190,7 +245,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty もう・まだ"
+      "summary": "あとにしよう — empty もう・まだ",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u5n0zm8",
@@ -205,7 +261,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty なに・なん. what"
+      "summary": "あとにしよう — empty なに・なん. what",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1tqbi2x",
@@ -220,7 +277,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty だれ. who"
+      "summary": "あとにしよう — empty だれ. who",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-ut7gow3",
@@ -235,7 +293,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty いつ・何時・何年. when in Japanese"
+      "summary": "あとにしよう — empty いつ・何時・何年. when in Japanese",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-unsr8ol",
@@ -250,7 +309,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty どこ. where"
+      "summary": "あとにしよう — empty どこ. where",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1y4x1hq",
@@ -265,7 +325,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty なんで・どうして. why"
+      "summary": "あとにしよう — empty なんで・どうして. why",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1crf7ln",
@@ -280,7 +341,8 @@
         "draft",
         "question-words"
       ],
-      "summary": "あとにしよう — empty どう？. include どうだった？"
+      "summary": "あとにしよう — empty どう？. include どうだった？",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-uio97at",
@@ -296,7 +358,8 @@
         "grammar",
         "draft"
       ],
-      "summary": "あとにしよう — empty 前・前に. Seed: このシャツを3年前に買った"
+      "summary": "前・前に — 2 Immersion Kit listening, 3 sentence order (4 drop boxes), 1 video prompt.",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "sheet-u1vj998q",
@@ -311,7 +374,8 @@
         "grammar",
         "draft"
       ],
-      "summary": "あとにしよう — empty ～にする worksheet (6 blanks)."
+      "summary": "あとにしよう — empty ～にする worksheet (6 blanks).",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "2026-06-05-ben-m",
@@ -407,7 +471,8 @@
         "verb conjugation",
         "low-intermediate"
       ],
-      "summary": "Practice ～ないといけない — must / have to — in fill-in blanks."
+      "summary": "Practice ～ないといけない — must / have to — in fill-in blanks.",
+      "wsCategory": "core-japanese"
     },
     {
       "id": "drew-multiple-choice-quiz",
@@ -468,7 +533,12 @@
       "wsCategory": "jlpt",
       "forSale": false,
       "salePrice": 0.99,
-      "tags": ["open-response", "N3", "draft", "jlpt"],
+      "tags": [
+        "open-response",
+        "N3",
+        "draft",
+        "jlpt"
+      ],
       "summary": "Simple N3 open response (library only)."
     },
     {
@@ -481,7 +551,12 @@
       "wsCategory": "core-japanese",
       "forSale": false,
       "salePrice": 0.99,
-      "tags": ["い-adjective", "conjugation", "listening", "draft"],
+      "tags": [
+        "い-adjective",
+        "conjugation",
+        "listening",
+        "draft"
+      ],
       "summary": "Placeholder structure: 4 listening, 4 star-order, 2 translation, 1 video response."
     },
     {
@@ -494,7 +569,12 @@
       "wsCategory": "christian",
       "forSale": false,
       "salePrice": 0.99,
-      "tags": ["gospel", "open-response", "draft", "christian"],
+      "tags": [
+        "gospel",
+        "open-response",
+        "draft",
+        "christian"
+      ],
       "summary": "Open response — 5 core Japanese gospel points + Josh's English draft reference."
     },
     {
@@ -507,8 +587,108 @@
       "wsCategory": "christian",
       "forSale": false,
       "salePrice": 0.99,
-      "tags": ["gospel", "open-response", "draft", "christian"],
+      "tags": [
+        "gospel",
+        "open-response",
+        "draft",
+        "christian"
+      ],
       "summary": "Open response — 5 core Japanese gospel points + Ben's theological outline reference."
+    },
+    {
+      "id": "sheet-usa7jd0",
+      "title": "〜のに・〜なのに",
+      "date": "2026-07-29",
+      "lessonName": "〜のに・〜なのに",
+      "students": [
+        "kaetherjk",
+        "benm",
+        "sykohpath"
+      ],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "tags": [
+        "grammar",
+        "draft"
+      ],
+      "summary": "Worksheet: 〜のに・〜なのに"
+    },
+    {
+      "id": "sheet-uxrsqyd",
+      "title": "よく・あまり",
+      "date": "2026-06-17",
+      "lessonName": "よく・あまり",
+      "students": [
+        "faye",
+        "joshs",
+        "sgtjamjar"
+      ],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "core-japanese",
+      "tags": [
+        "grammar",
+        "draft"
+      ],
+      "summary": "Worksheet: よく・あまり"
+    },
+    {
+      "id": "sheet-u1vevjge",
+      "title": "〜時、〜の時",
+      "date": "2026-06-24",
+      "lessonName": "〜時、〜の時",
+      "students": [
+        "faye",
+        "joshs",
+        "ivan",
+        "benc",
+        "benm",
+        "sgtjamjar"
+      ],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar"
+      ],
+      "summary": "Worksheet: 〜時、〜の時",
+      "wsCategory": "core-japanese"
+    },
+    {
+      "id": "sheet-u1st0vtm",
+      "title": "～たい",
+      "date": "2026-06-30",
+      "lessonName": "～たい",
+      "students": [
+        "benc",
+        "faye",
+        "deme",
+        "benm",
+        "garywgipson"
+      ],
+      "forSale": false,
+      "salePrice": 0.99,
+      "tags": [
+        "grammar"
+      ],
+      "summary": "Worksheet: ～たい",
+      "wsCategory": "core-japanese"
+    },
+    {
+      "id": "sheet-music-eikou",
+      "title": "栄光・尊厳",
+      "date": "2026-10-05",
+      "lessonName": "栄光・尊厳",
+      "students": [],
+      "forSale": false,
+      "salePrice": 0.99,
+      "wsCategory": "music",
+      "tags": [
+        "music",
+        "sing",
+        "christian"
+      ],
+      "summary": "Sing sheet — 栄光・尊厳 with furigana (papery fullscreen)."
     }
   ]
 }

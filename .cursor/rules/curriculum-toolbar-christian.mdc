@@ -1,0 +1,25 @@
+---
+description: Christian Curriculum Prayer/Situation must use Christian’s modern Glass·Cloud toolbar — never the old floating corner tools.
+globs: public/js/hw-hub-v5-live.js,public/js/hw-student-toolbar.js,public/js/hw-platform.js,public/css/hw-hub-v5.css
+alwaysApply: false
+---
+
+# Curriculum toolbar = Christian’s version
+
+Christian (CJ) is the **source of truth** for Christian Curriculum chrome. Emily / Jeremiah / Alex / Ben M / Noah / Matt (and any other curriculum account) must match him.
+
+## Required toolbar
+
+- Use `#hw-toolbar-bar` + `html.hw-ws-toolbar` (Glass · Cloud pill under the content).
+- On Prayer / Situation Cards: `HwStudentToolbar.mountOnHost(...)` via `mountCurriculumToolbar` in `hw-hub-v5-live.js`.
+- Keep floating `.hw-mg-widget` / `.hw-hc-launcher` **tucked** (hidden unless popped). Never ship the old corner Glass + corner Cloud + fixed bottom pill as the student UI.
+
+## Do not
+
+- Attach Glass/Cloud only with `HwMagnifyingGlass.attachTo` / `HwHomeworkComments.attachTo` on Prayer/Sit **without** mounting the student toolbar.
+- Unmount / `display:none` the toolbar on no-HW / noplan / no-linked-assignment while Prayer or Situation is open (`hw-prayer-toolbar` / `hw-sit-toolbar`).
+- Treat “no linked assignment” as “no tools” for curriculum Prayer/Sit — those tabs still need Christian’s pill.
+
+## Smell test
+
+If a curriculum student sees floating Glass (top-right) + Cloud (top-left) and/or a fixed bottom Glass+Cloud pill, you regressed. Remount `mountOnHost` and keep `hw-ws-toolbar` on.

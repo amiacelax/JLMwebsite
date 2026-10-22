@@ -1,0 +1,70 @@
+{
+  "id": "sheet-introducing-yourself",
+  "title": "Introducing Yourself",
+  "date": "2026-09-16",
+  "register": "casual",
+  "studentLabel": "",
+  "lessonName": "Introducing Yourself",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "core-japanese",
+  "topicExplanation": "自己紹介（じこしょうかい）\n\nIntroducing yourself is essential to building relationships and meeting people. You will have this conversation more than any other conversation, and it surprisingly has a lot of variations.",
+  "students": [],
+  "sections": [
+    {
+      "id": "sec-intro-5",
+      "mode": "audio-prompt",
+      "title": "",
+      "instructions": "",
+      "items": [
+        {
+          "id": "intro-onamae",
+          "prompt": "お名前は？",
+          "typeIn": true,
+          "typeInLabel": "Type and record your answer",
+          "recordLabel": "Record your answer",
+          "audioUrl": "/api/hw-m/subvid-1789714021523-235sl5",
+          "promptMediaId": "subvid-1789714021523-235sl5"
+        },
+        {
+          "id": "intro-nansai",
+          "prompt": "何才ですか？",
+          "typeIn": true,
+          "typeInLabel": "Type and record your answer",
+          "recordLabel": "Record your answer",
+          "audioUrl": "/api/hw-m/subvid-1789714032825-aliwik",
+          "promptMediaId": "subvid-1789714032825-aliwik"
+        },
+        {
+          "id": "intro-sumu",
+          "prompt": "どこに住んでますか？",
+          "typeIn": true,
+          "typeInLabel": "Type and record your answer",
+          "recordLabel": "Record your answer",
+          "audioUrl": "/api/hw-m/subvid-1789714041715-s9zvqs",
+          "promptMediaId": "subvid-1789714041715-s9zvqs"
+        },
+        {
+          "id": "intro-shigoto",
+          "prompt": "お仕事は？",
+          "typeIn": true,
+          "typeInLabel": "Type and record your answer",
+          "recordLabel": "Record your answer",
+          "audioUrl": "/api/hw-m/subvid-1789714051931-wlgvwi",
+          "promptMediaId": "subvid-1789714051931-wlgvwi"
+        },
+        {
+          "id": "intro-shumi",
+          "prompt": "趣味はありますか？",
+          "typeIn": true,
+          "typeInLabel": "Type and record your answer",
+          "recordLabel": "Record your answer",
+          "audioUrl": "/api/hw-m/subvid-1789714058706-sleteu",
+          "promptMediaId": "subvid-1789714058706-sleteu"
+        }
+      ]
+    }
+  ]
+}

@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&family=Yomogi&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260815-discordbtn">
+  <link rel="stylesheet" href="/css/styles.css?v=20261013-blue3">
   <script>
     (function () {
       var t = localStorage.getItem('theme');
@@ -72,7 +72,7 @@
             <li><a href="/homework.html">Homework Hub</a></li>
           </ul>
         </div>
-        <a class="btn btn--primary btn--sm nav__cta" href="#contact" data-service="Free consultation">Free Consultation</a>
+        <a class="btn btn--primary btn--sm nav__cta" href="#contact" data-service="Book a trial lesson">Book a trial lesson</a>
       </div>
     </nav>
   </header>
@@ -100,7 +100,7 @@
           <p class="hero__tagline">Learn Japanese from someone <span class="hero__tagline-rest">who's been in your shoes.</span></p>
           <div class="hero__cta-block">
             <div class="hero__actions">
-              <a class="btn btn--primary" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
+              <a class="btn btn--primary" href="#contact" data-service="Book a trial lesson">Book a trial lesson</a>
               <button class="btn btn--ghost btn--stack" type="button" id="hero-intro-video-btn" data-intro-video-open>
                 <span class="btn__stack-line">Watch</span>
                 <span class="btn__stack-line">Intro Video</span>
@@ -287,7 +287,7 @@
         </div>
         <div class="meet__body-wrap">
           <div class="meet__body">
-            <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
+            <a class="btn btn--primary meet__body-cta" href="#contact" data-service="Book a trial lesson">Book a trial lesson</a>
             <div class="text-fold" data-text-fold>
               <div
                 class="text-fold__content"
@@ -336,7 +336,7 @@
         <div class="services__grid">
           <div class="service-column" id="service-homework">
             <article class="service-card service-card--featured service-card--nav" data-hw-breakdown-card>
-              <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5~</span><span class="service-card__price-suffix">/mo</span></p>
+              <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$9~</span><span class="service-card__price-suffix">/mo</span></p>
               <h3 class="service-card__title">Homework Hub <span class="service-card__badge service-card__badge--start">Self-learner</span></h3>
               <div class="service-card__fit">
                 <p class="service-card__fit-label">Good if you…</p>
@@ -376,7 +376,7 @@
                 <p>Anything you have to say is more important than what I have to say. Let's do lessons so you don't need lessons anymore. Get instant feedback so you can know <u>exactly</u> where you're making mistakes.</p>
               </details>
               <div class="service-card__bottom">
-                <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
+                <a class="btn btn--primary btn--full service-card__cta" href="#contact" data-service="Book a trial lesson">Book a trial lesson</a>
               </div>
             </article>
             <div class="service-column__extra">
@@ -431,7 +431,7 @@
             <p class="section__eyebrow">Contact</p>
             <h2 id="contact-heading" class="section__title">What are your goals?</h2>
             <p class="contact__desc">
-              Send me a message! I would love to hear about why you want to learn Japanese. Book a free consultation — about 30–45 minutes where we share our stories about Japanese, then do a little mini-lesson — or ask any questions you want.
+              Send me a message! I would love to hear about why you want to learn Japanese. Book a trial lesson — about 30–45 minutes where we share our stories about Japanese, then do a little mini-lesson — or ask any questions you want.
             </p>
             <p class="contact__reassurance">No pressure! Let's just have a chat about your goals.</p>
             <ul class="contact__details">
@@ -466,13 +466,16 @@
                 <label for="service">Service</label>
                 <select id="service" name="service" required>
                   <option value="">Select a service</option>
+                  <option value="Book a trial lesson">Book a trial lesson</option>
                   <option value="Private Lessons">Private Lessons</option>
                   <option value="Homework Hub">Homework Hub</option>
                   <option value="Japanese Jumpstart">Japanese Jumpstart</option>
-                  <option value="Free consultation">Free consultation</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
+              <p class="contact-schedule-link" id="contact-pick-time" hidden>
+                <a class="contact-schedule-link__button" href="#availability" data-schedule-open>Pick a time</a>
+              </p>
               <div class="form-group">
                 <label for="message">Message</label>
                 <textarea id="message" name="message" rows="5" required placeholder="Tell me about your Japanese goals…"></textarea>
@@ -518,12 +521,12 @@
       <div class="hw-breakdown-tier-stack">
       <div class="services__grid hw-breakdown-services">
         <article class="service-card">
-          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$5</span><span class="service-card__price-suffix">/mo</span></p>
+          <p class="service-card__price" aria-hidden="true"><span class="service-card__price-main">$9</span><span class="service-card__price-suffix">/mo</span></p>
           <h3 class="service-card__title">Basic <span class="service-card__cadence">1 assignment</span></h3>
           <div class="service-card__fit">
             <ul class="service-card__fit-list">
               <li>Low commitment</li>
-              <li>$5 / one HW a month</li>
+              <li>$9 / one HW a month</li>
               <li>Written notes and audio feedback from JD</li>
             </ul>
           </div>
@@ -643,6 +646,7 @@
         <button class="btn btn--primary" type="button" id="lesson-scheduler-use" disabled>Use this time in contact form</button>
         <button class="btn btn--ghost" type="button" data-schedule-close>Close</button>
       </div>
+      <p class="lesson-scheduler-modal__chat">Prefer to chat first? <a class="lesson-scheduler-modal__link" id="lesson-scheduler-discord" href="https://discord.com/users/234638935509172224" target="_blank" rel="noopener noreferrer">Message me on Discord</a> or <a class="lesson-scheduler-modal__link" id="lesson-scheduler-email" href="mailto:JD@japaneselanguagementor.com?subject=Free%20trial%20lesson">Email me</a></p>
     </div>
   </div>
 
@@ -665,8 +669,8 @@
     </div>
   </div>
 
-  <aside class="sticky-cta" id="sticky-cta" hidden aria-label="Book a free consultation">
-    <a class="sticky-cta__link" href="#contact" data-service="Free consultation">Book a Free Consultation</a>
+  <aside class="sticky-cta" id="sticky-cta" hidden aria-label="Book a trial lesson">
+    <a class="sticky-cta__link" href="#contact" data-service="Book a trial lesson">Book a trial lesson</a>
   </aside>
 
   <footer class="site-footer">
@@ -733,9 +737,9 @@
   </script>
   <script src="/js/kumo-wallpaper.js" defer></script>
   <script src="/js/hw-auth.js" defer></script>
-  <script src="/js/hw-checkout.js?v=20260814-ppnew" defer></script>
+  <script src="/js/hw-checkout.js?v=20261009-close" defer></script>
   <script src="/js/hw-dialog-outside-close.js?v=2" defer></script>
-  <script src="/js/main.js?v=20260815-contactfocus" defer></script>
+  <script src="/js/main.js?v=20261013-livecal3" defer></script>
   <script src="/js/promo-email.js" defer></script>
 </body>
 </html>

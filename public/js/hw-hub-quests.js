@@ -1,6 +1,11 @@
 /**
  * Student Hub — Immersion Quest tab (365 daily look-fors).
- * One complete per Tokyo day; unfinished quests do not advance.
+ * One advance per local week. The week starts Monday at 5:00 a.m. in the browser's timezone.
+ * The quest also moves on by itself every Monday, even if last week's was skipped.
+ * The working quest (examples, seen flag, today's completion) belongs to the current week,
+ * which starts Monday at 5:00 a.m. A new week starts a fresh working instance.
+ * The look-for list is not wiped. Place in the 365-day sequence is kept.
+ * Auto: Complete advances. Manual: Complete logs examples; Next quest advances.
  * Puzzle pieces + JD explainer video are scaffolded as Coming soon.
  */
 (function (global) {
@@ -10,10 +15,8 @@
   const EXAMPLES = 5;
   const LS_PREFIX = "jlm-hw-immersion-quests:";
 
-  const IMPORTANT_LINES = [
-    "Podcasts and other audio-only media are fine.",
-    "But it has been scientifically proven that the more senses you use the better you memorize information. So, writing, seeing, touching, scent, and even weird ones like pain and scratching (like your hand on a piece of paper)!",
-  ];
+  const IMPORTANT_TEXT =
+    "Podcasts, songs, and other audio-only media are okay, but using more senses will lead to better memorization — writing, seeing, touching, scent, even the feel of your hand on paper!";
 
   /** 59 look-fors from JD — cycle to fill 365 days. */
   const CORE = [
@@ -91,8 +94,8 @@
   ];
 
   const CORE_COUNT = CORE.length; // 59
-  /** Full Quest UI — test on demoprem only until launch. */
-  const QUEST_PREVIEW_USERNAMES = new Set(["demoprem", "premdemo"]);
+  /** Full Quest UI — Demo2 (demoprem) and students moved onto the Demo2 hub (nekobi). */
+  const QUEST_PREVIEW_USERNAMES = new Set(["demoprem", "premdemo", "nekobi"]);
 
   function questAtDay(day) {
     const n = Math.max(1, Math.min(TOTAL, Number(day) || 1));
@@ -108,19 +111,26 @@
     };
   }
 
-  function tokyoYmd() {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
+  /** Local day key (YYYY-MM-DD). Before 5:00 a.m. it is still the previous day. */
+  function localYmd() {
+    return global.HwLocalPeriod.dayKey();
+  }
+
+  /** Monday 5:00 a.m. local week key (YYYY-MM-DD of that Monday). */
+  function localWeekKey() {
+    return global.HwLocalPeriod.weekKey();
+  }
+
+  function normalizeAdvanceMode(raw) {
+    return String(raw || "").trim().toLowerCase() === "manual" ? "manual" : "auto";
   }
 
   function emptyProgress() {
     return {
       currentIndex: 0,
       lastCompletedYmd: "",
+      periodKey: "",
+      advanceMode: "auto",
       seenKey: "",
       examples: ["", "", "", "", ""],
       completed: [],
@@ -135,6 +145,10 @@
   let newQuest = false;
   let visibleExampleCount = 1;
   let importantOpen = false;
+  /* 4-tab hub: true while the date is showing in the big box instead of the target. Resets on tab entry/refresh. */
+  let showDateInBox = false;
+  /** Manual mode only: offset from current quest day (−7 … +1). */
+  let manualBrowseOffset = 0;
 
   function username() {
     const session = global.HwAuth?.getSession?.();
@@ -144,7 +158,29 @@
   }
 
   function questLayoutEnabled() {
-    return QUEST_PREVIEW_USERNAMES.has(username());
+    /* Every signed-in student gets the Quest tab (Basic 4-tab view included). */
+    if (username()) return true;
+    if (QUEST_PREVIEW_USERNAMES.has(username())) return true;
+    const session = global.HwAuth?.getSession?.();
+    if (session?.tier === "quest_only" || session?.accountLabel === "quest_only") return true;
+    if (global.HwHubV5Live?.isQuestOnlyAccount?.()) return true;
+    if (global.HwHubV5Live?.isCurriculumAccount?.()) return true;
+    return false;
+  }
+
+  function questIntroHtml() {
+    if (!questLayoutEnabled()) return "";
+    const questOnly =
+      global.HwAuth?.hasQuestOnlyAccess?.() || global.HwHubV5Live?.isQuestOnlyAccount?.();
+    if (!questOnly) return "";
+    return (
+      '<section class="hw-quest-intro" aria-labelledby="hw-quest-intro-title">' +
+      '<h3 class="hw-quest-intro__title" id="hw-quest-intro-title">What I do?</h3>' +
+      '<p class="hw-quest-intro__desc">JD\u2019s intro video for Quest Only is on the way. ' +
+      "For now: do this week\u2019s quest, your weekly workout, and jot examples in Notes.</p>" +
+      '<div class="hw-quest-intro__video" aria-hidden="true">' +
+      '<span class="hw-quest-intro__video-label">Intro video placeholder</span></div></section>'
+    );
   }
 
   function isDemo() {
@@ -185,6 +221,8 @@
     return {
       currentIndex: idx >= TOTAL ? TOTAL : idx,
       lastCompletedYmd: String(raw.lastCompletedYmd || ""),
+      periodKey: String(raw.periodKey || ""),
+      advanceMode: normalizeAdvanceMode(raw.advanceMode),
       seenKey: String(raw.seenKey || ""),
       examples: examples,
       completed: Array.isArray(raw.completed) ? raw.completed : [],
@@ -193,23 +231,96 @@
     };
   }
 
-  function currentQuest() {
-    if (progress.currentIndex >= TOTAL) {
-      return questAtDay(TOTAL);
+  /** Whole weeks between two Monday date keys (YYYY-MM-DD). At least 1. */
+  function weeksBetween(fromKey, toKey) {
+    const a = Date.parse(fromKey + "T00:00:00Z");
+    const b = Date.parse(toKey + "T00:00:00Z");
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return 1;
+    return Math.max(1, Math.round((b - a) / (7 * 86400000)));
+  }
+
+  /**
+   * New week: fresh examples and completion gate, and the quest moves on.
+   * A week that was completed already moved on when it was completed. Every other week
+   * that went by moves the quest one step, so the quest follows the calendar.
+   */
+  function applyWeekPeriod(next) {
+    const week = localWeekKey();
+    if (!next.periodKey) {
+      next.periodKey = week;
+      return false;
     }
-    return questAtDay(progress.currentIndex + 1);
+    if (next.periodKey === week) return false;
+    const weeks = weeksBetween(next.periodKey, week);
+    const skipped = Math.max(0, weeks - (next.lastCompletedYmd ? 1 : 0));
+    next.currentIndex = Math.min(TOTAL, (Number(next.currentIndex) || 0) + skipped);
+    next.periodKey = week;
+    next.examples = ["", "", "", "", ""];
+    next.lastCompletedYmd = "";
+    next.seenKey = "";
+    return true;
+  }
+
+  function ensureCurrentWeek() {
+    const rotated = applyWeekPeriod(progress);
+    if (rotated) {
+      visibleExampleCount = 1;
+      writeLocal(progress);
+      const user = username();
+      if (user && !isDemo()) {
+        void saveDraft({
+          examples: progress.examples,
+          seenKey: "",
+          period: progress.periodKey,
+        }).catch(() => {});
+      }
+    }
+    return rotated;
+  }
+
+  function isAutoMode() {
+    return normalizeAdvanceMode(progress.advanceMode) === "auto";
+  }
+
+  function currentQuestDay() {
+    if (progress.currentIndex >= TOTAL) return TOTAL;
+    return progress.currentIndex + 1;
+  }
+
+  function currentQuest() {
+    return questAtDay(currentQuestDay());
+  }
+
+  function clampBrowseOffset(offset) {
+    return Math.max(-7, Math.min(1, Number(offset) || 0));
+  }
+
+  function displayedQuest() {
+    /* After this week's quest is done the counter has moved on; keep showing the finished one. */
+    const doneBack = advancedToday() && !allDone() ? 1 : 0;
+    if (isAutoMode()) return questAtDay(Math.max(1, currentQuestDay() - doneBack));
+    const day = Math.max(1, Math.min(TOTAL, currentQuestDay() - doneBack + manualBrowseOffset));
+    return questAtDay(day);
+  }
+
+  function isPreviewingQuest() {
+    return !isAutoMode() && manualBrowseOffset !== 0;
   }
 
   function allDone() {
     return progress.currentIndex >= TOTAL;
   }
 
-  function completedToday() {
-    return progress.lastCompletedYmd === tokyoYmd();
+  /** True after this week's advance (Complete in auto, Next in manual). */
+  function advancedToday() {
+    return (
+      !!progress.lastCompletedYmd &&
+      (!progress.periodKey || progress.periodKey === localWeekKey())
+    );
   }
 
   function syncStarFlag() {
-    if (allDone()) {
+    if (allDone() || advancedToday()) {
       newQuest = false;
       return;
     }
@@ -252,7 +363,10 @@
       }
       try {
         const res = await fetch(
-          "/api/immersion-quests?username=" + encodeURIComponent(user),
+          "/api/immersion-quests?username=" +
+            encodeURIComponent(user) +
+            "&period=" +
+            encodeURIComponent(localWeekKey()),
           { cache: "no-store" }
         );
         if (!res.ok) throw new Error("load");
@@ -274,7 +388,10 @@
     progress = normalizeProgress(next);
     writeLocal(progress);
     const user = username();
-    if (!user || isDemo()) return progress;
+    if (!user || isDemo()) {
+      notifyQuestExamplesChanged();
+      return progress;
+    }
     const res = await fetch("/api/immersion-quests", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -282,6 +399,9 @@
         username: user,
         examples: progress.examples,
         seenKey: progress.seenKey,
+        advanceMode: progress.advanceMode,
+        ymd: localYmd(),
+        period: localWeekKey(),
       }),
     });
     if (!res.ok) {
@@ -293,22 +413,32 @@
     const data = await res.json().catch(() => ({}));
     if (data.progress) progress = normalizeProgress(data.progress);
     writeLocal(progress);
+    notifyQuestExamplesChanged();
     return progress;
   }
 
   function bindImportant(root) {
-    const btn = root.querySelector(".hw-recording-tip__trigger");
-    const msg = root.querySelector(".hw-recording-tip__message");
+    const tip = root.querySelector(".hw-quest__important");
+    const btn = tip?.querySelector(".hw-recording-tip__trigger");
+    const msg = tip?.querySelector(".hw-recording-tip__message");
     if (!btn || !msg) return;
-    btn.addEventListener("click", () => {
-      // Follow the same toggle behavior as other HW recording tips:
-      // - click when closed -> open
-      // - click when open -> close
-      const currentlyHidden = msg.hidden === true;
-      msg.hidden = !currentlyHidden;
-      btn.setAttribute("aria-expanded", currentlyHidden ? "true" : "false");
-      btn.classList.toggle("is-open", currentlyHidden);
-      importantOpen = currentlyHidden;
+
+    if (!msg.id) {
+      msg.id = "hw-quest-important-msg";
+    }
+    btn.setAttribute("aria-controls", msg.id);
+
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const open = msg.hasAttribute("hidden");
+      if (open) {
+        msg.removeAttribute("hidden");
+      } else {
+        msg.setAttribute("hidden", "");
+      }
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.classList.toggle("is-open", open);
+      importantOpen = open;
     });
   }
 
@@ -319,34 +449,88 @@
   }
 
   function refreshVisibleExampleCount() {
-    let count = 1;
+    let countFromData = 1;
     for (let i = 0; i < progress.examples.length; i++) {
-      if (String(progress.examples[i] || "").trim()) count = i + 1;
+      if (String(progress.examples[i] || "").trim()) countFromData = i + 1;
     }
-    visibleExampleCount = Math.max(1, Math.min(EXAMPLES, count));
+    countFromData = Math.max(1, Math.min(EXAMPLES, countFromData));
+    /* Keep extra empty rows the student opened via + Add example. */
+    visibleExampleCount = Math.max(visibleExampleCount, countFromData);
   }
 
   function renderExampleRows(disabled) {
     let html = "";
     for (let i = 0; i < visibleExampleCount; i++) {
       const val = escapeHtml(progress.examples[i] || "");
+      const n = i + 1;
+      /* Brave/Chrome treat bare text boxes as login fields. one-time-code +
+         non-credential name/id keeps the password manager away. */
       html +=
-        "<li><input data-quest-ex type=\"text\" maxlength=\"200\" value=\"" +
+        "<li class=\"hw-quest__ex-row\"><input data-quest-ex type=\"text\" inputmode=\"text\" " +
+        'name="immersion-quest-ex-' +
+        n +
+        '" id="hw-quest-ex-' +
+        n +
+        '" autocomplete="one-time-code" autocapitalize="sentences" ' +
+        'spellcheck="true" data-1p-ignore="true" data-lpignore="true" ' +
+        'data-form-type="other" data-bwignore="true" maxlength="200" value="' +
         val +
         '" ' +
         (disabled ? "readonly " : "") +
-        "placeholder=\"Example " +
-        (i + 1) +
-        "\" aria-label=\"Example " +
-        (i + 1) +
-        "\"></li>";
+        'placeholder="Example ' +
+        n +
+        '" aria-label="Example ' +
+        n +
+        '">' +
+        (disabled
+          ? ""
+          : '<button type="button" class="hw-ex-del" data-quest-ex-del aria-label="Remove example ' +
+            n +
+            '" title="Remove example">×</button>') +
+        "</li>";
     }
     return html;
+  }
+
+  /** Take example #index out; the ones below move up one. */
+  function removeExample(mount, index) {
+    const list = Array.from({ length: EXAMPLES }, (_, i) => String(progress.examples[i] || ""));
+    readExamplesFromForm(mount).forEach((v, i) => {
+      list[i] = v;
+    });
+    list.splice(index, 1);
+    list.push("");
+    progress.examples = list;
+    if (visibleExampleCount > 1) visibleExampleCount -= 1;
+    void saveDraft({ examples: list, seenKey: progress.seenKey }).catch(() => {});
+    renderPanel();
+  }
+
+  function bindExampleRemove(mount) {
+    const list = mount.querySelector(".hw-quest__examples");
+    if (!list) return;
+    list.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-quest-ex-del]");
+      if (!btn) return;
+      const rows = Array.from(list.querySelectorAll(".hw-quest__ex-row"));
+      const idx = rows.indexOf(btn.closest(".hw-quest__ex-row"));
+      if (idx >= 0) removeExample(mount, idx);
+    });
+    global.HwSwipeDelete?.bind(list, {
+      item: ".hw-quest__ex-row",
+      hasContent: (li) => !!String(li.querySelector("input")?.value || "").trim() && !li.querySelector("input")?.readOnly,
+      onDelete: (li) => {
+        const rows = Array.from(list.querySelectorAll(".hw-quest__ex-row"));
+        const idx = rows.indexOf(li);
+        if (idx >= 0) removeExample(mount, idx);
+      },
+    });
   }
 
   function renderComingSoonPanel(mount) {
     mount.innerHTML =
       '<article class="hw-quest hw-quest--soon-only">' +
+      '<p class="hw-quest__video-soon">Video coming soon</p>' +
       '<p class="hw-quest__soon-only">Coming soon!</p>' +
       "</article>";
   }
@@ -361,36 +545,106 @@
       return;
     }
 
-    const q = currentQuest();
+    ensureCurrentWeek();
+
+    const q = displayedQuest();
+    const currentDay = currentQuestDay();
     const doneAll = allDone();
-    const doneToday = completedToday();
+    const auto = isAutoMode();
+    const preview = isPreviewingQuest();
+    const doneToday = advancedToday();
     const waitingTomorrow = doneToday && !doneAll;
+    const inputsLocked = doneAll || waitingTomorrow || preview;
     refreshVisibleExampleCount();
     const roundNote =
       q.round > 1 && !doneAll
         ? '<p class="hw-quest__round">Round ' + q.round + " — same hunt, new media.</p>"
         : "";
 
-    const statusLine = doneAll
-      ? "You finished all 365 immersion quests. Puzzle pieces come next."
+    let statusLine;
+    let listenLine = false;
+    if (preview) {
+      statusLine =
+        "Preview — day " +
+        q.day +
+        " of 365. Go back to day " +
+        currentDay +
+        " to complete this week’s quest.";
+    } else if (doneAll) {
+      statusLine = "You finished all 365 immersion quests. Puzzle pieces come next.";
+    } else if (waitingTomorrow) {
+      statusLine = auto
+        ? "Nice — that's this week's quest. A new one comes Monday."
+        : "Nice — you moved on for this week. The next advance comes Monday.";
+    } else if (auto) {
+      statusLine = 'Look and listen for "' + (q.look || q.title) + '" Think and wonder about it.';
+      listenLine = true;
+    } else {
+      statusLine =
+        'Look and listen for "' +
+        (q.look || q.title) +
+        '" Think and wonder about it. Complete saves examples; Next quest moves you forward when ready.';
+      listenLine = true;
+    }
+
+    const completeLabel = doneAll
+      ? "All done"
       : waitingTomorrow
-        ? "Nice - that's today's quest. Come back tomorrow for the next one."
-        : "Day " + q.day + " of " + TOTAL;
+        ? "Done for this week"
+        : auto
+          ? "Complete this week’s quest"
+          : "Complete";
+
+    const nextBtnHtml =
+      !auto && !doneAll && !waitingTomorrow && !preview
+        ? '<button type="button" class="btn btn--ghost" id="hw-quest-next">' +
+          "I’m done — next quest</button>"
+        : "";
+
+    const navHtml = !auto && !doneAll
+      ? '<div class="hw-quest__nav">' +
+        '<button type="button" class="hw-quest__nav-btn" id="hw-quest-prev" aria-label="Previous quest day"' +
+        (manualBrowseOffset <= -7 ? " disabled" : "") +
+        '><span aria-hidden="true">←</span></button>' +
+        '<span class="hw-quest__nav-day">Day ' +
+        q.day +
+        "</span>" +
+        '<button type="button" class="hw-quest__nav-btn" id="hw-quest-next-day" aria-label="Next quest day"' +
+        (manualBrowseOffset >= 1 ? " disabled" : "") +
+        '><span aria-hidden="true">→</span></button>' +
+        "</div>"
+      : "";
+
+    const dateBtnOn = !!global.HwTodayDate?.enabled?.();
+    if (!dateBtnOn) showDateInBox = false;
 
     mount.innerHTML =
+      questIntroHtml() +
       '<article class="hw-quest">' +
-      "<h2 class=\"hw-quest__title\">Today's Immersion Quest</h2>" +
+      "<h2 class=\"hw-quest__title\">This Week's Immersion Quest</h2>" +
       '<p class="hw-quest__status">' +
       escapeHtml(statusLine) +
       "</p>" +
+      (listenLine ? '<p class="hw-quest__video-soon">Video coming soon</p>' : "") +
       roundNote +
+      navHtml +
+      (dateBtnOn
+        ? '<button type="button" class="hw-quest__date-btn' +
+          (showDateInBox ? " is-on" : "") +
+          '" id="hw-quest-date-btn" title="Show today\'s date" aria-label="Show today\'s date" aria-pressed="' +
+          (showDateInBox ? "true" : "false") +
+          '"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>'
+        : "") +
       '<div class="hw-quest__target-box">' +
-      '<p class="hw-quest__target">' +
-      escapeHtml(doneAll ? "—" : q.title) +
+      '<p class="hw-quest__target' +
+      (dateBtnOn && showDateInBox ? " hw-quest__target--date" : "") +
+      '"' +
+      (dateBtnOn && showDateInBox ? ' lang="ja"' : "") +
+      ">" +
+      (dateBtnOn && showDateInBox
+        ? global.HwTodayDate.inner()
+        : escapeHtml(doneAll ? "—" : q.title)) +
       "</p></div>" +
-      '<p class="hw-quest__lead">Look and listen for ' +
-      escapeHtml(doneAll ? "this quest" : q.look) +
-      ".</p>" +
       '<div class="hw-quest__important-wrap">' +
       '<div class="hw-recording-tip hw-recording-tip--important hw-quest__important">' +
       '<button type="button" class="hw-recording-tip__trigger' +
@@ -407,36 +661,55 @@
       '<p class="hw-recording-tip__message"' +
       (!importantOpen ? " hidden" : "") +
       ">" +
-      IMPORTANT_LINES.map((line) => "- " + line).join("\n") +
+      IMPORTANT_TEXT +
       "</p></div></div>" +
       '<p class="hw-quest__prompt">Write down up to 5 examples that you have seen in your media of choice:</p>' +
+      '<form class="hw-quest__examples-form" autocomplete="off" onsubmit="return false;">' +
       '<ol class="hw-quest__examples">' +
-      renderExampleRows(doneAll || waitingTomorrow) +
+      renderExampleRows(inputsLocked) +
       "</ol>" +
       '<div class="hw-quest__more">' +
-      '<button type="button" class="btn btn--ghost btn--sm" id="hw-quest-add-example"' +
-      (doneAll || waitingTomorrow || visibleExampleCount >= EXAMPLES ? " hidden" : "") +
-      '>+ Add example</button></div>' +
+      '<button type="button" class="btn btn--ghost btn--sm hw-quest__plus" id="hw-quest-add-example" aria-label="Add example" title="Add example"' +
+      (inputsLocked || visibleExampleCount >= EXAMPLES ? " hidden" : "") +
+      '><svg class="hw-plus-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>' +
+      "</form>" +
       '<div class="hw-quest__actions">' +
       '<button type="button" class="btn btn--primary" id="hw-quest-complete"' +
-      (doneAll || waitingTomorrow ? " disabled" : "") +
+      (doneAll || waitingTomorrow || preview ? " disabled" : "") +
       ">" +
-      (doneAll ? "All done" : waitingTomorrow ? "Done for today" : "Complete today’s quest") +
+      escapeHtml(completeLabel) +
       "</button>" +
+      nextBtnHtml +
       '<p class="hw-quest__save-msg" id="hw-quest-save-msg"></p>' +
       "</div>" +
-      '<div class="hw-quest__puzzle" aria-label="Quest puzzle">' +
-      '<button type="button" class="hw-quest__puzzle-link" id="hw-quest-view-puzzle">' +
-      '<span class="hw-quest__puzzle-icon" aria-hidden="true">🧩</span>' +
-      "<span>View Puzzle</span></button>" +
-      "</div>" +
-      "</article>";
+      "</article>" +
+      (global.HwFeatureFlags?.questSnake?.() === true
+        ? '<nav class="hw-toolbar-bar hw-quest-toolbar" id="hw-quest-toolbar" aria-label="Quest tools">' +
+          '<button type="button" class="hw-toolbar-bar__btn" data-quest-tool="puzzle" title="View puzzle" aria-label="View puzzle">' +
+          '<span class="hw-toolbar-bar__icon hw-toolbar-bar__icon--puzzle" aria-hidden="true">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M14.5 4.5a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1-3.5 0 2.5 2.5 0 0 1 0-5Z"/>' +
+          '<path d="M6.5 13.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/>' +
+          '<path d="M17 14.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"/>' +
+          '<path d="M9.5 6.5 4 12v6.5a1.5 1.5 0 0 0 1.5 1.5H12l5.5-5.5"/>' +
+          '<path d="M14.5 9.5 20 4"/>' +
+          "</svg></span></button>" +
+          "</nav>"
+        : "");
 
     bindImportant(mount);
-
+    bindExampleRemove(mount);
+    document.getElementById("hw-quest-date-btn")?.addEventListener("click", () => {
+      showDateInBox = !showDateInBox;
+      renderPanel();
+    });
     const completeBtn = document.getElementById("hw-quest-complete");
     completeBtn?.addEventListener("click", () => {
       void completeQuest(mount);
+    });
+
+    document.getElementById("hw-quest-next")?.addEventListener("click", () => {
+      void nextQuest(mount);
     });
 
     const addBtn = document.getElementById("hw-quest-add-example");
@@ -445,8 +718,18 @@
       renderPanel();
     });
 
-    document.getElementById("hw-quest-view-puzzle")?.addEventListener("click", () => {
-      window.alert("Coming soon!");
+    document.getElementById("hw-quest-prev")?.addEventListener("click", () => {
+      manualBrowseOffset = clampBrowseOffset(manualBrowseOffset - 1);
+      renderPanel();
+    });
+
+    document.getElementById("hw-quest-next-day")?.addEventListener("click", () => {
+      manualBrowseOffset = clampBrowseOffset(manualBrowseOffset + 1);
+      renderPanel();
+    });
+
+    mount.querySelector('[data-quest-tool="puzzle"]')?.addEventListener("click", () => {
+      global.HwQuestPuzzle?.open?.(progress);
     });
 
     let draftTimer = 0;
@@ -459,6 +742,55 @@
         }, 600);
       });
     });
+
+    const questToolbar = document.getElementById("hw-quest-toolbar");
+    if (questToolbar) {
+      const questPanel = document.getElementById("hw-v5-panel-quest");
+      questToolbar.hidden =
+        !questLayoutEnabled() || !questPanel || questPanel.hasAttribute("hidden");
+    }
+  }
+
+  async function setAdvanceMode(mode) {
+    const nextMode = normalizeAdvanceMode(mode) === "manual" ? "manual" : "auto";
+    if (normalizeAdvanceMode(progress.advanceMode) === nextMode) {
+      paintFeaturesSwitch();
+      return nextMode;
+    }
+    manualBrowseOffset = 0;
+    try {
+      await saveDraft({ advanceMode: nextMode });
+    } catch {
+      progress.advanceMode = nextMode;
+      writeLocal(progress);
+    }
+    paintFeaturesSwitch();
+    renderPanel();
+    return nextMode;
+  }
+
+  async function toggleAdvanceMode() {
+    const nextMode = isAutoMode() ? "manual" : "auto";
+    await setAdvanceMode(nextMode);
+    global.HwToast?.show?.(
+      nextMode === "auto"
+        ? "Auto advance is on — Complete moves you forward once per week."
+        : "Manual advance — use Next quest when you feel ready (once per week)."
+    );
+  }
+
+  function paintFeaturesSwitch() {
+    const btn = document.getElementById("hw-account-quest-auto-advance");
+    const note = document.getElementById("hw-account-quest-auto-advance-note");
+    if (!btn) return;
+    const auto = isAutoMode();
+    btn.setAttribute("aria-checked", auto ? "true" : "false");
+    btn.classList.toggle("is-on", auto);
+    if (note) {
+      note.textContent = auto
+        ? "Automatic — completing moves you to the next quest (once per week)."
+        : "Manual — you move to the next quest when ready (once per week). Use ← → on the Quest tab to preview.";
+    }
   }
 
   function setSaveMsg(text, isError) {
@@ -468,40 +800,137 @@
     el.classList.toggle("is-error", !!isError);
   }
 
+  /** Same ダメ / いいよ popover pattern as cloud-memo delete. */
+  function openQuestConfirmPopover(anchorBtn, question, onConfirm) {
+    if (typeof global._hwQuestConfirmClose === "function") {
+      global._hwQuestConfirmClose();
+    }
+
+    const pop = document.createElement("div");
+    pop.className = "hw-delete-confirm-popover hw-quest-confirm-popover";
+    pop.setAttribute("role", "alertdialog");
+    pop.setAttribute("aria-modal", "true");
+    pop.innerHTML =
+      '<p class="hw-delete-confirm-popover__q" lang="ja"></p>' +
+      '<div class="hw-delete-confirm-popover__actions">' +
+      '<button type="button" class="hw-delete-confirm-popover__yes" lang="ja">いいよ</button>' +
+      '<button type="button" class="hw-delete-confirm-popover__no" lang="ja">ダメ</button>' +
+      "</div>";
+    const qEl = pop.querySelector(".hw-delete-confirm-popover__q");
+    if (qEl) qEl.textContent = question;
+
+    document.body.appendChild(pop);
+    const anchorRect = anchorBtn.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    let top = anchorRect.top - popRect.height - 8;
+    let left = anchorRect.left + anchorRect.width / 2 - popRect.width / 2;
+    if (top < 8) top = anchorRect.bottom + 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
+
+    const close = () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      pop.remove();
+      global._hwQuestConfirmClose = null;
+    };
+    global._hwQuestConfirmClose = close;
+
+    const onOutside = (ev) => {
+      if (pop.contains(ev.target) || (anchorBtn && anchorBtn.contains(ev.target))) {
+        return;
+      }
+      close();
+    };
+    setTimeout(() => document.addEventListener("pointerdown", onOutside, true), 0);
+
+    pop.querySelector(".hw-delete-confirm-popover__yes")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+      onConfirm();
+    });
+    pop.querySelector(".hw-delete-confirm-popover__no")?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+    });
+  }
+
   async function completeQuest(root) {
-    if (allDone() || completedToday()) return;
+    if (allDone() || advancedToday()) return;
     const examples = readExamplesFromForm(root);
     const filled = examples.filter(Boolean);
-    if (!filled.length) {
-      setSaveMsg("Write at least one example from what you watched or heard.", true);
-      return;
-    }
     const btn = document.getElementById("hw-quest-complete");
-    if (btn) btn.disabled = true;
-    setSaveMsg("Saving…");
+    if (!btn) return;
+
+    const auto = isAutoMode();
+    const question = filled.length
+      ? "いいの？"
+      : auto
+        ? "You haven't given any examples yet. Complete this week's quest?"
+        : "You haven't given any examples yet. Save practice on this quest?";
+
+    openQuestConfirmPopover(btn, question, () => {
+      void finishCompleteQuest(root, examples, { advance: auto });
+    });
+  }
+
+  async function nextQuest(root) {
+    if (allDone() || advancedToday() || isAutoMode()) return;
+    const examples = readExamplesFromForm(root);
+    const btn = document.getElementById("hw-quest-next");
+    if (!btn) return;
+
+    openQuestConfirmPopover(btn, "Move to the next quest? (once per week)", () => {
+      void finishCompleteQuest(root, examples, { advance: true });
+    });
+  }
+
+  async function finishCompleteQuest(root, examples, opts) {
+    const wantAdvance = !!(opts && opts.advance);
+    if (allDone()) return;
+    if (wantAdvance && advancedToday()) return;
+
+    const completeBtn = document.getElementById("hw-quest-complete");
+    const nextBtn = document.getElementById("hw-quest-next");
+    if (completeBtn) completeBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    setSaveMsg(wantAdvance ? "Saving…" : "Saving examples…");
+
     const q = currentQuest();
-    const today = tokyoYmd();
+    const today = localYmd();
     const user = username();
     try {
       if (!user || isDemo()) {
-        const completed = progress.completed.slice();
-        completed.push({
-          day: q.day,
-          id: q.id,
-          key: q.key,
-          ymd: today,
-          examples: examples,
-        });
-        const pieces = progress.puzzlePieces.slice();
-        if (!pieces.includes(q.day)) pieces.push(q.day);
-        progress = normalizeProgress({
-          currentIndex: progress.currentIndex + 1,
-          lastCompletedYmd: today,
-          seenKey: q.key,
-          examples: ["", "", "", "", ""],
-          completed: completed,
-          puzzlePieces: pieces,
-        });
+        if (wantAdvance) {
+          const completed = progress.completed.slice();
+          completed.push({
+            day: q.day,
+            id: q.id,
+            key: q.key,
+            ymd: today,
+            examples: examples,
+          });
+          const pieces = progress.puzzlePieces.slice();
+          if (!pieces.includes(q.day)) pieces.push(q.day);
+          progress = normalizeProgress({
+            currentIndex: progress.currentIndex + 1,
+            lastCompletedYmd: today,
+            periodKey: progress.periodKey || localWeekKey(),
+            advanceMode: progress.advanceMode,
+            seenKey: q.key,
+            examples: ["", "", "", "", ""],
+            completed: completed,
+            puzzlePieces: pieces,
+          });
+        } else {
+          progress = normalizeProgress({
+            ...progress,
+            examples: examples,
+            updatedAt: new Date().toISOString(),
+          });
+        }
         writeLocal(progress);
       } else {
         const res = await fetch("/api/immersion-quests", {
@@ -512,6 +941,10 @@
             examples: examples,
             day: q.day,
             key: q.key,
+            ymd: today,
+            period: localWeekKey(),
+            advanceMode: progress.advanceMode,
+            advance: wantAdvance,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -526,12 +959,22 @@
       syncStarFlag();
       paintStar();
       renderPanel();
-      setSaveMsg("Saved. Next quest unlocks tomorrow.");
+      notifyQuestExamplesChanged();
+      const curr = global.HwHubV5Live?.usesCurriculumHub?.() === true;
+      if (wantAdvance) {
+        setSaveMsg("Saved. The next quest unlocks Monday.");
+        if (curr && global.HwHubV5Live?.completeTask) global.HwHubV5Live.completeTask("quest", "Quest complete");
+        else global.HwToast?.show?.("Quest complete");
+      } else {
+        setSaveMsg("Examples saved. Hit Next quest when you feel ready (once per week).");
+        global.HwToast?.show?.("Examples saved");
+      }
     } catch (err) {
-      if (btn) btn.disabled = false;
+      if (completeBtn) completeBtn.disabled = false;
+      if (nextBtn) nextBtn.disabled = false;
       const code = err && err.code;
       if (code === "ALREADY_DONE_TODAY") {
-        setSaveMsg("You already completed a quest today. Next one unlocks tomorrow.", true);
+        setSaveMsg("You already finished this week's quest. The next one unlocks Monday.", true);
         return;
       }
       if (code === "QUEST_STALE") {
@@ -574,6 +1017,30 @@
       .replace(/"/g, "&quot;");
   }
 
+  function notifyQuestExamplesChanged() {
+    try {
+      document.dispatchEvent(new CustomEvent("hw-quest-examples-changed"));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getNotebookSnapshot() {
+    if (!questLayoutEnabled()) return null;
+    const q = questAtDay(Math.max(1, currentQuestDay() - (advancedToday() && !allDone() ? 1 : 0)));
+    const examples = Array.isArray(progress.examples)
+      ? progress.examples.map((s) => String(s || ""))
+      : ["", "", "", "", ""];
+    while (examples.length < EXAMPLES) examples.push("");
+    return {
+      day: q.day,
+      round: q.round,
+      title: q.title,
+      look: q.look || q.title,
+      examples: examples.slice(0, EXAMPLES),
+    };
+  }
+
   function ensurePanel() {
     const below = document.getElementById("hw-v5-below");
     if (!below || document.getElementById("hw-v5-panel-quest")) return;
@@ -600,9 +1067,12 @@
     ensurePanel();
     if (questLayoutEnabled()) {
       importantOpen = false; // start collapsed when entering Quest / on refresh
+      showDateInBox = false; // date goes back to the target letter
+      manualBrowseOffset = 0;
       await loadProgress();
     }
     renderPanel();
+    paintFeaturesSwitch();
     paintStar();
   }
 
@@ -614,8 +1084,17 @@
     refresh: refresh,
     markSeen: markSeen,
     hasNewQuest: hasNewQuest,
+    /** True once this week's quest is done (the next one unlocks Monday 5:00 a.m.). */
+    completedToday: () => advancedToday() && !allDone(),
+    completedThisWeek: () => advancedToday() && !allDone(),
     paintStar: paintStar,
+    paintFeaturesSwitch: paintFeaturesSwitch,
     loadProgress: loadProgress,
     questAtDay: questAtDay,
+    isAutoMode: isAutoMode,
+    toggleAdvanceMode: toggleAdvanceMode,
+    setAdvanceMode: setAdvanceMode,
+    getProgress: () => progress,
+    getNotebookSnapshot: getNotebookSnapshot,
   };
 })(window);

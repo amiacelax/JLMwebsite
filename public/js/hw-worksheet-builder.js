@@ -490,7 +490,14 @@
       case "video-prompt":
         return { id, type, prompt: "", recordLabel: "Record your answer" };
       case "audio-prompt":
-        return { id, type, prompt: "", recordLabel: "Record your answer" };
+        return {
+          id,
+          type,
+          prompt: "",
+          audioUrl: "",
+          promptMediaId: "",
+          recordLabel: "Record your answer",
+        };
       case "audio-mimic":
         return {
           id,
@@ -528,7 +535,14 @@
         return {
           id,
           type,
-          tokens: [{ text: "", fixed: false }],
+          /* Default: 4 drop boxes + fixed period (teachers can add/remove words). */
+          tokens: [
+            { text: "", fixed: false },
+            { text: "", fixed: false },
+            { text: "", fixed: false },
+            { text: "", fixed: false },
+            { text: "。", fixed: true },
+          ],
         };
       case "mc-line":
         return {
@@ -663,12 +677,21 @@
             )
           );
         } else if (sec.mode === "audio-prompt") {
-          blocks.push({
+          const audioPromptBlock = {
             id: item.id || uid("blk"),
             type: "audio-prompt",
             prompt: item.prompt || "",
+            audioUrl: String(item.audioUrl || "").trim(),
+            promptMediaId: String(item.promptMediaId || "").trim(),
             recordLabel: item.recordLabel || "Record your answer",
-          });
+            typeIn: item.typeIn === true || item.typeIn === "true" || item.typeIn === 1,
+            typeInLabel: String(item.typeInLabel || "").trim(),
+          };
+          const english = String(item.english || "").trim();
+          if (english) audioPromptBlock.english = english;
+          const listenLabel = String(item.listenLabel || "").trim();
+          if (listenLabel) audioPromptBlock.listenLabel = listenLabel;
+          blocks.push(audioPromptBlock);
         } else if (sec.mode === "audio-mimic") {
           blocks.push({
             id: item.id || uid("blk"),
@@ -794,11 +817,26 @@
         while (i < blocks.length && blocks[i].type === "audio-prompt") {
           const prompt = String(blocks[i].prompt || "").trim();
           if (prompt) {
-            sec.items.push({
+            const item = {
               id: blocks[i].id || "aud-" + (sec.items.length + 1),
               prompt,
               recordLabel: blocks[i].recordLabel || "Record your answer",
-            });
+            };
+            const audioUrl = String(blocks[i].audioUrl || "").trim();
+            if (audioUrl) item.audioUrl = audioUrl;
+            const promptMediaId = String(blocks[i].promptMediaId || "").trim();
+            if (promptMediaId) item.promptMediaId = promptMediaId;
+            const english = String(blocks[i].english || "").trim();
+            if (english) item.english = english;
+            const listenLabel = String(blocks[i].listenLabel || "").trim();
+            if (listenLabel) item.listenLabel = listenLabel;
+            if (blocks[i].typeIn === true || blocks[i].typeIn === "true" || blocks[i].typeIn === 1) {
+              item.typeIn = true;
+              const typeInLabel = String(blocks[i].typeInLabel || "").trim();
+              if (typeInLabel) item.typeInLabel = typeInLabel;
+              else item.typeInLabel = "Type and record your answer";
+            }
+            sec.items.push(item);
           }
           i++;
         }
@@ -1696,7 +1734,10 @@
         return clip(block.prompt) || "Video prompt";
       }
       if (block.type === "audio-prompt") {
-        return clip(block.prompt) || "Audio prompt";
+        return (
+          clip(block.prompt) ||
+          (block.audioUrl ? "Question audio ready" : "Audio prompt")
+        );
       }
       if (block.type === "audio-mimic") {
         return (
@@ -1965,6 +2006,12 @@
       }
 
       if (block.type === "audio-prompt") {
+        const hint = document.createElement("p");
+        hint.className = "hw-builder__inline-hint";
+        hint.textContent =
+          "Record the question students hear first (or paste a URL). Students listen, then record their answer.";
+        body.appendChild(hint);
+
         const prompt = document.createElement("textarea");
         prompt.className = "hw-builder__field hw-builder__field--area";
         prompt.rows = 1;
@@ -1976,6 +2023,52 @@
           notifyChange();
         });
         body.appendChild(prompt);
+
+        const clipMount = document.createElement("div");
+        clipMount.className = "hw-builder__audio-prompt-clip";
+        body.appendChild(clipMount);
+
+        const teacherUsername = String(
+          global.HwAuth?.getTeacherSession?.()?.username ||
+            global.HwAuth?.getSession?.()?.username ||
+            ""
+        ).trim();
+
+        if (global.HwAudioInline?.mountTeacherClip) {
+          global.HwAudioInline.mountTeacherClip(clipMount, {
+            teacherUsername,
+            audioUrl: block.audioUrl || "",
+            mediaId: block.promptMediaId || "",
+            startLabel: "Record question audio",
+            uploadLabel: "Upload audio",
+            urlLabel: "Or paste audio URL",
+            previewAriaLabel: "Question audio for students",
+            onChange: (next) => {
+              block.audioUrl = String(next?.audioUrl || "").trim();
+              block.promptMediaId = String(next?.mediaId || "").trim();
+              if (block.collapsed) summaryEl.textContent = blockSummary(block);
+              notifyChange();
+            },
+          });
+        } else {
+          const fallbackLabel = document.createElement("label");
+          fallbackLabel.className = "hw-builder__audio-label";
+          fallbackLabel.textContent = "Question audio URL";
+          const audioInput = document.createElement("input");
+          audioInput.type = "text";
+          audioInput.className = "hw-builder__field hw-builder__field--compact";
+          audioInput.spellcheck = false;
+          audioInput.placeholder = "Paste audio URL";
+          audioInput.value = block.audioUrl || "";
+          audioInput.addEventListener("input", () => {
+            block.audioUrl = audioInput.value.trim();
+            block.promptMediaId = "";
+            if (block.collapsed) summaryEl.textContent = blockSummary(block);
+            notifyChange();
+          });
+          fallbackLabel.appendChild(audioInput);
+          clipMount.appendChild(fallbackLabel);
+        }
         return el;
       }
 

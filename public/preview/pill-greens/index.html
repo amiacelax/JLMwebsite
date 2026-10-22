@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pill greens — pick one</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 1.5rem 1.25rem 3rem;
+      font-family: Inter, "Noto Sans JP", sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+    }
+    h1 { margin: 0 0 0.4rem; font-size: 1.4rem; }
+    .lead { max-width: 40rem; margin: 0 0 1.25rem; color: var(--color-text-muted); line-height: 1.5; }
+    .samples { display: grid; gap: 0.85rem; max-width: 36rem; }
+    article {
+      padding: 1rem 1rem 0.9rem;
+      border: 1px solid var(--color-border-strong);
+      border-radius: 0.9rem;
+      background: var(--color-bg-card);
+    }
+    article h2 { margin: 0 0 0.65rem; font-size: 1rem; }
+    article p { margin: 0.65rem 0 0; color: var(--color-text-muted); font-size: 0.92rem; line-height: 1.45; }
+    .pill {
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: baseline;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.55rem;
+      font-size: 1rem;
+      line-height: 1.35;
+    }
+    .pill b { font-weight: 700; }
+    /* A — green homework memo cloud (.hw-hc-mini--teacher) */
+    .pill--memo {
+      color: var(--color-green);
+      background: color-mix(in srgb, var(--color-bg-elevated) 92%, var(--color-green));
+      border: 1.5px solid color-mix(in srgb, var(--color-green) 35%, transparent);
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.12),
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    }
+    /* B — selected hub tab (.hw-hub-v5-tabs__slider + active label) */
+    .pill--tab {
+      color: #0d1b2a;
+      background: var(--color-green);
+      border: 1px solid color-mix(in srgb, var(--color-green) 70%, #fff);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    }
+    /* C — memo-cloud wash, hub-tab solid green edge */
+    .pill--mix {
+      color: var(--color-green);
+      background: color-mix(in srgb, var(--color-bg-elevated) 92%, var(--color-green));
+      border: 2px solid var(--color-green);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    }
+    .flip {
+      margin-top: 1.25rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--color-border-strong);
+      background: var(--color-bg-card);
+      color: var(--color-text);
+      font: inherit;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Word pill greens</h1>
+  <p class="lead">Live word pills (textbook, situation card, Core Japanese) are using the hub tab green — sample B — until you pick. This page is the comparison. Nothing here is locked in.</p>
+  <div class="samples">
+    <article>
+      <h2>A. Memo cloud</h2>
+      <span class="pill pill--memo"><b>大変</b> <span>Hard, tough</span></span>
+      <p>Copies the green homework comment cloud: a soft wash of var(--color-green) on the card, with a thin green edge.</p>
+    </article>
+    <article>
+      <h2>B. Hub tab</h2>
+      <span class="pill pill--tab"><b>大変</b> <span>Hard, tough</span></span>
+      <p>Copies the selected hub tab: solid var(--color-green) fill and a dark label. This is what is live right now.</p>
+    </article>
+    <article>
+      <h2>C. Mix</h2>
+      <span class="pill pill--mix"><b>大変</b> <span>Hard, tough</span></span>
+      <p>Memo-cloud wash for the fill, hub-tab solid var(--color-green) for the edge.</p>
+    </article>
+  </div>
+  <button type="button" class="flip" id="theme">Switch light / dark</button>
+  <script>
+    document.getElementById("theme").addEventListener("click", function () {
+      var root = document.documentElement;
+      root.dataset.theme = root.dataset.theme === "light" ? "dark" : "light";
+    });
+  </script>
+</body>
+</html>

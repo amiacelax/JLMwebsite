@@ -17,7 +17,7 @@
   const TIER_PLANS = {
     basic: {
       title: "Basic",
-      price: 5,
+      price: 9,
       tip: "One HW assignment a month — so anyone can join in — with written notes when you send it.",
       detail: "basic",
       featured: false,
@@ -44,7 +44,7 @@
   };
 
   const TIER_DETAIL_TITLES = {
-    basic: "Basic — $5/mo",
+    basic: "Basic — $9/mo",
     premium: "Premium — $20/mo",
     ultra: "Ultra — $49/mo",
   };

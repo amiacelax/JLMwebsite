@@ -3,10 +3,17 @@
  * Armed when a plan is activated; interval depends on tier (Basic 21d, Premium/Ultra/SS 5d).
  */
 
-import { saveFeatureReport } from "./homework-kv";
+import {
+  collectHwDailyWaitingReport,
+  saveFeatureReport,
+  skipHwWaitingPing,
+  type HwDailyWaitingReport,
+} from "./homework-kv";
+import { studentPageLink, teacherReviewLink } from "./hub-links";
 import type { AccountTier } from "./user-accounts";
+import { isDemoUser, resolveRoutedWebhook, type DiscordRouteEnv } from "./discord-channels";
 
-export interface HwPlanReminderEnv {
+export interface HwPlanReminderEnv extends DiscordRouteEnv {
   HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
   DISCORD_CHANNEL_ID?: string;
@@ -21,6 +28,11 @@ export interface HwPlanReminderJob {
   nextFireAt: string;
   createdAt: string;
   lastFiredAt?: string;
+  /**
+   * Cadence pinged and JD still owes a new sheet.
+   * false = fulfilled by a later publish. Missing + lastFiredAt = still open (older jobs).
+   */
+  awaitingNewHw?: boolean;
 }
 
 const JOB_PREFIX = "hw-ping:";
@@ -72,6 +84,8 @@ export function planLabelFromTier(tier: AccountTier | string): string {
       return "Ultra";
     case "student_special":
       return "Student Special";
+    case "quest_only":
+      return "Quest Only";
     default:
       return String(tier || "plan");
   }
@@ -95,11 +109,71 @@ export function mapCheckoutPlanToTier(
   if (p === "ultra" || p === "tier3") return "tier3";
   if (p === "student-special" || p === "student_special") return "student_special";
   if (p === "student-ultra" || p === "student_ultra") return "tier3";
+  if (p === "quest-only" || p === "quest_only") return "quest_only";
   return null;
 }
 
 function addDaysIso(fromMs: number, days: number): string {
   return new Date(fromMs + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/** Cadence already fired and a new sheet hasn’t been published since. */
+export function cadenceStillOwesNewHw(job: HwPlanReminderJob, now = Date.now()): boolean {
+  if (job.awaitingNewHw === false) return false;
+  if (job.awaitingNewHw === true) return true;
+  if (!job.lastFiredAt) return false;
+  const next = new Date(job.nextFireAt).getTime();
+  return !Number.isNaN(next) && next > now;
+}
+
+export async function listCadenceOwesNewHw(
+  env: HwPlanReminderEnv
+): Promise<HwPlanReminderJob[]> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) return [];
+  const now = Date.now();
+  const out: HwPlanReminderJob[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await kv.list({ prefix: JOB_PREFIX, cursor, limit: 100 });
+    for (const entry of page.keys) {
+      const raw = await kv.get(entry.name);
+      if (!raw) continue;
+      try {
+        const job = JSON.parse(raw) as HwPlanReminderJob;
+        if (skipHwWaitingPing(job.username, job.displayName)) continue;
+        if (cadenceStillOwesNewHw(job, now)) out.push(job);
+      } catch {
+        /* skip */
+      }
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  return out;
+}
+
+/** New sheet actually landed on the student’s hub — cadence owe is done. */
+export async function fulfillHwPlanAwaitingNew(
+  username: string,
+  env: HwPlanReminderEnv
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv) return;
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  if (!user) return;
+  const raw = await kv.get(jobKey(user));
+  if (!raw) return;
+  let job: HwPlanReminderJob;
+  try {
+    job = JSON.parse(raw) as HwPlanReminderJob;
+  } catch {
+    return;
+  }
+  if (job.awaitingNewHw === false && !job.lastFiredAt) return;
+  job.awaitingNewHw = false;
+  await kv.put(jobKey(user), JSON.stringify(job));
 }
 
 export async function clearHwPlanReminder(
@@ -132,6 +206,12 @@ export async function armHwPlanReminder(
     .trim()
     .toLowerCase();
   if (!username) throw new Error("USERNAME_REQUIRED");
+
+  /* Demo accounts and inactive students never get cadence pings. */
+  if (isDemoUser(username) || skipHwWaitingPing(username, opts.displayName)) {
+    await clearHwPlanReminder(username, env);
+    return null;
+  }
 
   const intervalDays = intervalDaysForTier(opts.tier);
   if (!intervalDays) {
@@ -187,7 +267,7 @@ async function postDiscordHwPing(
     .replace(/```/g, "'''")
     .trim()
     .slice(0, 1980);
-  const content = "```\n" + plain + "\n```";
+  const content = plain;
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -203,15 +283,38 @@ function buildMessage(job: HwPlanReminderJob): string {
     `Student: ${who}`,
     `Plan: ${job.plan}`,
     `Cadence: every ${job.intervalDays} day${job.intervalDays === 1 ? "" : "s"}`,
+    studentPageLink(job.username),
   ].join("\n");
+}
+
+type CadenceKind = "needs" | "review" | "skip";
+
+function buildReviewMessage(job: HwPlanReminderJob, title?: string, submissionId?: string): string {
+  const who = job.displayName ? `${job.displayName} (${job.username})` : job.username;
+  const open = submissionId ? teacherReviewLink(submissionId) : studentPageLink(job.username);
+  return [
+    "Homework Hub — still needs your review",
+    `Student: ${who}`,
+    title ? `Waiting: ${title}` : "",
+    `Plan: ${job.plan}`,
+    open,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function fireOne(
   job: HwPlanReminderJob,
-  env: HwPlanReminderEnv
+  env: HwPlanReminderEnv,
+  getReport?: () => Promise<HwDailyWaitingReport>
 ): Promise<void> {
   const kv = env.HOMEWORK_KV;
   if (!kv) return;
+
+  if (isDemoUser(job.username) || skipHwWaitingPing(job.username, job.displayName)) {
+    await kv.delete(jobKey(job.username));
+    return;
+  }
 
   const key = jobKey(job.username);
   const claimed = await kv.get(key);
@@ -229,15 +332,55 @@ async function fireOne(
   const dueAt = new Date(current.nextFireAt).getTime();
   if (Number.isNaN(dueAt) || dueAt > Date.now()) return;
 
-  const message = buildMessage(current);
+  /* Only ask JD to make a new sheet when the student actually needs one.
+     Waiting on JD's review → "still needs your review". HW already out / notes being read → stay quiet. */
+  let kind: CadenceKind = "needs";
+  let reviewTitle: string | undefined;
+  let reviewSubmissionId: string | undefined;
+  if (getReport) {
+    try {
+      const report = await getReport();
+      const u = current.username;
+      const inReview = report.review.find((r) => r.username === u);
+      if (inReview) {
+        kind = "review";
+        reviewTitle = inReview.title;
+        reviewSubmissionId = inReview.submissionId;
+      } else if (
+        report.sent.some((r) => r.username === u) ||
+        report.reviewingNotes.some((r) => r.username === u)
+      ) {
+        kind = "skip";
+      }
+    } catch (err) {
+      console.error("hw-plan-reminders: status lookup failed, sending normal ping", err);
+    }
+  }
+
+  if (kind === "skip") {
+    const quietNow = Date.now();
+    await kv.put(
+      key,
+      JSON.stringify({
+        ...current,
+        nextFireAt: addDaysIso(quietNow, current.intervalDays),
+        awaitingNewHw: false,
+      } satisfies HwPlanReminderJob)
+    );
+    return;
+  }
+
+  const message =
+    kind === "review" ? buildReviewMessage(current, reviewTitle, reviewSubmissionId) : buildMessage(current);
   let discordOk = false;
   let hubOk = false;
 
-  const webhookUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
+  const hook = await resolveRoutedWebhook(env, "hw");
+  const webhookUrl = hook?.url ?? null;
   if (webhookUrl) {
     const channelError = await getWebhookChannelMismatch(
       webhookUrl,
-      env.DISCORD_CHANNEL_ID
+      hook?.channelId
     );
     if (channelError) {
       console.error("hw-plan-reminders:", channelError);
@@ -255,7 +398,7 @@ async function fireOne(
     await saveFeatureReport(
       {
         kind: "reminder",
-        displayName: `Make HW — ${current.plan} — ${current.username}`,
+        displayName: `${kind === "review" ? "Review HW" : "Make HW"} — ${current.plan} — ${current.username}`,
         page: "HW plan reminder",
         username: current.username,
         message,
@@ -272,6 +415,7 @@ async function fireOne(
     ...current,
     lastFiredAt: new Date(now).toISOString(),
     nextFireAt: addDaysIso(now, current.intervalDays),
+    awaitingNewHw: kind === "needs",
   };
 
   if (!discordOk && !hubOk) {
@@ -291,6 +435,8 @@ export async function runHwPlanReminders(env: HwPlanReminderEnv): Promise<void> 
   }
 
   const now = Date.now();
+  let report: Promise<HwDailyWaitingReport> | null = null;
+  const getReport = () => (report ??= collectHwDailyWaitingReport(env));
   let cursor: string | undefined;
   do {
     const page = await kv.list({ prefix: JOB_PREFIX, cursor, limit: 100 });
@@ -301,7 +447,7 @@ export async function runHwPlanReminders(env: HwPlanReminderEnv): Promise<void> 
         const job = JSON.parse(raw) as HwPlanReminderJob;
         const t = new Date(job.nextFireAt).getTime();
         if (!Number.isNaN(t) && t <= now) {
-          await fireOne(job, env);
+          await fireOne(job, env, getReport);
         }
       } catch (err) {
         console.error("hw-plan-reminders: fire failed", entry.name, err);

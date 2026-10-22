@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0f1629">
+  <title>Trial situation cards</title>
+  <style>
+    :root {
+      --navy: #1a2744;
+      --navy-deep: #0f1629;
+      --gold: #d4a853;
+      --muted: #94a3b8;
+      --ink: #e8edf5;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --jp: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--navy-deep);
+      color: var(--ink);
+      font-family: var(--font);
+      overscroll-behavior: none;
+    }
+    body.app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      min-height: 100vh;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: calc(0.65rem + var(--safe-top)) 1rem 0.55rem;
+      background: color-mix(in srgb, var(--navy) 92%, #000);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 0.78rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      color: var(--gold);
+    }
+    .topbar__right { display: flex; align-items: center; gap: 0.55rem; }
+    .progress { font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .shuffle, .controls button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      font: inherit;
+      font-weight: 650;
+      color: var(--ink);
+      background: #243556;
+      cursor: pointer;
+    }
+    .shuffle {
+      min-height: 34px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.72rem;
+    }
+    .stage {
+      flex: 1 1 auto;
+      display: flex;
+      min-height: 0;
+      padding: 0.75rem 0.85rem 0.35rem;
+    }
+    .card {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--navy);
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.45);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .card__image {
+      position: relative;
+      flex: 0 1 36%;
+      min-height: 132px;
+      max-height: 38dvh;
+      margin: 0.75rem 0.9rem 0;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0b1222;
+      overflow: hidden;
+    }
+    .card__image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .card__head {
+      padding: 0.9rem 1.1rem 0.7rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: #161f35;
+    }
+    .card__title {
+      margin: 0;
+      font-family: var(--jp);
+      font-size: clamp(1.25rem, 5vw, 1.6rem);
+      font-weight: 700;
+      line-height: 1.7;
+      color: var(--gold);
+    }
+    .card.is-en .card__title { font-family: var(--font); }
+    .card__body {
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 1.1rem 1.15rem 1.3rem;
+    }
+    .card__ask {
+      margin: 0 0 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card__text {
+      margin: 0;
+      font-family: var(--jp);
+      font-size: clamp(1.08rem, 4.5vw, 1.32rem);
+      line-height: 1.8;
+    }
+    .card.is-furi .card__text,
+    .card.is-furi .card__title { line-height: 2.15; }
+    ruby { ruby-position: over; }
+    rt { font-size: 0.42em; font-weight: 600; }
+    .card__title rt { color: #f3e2b0; }
+    .card__text rt { color: #c5d0e0; }
+    .hint {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0;
+      padding: 0 1rem 0.35rem;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 0.55rem;
+      padding: 0.65rem 0.85rem calc(0.85rem + var(--safe-bot));
+    }
+    .controls button {
+      min-height: 48px;
+      padding: 0.7rem 0.6rem;
+      font-size: 0.92rem;
+    }
+    .controls button:disabled { opacity: 0.35; cursor: default; }
+    .controls .primary {
+      background: var(--gold);
+      color: #1a2744;
+      border-color: transparent;
+    }
+    @media (min-width: 520px) {
+      html { background: #070b14; }
+      body.app {
+        width: 390px;
+        height: min(844px, calc(100dvh - 48px));
+        min-height: 0;
+        margin: 24px auto;
+        border-radius: 36px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.14);
+        box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+      }
+    }
+  </style>
+</head>
+<body class="app">
+  <header class="topbar">
+    <h1>Trial cards</h1>
+    <div class="topbar__right">
+      <button type="button" class="shuffle" id="shuffle">Shuffle</button>
+      <div class="progress" id="progress">1 / 12</div>
+    </div>
+  </header>
+  <main class="stage">
+    <article class="card" id="card">
+      <header class="card__head"><h2 class="card__title" id="title"></h2></header>
+      <div class="card__image"><img id="pic" alt="" /></div>
+      <div class="card__body">
+        <p class="card__ask">What do you say / do?</p>
+        <p class="card__text" id="text"></p>
+      </div>
+    </article>
+  </main>
+  <p class="hint">Tap the card for English · Show is furigana</p>
+  <nav class="controls">
+    <button type="button" id="prev">← Prev</button>
+    <button type="button" class="primary" id="peek" aria-pressed="false">Show</button>
+    <button type="button" id="next">Next →</button>
+  </nav>
+  <script>
+    const CARDS = [
+      {
+        image: "t01-number.png",
+        title: "知{し}らない番号{ばんごう}",
+        label: "Random number",
+        text: "知{し}らない番号{ばんごう}から、「お伝{つた}えが必要{ひつよう}な内容{ないよう}がございます。至急{しきゅう}050-6867-5568 高橋{たかはし}までご連絡{れんらく}ください。」と書{か}いているメッセージが来{き}ました。どうしますか？",
+        english: "You receive a text from an unknown number that writes, \"This is Takahashi. I need to tell you something. Call me right away.\" What do you do?"
+      },
+      {
+        image: "t02-late.png",
+        title: "遅刻{ちこく}",
+        label: "Late for work",
+        text: "電車{でんしゃ}が遅{おく}れて、会社{かいしゃ}に遅刻{ちこく}しました。遅{おく}れた理由{りゆう}を上司{じょうし}に言{い}ってください。",
+        english: "Your train was late so you arrived late to work. Tell your boss why."
+      },
+      {
+        image: "t03-homework.png",
+        title: "宿題{しゅくだい}",
+        label: "Forgot homework",
+        text: "宿題{しゅくだい}を家{いえ}に忘{わす}れてしまいました。先生{せんせい}に説明{せつめい}してください。",
+        english: "You left your homework at home. Explain to your teacher."
+      },
+      {
+        image: "t04-hospital.png",
+        title: "受付{うけつけ}",
+        label: "At the hospital desk",
+        text: "朝{あさ}からお腹{なか}が痛{いた}くて、病院{びょういん}に来{き}ました。受付{うけつけ}の人{ひと}に、いつから痛{いた}いか伝{つた}えてください。",
+        english: "Your stomach has hurt since this morning, so you came to the hospital. Tell the person at the desk when it started."
+      },
+      {
+        image: "t05-salon.png",
+        title: "美容院{びよういん}",
+        label: "At the hair salon",
+        text: "美容院{びよういん}に来{き}ました。あんまり短{みじか}くしたくないので、肩{かた}につくくらいにしてほしいです。美容師{びようし}さんに希望{きぼう}を言{い}ってください。",
+        english: "You're at the hair salon. You don't want it too short, about shoulder length. Tell the stylist what you want."
+      },
+      {
+        image: "t06-cityhall.png",
+        title: "市役所{しやくしょ}",
+        label: "Name spelled wrong",
+        text: "市役所{しやくしょ}でもらった紙{かみ}に、名前{なまえ}の漢字{かんじ}が間違{まちが}って書{か}いてあります。窓口{まどぐち}の人{ひと}に、正{ただ}しい名前{なまえ}を伝{つた}えてください。",
+        english: "On a paper from city hall, your name is written with the wrong characters. Tell the person at the counter the correct name."
+      },
+      {
+        image: "t07-police.png",
+        title: "警察{けいさつ}",
+        label: "Call the police",
+        text: "駅{えき}の前{まえ}に置{お}いた自転車{じてんしゃ}がなくなっています。警察{けいさつ}に電話{でんわ}して、いつ、どこでなくなったか伝{つた}えてください。",
+        english: "The bicycle you left in front of the station is gone. Call the police and say when and where it disappeared."
+      },
+      {
+        image: "t08-fire.png",
+        title: "火事{かじ}",
+        label: "Which emergency number",
+        text: "夜中{よなか}に目{め}が覚{さ}めたら、隣{となり}の家{いえ}が火事{かじ}です。119と110、どちらにかけるか決{き}めて、状況{じょうきょう}を伝{つた}えてください。",
+        english: "You wake up in the middle of the night and the house next door is on fire. Decide whether to call 119 or 110, then say what's happening."
+      },
+      {
+        image: "t09-phone.png",
+        title: "電話{でんわ}",
+        label: "An ordinary phone call",
+        text: "りかちゃんに電話{でんわ}します。今日{きょう}の夕方{ゆうがた}の約束{やくそく}を、一時間{いちじかん}遅{おく}らせたいです。何{なん}と言{い}いますか？",
+        english: "You're calling Rika-chan. You want to push this evening's plan back by one hour. What do you say?"
+      },
+      {
+        image: "t10-internet.png",
+        title: "インターネット",
+        label: "Signing up for internet",
+        text: "新{あたら}しいアパートにインターネットを申{もう}し込{こ}みたいです。お店{みせ}の人{ひと}に住所{じゅうしょ}を伝{つた}えて、いつから使{つか}えるか聞{き}いてください。",
+        english: "You want to sign up for internet in your new apartment. Tell the shop staff your address and ask when it will start working."
+      },
+      {
+        image: "t11-potatoes.png",
+        title: "請求{せいきゅう}",
+        label: "Wrong charge on the bill",
+        text: "クレジットカードの紙{かみ}を見{み}たら、じゃがいもを100個{こ}買{か}ったことになっています。買{か}っていません。カード会社{がいしゃ}に電話{でんわ}して、間違{まちが}いだと言{い}ってください。",
+        english: "Your credit card bill says you bought 100 potatoes. You didn't. Call the card company and say the charge is wrong."
+      },
+      {
+        image: "t12-lizard.png",
+        title: "トカゲ",
+        label: "Lizard isn't eating",
+        text: "飼{か}っているトカゲが、ここ二日{ふつか}くらい餌{えさ}を食{た}べません。ペットショップに行{い}って、店員{てんいん}さんにどうしたらいいか相談{そうだん}してください。",
+        english: "Your pet lizard hasn't eaten for about two days. Go to the pet store and ask the staff what you should do."
+      }
+    ];
+
+    const titleEl = document.getElementById("title");
+    const textEl = document.getElementById("text");
+    const cardEl = document.getElementById("card");
+    const progressEl = document.getElementById("progress");
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+    const peekBtn = document.getElementById("peek");
+    const shuffleBtn = document.getElementById("shuffle");
+    let order = CARDS.map((_, n) => n);
+    let i = 0;
+    let showEn = false;
+    let showFuri = false;
+    let shuffled = false;
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+    function withRuby(src) {
+      return escapeHtml(src).replace(
+        /([\u4E00-\u9FFF]+)\{([^{}]+)\}/g,
+        (_, base, rt) => "<ruby>" + base + "<rt>" + rt + "</rt></ruby>"
+      );
+    }
+    function plainJp(src) {
+      return escapeHtml(src).replace(/\{[^{}]+\}/g, "");
+    }
+    function current() {
+      return CARDS[order[i]];
+    }
+    function render() {
+      const card = current();
+      const pic = document.getElementById("pic");
+      pic.src = card.image;
+      pic.alt = card.label;
+      cardEl.classList.toggle("is-en", showEn);
+      cardEl.classList.toggle("is-furi", showFuri && !showEn);
+      if (showEn) {
+        titleEl.textContent = card.label;
+        textEl.textContent = card.english;
+      } else {
+        titleEl.innerHTML = withRuby(card.title);
+        textEl.innerHTML = showFuri ? withRuby(card.text) : plainJp(card.text);
+      }
+      peekBtn.textContent = showFuri ? "Hide" : "Show";
+      peekBtn.setAttribute("aria-pressed", showFuri ? "true" : "false");
+      progressEl.textContent = (i + 1) + " / " + order.length;
+      prevBtn.disabled = shuffled && i <= 0;
+    }
+    function go(delta) {
+      showEn = false;
+      if (shuffled && delta > 0 && i >= order.length - 1) {
+        const avoid = order[i];
+        order = order.slice().sort(() => Math.random() - 0.5);
+        if (order[0] === avoid && order.length > 1) {
+          const tmp = order[0];
+          order[0] = order[1];
+          order[1] = tmp;
+        }
+        i = 0;
+        render();
+        return;
+      }
+      if (shuffled && delta < 0 && i <= 0) return;
+      i = shuffled ? i + delta : (i + delta + order.length) % order.length;
+      render();
+    }
+    prevBtn.addEventListener("click", () => go(-1));
+    nextBtn.addEventListener("click", () => go(1));
+    shuffleBtn.addEventListener("click", () => {
+      const avoid = order[i];
+      order = order.slice().sort(() => Math.random() - 0.5);
+      if (order[0] === avoid && order.length > 1) {
+        const tmp = order[0];
+        order[0] = order[1];
+        order[1] = tmp;
+      }
+      shuffled = true;
+      i = 0;
+      showEn = false;
+      render();
+    });
+    peekBtn.addEventListener("click", () => {
+      showFuri = !showFuri;
+      render();
+    });
+    cardEl.addEventListener("click", () => {
+      showEn = !showEn;
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "id": "sheet-music-eikou",
+  "title": "栄光・尊厳",
+  "date": "2026-10-05",
+  "register": "casual",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "music",
+  "templateType": "music-sing",
+  "singPageUrl": "/preview/music-eikou/index.html",
+  "lessonName": "栄光・尊厳",
+  "topicExplanation": "Sing sheet for IRL practice.\n  F         Dm    Bb       C\n栄光　尊厳　力は　主のもの\n\n  F         Dm         Bb         C        F\n栄光　ほまれ　賛美は　主のもの",
+  "sections": [
+    {
+      "id": "lyrics",
+      "mode": "music-lyrics",
+      "title": "",
+      "instructions": "",
+      "items": [
+        {
+          "id": "line-1",
+          "chords": "  F         Dm    Bb       C",
+          "text": "栄光　尊厳　力は　主のもの",
+          "furiganaHtml": "<ruby>栄光<rt>えいこう</rt></ruby>　<ruby>尊厳<rt>そんげん</rt></ruby>　<ruby>力<rt>ちから</rt></ruby>は　<ruby>主<rt>しゅ</rt></ruby>のもの"
+        },
+        {
+          "id": "line-2",
+          "chords": "  F         Dm         Bb         C        F",
+          "text": "栄光　ほまれ　賛美は　主のもの",
+          "furiganaHtml": "<ruby>栄光<rt>えいこう</rt></ruby>　ほまれ　<ruby>賛美<rt>さんび</rt></ruby>は　<ruby>主<rt>しゅ</rt></ruby>のもの"
+        }
+      ]
+    }
+  ]
+}

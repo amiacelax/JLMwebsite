@@ -1,0 +1,114 @@
+{
+  "id": "sheet-intro-circle",
+  "title": "Intro Circle — 10 People",
+  "date": "2026-09-16",
+  "register": "casual",
+  "studentLabel": "",
+  "lessonName": "Intro Circle",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "core-japanese",
+  "students": [],
+  "sections": [
+    {
+      "id": "sec-intro-circle",
+      "mode": "audio-prompt",
+      "title": "10 introductions",
+      "instructions": "Skeleton — drop irasutoya pictures + audio later. Each person introduces themselves. Listen, then record what you caught (or introduce yourself back).",
+      "items": [
+        {
+          "id": "circle-01-tanaka",
+          "prompt": "田中さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 1 · swap for irasutoya + recorded intro",
+          "imageUrl": "/homework/media/intro-circle/01-tanaka.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/01-tanaka.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-02-suzuki",
+          "prompt": "鈴木さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 2",
+          "imageUrl": "/homework/media/intro-circle/02-suzuki.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/02-suzuki.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-03-yamada",
+          "prompt": "山田さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 3",
+          "imageUrl": "/homework/media/intro-circle/03-yamada.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/03-yamada.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-04-sato",
+          "prompt": "佐藤さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 4",
+          "imageUrl": "/homework/media/intro-circle/04-sato.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/04-sato.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-05-ito",
+          "prompt": "伊藤さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 5",
+          "imageUrl": "/homework/media/intro-circle/05-ito.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/05-ito.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-06-watanabe",
+          "prompt": "渡辺さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 6",
+          "imageUrl": "/homework/media/intro-circle/06-watanabe.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/06-watanabe.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-07-nakamura",
+          "prompt": "中村さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 7",
+          "imageUrl": "/homework/media/intro-circle/07-nakamura.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/07-nakamura.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-08-kobayashi",
+          "prompt": "小林さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 8",
+          "imageUrl": "/homework/media/intro-circle/08-kobayashi.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/08-kobayashi.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-09-kato",
+          "prompt": "加藤さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 9",
+          "imageUrl": "/homework/media/intro-circle/09-kato.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/09-kato.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        },
+        {
+          "id": "circle-10-yoshida",
+          "prompt": "吉田さん — self-intro (audio + picture TBD)",
+          "english": "Placeholder person 10",
+          "imageUrl": "/homework/media/intro-circle/10-yoshida.png",
+          "imageAlign": "center",
+          "audioUrl": "/homework/media/intro-circle/10-yoshida.mp3",
+          "recordLabel": "Record what you heard / your reply"
+        }
+      ]
+    }
+  ]
+}

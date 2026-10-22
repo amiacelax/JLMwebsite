@@ -10,7 +10,7 @@
   const PRODUCTS = {
     basic: {
       label: "Basic homework subscription",
-      url: "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3BS11069X4737034MNJ563OA",
+      url: "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3C015132V3458352HNLDR7AY",
       param: "custom_id",
       isHwPlan: true,
     },
@@ -37,6 +37,12 @@
       url: "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=REPLACE_STUDENT_ULTRA",
       param: "custom_id",
       isHwPlan: true,
+    },
+    "quest-only": {
+      label: "Quest Only subscription",
+      url: "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=REPLACE_QUEST_ONLY",
+      param: "custom_id",
+      isHwPlan: false,
     },
     "course-pitch-accent": {
       label: "Easy Pitch Accent course",
@@ -664,8 +670,88 @@
     }
   }
 
+
+  /* ---- New-student pause ----
+     Homework Hub is not taking new subscribers. People who already have a plan can still
+     switch plans. Set to false (and PAUSED in src/index.ts) to open the doors again. */
+  const HUB_PAUSED_FOR_NEW = true;
+
+  function isHubPaused(session) {
+    if (!HUB_PAUSED_FOR_NEW) return false;
+    const s = session || global.HwAuth?.getSession?.();
+    if (s && global.HwAuth?.hasActiveSubscription?.(s)) return false;
+    return true;
+  }
+
+  function openPauseDialog() {
+    let wrap = document.getElementById("hw-pause-dialog");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "hw-pause-dialog";
+      wrap.setAttribute("role", "dialog");
+      wrap.setAttribute("aria-modal", "true");
+      wrap.setAttribute("aria-labelledby", "hw-pause-title");
+      wrap.style.cssText =
+        "position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(5,8,20,.72);";
+      wrap.innerHTML =
+        '<div style="max-width:26rem;width:100%;background:var(--color-surface,#17204a);color:var(--color-text,#e9edf7);border:1px solid var(--color-border-strong,rgba(255,255,255,.2));border-radius:1rem;padding:1.4rem 1.3rem;box-shadow:0 18px 50px rgba(0,0,0,.45);">' +
+        '<h3 id="hw-pause-title" style="margin:0 0 .6rem;font-size:1.2rem;">Homework Hub is full right now</h3>' +
+        '<p style="margin:0 0 .9rem;line-height:1.5;">I\u2019m not taking new Homework Hub students at the moment. Leave your email and I\u2019ll let you know when spots open.</p>' +
+        '<form id="hw-pause-form" style="display:flex;flex-direction:column;gap:.6rem;">' +
+        '<input type="email" id="hw-pause-email" required placeholder="you@email.com" autocomplete="email" style="padding:.6rem .75rem;border-radius:.6rem;border:1px solid var(--color-border-strong,rgba(255,255,255,.25));background:var(--color-bg,#0b1128);color:inherit;font:inherit;">' +
+        '<p id="hw-pause-status" role="status" style="margin:0;min-height:1.2em;font-size:.9rem;"></p>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap;justify-content:flex-end;">' +
+        '<button type="button" id="hw-pause-close" class="btn btn--ghost">Close</button>' +
+        '<button type="submit" id="hw-pause-submit" class="btn btn--primary">Tell me when it opens</button>' +
+        "</div></form></div>";
+      document.body.appendChild(wrap);
+      const close = () => {
+        wrap.style.display = "none";
+      };
+      wrap.addEventListener("click", (e) => {
+        if (e.target === wrap) close();
+      });
+      wrap.querySelector("#hw-pause-close").addEventListener("click", close);
+      wrap.querySelector("#hw-pause-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const status = wrap.querySelector("#hw-pause-status");
+        const btn = wrap.querySelector("#hw-pause-submit");
+        const email = String(wrap.querySelector("#hw-pause-email").value || "").trim();
+        btn.disabled = true;
+        status.textContent = "Saving\u2026";
+        try {
+          const res = await fetch("/api/promo-signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              page: "Homework Hub waitlist",
+              interests: ["other"],
+              interestOther: "Homework Hub waitlist (new students paused)",
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Could not save. Try again.");
+          status.textContent = "Got it. I\u2019ll email you when spots open.";
+        } catch (err) {
+          status.textContent = (err && err.message) || "Could not save. Try again.";
+          btn.disabled = false;
+        }
+      });
+    }
+    const status = wrap.querySelector("#hw-pause-status");
+    if (status) status.textContent = "";
+    const btn = wrap.querySelector("#hw-pause-submit");
+    if (btn) btn.disabled = false;
+    wrap.style.display = "flex";
+    wrap.querySelector("#hw-pause-email")?.focus();
+  }
   async function startHwPlanCheckout(productId, session, options) {
     options = options || {};
+    if (isHubPaused(session)) {
+      openPauseDialog();
+      return;
+    }
     if (!session?.username) {
       openJoinAccountDialog(productId);
       return;
@@ -740,6 +826,10 @@
     const session = global.HwAuth?.getSession?.();
 
     if (PRODUCTS[productId]?.isHwPlan) {
+      if (isHubPaused(session)) {
+        openPauseDialog();
+        return;
+      }
       if (!session?.username) {
         openJoinAccountDialog(productId);
         return;
@@ -930,6 +1020,8 @@
     init,
     requireLogin,
     startCheckout,
+    isHubPaused,
+    openPauseDialog,
     activatePlan,
     openPaidConfirm,
     openJoinAccountDialog,

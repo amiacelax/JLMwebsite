@@ -9,7 +9,7 @@
  *
  * Optional:
  *   --pin "..."
- *   --story "Free consultation ↑"
+ *   --story "Book a trial lesson ↑"
  *   --link "https://japaneselanguagementor.com/#contact"
  *   --base https://japaneselanguagementor.com
  *   --user jlm
@@ -19,8 +19,8 @@ import process from "node:process";
 const DEFAULT_BASE = "https://japaneselanguagementor.com";
 const DEFAULT_USER = "jlm";
 const DEFAULT_PIN =
-  "Free consultation → https://japaneselanguagementor.com/#contact";
-const DEFAULT_STORY = "Free consultation ↑";
+  "Book a trial lesson → https://japaneselanguagementor.com/#contact";
+const DEFAULT_STORY = "Book a trial lesson ↑";
 const DEFAULT_LINK = "https://japaneselanguagementor.com/#contact";
 
 function usage() {
@@ -34,9 +34,10 @@ Options:
   --fire   ISO time (UTC or with offset), e.g. 2026-08-06T01:30:00Z
   --titles Clip title(s) shown in the ping
   --pin    YouTube pin comment text
-  --story  IG Story caption (default: Free consultation ↑)
+  --story  IG Story caption (default: Book a trial lesson ↑)
   --link   Link sticker URL
   --base   API base URL (default: ${DEFAULT_BASE})
+  --plain  Send just the --pin text as one plain message (no copy blocks / link)
   --user   Teacher username (default: ${DEFAULT_USER})
 `);
 }
@@ -53,6 +54,7 @@ function parseArgs(argv) {
     list: false,
     cancel: null,
     help: false,
+    plain: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -64,6 +66,7 @@ function parseArgs(argv) {
     else if (a === "--pin") out.pin = next();
     else if (a === "--story") out.story = next();
     else if (a === "--link") out.link = next();
+    else if (a === "--plain") out.plain = true;
     else if (a === "--base") out.base = next();
     else if (a === "--user") out.user = next();
     else if (a === "--cancel") out.cancel = next();
@@ -123,6 +126,7 @@ async function main() {
     ytPinComment: args.pin,
     igStoryCaption: args.story,
     linkSticker: args.link,
+    plain: args.plain,
   };
 
   const res = await fetch(`${base}/api/social-reminders`, {

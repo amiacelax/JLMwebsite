@@ -381,6 +381,11 @@
     if (!dialog || !form || !sendBtn || form.dataset.bound === "true") return;
     form.dataset.bound = "true";
 
+    /* Keep modal outside <main> so page-blur pointer-events:none cannot kill Send. */
+    if (dialog.parentElement !== document.body) {
+      document.body.appendChild(dialog);
+    }
+
     pill?.addEventListener("click", () => {
       void openDialog("feature");
     });
@@ -450,6 +455,11 @@
       const session = sessionUser();
       sendBtn.disabled = true;
       setStatus(statusEl, "Sending…");
+      const fail = (msg) => {
+        const text = msg || "Could not send. Try again — or turn off ad blockers for this site.";
+        setStatus(statusEl, text, true);
+        global.HwToast?.show?.(text);
+      };
       try {
         const payload = {
           kind,
@@ -458,16 +468,28 @@
           displayName: session?.displayName || session?.username || "",
           page:
             "Homework Hub" +
-            (global.location?.pathname ? " (" + global.location.pathname + ")" : ""),
+            (global.location?.pathname
+              ? " (" + global.location.pathname + (global.location.hash || "") + ")"
+              : ""),
         };
         if (kind === "bug" && pendingScreenshot) {
           payload.imageBase64 = pendingScreenshot;
         }
-        const res = await fetch("/api/feature-report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        const timer = controller
+          ? window.setTimeout(() => controller.abort(), 45000)
+          : 0;
+        let res;
+        try {
+          res = await fetch("/api/feature-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: controller?.signal,
+          });
+        } finally {
+          if (timer) window.clearTimeout(timer);
+        }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Could not send.");
         setStatus(statusEl, data.message || "Thanks — your message was sent to JD.");
@@ -478,7 +500,20 @@
           else dialog.removeAttribute("open");
         }, 900);
       } catch (err) {
-        setStatus(statusEl, (err && err.message) || "Could not send.", true);
+        const aborted = err && (err.name === "AbortError" || /aborted/i.test(String(err.message || "")));
+        const network =
+          err &&
+          (/Failed to fetch|NetworkError|Load failed|ERR_BLOCKED/i.test(String(err.message || "")) ||
+            err.name === "TypeError");
+        if (aborted) {
+          fail("Send timed out. Try again without a screenshot, or check your connection.");
+        } else if (network) {
+          fail(
+            "Could not reach the server (ad blocker or network). Pause blockers for japaneselanguagementor.com and try again."
+          );
+        } else {
+          fail((err && err.message) || "Could not send.");
+        }
       } finally {
         sendBtn.disabled = false;
       }

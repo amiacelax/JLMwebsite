@@ -6,3 +6,24 @@ node_modules/
 public/videos/*.mov
 .tmp-live-index.js
 .tmp-live-glass/
+
+# YT Plate Clipper (standalone workflow) — runtime artifacts + secrets
+yt-plate-clipper/work/
+yt-plate-clipper/state/
+yt-plate-clipper/.env
+yt-plate-clipper/__pycache__/
+yt-plate-clipper/assets/fonts/
+
+# yt-lesson-uploader secrets + work
+yt-lesson-uploader/client_secret.json
+yt-lesson-uploader/token.json
+yt-lesson-uploader/work/
+yt-lesson-uploader/__pycache__/
+yt-lesson-uploader/.env
+yt-lesson-uploader/state/
+yt-lesson-uploader/uploader.log
+yt-lesson-uploader/node_modules/
+yt-lesson-uploader/backfill*.log
+yt-lesson-uploader/backfill*.err
+yt-lesson-uploader/token_analytics.json
+yt-lesson-uploader/token_calendar.json

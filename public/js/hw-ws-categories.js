@@ -9,12 +9,13 @@
     { id: "core-japanese", label: "Core Japanese" },
     { id: "jlpt", label: "JLPT" },
     { id: "christian", label: "Christian" },
+    { id: "music", label: "Music" },
     { id: "other", label: "Other" },
   ];
 
   const LS_CUSTOM = "jlm-hw-ws-custom-cats-v1";
   const LS_TAB = "jlm-hw-ws-category-tab";
-  const CORE_DEFAULT_IDS = { "sykohpath-secret-hiragana": true };
+  const CORE_DEFAULT_IDS = { "sheet-secret-hiragana": true };
   const SLUG_RE = /^[a-z0-9-]{1,32}$/;
 
   function slugify(label) {
@@ -65,6 +66,7 @@
     if (key === "other") return "other";
     if (key === "jlpt") return "jlpt";
     if (key === "christian" || key === "gospel") return "christian";
+    if (key === "music") return "music";
     if (SLUG_RE.test(key)) return key;
     return undefined;
   }

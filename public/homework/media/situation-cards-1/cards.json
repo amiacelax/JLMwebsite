@@ -1,0 +1,138 @@
+[
+  {
+    "n": "01",
+    "titleJp": "熱",
+    "label": "1 · Fever",
+    "image": "sit-1-fever.png",
+    "text": "あなたは今起きました。頭を触ってみるとやっぱりあつい。まず、どうしますか？",
+    "english": "You just woke up. You touch your forehead — yeah, you’re hot. What do you do first?"
+  },
+  {
+    "n": "02",
+    "titleJp": "病院",
+    "label": "2 · Doctor",
+    "image": "sit-2-doctor.png",
+    "text": "熱が40度を越えてしまいました。どうしますか？",
+    "english": "Your fever went over 40°C. What do you do?"
+  },
+  {
+    "n": "03",
+    "titleJp": "席",
+    "label": "3 · Seat",
+    "image": "sit-3-seat.png",
+    "text": "あなたの席がこの人に取られました。言ってやってください！",
+    "english": "Someone took your seat! Say something!"
+  },
+  {
+    "n": "04",
+    "titleJp": "コンビニ",
+    "label": "4 · Konbini",
+    "image": "sit-4-konbini.png",
+    "text": "お弁当を温めようとしたら、財布を家に忘れたことに気づきました。店員さんの岩崎さんに何と言いますか？",
+    "english": "You were about to heat your bento and realized you left your wallet at home. What do you say to Iwazaki-san?"
+  },
+  {
+    "n": "05",
+    "titleJp": "電車",
+    "label": "5 · Train",
+    "image": "sit-5-train.png",
+    "text": "友達のりかちゃんとの大事な約束に間に合いません。次の電車まで８分。友達に何を伝えますか？",
+    "english": "You’ll miss an important meetup with Rika-chan. Next train is in 8 minutes. What do you tell her?"
+  },
+  {
+    "n": "06",
+    "titleJp": "アレルギー",
+    "label": "6 · Allergy",
+    "image": "sit-6-restaurant.png",
+    "text": "色々な食べ物のアレルギーがあります。注文の前に、店員さんにちゃんと伝えてください。",
+    "english": "You have several food allergies. Tell the staff clearly before ordering."
+  },
+  {
+    "n": "07",
+    "titleJp": "騒音",
+    "label": "7 · Noise",
+    "image": "sit-7-noise.png",
+    "text": "夜中なのに隣がうるさいです。明日仕事があります。どうしますか？言ってみてください。",
+    "english": "It’s the middle of the night and the neighbors are loud. You have work tomorrow. What do you do / say?"
+  },
+  {
+    "n": "08",
+    "titleJp": "カフェ",
+    "label": "8 · Cafe",
+    "image": "sit-11-cafe.png",
+    "text": "頼んだものと違う飲み物が来ました。怒らずに、でもはっきり言ってください。",
+    "english": "The wrong drink arrived. Correct the order without sounding angry."
+  },
+  {
+    "n": "09",
+    "titleJp": "誕生日",
+    "label": "9 · Birthday",
+    "image": "sit-h1-birthday.png",
+    "text": "今日は友達のセラの誕生日です。大事なプレゼントを考えて買ったんだけど、渡す前に何と言いますか？",
+    "english": "It’s your friend Sera’s birthday. You bought a thoughtful gift — what do you say before handing it over?"
+  },
+  {
+    "n": "10",
+    "titleJp": "お礼",
+    "label": "10 · Thanks",
+    "image": "sit-h3-thanks.png",
+    "text": "店員さんの大和さんがドライヤーを買うのにとても親切でした。お礼を言ってください。",
+    "english": "Yamato-san at the store was really kind while you bought a hair dryer. Say thanks."
+  },
+  {
+    "n": "11",
+    "titleJp": "再会",
+    "label": "11 · Reunion",
+    "image": "sit-h4-reunion.png",
+    "text": "久しぶりに会えた友達の家族とばったり会いました。最初に何と言いますか？",
+    "english": "You bump into a friend’s family you haven’t seen in a long time. What do you say first?"
+  },
+  {
+    "n": "12",
+    "titleJp": "初対面",
+    "label": "12 · First meeting",
+    "image": "sit-12-first-meet.png",
+    "text": "初めて会う人です。自己紹介をしてください。",
+    "english": "You’re meeting someone for the first time. Introduce yourself."
+  },
+  {
+    "n": "13",
+    "titleJp": "落とし物",
+    "label": "13 · Dropped keys",
+    "image": "sit-13-keychain.png",
+    "text": "向こうの人がキーホルダーを落としました。本人は気づかずに、とても急いで歩いて行きます。どうしますか？",
+    "english": "You just saw someone drop their keychain. They didn’t notice and they’re walking away very quickly. What do you do?"
+  },
+  {
+    "n": "14",
+    "titleJp": "雨・子供",
+    "label": "14 · Rain · child",
+    "image": "sit-14-rain-child.png",
+    "text": "雨が降っています。コンビニの前に、傘を持っていない悲しそうな子どもがいます。どうしますか？",
+    "english": "It’s raining. You see a sad child by a konbini without an umbrella. What do you do?"
+  },
+  {
+    "n": "15",
+    "titleJp": "雨・駅",
+    "label": "15 · Rain · station",
+    "image": "sit-15-rain-station.png",
+    "text": "駅へ向かって歩いているけど、急に雨が降り始めました。家に傘があるけど、戻るのはめんどくさいです。どうしますか？",
+    "english": "It’s raining, but you already started walking to the train station. You don’t feel like going back inside for your umbrella. What do you do?"
+  },
+  {
+    "n": "16",
+    "titleJp": "優先座席",
+    "label": "16 · Priority seat",
+    "image": "sit-16-priority-seat.png",
+    "text": "優先座席に、スマホを見ている若い人が座っています。妊婦さんが立っています。席をゆずってもらうように、その人に言ってください。",
+    "english": "A young man is on his phone in the priority seats. A pregnant woman is standing. Ask him to give her his seat."
+  },
+  {
+    "n": "17",
+    "titleJp": "鍵",
+    "label": "17 · Keys",
+    "image": "sit-17-lost-keys.png",
+    "text": "鍵が見つかりません。自分に何と言いますか？",
+    "english": "You can't find your keys. What do you say to yourself?"
+  }
+]

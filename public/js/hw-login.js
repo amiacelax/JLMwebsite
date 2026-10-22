@@ -127,7 +127,9 @@
       e.preventDefault();
       const loginId = document.getElementById("hw-username")?.value ?? "";
       const password = document.getElementById("hw-password")?.value ?? "";
-      const remember = document.getElementById("hw-remember")?.checked ?? false;
+      const standaloneApp =
+        window.navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)")?.matches;
+      const remember = standaloneApp || (document.getElementById("hw-remember")?.checked ?? false);
       const result = await HwAuth.loginAsync(loginId, password, remember);
       if (result.ok) {
         redirectAfterAuth();

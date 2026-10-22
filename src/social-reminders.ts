@@ -4,8 +4,9 @@
  */
 
 import { saveFeatureReport } from "./homework-kv";
+import { resolveRoutedWebhook, type DiscordRouteEnv } from "./discord-channels";
 
-export interface SocialReminderEnv {
+export interface SocialReminderEnv extends DiscordRouteEnv {
   HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
   DISCORD_CHANNEL_ID?: string;
@@ -22,6 +23,8 @@ export interface SocialReminderJob {
   ytPinComment: string;
   igStoryCaption: string;
   linkSticker: string;
+  /** Plain one-text message (lesson-upload notices): just ytPinComment, no copy blocks / contact link. */
+  plain?: boolean;
   createdAt: string;
   firedAt?: string;
 }
@@ -32,6 +35,7 @@ export interface SocialReminderArmPayload {
   ytPinComment?: string;
   igStoryCaption?: string;
   linkSticker?: string;
+  plain?: boolean;
   /** Teacher login check (same pattern as other hub list APIs). */
   teacherUsername?: string;
   username?: string;
@@ -40,9 +44,9 @@ export interface SocialReminderArmPayload {
 const PENDING_PREFIX = "sr-pending:";
 const DONE_PREFIX = "sr-done:";
 const DEFAULT_LINK = "https://japaneselanguagementor.com/#contact";
-const DEFAULT_STORY = "Free consultation ↑";
+const DEFAULT_STORY = "Book a trial lesson ↑";
 const DEFAULT_PIN =
-  "Free consultation → https://japaneselanguagementor.com/#contact";
+  "Book a trial lesson → https://japaneselanguagementor.com/#contact";
 
 function pendingKey(id: string): string {
   return `${PENDING_PREFIX}${id}`;
@@ -95,6 +99,10 @@ function clip(s: string, max: number): string {
 }
 
 export function buildSocialReminderMessage(job: SocialReminderJob): string {
+  /* Plain notices (e.g. lesson uploads): one short text, nothing else. */
+  if (job.plain) {
+    return ["```", clip(String(job.ytPinComment || job.clipTitles || "").trim(), 1800), "```"].join("\n");
+  }
   /* One Discord message; each line is its own copyable ``` block. */
   const title = clip(String(job.clipTitles || "").trim() || "Shorts/Reels", 280);
   const pin = clip(String(job.ytPinComment || DEFAULT_PIN).trim() || DEFAULT_PIN, 900);
@@ -186,6 +194,7 @@ export async function armSocialReminder(
     ytPinComment: ytPinComment.slice(0, 1000),
     igStoryCaption: igStoryCaption.slice(0, 500),
     linkSticker: linkSticker.slice(0, 500),
+    ...(payload.plain === true ? { plain: true } : {}),
     createdAt: new Date().toISOString(),
   };
 
@@ -195,6 +204,7 @@ export async function armSocialReminder(
   const dup = existing.find(
     (j) =>
       j.clipTitles === job.clipTitles &&
+      j.ytPinComment === job.ytPinComment &&
       String(j.fireAtUtc || "").slice(0, 16) === fireMin
   );
   if (dup) return dup;
@@ -297,11 +307,12 @@ async function fireOne(
   let discordOk = false;
   let hubOk = false;
 
-  const webhookUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
+  const hook = await resolveRoutedWebhook(env, "video");
+  const webhookUrl = hook?.url ?? null;
   if (webhookUrl) {
     const channelError = await getWebhookChannelMismatch(
       webhookUrl,
-      env.DISCORD_CHANNEL_ID
+      hook?.channelId
     );
     if (channelError) {
       console.error("social-reminders:", channelError);

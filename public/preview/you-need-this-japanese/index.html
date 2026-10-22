@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#0b162a">
+  <title>Core Japanese — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg-2: #121f36;
+      --ink: #e8edf5;
+      --muted: #9aa8bd;
+      --line: rgba(232, 237, 245, 0.14);
+      --heart: #e85545;
+      --coral: #e07a5f;
+      --day: #67c4eb;
+      --deep: #4a8fd4;
+      --teal: #3dbaa8;
+      --sun: #f0b429;
+      --violet: #a78bfa;
+      --font: Inter, "Noto Sans JP", system-ui, sans-serif;
+      --brand: "Josefin Sans", Inter, sans-serif;
+      --jp: "Noto Sans JP", Inter, sans-serif;
+      --pad: clamp(1.1rem, 4vw, 1.75rem);
+      --max: 52rem;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 90% 55% at 100% -5%, rgba(103, 196, 235, 0.22), transparent 55%),
+        radial-gradient(ellipse 70% 40% at -10% 20%, rgba(167, 139, 250, 0.16), transparent 50%),
+        var(--bg);
+    }
+    .shell { max-width: var(--max); margin: 0 auto; padding: 1.1rem var(--pad) 3rem; }
+    .brand { margin: 0; font-family: var(--brand); letter-spacing: 0.04em; color: var(--day); font-size: 0.85rem; }
+    h1 { margin: 0.25rem 0 0.35rem; font-family: var(--brand); font-size: clamp(1.6rem, 5vw, 2.15rem); font-weight: 600; }
+    .lede { margin: 0 0 0.9rem; color: var(--muted); line-height: 1.45; }
+    .also {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 0 0 0.7rem;
+      padding: 0;
+    }
+    .also li {
+      font-family: var(--jp);
+      font-weight: 700;
+      padding: 0.4rem 0.75rem;
+      border-radius: 0.65rem;
+      border: 1px solid color-mix(in srgb, var(--teal) 45%, var(--line));
+      background: color-mix(in srgb, var(--teal) 14%, var(--bg-2));
+    }
+    .tools {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      margin: 0 calc(var(--pad) * -1);
+      padding: 0.55rem var(--pad) 0.7rem;
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      backdrop-filter: blur(12px);
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+    #q {
+      flex: 1;
+      min-width: 0;
+      font: inherit;
+      color: var(--ink);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 0.7rem;
+      padding: 0.6rem 0.75rem;
+    }
+    #q:focus { outline: 2px solid color-mix(in srgb, var(--day) 70%, transparent); }
+    #hide-en {
+      font: inherit;
+      font-weight: 600;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--violet) 22%, var(--bg-2));
+      border: 1px solid color-mix(in srgb, var(--violet) 50%, var(--line));
+      border-radius: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      white-space: nowrap;
+    }
+    #hide-en.is-on { background: var(--violet); color: #140c28; }
+    .flash-link {
+      font-weight: 600;
+      text-decoration: none;
+      color: #140c28;
+      background: var(--sun);
+      border-radius: 0.7rem;
+      padding: 0.6rem 0.75rem;
+      white-space: nowrap;
+    }
+    .sets {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      margin-top: 0.55rem;
+      padding-bottom: 0.15rem;
+    }
+    .sets a {
+      flex: 0 0 auto;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 0.86rem;
+      font-weight: 600;
+      padding: 0.4rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--bg-2);
+    }
+    .sets a span { color: var(--muted); font-weight: 500; }
+    .deck { margin-top: 1.6rem; scroll-margin-top: 8.2rem; }
+    .deck h2 {
+      margin: 0;
+      font-family: var(--brand);
+      font-size: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.45rem;
+    }
+    .num {
+      display: inline-grid;
+      place-items: center;
+      min-width: 1.7rem;
+      height: 1.7rem;
+      padding: 0 0.35rem;
+      border-radius: 999px;
+      background: var(--tint);
+      color: #0b162a;
+      font-family: var(--brand);
+      font-size: 0.95rem;
+    }
+    .topic { color: var(--tint); font-family: var(--font); font-size: 0.95rem; font-weight: 600; }
+    .count { margin: 0.3rem 0 0.7rem; color: var(--muted); font-size: 0.85rem; }
+    .cards { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .cards li { flex: 1 1 16rem; display: flex; }
+    .cards li[hidden] { display: none; }
+    .card {
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--tint) 14%, var(--bg-2));
+      border: 1px solid color-mix(in srgb, var(--tint) 42%, var(--line));
+      border-radius: 0.75rem;
+      padding: 0.7rem 0.8rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+    }
+    .jp { font-family: var(--jp); font-weight: 700; font-size: 1.12rem; line-height: 1.35; }
+    .en { font-size: 0.84rem; line-height: 1.35; color: var(--muted); }
+    body.hide-en .en { display: none; }
+    body.hide-en .card.is-open .en { display: block; color: var(--ink); }
+    .empty { display: none; margin: 1.2rem 0; color: var(--muted); }
+    body.is-empty .empty { display: block; }
+    .foot { margin-top: 2.2rem; color: var(--muted); font-size: 0.85rem; }
+    .foot a { color: var(--day); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p class="brand">Japanese Language Mentor</p>
+    <h1>Core Japanese</h1>
+    <p class="lede">This is the core list. Sets 1–7 from the Quizlet decks, 355 cards. Tap a card when English is hidden.</p>
+    <ul class="also" lang="ja">
+      <li>つまり</li>
+      <li>例えば</li>
+      <li>わざと</li>
+    </ul>
+    <p class="lede">Those three were not in the Quizlet decks. とりあえず is already in set 3.</p>
+    <div class="tools">
+      <div class="row">
+        <input id="q" type="search" placeholder="Search Japanese or English" autocomplete="off" enterkeyhint="search">
+        <button type="button" id="hide-en">Hide English</button>
+        <a class="flash-link" href="flashcards.html">Flashcards</a>
+      </div>
+      <nav class="sets" aria-label="Sets">
+      <a href="#set-1">1 Time <span>42</span></a>
+      <a href="#set-2">2 Month dates <span>31</span></a>
+      <a href="#set-3">3 When <span>45</span></a>
+      <a href="#set-4">4 How much <span>28</span></a>
+      <a href="#set-5">5 Connectors <span>45</span></a>
+      <a href="#set-6">6 Adjectives <span>64</span></a>
+      <a href="#set-7">7 Verbs <span>100</span></a>
+      </nav>
+    </div>
+    <p class="empty">No cards match that search.</p>
+
+    <section class="deck" id="set-1" style="--tint:var(--sun)">
+      <h2><span class="num">1</span> You Need This Japanese 1 <span class="topic">Time</span></h2>
+      <p class="count">42 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">一昨日（おととい）</span><span class="en">day before yesterday (two days ago)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">昨日 (きのう)</span><span class="en">yesterday</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今日 (きょう)</span><span class="en">today</span></button></li>
+        <li><button type="button" class="card"><span class="jp">明日 (あした)</span><span class="en">tomorrow</span></button></li>
+        <li><button type="button" class="card"><span class="jp">明後日（あさって）</span><span class="en">day after tomorrow (in two days)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">先々週（せんせんしゅう）</span><span class="en">last last week (two weeks ago)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">先週（せんしゅう）</span><span class="en">last week</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今週 (こんしゅう)</span><span class="en">this week</span></button></li>
+        <li><button type="button" class="card"><span class="jp">来週（らいしゅう）</span><span class="en">next week</span></button></li>
+        <li><button type="button" class="card"><span class="jp">再来週（さらいしゅう）</span><span class="en">next next week (in two weeks)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">先々月（せんせんげつ）</span><span class="en">last last month (two months ago)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">先月（せんげつ）</span><span class="en">last month</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今月 (こんげつ)</span><span class="en">this month</span></button></li>
+        <li><button type="button" class="card"><span class="jp">来月（らいげつ）</span><span class="en">next month</span></button></li>
+        <li><button type="button" class="card"><span class="jp">再来月（さらいげつ）</span><span class="en">next next month (in two months)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一昨年（おととし）</span><span class="en">year before last (two years ago)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">去年（きょねん）</span><span class="en">last year</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今年 (ことし)</span><span class="en">this year</span></button></li>
+        <li><button type="button" class="card"><span class="jp">来年 (らいねん)</span><span class="en">next year</span></button></li>
+        <li><button type="button" class="card"><span class="jp">再来年（さらいねん）</span><span class="en">next next year (in two years)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">平日（へいじつ）</span><span class="en">weekday(s)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">週末 (しゅうまつ)</span><span class="en">weekend</span></button></li>
+        <li><button type="button" class="card"><span class="jp">8ヶ月前（はちかげつまえ）</span><span class="en">8 months ago · (Amount of time) ＋ ～前（まえ）</span></button></li>
+        <li><button type="button" class="card"><span class="jp">2年前（にねんまえ）</span><span class="en">2 years ago · (Amount of time) ＋ ～前（まえ）</span></button></li>
+        <li><button type="button" class="card"><span class="jp">3週間前（さんしゅうかんまえ）</span><span class="en">3 weeks ago · (Amount of time) ＋ ～前（まえ）</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一週間（いっしゅうかん）</span><span class="en">one week (amount of time)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">1分</span><span class="en">1 minute · いっぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">2分</span><span class="en">2 minutes · にふん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">3分</span><span class="en">3 minutes · さんぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">4分</span><span class="en">4 minutes · よんふん or よんぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">5分</span><span class="en">5 minutes · ごふん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">6分</span><span class="en">6 minutes · ろっぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">7分</span><span class="en">7 minutes · ななふん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">8分</span><span class="en">8 minutes · はっぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">9分</span><span class="en">9 minutes · きゅうふん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">10分</span><span class="en">10 minutes · じゅっぷん</span></button></li>
+        <li><button type="button" class="card"><span class="jp">5分後に （ごふんご）</span><span class="en">in 5 minutes · (Amount of time) ＋ ～後に（ご）</span></button></li>
+        <li><button type="button" class="card"><span class="jp">毎日 (まいにち)</span><span class="en">every day</span></button></li>
+        <li><button type="button" class="card"><span class="jp">毎週 (まいしゅう)</span><span class="en">every week</span></button></li>
+        <li><button type="button" class="card"><span class="jp">毎月 (まいつき)</span><span class="en">every month</span></button></li>
+        <li><button type="button" class="card"><span class="jp">毎年 (まいとし)</span><span class="en">every year</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今朝 (けさ)</span><span class="en">this morning</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-2" style="--tint:var(--coral)">
+      <h2><span class="num">2</span> You Need This Japanese 2 <span class="topic">Month dates</span></h2>
+      <p class="count">31 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">1日</span><span class="en">ついたち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">2日</span><span class="en">ふつか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">3日</span><span class="en">みっか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">4日</span><span class="en">よっか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">5日</span><span class="en">いつか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">6日</span><span class="en">むいか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">7日</span><span class="en">なのか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">8日</span><span class="en">ようか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">9日</span><span class="en">ここのか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">10日</span><span class="en">とおか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">11日</span><span class="en">じゅういちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">12日</span><span class="en">じゅうににち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">13日</span><span class="en">じゅうさんにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">14日</span><span class="en">じゅうよっか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">15日</span><span class="en">じゅうごにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">16日</span><span class="en">じゅうろくにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">17日</span><span class="en">じゅうななにち · or · じゅうしちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">18日</span><span class="en">じゅうはちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">19日</span><span class="en">じゅうくにち · く not きゅう</span></button></li>
+        <li><button type="button" class="card"><span class="jp">20日</span><span class="en">はつか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">21日</span><span class="en">にじゅういちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">22日</span><span class="en">にじゅうににち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">23日</span><span class="en">にじゅうさんにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">24日</span><span class="en">にじゅうよっか</span></button></li>
+        <li><button type="button" class="card"><span class="jp">25日</span><span class="en">にじゅうごにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">26日</span><span class="en">にじゅうろくにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">27日</span><span class="en">にじゅうななにち · or · にじゅうしちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">28日</span><span class="en">にじゅうはちにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">29日</span><span class="en">にじゅうくにち · not きゅうにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">30日</span><span class="en">さんじゅうにち</span></button></li>
+        <li><button type="button" class="card"><span class="jp">31日</span><span class="en">さんじゅういちにち</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-3" style="--tint:var(--day)">
+      <h2><span class="num">3</span> You Need This Japanese 3 <span class="topic">When</span></h2>
+      <p class="count">45 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">今（いま）</span><span class="en">now, right now</span></button></li>
+        <li><button type="button" class="card"><span class="jp">さっき</span><span class="en">just now, a second/minute ago</span></button></li>
+        <li><button type="button" class="card"><span class="jp">先に （さき）</span><span class="en">Before (e.g. ahead of time), beforehand</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あとで</span><span class="en">Later · (used at the beginning of a sentence)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あとは</span><span class="en">After</span></button></li>
+        <li><button type="button" class="card"><span class="jp">～とき、～のとき ～時、～の時</span><span class="en">when (i.e. when I went to Japan) · [often followed by に]</span></button></li>
+        <li><button type="button" class="card"><span class="jp">まだ</span><span class="en">まだ = Not yet · まだ見てない = Haven't seen [it] yet. · まだいる？ = You still there? (at the cafe etc.)"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もう</span><span class="en">Already, anymore · もう見た = Already saw [it]. · もういない？ = You not there anymore? (at the cafe etc.)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">また</span><span class="en">Again · また話しましょう Let's talk again sometime.</span></button></li>
+        <li><button type="button" class="card"><span class="jp">から まで</span><span class="en">from · [から/だから can also mean because] · until · [までに means "by"]</span></button></li>
+        <li><button type="button" class="card"><span class="jp">までに</span><span class="en">by (by 5:00PM)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">これから</span><span class="en">From now on · "About to" (used when you're about to start doing something)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">それから</span><span class="en">Since then, after that</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もうすぐ</span><span class="en">Almost</span></button></li>
+        <li><button type="button" class="card"><span class="jp">～前（まえ）、～の前（まえ）</span><span class="en">Before · "Before I went to Japan..." · 日本に行く前...（にほんにいくまえ）" · [Often followed by に]</span></button></li>
+        <li><button type="button" class="card"><span class="jp">～あと、～のあと</span><span class="en">After (i.e. After I said that, I left.) · [often followed by は or に]</span></button></li>
+        <li><button type="button" class="card"><span class="jp">次（つぎ）</span><span class="en">Next · [often followed by に or は]</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今度(こんど)</span><span class="en">Next time, this time (yeah I know it doesn't make sense)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一回・1回（いっかい）</span><span class="en">Once, one time</span></button></li>
+        <li><button type="button" class="card"><span class="jp">今回(こんかい)</span><span class="en">This time</span></button></li>
+        <li><button type="button" class="card"><span class="jp">前回（ぜんかい）</span><span class="en">Last time</span></button></li>
+        <li><button type="button" class="card"><span class="jp">最近 (さいきん)</span><span class="en">Recently, lately, as of late</span></button></li>
+        <li><button type="button" class="card"><span class="jp">最初（さいしょ）</span><span class="en">Beginning, first · 最初の漢字（さいしょのかんじ） · "The first kanji"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">最後(さいご)</span><span class="en">End, last · 最後の言葉（さいごのことば） · "The last word"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">初めて(はじめて)</span><span class="en">First time, first (experience) · 初めての時（はじめてのとき） · "When it's your first time..." · 初めて見た（はじめてみた） · "First time I've ever seen it"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">結局(けっきょく)</span><span class="en">Eventually, in the end, after all</span></button></li>
+        <li><button type="button" class="card"><span class="jp">すぐに</span><span class="en">Immediately, right away</span></button></li>
+        <li><button type="button" class="card"><span class="jp">たまに</span><span class="en">Sometimes, ocassionally</span></button></li>
+        <li><button type="button" class="card"><span class="jp">最初らへん（さいしょらへん）</span><span class="en">Towards the beginning</span></button></li>
+        <li><button type="button" class="card"><span class="jp">最後らへん（さいごらへん）</span><span class="en">Towards the end</span></button></li>
+        <li><button type="button" class="card"><span class="jp">やっと</span><span class="en">Finally (i.e. I finally did it!)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いつ</span><span class="en">when</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いつか</span><span class="en">One day, someday, eventually (in the future)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いつも</span><span class="en">Always</span></button></li>
+        <li><button type="button" class="card"><span class="jp">将来（しょうらい）</span><span class="en">Future (in your lifetime)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">何年（なんねん）？</span><span class="en">What year?</span></button></li>
+        <li><button type="button" class="card"><span class="jp">何月（なんがつ）？</span><span class="en">What month?</span></button></li>
+        <li><button type="button" class="card"><span class="jp">何曜日（なんようび）？</span><span class="en">What day? (of the week)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">何日（なんにち）？</span><span class="en">What day? (date)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">とりあえず</span><span class="en">For now, meanwhile, in the mean time</span></button></li>
+        <li><button type="button" class="card"><span class="jp">とにかく</span><span class="en">at any rate, anyhow, anyway</span></button></li>
+        <li><button type="button" class="card"><span class="jp">たまたま</span><span class="en">by chance</span></button></li>
+        <li><button type="button" class="card"><span class="jp">よく</span><span class="en">often, well · よく歩いてた（あるいてた） · "I walked often" · よく食べるね！ · "You eat a lot!"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あまり</span><span class="en">not really, not much, not that much</span></button></li>
+        <li><button type="button" class="card"><span class="jp">昔は (むかし)</span><span class="en">long time ago, forever ago, way back when · 昔はよく行ってた(むかしはよくいってた) · "I used to go there all the time"</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-4" style="--tint:var(--teal)">
+      <h2><span class="num">4</span> You Need This Japanese 4 <span class="topic">How much</span></h2>
+      <p class="count">28 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">全部 (ぜんぶ)</span><span class="en">everything, all</span></button></li>
+        <li><button type="button" class="card"><span class="jp">全然 (ぜんぜん)</span><span class="en">not at all, used with ～ない ending (全然いい, 全然大丈夫 exception)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ただ</span><span class="en">just, free (cost)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">だけ</span><span class="en">only, just</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もうちょっと</span><span class="en">a little more</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もう一つ（ひとつ）</span><span class="en">one more (thing)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ちょっとだけ</span><span class="en">a little bit, some</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一人で (ひとり)</span><span class="en">by yourself/myself/one's self</span></button></li>
+        <li><button type="button" class="card"><span class="jp">それだけ</span><span class="en">that's all/it</span></button></li>
+        <li><button type="button" class="card"><span class="jp">これだけ</span><span class="en">this is all/it</span></button></li>
+        <li><button type="button" class="card"><span class="jp">好きなだけ</span><span class="en">as much as you like/want</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もっと</span><span class="en">more</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一番 (いちばん)</span><span class="en">#1, most</span></button></li>
+        <li><button type="button" class="card"><span class="jp">一番好き (いちばん)(す) 一番好きな (いちばん)(す)</span><span class="en">favorite</span></button></li>
+        <li><button type="button" class="card"><span class="jp">たくさん</span><span class="en">a lot, many</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いっぱい</span><span class="en">a lot, many</span></button></li>
+        <li><button type="button" class="card"><span class="jp">結構（けっこう）</span><span class="en">pretty, quite</span></button></li>
+        <li><button type="button" class="card"><span class="jp">だいたい</span><span class="en">usually, generally</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ほとんど</span><span class="en">majority, almost all</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ほぼ</span><span class="en">majority, almost all</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ぐらい・くらい</span><span class="en">about (i.e. about 4 weeks)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どれぐらい</span><span class="en">How much?</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どのぐらい</span><span class="en">How much?</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いくら</span><span class="en">How much? (price)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もっとも</span><span class="en">Most (absolute most)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">全員（ぜんいん）</span><span class="en">Everyone</span></button></li>
+        <li><button type="button" class="card"><span class="jp">少しずつ</span><span class="en">bit by bit, gradually</span></button></li>
+        <li><button type="button" class="card"><span class="jp">部分</span><span class="en">part, piece, section</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-5" style="--tint:var(--violet)">
+      <h2><span class="num">5</span> You Need This Japanese 5 <span class="topic">Connectors</span></h2>
+      <p class="count">45 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">同じ (おなじ)</span><span class="en">same (i.e. 同じ人 same person)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">絶対(ぜったい)</span><span class="en">definitely (i.e. 絶対行く I'm DEFINITELY going)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">是非 (ぜひ)</span><span class="en">please (i.e. ぜひ来てください please come)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">まあまあ</span><span class="en">kind of, so-so</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ずっと</span><span class="en">forever, long way, long time</span></button></li>
+        <li><button type="button" class="card"><span class="jp">でも</span><span class="en">But (beginning of sentence)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">けど</span><span class="en">but (middle of sentence)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">じゃあ</span><span class="en">So...Okay...Alright, so...</span></button></li>
+        <li><button type="button" class="card"><span class="jp">では</span><span class="en">So...Okay...Alright, so... (sometimes used like 好きではない "I don't necessarily like it"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あのー</span><span class="en">Uhh..</span></button></li>
+        <li><button type="button" class="card"><span class="jp">えっと</span><span class="en">Let's see, uhh</span></button></li>
+        <li><button type="button" class="card"><span class="jp">えー！</span><span class="en">Whaaa!</span></button></li>
+        <li><button type="button" class="card"><span class="jp">へえ</span><span class="en">Interesting...</span></button></li>
+        <li><button type="button" class="card"><span class="jp">～から、～だから</span><span class="en">because</span></button></li>
+        <li><button type="button" class="card"><span class="jp">そして・そんで</span><span class="en">Then,</span></button></li>
+        <li><button type="button" class="card"><span class="jp">そしたら</span><span class="en">And then, in that case,</span></button></li>
+        <li><button type="button" class="card"><span class="jp">それでも</span><span class="en">Even still, even then</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ただで</span><span class="en">for free</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もし</span><span class="en">if (needs follow up grammar ～れば、～たら、～なら)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">しかも、</span><span class="en">More than that,/On top of that, Plus</span></button></li>
+        <li><button type="button" class="card"><span class="jp">たぶん</span><span class="en">Probably</span></button></li>
+        <li><button type="button" class="card"><span class="jp">本当の・に (ほんとう)</span><span class="en">Real, true・Really</span></button></li>
+        <li><button type="button" class="card"><span class="jp">必ず（かなら）</span><span class="en">definitely, for sure</span></button></li>
+        <li><button type="button" class="card"><span class="jp">残念（ざんねん） 残念な</span><span class="en">Unfortunate, bummer</span></button></li>
+        <li><button type="button" class="card"><span class="jp">大変（たいへん） 大変な</span><span class="en">Hard, tough, rough, (emotionally)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">正直（しょうじき） 正直な</span><span class="en">Honest, (i.e.</span></button></li>
+        <li><button type="button" class="card"><span class="jp">別（べつ） 別の・別に</span><span class="en">Different/Other (i.e. 別の日にしましょう Let's do a different day)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">～かもしれない ～かも</span><span class="en">maybe (goes at end of sentence)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">だれ</span><span class="en">who</span></button></li>
+        <li><button type="button" class="card"><span class="jp">なに・なんの</span><span class="en">want, which</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どれ</span><span class="en">which? (more than 2 subjects)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どっち</span><span class="en">which one? (two subjects)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どこ</span><span class="en">where</span></button></li>
+        <li><button type="button" class="card"><span class="jp">なんで・なぜ・どうして</span><span class="en">why</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どう</span><span class="en">how (extremely wide range of uses)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">どうやって</span><span class="en">how (i.e. how did you do that?)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">この</span><span class="en">this (i.e. this person この人)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">その</span><span class="en">that</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あの</span><span class="en">that over there</span></button></li>
+        <li><button type="button" class="card"><span class="jp">これ</span><span class="en">this (i.e. eat this)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">それ</span><span class="en">that</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あれ</span><span class="en">that over there</span></button></li>
+        <li><button type="button" class="card"><span class="jp">倍（ばい）</span><span class="en">2倍だよ · "It's double that"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">他(ほか) 他に・他は・他の</span><span class="en">other, the other one(s)/stuff</span></button></li>
+        <li><button type="button" class="card"><span class="jp">全体的（ぜんたいてき） 全体的に</span><span class="en">overall, altogether</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-6" style="--tint:var(--heart)">
+      <h2><span class="num">6</span> You Need This Japanese 6 <span class="topic">Adjectives</span></h2>
+      <p class="count">64 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">いい (sometimes よい)</span><span class="en">Good, nice, well, "I like that" "I'm glad"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">大きい (おお)</span><span class="en">Big</span></button></li>
+        <li><button type="button" class="card"><span class="jp">小さい （ちい）</span><span class="en">Small</span></button></li>
+        <li><button type="button" class="card"><span class="jp">でかい</span><span class="en">Huge</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ちっちゃい</span><span class="en">Tiny</span></button></li>
+        <li><button type="button" class="card"><span class="jp">おもしろい</span><span class="en">Interesting, fun, funny</span></button></li>
+        <li><button type="button" class="card"><span class="jp">嬉しい （うれ）</span><span class="en">Happy, glad</span></button></li>
+        <li><button type="button" class="card"><span class="jp">悲しい（かな）</span><span class="en">Sad</span></button></li>
+        <li><button type="button" class="card"><span class="jp">優しい（やさ）</span><span class="en">Kind, gentle</span></button></li>
+        <li><button type="button" class="card"><span class="jp">高い（たか）</span><span class="en">Expensive, tall</span></button></li>
+        <li><button type="button" class="card"><span class="jp">低い（ひく）</span><span class="en">Low (height, amount)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">安い（やす）</span><span class="en">Cheap</span></button></li>
+        <li><button type="button" class="card"><span class="jp">長い（なが）</span><span class="en">Long</span></button></li>
+        <li><button type="button" class="card"><span class="jp">短い（みじか）</span><span class="en">Short</span></button></li>
+        <li><button type="button" class="card"><span class="jp">薄い（うす）</span><span class="en">Thin</span></button></li>
+        <li><button type="button" class="card"><span class="jp">近い（ちか）</span><span class="en">Close</span></button></li>
+        <li><button type="button" class="card"><span class="jp">親しい（した）</span><span class="en">Close (someone you know well)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">遠い（とお）</span><span class="en">Far</span></button></li>
+        <li><button type="button" class="card"><span class="jp">多い（おお）</span><span class="en">A lot, many</span></button></li>
+        <li><button type="button" class="card"><span class="jp">少ない（すく）</span><span class="en">Not a lot, little (amount)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">早い/速い（はや）</span><span class="en">Early/Fast (speed)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">遅い（おそ）</span><span class="en">Late, slow</span></button></li>
+        <li><button type="button" class="card"><span class="jp">難しい（むずか）</span><span class="en">Hard, difficult, tough</span></button></li>
+        <li><button type="button" class="card"><span class="jp">新しい（あたら）</span><span class="en">New, different</span></button></li>
+        <li><button type="button" class="card"><span class="jp">古い（ふる）</span><span class="en">Old (not for people)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">珍しい（めずら）</span><span class="en">Rare (used a lot)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">うまい</span><span class="en">Good (skill, food)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">おいしい</span><span class="en">Delicious ("tastes good")</span></button></li>
+        <li><button type="button" class="card"><span class="jp">強い（つよ）</span><span class="en">Strong</span></button></li>
+        <li><button type="button" class="card"><span class="jp">弱い（よわ）</span><span class="en">Weak</span></button></li>
+        <li><button type="button" class="card"><span class="jp">楽しい（たの）</span><span class="en">Fun</span></button></li>
+        <li><button type="button" class="card"><span class="jp">つまらない</span><span class="en">Boring</span></button></li>
+        <li><button type="button" class="card"><span class="jp">忙しい（いそが）</span><span class="en">Busy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">めんどくさい</span><span class="en">"Pain in the butt" (troublesome/bothersome)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">懐かしい（なつ）</span><span class="en">Nostalgic (used a lot in Japanese)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">熱い（あつ） 暑い（あつ） 厚い（あつ）</span><span class="en">hot (temperature) · hot (weather) · thick</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あたたかい</span><span class="en">Warm</span></button></li>
+        <li><button type="button" class="card"><span class="jp">寒い（さむ）</span><span class="en">Cold (how you feel/weather)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">冷たい（つめ）</span><span class="en">Cold (to the touch)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">涼しい（すず）</span><span class="en">Cool (temperature)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">正しい（ただ）</span><span class="en">Correct</span></button></li>
+        <li><button type="button" class="card"><span class="jp">丸い（まる）</span><span class="en">Round</span></button></li>
+        <li><button type="button" class="card"><span class="jp">汚い（きたな）</span><span class="en">Dirty</span></button></li>
+        <li><button type="button" class="card"><span class="jp">かわいい</span><span class="en">Cute</span></button></li>
+        <li><button type="button" class="card"><span class="jp">恥ずかしい（は）</span><span class="en">Embarrassed, shy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">若い（わか）</span><span class="en">Young</span></button></li>
+        <li><button type="button" class="card"><span class="jp">怖い（こわ）</span><span class="en">Scary</span></button></li>
+        <li><button type="button" class="card"><span class="jp">臭い（くさ）</span><span class="en">Stinky, smelly</span></button></li>
+        <li><button type="button" class="card"><span class="jp">痛い（いた）</span><span class="en">Painful, "Ouch"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">偉い（えら）</span><span class="en">Important (person), "Good job" (to kids)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">甘い（あま）</span><span class="en">sweet, naïve</span></button></li>
+        <li><button type="button" class="card"><span class="jp">辛い（から）</span><span class="en">spicy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">すっぱい</span><span class="en">sour</span></button></li>
+        <li><button type="button" class="card"><span class="jp">苦い（にが）</span><span class="en">bitter</span></button></li>
+        <li><button type="button" class="card"><span class="jp">かたい</span><span class="en">Hard (hard object), overly polite</span></button></li>
+        <li><button type="button" class="card"><span class="jp">柔らかい（やわ）</span><span class="en">Soft</span></button></li>
+        <li><button type="button" class="card"><span class="jp">貧しい（まず）</span><span class="en">Poor</span></button></li>
+        <li><button type="button" class="card"><span class="jp">悪い（わる）</span><span class="en">bad, evil</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ひどい</span><span class="en">awful, mean</span></button></li>
+        <li><button type="button" class="card"><span class="jp">すばらしい</span><span class="en">wonderful, amazing</span></button></li>
+        <li><button type="button" class="card"><span class="jp">重い（おも）</span><span class="en">Heavy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">軽い（かる）</span><span class="en">Light</span></button></li>
+        <li><button type="button" class="card"><span class="jp">ずるい</span><span class="en">Not fair</span></button></li>
+        <li><button type="button" class="card"><span class="jp">危ない（あぶ）</span><span class="en">dangerous</span></button></li>
+      </ul>
+    </section>
+
+    <section class="deck" id="set-7" style="--tint:var(--deep)">
+      <h2><span class="num">7</span> You Need This Japanese 7 <span class="topic">Verbs</span></h2>
+      <p class="count">100 cards</p>
+      <ul class="cards">
+        <li><button type="button" class="card"><span class="jp">ある (有る)</span><span class="en">be (inanimate objects), have, happen</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いる (居る)</span><span class="en">be (animate objects)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">いる (要る)</span><span class="en">to need/want ("Want some coffee?")</span></button></li>
+        <li><button type="button" class="card"><span class="jp">食べる （たべる）</span><span class="en">eat</span></button></li>
+        <li><button type="button" class="card"><span class="jp">飲む (のむ)</span><span class="en">drink</span></button></li>
+        <li><button type="button" class="card"><span class="jp">送る (おくる)</span><span class="en">send</span></button></li>
+        <li><button type="button" class="card"><span class="jp">買う (かう)</span><span class="en">buy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">見る (みる)</span><span class="en">look, watch</span></button></li>
+        <li><button type="button" class="card"><span class="jp">見せる (みせる)</span><span class="en">show</span></button></li>
+        <li><button type="button" class="card"><span class="jp">見える （みる）</span><span class="en">can see (visible/invisible)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">書く （かく）</span><span class="en">write</span></button></li>
+        <li><button type="button" class="card"><span class="jp">作る （つくる）</span><span class="en">make</span></button></li>
+        <li><button type="button" class="card"><span class="jp">出る （でる）</span><span class="en">exit/come out, leave</span></button></li>
+        <li><button type="button" class="card"><span class="jp">出す （だす）</span><span class="en">take out</span></button></li>
+        <li><button type="button" class="card"><span class="jp">使う （つかう）</span><span class="en">use</span></button></li>
+        <li><button type="button" class="card"><span class="jp">合う （あう）</span><span class="en">"line up", match up, fit, be right (accurate)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">違う （ちがう）</span><span class="en">be different, "No", "Not right"</span></button></li>
+        <li><button type="button" class="card"><span class="jp">会う （あう）</span><span class="en">meet</span></button></li>
+        <li><button type="button" class="card"><span class="jp">行く （いく）</span><span class="en">go</span></button></li>
+        <li><button type="button" class="card"><span class="jp">来る （くる）</span><span class="en">come</span></button></li>
+        <li><button type="button" class="card"><span class="jp">帰る （かえる）</span><span class="en">go home</span></button></li>
+        <li><button type="button" class="card"><span class="jp">楽しむ （たのしむ）</span><span class="en">have fun, enjoy</span></button></li>
+        <li><button type="button" class="card"><span class="jp">選ぶ （えらぶ）</span><span class="en">choose, select</span></button></li>
+        <li><button type="button" class="card"><span class="jp">変える （かえる）</span><span class="en">change</span></button></li>
+        <li><button type="button" class="card"><span class="jp">わかる</span><span class="en">to understand</span></button></li>
+        <li><button type="button" class="card"><span class="jp">知る （しる）</span><span class="en">to know</span></button></li>
+        <li><button type="button" class="card"><span class="jp">感じる （かんじる）</span><span class="en">feel</span></button></li>
+        <li><button type="button" class="card"><span class="jp">持つ （もつ）</span><span class="en">hold, have</span></button></li>
+        <li><button type="button" class="card"><span class="jp">待つ （まつ）</span><span class="en">wait</span></button></li>
+        <li><button type="button" class="card"><span class="jp">続ける （つづける）</span><span class="en">continue</span></button></li>
+        <li><button type="button" class="card"><span class="jp">話す （はなす）</span><span class="en">speak, talk</span></button></li>
+        <li><button type="button" class="card"><span class="jp">寝る （ねる）</span><span class="en">sleep</span></button></li>
+        <li><button type="button" class="card"><span class="jp">起きる （おきる）</span><span class="en">wake up, occur</span></button></li>
+        <li><button type="button" class="card"><span class="jp">壊れる （こわれる）</span><span class="en">something break</span></button></li>
+        <li><button type="button" class="card"><span class="jp">直す （なおす）</span><span class="en">fix</span></button></li>
+        <li><button type="button" class="card"><span class="jp">あげる</span><span class="en">give</span></button></li>
+        <li><button type="button" class="card"><span class="jp">くれる</span><span class="en">receive as gift</span></button></li>
+        <li><button type="button" class="card"><span class="jp">もらう</span><span class="en">receive (inherited)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">上がる (あがる)</span><span class="en">go up</span></button></li>
+        <li><button type="button" class="card"><span class="jp">下がる (さがる)</span><span class="en">go down</span></button></li>
+        <li><button type="button" class="card"><span class="jp">上げる (あげる)</span><span class="en">raise, make go up</span></button></li>
+        <li><button type="button" class="card"><span class="jp">下げる (さげる)</span><span class="en">lower, make go down</span></button></li>
+        <li><button type="button" class="card"><span class="jp">借りる (かりる)</span><span class="en">rent, borrow</span></button></li>
+        <li><button type="button" class="card"><span class="jp">習う (ならう)</span><span class="en">learn (skill)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">学ぶ (まなぶ)</span><span class="en">learn (apprehend, study, a lesson, in life)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">慣れる (なれる)</span><span class="en">get used to</span></button></li>
+        <li><button type="button" class="card"><span class="jp">思い出す (おもいだす)</span><span class="en">recall</span></button></li>
+        <li><button type="button" class="card"><span class="jp">覚える (おぼえる)</span><span class="en">remember, feel (rarely)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">教える (おしえる)</span><span class="en">teach, tell</span></button></li>
+        <li><button type="button" class="card"><span class="jp">調べる (しらべる)</span><span class="en">look up (Google)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">忘れる (わすれる)</span><span class="en">forget</span></button></li>
+        <li><button type="button" class="card"><span class="jp">始まる (はじまる)</span><span class="en">something begins</span></button></li>
+        <li><button type="button" class="card"><span class="jp">終わる (おわる)</span><span class="en">something ends</span></button></li>
+        <li><button type="button" class="card"><span class="jp">開ける (ひらける)</span><span class="en">open</span></button></li>
+        <li><button type="button" class="card"><span class="jp">閉める (しめる)</span><span class="en">close</span></button></li>
+        <li><button type="button" class="card"><span class="jp">入れる (いれる)</span><span class="en">put in</span></button></li>
+        <li><button type="button" class="card"><span class="jp">入る (はいる)</span><span class="en">go in/fit</span></button></li>
+        <li><button type="button" class="card"><span class="jp">勝つ (かつ)</span><span class="en">win (game)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">負ける (まける)</span><span class="en">lose (game)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">止まる (とまる)</span><span class="en">(something) stops</span></button></li>
+        <li><button type="button" class="card"><span class="jp">止める (とめる)</span><span class="en">stop</span></button></li>
+        <li><button type="button" class="card"><span class="jp">泊める (とめる)</span><span class="en">stay over (person's house)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">やめる</span><span class="en">quit</span></button></li>
+        <li><button type="button" class="card"><span class="jp">乗る (のる)</span><span class="en">ride</span></button></li>
+        <li><button type="button" class="card"><span class="jp">降りる (おりる)</span><span class="en">get off/down/out (vehicle, object, etc.)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">座る (すわる)</span><span class="en">sit</span></button></li>
+        <li><button type="button" class="card"><span class="jp">触る (さわる)</span><span class="en">touch</span></button></li>
+        <li><button type="button" class="card"><span class="jp">洗う (あらう)</span><span class="en">wash</span></button></li>
+        <li><button type="button" class="card"><span class="jp">切る (きる)</span><span class="en">cut</span></button></li>
+        <li><button type="button" class="card"><span class="jp">着る (きる)</span><span class="en">wear (torso/dress/kimono)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">脱ぐ (ぬぐ)</span><span class="en">take off (clothes)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">取る（とる）</span><span class="en">take</span></button></li>
+        <li><button type="button" class="card"><span class="jp">やる</span><span class="en">do</span></button></li>
+        <li><button type="button" class="card"><span class="jp">思う (おもう)</span><span class="en">think</span></button></li>
+        <li><button type="button" class="card"><span class="jp">考える (かんがえる)</span><span class="en">think about/consider</span></button></li>
+        <li><button type="button" class="card"><span class="jp">動く (うごく)</span><span class="en">something move</span></button></li>
+        <li><button type="button" class="card"><span class="jp">歩く (あるく)</span><span class="en">walk</span></button></li>
+        <li><button type="button" class="card"><span class="jp">信じる (しんじる)</span><span class="en">believe</span></button></li>
+        <li><button type="button" class="card"><span class="jp">泳ぐ (およぐ)</span><span class="en">swim</span></button></li>
+        <li><button type="button" class="card"><span class="jp">言う (いう)</span><span class="en">say (pronounced ゆう)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">伝える (つたえる）</span><span class="en">tell/communicate</span></button></li>
+        <li><button type="button" class="card"><span class="jp">働く(はたらく）</span><span class="en">work (general)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">休む(やすむ）</span><span class="en">rest</span></button></li>
+        <li><button type="button" class="card"><span class="jp">気づく（きづく）</span><span class="en">realize, notice</span></button></li>
+        <li><button type="button" class="card"><span class="jp">置く（おく）</span><span class="en">place, put down</span></button></li>
+        <li><button type="button" class="card"><span class="jp">答える（こたえる）</span><span class="en">answer</span></button></li>
+        <li><button type="button" class="card"><span class="jp">困る（こまる）</span><span class="en">be troubled (past tense can mean "Uh-oh" "Shoot")</span></button></li>
+        <li><button type="button" class="card"><span class="jp">連れていく（つれていく）</span><span class="en">take someone/pet along</span></button></li>
+        <li><button type="button" class="card"><span class="jp">歌う（うたう）</span><span class="en">sing (sometimes 歌を歌う)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">押す（おす）</span><span class="en">push</span></button></li>
+        <li><button type="button" class="card"><span class="jp">引く（ひく）</span><span class="en">pull</span></button></li>
+        <li><button type="button" class="card"><span class="jp">育てる（そだてる）</span><span class="en">take care of, bring up, grow (child, plants, etc.)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">戻す（もどす）</span><span class="en">put something back</span></button></li>
+        <li><button type="button" class="card"><span class="jp">片づける（かたづける）</span><span class="en">clean up, tidy up</span></button></li>
+        <li><button type="button" class="card"><span class="jp">付き合う（つきあう）</span><span class="en">spend time with someone, date someone</span></button></li>
+        <li><button type="button" class="card"><span class="jp">生きる（いきる）</span><span class="en">live (alive, life, etc.)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">かかる</span><span class="en">cost, make up, take (time, money), other various uses</span></button></li>
+        <li><button type="button" class="card"><span class="jp">間違える（まちがえる）</span><span class="en">make a mistake, mess up (past tense = I messed up)</span></button></li>
+        <li><button type="button" class="card"><span class="jp">返す（かえす）</span><span class="en">return something</span></button></li>
+        <li><button type="button" class="card"><span class="jp">払う（はらう）</span><span class="en">to pay</span></button></li>
+      </ul>
+    </section>
+
+    <p class="foot">Living list. More sets get added here. · JD</p>
+  </div>
+  <script>
+    (function () {
+      var hideBtn = document.getElementById("hide-en");
+      var q = document.getElementById("q");
+      var cards = Array.prototype.slice.call(document.querySelectorAll(".cards li"));
+      var KEY = "jlm-yntj-hide-en";
+      function setHide(on) {
+        document.body.classList.toggle("hide-en", on);
+        hideBtn.classList.toggle("is-on", on);
+        hideBtn.textContent = on ? "Show English" : "Hide English";
+        try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+      }
+      hideBtn.addEventListener("click", function () {
+        setHide(!document.body.classList.contains("hide-en"));
+      });
+      document.querySelectorAll(".card").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (!document.body.classList.contains("hide-en")) return;
+          btn.classList.toggle("is-open");
+        });
+      });
+      function filter() {
+        var needle = q.value.trim().toLowerCase();
+        var shown = 0;
+        cards.forEach(function (li) {
+          var hit = !needle || li.textContent.toLowerCase().indexOf(needle) !== -1;
+          li.hidden = !hit;
+          if (hit) shown++;
+        });
+        document.body.classList.toggle("is-empty", shown === 0);
+      }
+      q.addEventListener("input", filter);
+      try { if (localStorage.getItem(KEY) === "1") setHide(true); } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

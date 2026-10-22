@@ -20,6 +20,78 @@
   let cursor = 0;
   let showChecked = false;
   let saving = false;
+  /** Test run: only the questions that contain the words in /homework/glass-test-run.json, with my proposed glosses pre-applied (this browser only). */
+  let testRun = null;
+  let testOriginalApply = null;
+
+  const stripMarks = (str) =>
+    String(str || "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\{[^}]*\}/g, "")
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/[\s\u200b-\u200f\u202a-\u202e]/g, "");
+
+  async function loadTestRun() {
+    try {
+      const res = await fetch("/homework/glass-test-run.json", { cache: "no-store" });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data?.active || !Array.isArray(data.items) || !data.items.length) return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Cards that contain a test sentence; each remembers which test words are on it. */
+  function filterToTestRun(all, run) {
+    const items = run.items.map((it) => ({ ...it, norm: stripMarks(it.example) }));
+    const out = [];
+    all.forEach((card) => {
+      const text = stripMarks(itemJapanese(card.item));
+      const words = items.filter((it) => it.norm && text.includes(it.norm)).map((it) => it.surface);
+      if (!words.length) return;
+      out.push({ ...card, key: "t50::" + card.key, testWords: [...new Set(words)] });
+    });
+    return out;
+  }
+
+  /** Show my proposed glosses in the glass without saving them. Real saved entries always win. */
+  async function installTestProposals(run) {
+    const lex = global.HwMgLexicon;
+    if (!lex?.applyGlobalOverlay) return;
+    const proposals = {};
+    run.items.forEach((it) => {
+      proposals[it.surface] = { reading: it.reading || "", definition: it.definition || "" };
+    });
+    await lex.ensureLoaded?.().catch(() => {});
+    if (!testOriginalApply) {
+      testOriginalApply = lex.applyGlobalOverlay;
+      lex.applyGlobalOverlay = (overlay) =>
+        testOriginalApply({ ...overlay, custom: { ...proposals, ...(overlay?.custom || {}) } });
+    }
+    try {
+      const res = await fetch("/api/mg-lexicon", { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      if (data?.overlay) lex.applyGlobalOverlay(data.overlay);
+    } catch {
+      /* keep what is loaded */
+    }
+  }
+
+  async function removeTestProposals() {
+    const lex = global.HwMgLexicon;
+    if (!testOriginalApply || !lex) return;
+    lex.applyGlobalOverlay = testOriginalApply;
+    testOriginalApply = null;
+    try {
+      const res = await fetch("/api/mg-lexicon", { cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      if (data?.overlay) lex.applyGlobalOverlay(data.overlay);
+    } catch {
+      /* ignore */
+    }
+  }
 
   function session() {
     return options?.getTeacherSession?.() || global.HwAuth?.getTeacherSession?.() || null;
@@ -161,7 +233,13 @@
         setStatus("Loading worksheets… " + Math.min(i + FETCH_BATCH, list.length) + "/" + list.length);
       }
 
-      cards = built;
+      testRun = await loadTestRun();
+      if (testRun) {
+        cards = filterToTestRun(built, testRun);
+        await installTestProposals(testRun);
+      } else {
+        cards = built;
+      }
       loaded = true;
       cursor = 0;
       setStatus("");
@@ -213,7 +291,7 @@
     const done = checkedCount();
     const left = cards.length - done;
     progress.textContent = cards.length
-      ? left + " question" + (left === 1 ? "" : "s") + " left to sweep · " + done + " done"
+      ? (testRun ? "Test run · " : "") + left + " question" + (left === 1 ? "" : "s") + " left to sweep · " + done + " done"
       : "";
   }
 
@@ -260,7 +338,9 @@
     }
     empty.textContent = showChecked
       ? "Deck is empty."
-      : "Every question is swept. Tick “include swept cards” to go back through them.";
+      : testRun
+        ? "Test run finished. Thank you!"
+        : "Every question is swept. Tick “include swept cards” to go back through them.";
   }
 
   function render() {
@@ -287,6 +367,9 @@
         (card.itemIndex + 1) +
         (card.section?.title ? " · " + escapeHtml(card.section.title) : "") +
         "</span>" +
+        (card.testWords?.length
+          ? '<span class="hw-gd-source__item">Test words: ' + card.testWords.map(escapeHtml).join(" · ") + "</span>"
+          : "") +
         (isDone ? '<span class="hw-gd-source__done">swept</span>' : "");
     }
 
@@ -458,11 +541,13 @@
       void loadDeck(false);
       return;
     }
+    if (testRun && !testOriginalApply) void installTestProposals(testRun);
     render();
   }
 
   function close() {
     releaseGlass();
+    void removeTestProposals();
   }
 
   function init(opts) {

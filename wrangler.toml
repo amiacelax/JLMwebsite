@@ -33,12 +33,14 @@ DISCORD_HOMEWORK_CHANNEL_ID = "1534083802102501539"
 INQUIRY_EMAIL_TO = "languagementor.jp@gmail.com"
 INQUIRY_EMAIL_FROM = "Japanese Language Mentor <inquiries@japaneselanguagementor.com>"
 ACCOUNT_EMAIL_FROM = "Japanese Language Mentor <JD@japaneselanguagementor.com>"
+# Public half of the study-reminder phone ping key. The private half is the VAPID_PRIVATE_JWK secret.
+VAPID_PUBLIC_KEY = "BBCWTmtA_JKiHgoDE5cUjSgwOPaWk0RuOOaC0I1-6TDYW8oxJkrtGHG3Z-MiHjztDs_41zBV6rPEbp0TWPGmG0s"
 
 # 00:00 UTC daily ≈ 9:00am Japan — student birthday Discord reminders
-# 12:00 UTC daily = 9:00pm Japan — HW waiting daily Discord ping
+# Sunday 20:00 UTC = Monday 5:00am Japan: weekly HW waiting Discord list
 # * * * * * — Shorts/Reels social reminder jobs (HOMEWORK_KV sr-pending:*)
 [triggers]
-crons = ["0 0 * * *", "0 12 * * *", "* * * * *"]
+crons = ["0 0 * * *", "0 20 * * SUN", "* * * * *"]
 
 # Contact/promo copies → Gmail. Enable Email Routing on japaneselanguagementor.com first
 # (Cloudflare dashboard → Email → Email Routing → Get started, verify Gmail).

@@ -25,7 +25,7 @@ function wranglerPut(key, value) {
 const now = new Date().toISOString();
 const id = `idea-${Date.now()}`;
 
-const text = `Immersion Quest — 20 more look-for ideas (batch 2)
+const text = `Immersion Quest — more look-for ideas (batch 2)
 
 Future days after the current 59-cycle. Same format: while watching anime/drama/TV, hunt for…
 
@@ -48,7 +48,9 @@ Future days after the current 59-cycle. Same format: while watching anime/drama/
 17. 敬語 vs casual — same scene, spot です・ます vs plain
 18. どうして / なぜ / なんで — why (formal vs casual)
 19. どちら / どなた — polite question words
-20. もっと〜たい — want more / want to more`;
+20. もっと〜たい — want more / want to more
+21. までの — double particle (までの / 〜までの〜)
+22. とか — “things like / and so on” (〜とか〜とか)`;
 
 const idea = {
   id,

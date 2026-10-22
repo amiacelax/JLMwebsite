@@ -1,0 +1,25 @@
+---
+description: On opening Cursor, finish YouTube lesson titles/timestamps that the daily uploader left pending
+alwaysApply: true
+---
+
+# Lesson topics pending (resume once Cursor is open)
+
+The daily 3:45 PM uploader (`yt-lesson-uploader/`) uploads lessons unlisted as plain `Faye 113`. The topic + timestamps are
+filled in by **you (Claude in Cursor)** — no API key.
+
+At the start of a conversation (first user message), run in `C:\JLM Website\yt-lesson-uploader`:
+
+```
+python run.py pending
+```
+
+If it lists lessons: for each one, **without asking**:
+1. Read the timed transcript it prints.
+2. Write `meta.json` using the rules in `SYSTEM` in `metadata.py` (title topic ≤45 chars, JD's style like
+   `ポケモンの話`; chapters = opening `あいさつ` at 0:00, any ~10+ min topic, anything clip-worthy; short JP/EN labels; no private details).
+3. Run `python run.py finish "<file name>"`.
+4. Tell JD in ONE short line (e.g. "Titled Faye 113 - ポケモンの話, 12 timestamps"), then continue with what he actually asked.
+
+Skip silently if "nothing pending". Whisper mishears names/words — when unsure, describe plainly instead of guessing.
+Other held lessons: `python run.py status` shows `needs-student` / `needs-who`; ask JD who it was, then `python run.py assign "<file>" <student> [Who]`.

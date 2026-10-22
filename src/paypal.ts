@@ -11,10 +11,15 @@ export interface PaypalEnv {
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_MODE?: string;
+  /** ID of the webhook made in the PayPal developer dashboard. Needed to verify webhook calls. */
+  PAYPAL_WEBHOOK_ID?: string;
 }
 
+/** The old $5 Basic plan. Current subscribers are still on it. */
+export const LEGACY_BASIC_PLAN_ID = "P-3BS11069X4737034MNJ563OA";
+
 export const PAYPAL_PLAN_IDS: Record<HwPaypalPlan, string> = {
-  basic: "P-3BS11069X4737034MNJ563OA",
+  basic: "P-3C015132V3458352HNLDR7AY",
   premium: "P-7RC25164AJ430933DNJ564GY",
   ultra: "P-9VC563511T5680357NJ565KA",
   "student-special": "P-34B653300B452420GNJ565WQ",
@@ -41,7 +46,7 @@ export function paypalCredentialsConfigured(env: PaypalEnv): boolean {
   );
 }
 
-function apiBase(env: PaypalEnv): string {
+export function apiBase(env: PaypalEnv): string {
   const mode = String(env.PAYPAL_MODE || "live")
     .trim()
     .toLowerCase();
@@ -50,7 +55,7 @@ function apiBase(env: PaypalEnv): string {
     : "https://api-m.paypal.com";
 }
 
-async function getAccessToken(env: PaypalEnv): Promise<string> {
+export async function getAccessToken(env: PaypalEnv): Promise<string> {
   const clientId = String(env.PAYPAL_CLIENT_ID || "").trim();
   const secret = String(env.PAYPAL_CLIENT_SECRET || "").trim();
   if (!clientId || !secret) throw new Error("PAYPAL_NOT_CONFIGURED");
@@ -144,9 +149,60 @@ export async function createPaypalSubscription(
   return { subscriptionId, approveUrl, plan: input.plan };
 }
 
-export async function cancelPaypalSubscription(
+export interface PaypalSubscriptionInfo {
+  /** PayPal status, e.g. ACTIVE, CANCELLED, SUSPENDED, EXPIRED, APPROVAL_PENDING. */
+  status: string;
+  /** ISO time of the next charge. This is the end of the period already paid for. */
+  nextBillingTime: string;
+  /** ISO time of the last successful payment. */
+  lastPaymentTime: string;
+  planId: string;
+  email: string;
+  payerName: string;
+}
+
+/** Read a subscription from PayPal. Returns null if PayPal doesn't know it. */
+export async function getPaypalSubscriptionInfo(
   subscriptionId: string,
   env: PaypalEnv
+): Promise<PaypalSubscriptionInfo | null> {
+  const id = String(subscriptionId || "").trim();
+  if (!id) return null;
+  if (!paypalCredentialsConfigured(env)) throw new Error("PAYPAL_NOT_CONFIGURED");
+  const token = await getAccessToken(env);
+  const res = await fetch(`${apiBase(env)}/v1/billing/subscriptions/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    console.error("paypal subscription read failed:", res.status, detail.slice(0, 300));
+    throw new Error("PAYPAL_READ_FAILED");
+  }
+  const data = (await res.json()) as {
+    status?: string;
+    plan_id?: string;
+    subscriber?: { email_address?: string; name?: { given_name?: string; surname?: string } };
+    billing_info?: {
+      next_billing_time?: string;
+      last_payment?: { time?: string };
+    };
+  };
+  const payer = data.subscriber?.name || {};
+  return {
+    status: String(data.status || "").toUpperCase(),
+    nextBillingTime: String(data.billing_info?.next_billing_time || ""),
+    lastPaymentTime: String(data.billing_info?.last_payment?.time || ""),
+    planId: String(data.plan_id || ""),
+    email: String(data.subscriber?.email_address || "").trim().toLowerCase(),
+    payerName: [payer.given_name, payer.surname].filter(Boolean).join(" "),
+  };
+}
+
+export async function cancelPaypalSubscription(
+  subscriptionId: string,
+  env: PaypalEnv,
+  reason = "Account deleted"
 ): Promise<{ cancelled: boolean; alreadyInactive?: boolean; skipped?: boolean }> {
   const id = String(subscriptionId || "").trim();
   if (!id) return { cancelled: false, skipped: true };
@@ -161,7 +217,7 @@ export async function cancelPaypalSubscription(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ reason: "Account deleted" }),
+      body: JSON.stringify({ reason: String(reason || "Cancelled").slice(0, 128) }),
     }
   );
   if (res.status === 204) return { cancelled: true };

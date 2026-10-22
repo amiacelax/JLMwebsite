@@ -1,0 +1,37 @@
+---
+description: Spoken caption / oneblock .txt rules for Shorts pipeline
+globs:
+  - "**/*oneblock*.txt"
+  - "**/.tmp-batch*/**/*"
+  - "**/build_*_pipeline.py"
+alwaysApply: false
+---
+
+# Caption / oneblock `.txt` rules
+
+## Punctuation (on-screen + source `.txt`)
+
+**Never use** in `Batch*_oneblock.txt` (strip from the file itself, not only the burn):
+
+- `,` `,` commas
+- `.` periods
+- `;` semicolons
+- `:` colons
+- English dash `―` (em/en dash used that way)
+- Japanese `。`
+
+Break with **newlines** and **blank lines** (slide breaks) instead.
+Apostrophes in contractions (`can't`, `don't`, `it's`) are OK.
+Japanese particles/forms (`で`, `て`, `して`) are OK.
+
+## Bonus tips `｛｝` / `{}`
+
+```
+I can't say あついで
+{いending あつくて:green}
+```
+
+- Text **before** `:` is shown on screen, all in the color **after** `:` (`green` / `red` / `blue` / `orange` / `gold` / `white`)
+- Tip is lined up under the Japanese on the spoken line (invisible spacer matching `I can't say `)
+- `can't say` / `don't say` still paints spoken JP **red**; `do say` / `which is` → **green**
+---

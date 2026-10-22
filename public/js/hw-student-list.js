@@ -3,7 +3,7 @@
  * Keeps a localStorage copy so Student/ID dropdowns paint instantly on reopen.
  */
 (function (global) {
-  const LS_KEY = "jlm-hw-student-list-v1";
+  const LS_KEY = "jlm-hw-student-list-v2";
   let cachedStudents = null;
   let fetchPromise = null;
 
@@ -14,7 +14,7 @@
     if (!username) return null;
     const displayName = String(entry?.displayName || username).trim() || username;
     const teacherListName = String(entry?.teacherListName || "").trim();
-    const row = { username, displayName };
+    const row = { username, displayName, subscriber: entry?.subscriber === true };
     if (teacherListName) row.teacherListName = teacherListName;
     return row;
   }
@@ -156,6 +156,38 @@
     return fetchPromise;
   }
 
+  function appendGroupedStudentOptions(selectEl, students, labelFor) {
+    const labelFn = labelFor || studentOptionLabel;
+    const subscribers = [];
+    const others = [];
+    (students || []).forEach((account) => {
+      if (account?.subscriber === true) subscribers.push(account);
+      else others.push(account);
+    });
+
+    function byLabel(a, b) {
+      return labelFn(a).localeCompare(labelFn(b), undefined, { sensitivity: "base" });
+    }
+    subscribers.sort(byLabel);
+    others.sort(byLabel);
+
+    function addGroup(label, rows) {
+      if (!rows.length) return;
+      const group = document.createElement("optgroup");
+      group.label = label;
+      rows.forEach((account) => {
+        const opt = document.createElement("option");
+        opt.value = account.username;
+        opt.textContent = labelFn(account);
+        group.appendChild(opt);
+      });
+      selectEl.appendChild(group);
+    }
+
+    addGroup("Subscribers", subscribers);
+    addGroup("Not subscribed", others);
+  }
+
   function studentOptionLabel(account) {
     const custom = String(account?.teacherListName || "").trim();
     if (custom) return custom;
@@ -189,12 +221,7 @@
       selectEl.appendChild(empty);
     }
 
-    students.forEach((a) => {
-      const opt = document.createElement("option");
-      opt.value = a.username;
-      opt.textContent = studentOptionLabel(a);
-      selectEl.appendChild(opt);
-    });
+    appendGroupedStudentOptions(selectEl, students);
 
     if (keep && selectEl.querySelector('option[value="' + keep + '"]')) {
       selectEl.value = keep;
@@ -227,6 +254,7 @@
     resetCache,
     isKnownStudent,
     fillStudentSelect,
+    appendGroupedStudentOptions,
     refreshSelect,
     refreshTeacherFilterSelects,
     studentOptionLabel,

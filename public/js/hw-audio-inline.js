@@ -109,10 +109,12 @@
     mount.classList.add("hw-audio-inline");
 
     const startLabel = meta.startLabel || "Record";
+    const micSvg =
+      '<svg class="hw-ex-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>';
 
     mount.innerHTML =
       '<div class="hw-audio-inline__idle">' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__start"></button>' +
+      '<button type="button" class="btn btn--primary btn--sm hw-audio-inline__start"></button>' +
       "</div>" +
       '<div class="hw-audio-inline__live" hidden>' +
       '<p class="hw-audio-inline__recording-label" aria-live="polite">Recording…</p>' +
@@ -122,15 +124,28 @@
       '<div class="hw-audio-inline__saved" hidden>' +
       '<p class="hw-audio-inline__saved-label">Saved</p>' +
       '<div class="hw-audio-inline__saved-player"></div>' +
-      '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__start-again">Record</button>' +
+      '<button type="button" class="btn btn--primary btn--sm hw-audio-inline__start-again">Record</button>' +
       '<button type="button" class="btn btn--ghost btn--sm hw-audio-inline__delete">Delete</button>' +
       "</div>" +
       '<p class="hw-audio-inline__status" role="status" aria-live="polite"></p>';
 
     const startBtn = mount.querySelector(".hw-audio-inline__start");
-    if (startBtn) startBtn.textContent = startLabel;
     const startAgainBtn = mount.querySelector(".hw-audio-inline__start-again");
-    if (startAgainBtn) startAgainBtn.textContent = startLabel;
+    if (meta.mic) {
+      if (startBtn) {
+        startBtn.className = "hw-ex-rec hw-audio-inline__start";
+        startBtn.innerHTML = micSvg;
+        startBtn.setAttribute("aria-label", "Record");
+      }
+      if (startAgainBtn) {
+        startAgainBtn.className = "hw-ex-rec hw-audio-inline__start-again";
+        startAgainBtn.innerHTML = micSvg;
+        startAgainBtn.setAttribute("aria-label", "Record again");
+      }
+    } else {
+      if (startBtn) startBtn.textContent = startLabel;
+      if (startAgainBtn) startAgainBtn.textContent = startLabel;
+    }
 
     const idleEl = mount.querySelector(".hw-audio-inline__idle");
     const liveEl = mount.querySelector(".hw-audio-inline__live");
@@ -228,7 +243,21 @@
     function stopRecording() {
       if (mediaRecorder && mediaRecorder.state === "recording") {
         if (stopBtn) stopBtn.disabled = true;
-        mediaRecorder.stop();
+        if (global.HwCompat?.flushRecorder) global.HwCompat.flushRecorder(mediaRecorder);
+        else {
+          try {
+            mediaRecorder.requestData();
+          } catch (_) {
+            /* ignore */
+          }
+          try {
+            mediaRecorder.stop();
+          } catch (_) {
+            finishRecording();
+          }
+        }
+      } else if (recordedChunks.length && !recordedBlob) {
+        finishRecording();
       }
       stopTimer();
     }
@@ -276,12 +305,36 @@
         setStatus("");
         showSaved();
       } catch (err) {
-        setStatus((err && err.message) || "Upload failed.");
-        showIdle();
+        setStatus((err && err.message) || "Upload failed. The take is still here.");
+        showKeptClip();
       } finally {
         uploading = false;
         if (stopBtn) stopBtn.disabled = false;
       }
+    }
+
+    function showKeptClip() {
+      stopStream();
+      stopTimer();
+      hideAllPanels();
+      if (savedEl) savedEl.hidden = false;
+      if (recordedBlob && savedPlayerMount) {
+        renderAudioPreview(savedPlayerMount, URL.createObjectURL(recordedBlob), "Your recorded answer");
+      }
+      const label = mount.querySelector(".hw-audio-inline__saved-label");
+      if (label) label.textContent = "Kept";
+      let retry = mount.querySelector(".hw-audio-inline__retry");
+      if (!retry && savedEl) {
+        retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn btn--primary btn--sm hw-audio-inline__retry";
+        retry.textContent = "Save again";
+        retry.addEventListener("click", () => {
+          void uploadRecording();
+        });
+        savedEl.appendChild(retry);
+      }
+      if (retry) retry.hidden = false;
     }
 
     function finishRecording() {
@@ -293,6 +346,11 @@
         return;
       }
       recordedBlob = new Blob(recordedChunks, { type: recordedMimeType });
+      if (!recordedBlob.size) {
+        setStatus("No audio recorded — try again.");
+        showIdle();
+        return;
+      }
       if (recordedBlob.size > MAX_AUDIO_BYTES) {
         setStatus("Too large (max 12 MB). Record a shorter clip.");
         showIdle();
@@ -342,11 +400,10 @@
         };
         mediaRecorder.onstop = finishRecording;
         mediaRecorder.onerror = () => {
-          setStatus("Recording error — try again.");
-          showIdle();
+          stopRecording();
         };
 
-        mediaRecorder.start(1000);
+        mediaRecorder.start(250);
         recordStartedAt = Date.now();
         showLive();
         recordTimerId = setInterval(() => {
@@ -364,6 +421,10 @@
     mount.querySelector(".hw-audio-inline__start-again")?.addEventListener("click", startRecording);
     mount.querySelector(".hw-audio-inline__stop")?.addEventListener("click", stopRecording);
     mount.querySelector(".hw-audio-inline__delete")?.addEventListener("click", deleteSaved);
+    global.HwCompat?.bindRecordingSurvive?.(mount, {
+      isLive: () => !!(mediaRecorder && mediaRecorder.state === "recording"),
+      flush: () => stopRecording(),
+    });
 
     if (mount.dataset.mediaId?.trim()) showSaved();
     else showIdle();
@@ -532,22 +593,44 @@
       if (previewEl) previewEl.hidden = false;
     }
 
+    function showIdleReadyToRecord(msg) {
+      showIdle();
+      if (savedPlayerMount) savedPlayerMount.replaceChildren();
+      if (msg) setStatus(msg);
+    }
+
     function showSavedFromUrl() {
       const playUrl = normalizeAudioUrl(audioUrl);
       hideRecordPanels();
-      if (playUrl) {
-        if (savedEl) savedEl.hidden = false;
-        renderAudioPreview(savedPlayerMount, playUrl, previewAria);
-      } else {
-        showIdle();
-        if (savedPlayerMount) savedPlayerMount.replaceChildren();
+      if (!playUrl) {
+        showIdleReadyToRecord("");
+        return;
       }
+      if (savedEl) savedEl.hidden = false;
+      renderAudioPreview(savedPlayerMount, playUrl, previewAria);
+      /* Only clear on a real load failure (missing file) — never wipe a just-saved clip. */
+      const probe = savedPlayerMount?.querySelector?.("audio");
+      if (!probe) return;
+      const onFail = () => {
+        probe.removeEventListener("error", onFail);
+        /* Keep /api/hw-m/… clips even if playback glitches; only drop dead static paths. */
+        if (/^\/?api\/hw-m\//i.test(playUrl) || /^https?:/i.test(playUrl)) {
+          setStatus("Couldn’t preview — clip is still saved. Update the worksheet to keep it.");
+          return;
+        }
+        audioUrl = "";
+        mediaId = "";
+        if (urlInput) urlInput.value = "";
+        emitChange();
+        showIdleReadyToRecord("No question audio yet — tap Record question audio.");
+      };
+      probe.addEventListener("error", onFail);
     }
 
     function syncFromFields() {
       if (urlInput) urlInput.value = audioUrl || "";
       if (audioUrl) showSavedFromUrl();
-      else showIdle();
+      else showIdleReadyToRecord("");
     }
 
     function applyUrl(nextUrl, nextMediaId) {
@@ -608,7 +691,14 @@
 
     function stopRecording() {
       if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
+        if (global.HwCompat?.flushRecorder) global.HwCompat.flushRecorder(mediaRecorder);
+        else {
+          try {
+            mediaRecorder.stop();
+          } catch (_) {
+            finishRecording();
+          }
+        }
       }
       stopTimer();
     }
@@ -644,10 +734,9 @@
         };
         mediaRecorder.onstop = finishRecording;
         mediaRecorder.onerror = () => {
-          setStatus("Recording error — try again.");
-          showIdle();
+          stopRecording();
         };
-        mediaRecorder.start(1000);
+        mediaRecorder.start(250);
         recordStartedAt = Date.now();
         showLive();
         recordTimerId = setInterval(() => {
@@ -711,12 +800,12 @@
 
     mount.querySelector(".hw-audio-inline__start")?.addEventListener("click", startRecording);
     mount.querySelector(".hw-audio-inline__stop")?.addEventListener("click", stopRecording);
+    global.HwCompat?.bindRecordingSurvive?.(mount, {
+      isLive: () => !!(mediaRecorder && mediaRecorder.state === "recording"),
+      flush: () => stopRecording(),
+    });
     mount.querySelector(".hw-audio-inline__cancel")?.addEventListener("click", () => {
       stopRecording();
-      clearRecording();
-      setStatus("");
-      if (audioUrl) showSavedFromUrl();
-      else showIdle();
     });
     mount.querySelector(".hw-audio-inline__retake")?.addEventListener("click", () => {
       clearRecording();

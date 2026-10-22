@@ -8,7 +8,7 @@
     if (document.querySelector("[data-hw-comments-css]")) return;
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = "/css/hw-homework-comments.css?v=20260817-qmark";
+    link.href = "/css/hw-homework-comments.css?v=20260928-savedrec";
     link.setAttribute("data-hw-comments-css", "1");
     document.head.appendChild(link);
   })();
@@ -33,6 +33,17 @@
     "input, textarea, select, button, a, label, video, audio, .hw-tools-cleanup, .hw-hc-launcher, .hw-hc-memo, .hw-hc-mini, .hw-hc-onboard, .hw-hc-sel-menu, .hw-toolbar-bar, .hw-mg-widget, .hw-mg-popup";
   const TOUCH_SKIP_EXTRA =
     ", .hw-star-block__reset, .hw-star-block__slot-clear, .hw-star-block__slot:not(.hw-star-block__slot--filled), .hw-mc-block__reset, .hw-mc-block__slot-clear, .hw-mc-block__slot:not(.hw-mc-block__slot--filled)";
+  function cloudSkipsTarget(el) {
+    if (!el?.closest) return false;
+    if (
+      el.closest(
+        ".hw-sit-flip__face--jp [lang='ja'], .hw-sit-focus__text, .hw-sit-focus__head h3, .hw-prayer__sheet p, .hw-prayer__scripture-text"
+      )
+    ) {
+      return false;
+    }
+    return Boolean(el.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA));
+  }
   const PREVIEW_TEXT_SELECTOR =
     ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-star-block__chip, .hw-star-block__slot-text, .hw-mc-block__sentence, .hw-mc-block__text, .hw-mc-block__chip, .hw-mc-block__slot-text, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, [lang='ja']";
 
@@ -175,9 +186,12 @@
   let reviewStudentMinimizedIds = new Set();
   /** Standalone JD notes the student collapsed (studentReviewed). Empty = all open. */
   let reviewTeacherMinimizedIds = new Set();
+  /** Saved recordings he skipped or deleted on this note, so they are not put back. */
+  let dismissedSavedRecordingKeys = new Set();
   let reviewResizeObserver = null;
   let draftSaveTimer = null;
   let draftSaveInFlight = null;
+  let memoResetTimer = null;
   let built = false;
   let docPointerBound = null;
   let keyDownBound = null;
@@ -922,6 +936,86 @@
     return storageKey() + ":ts";
   }
 
+  /**
+   * Cloud memos on rotating hub pages clear when that page changes.
+   * Day starts at 5:00 a.m. local. Week starts Monday at 5:00 a.m.
+   * Worksheets and Chapters are not on a timer, so those memos stay.
+   */
+  function memoCadence(assignmentId) {
+    const id = String(assignmentId || "").toLowerCase();
+    if (!id.startsWith("curriculum-")) return "";
+    if (id.includes("quest")) return "week";
+    if (
+      id === "curriculum-situation" ||
+      id === "curriculum-situation-focus" ||
+      id === "curriculum-today" ||
+      id === "curriculum-prayer" ||
+      id === "curriculum-notebook" ||
+      id === "curriculum-core"
+    ) {
+      return "day";
+    }
+    return "";
+  }
+
+  function periodKeyFor(date, mode) {
+    if (!global.HwLocalPeriod) return "";
+    return mode === "week" ? global.HwLocalPeriod.weekKey(date) : global.HwLocalPeriod.dayKey(date);
+  }
+
+  function rawCommentsInPeriod(list, mode) {
+    if (!mode) return Array.isArray(list) ? list : [];
+    const nowKey = periodKeyFor(new Date(), mode);
+    if (!nowKey) return Array.isArray(list) ? list : [];
+    return (Array.isArray(list) ? list : []).filter((c) => {
+      const iso = c && c.createdAt;
+      const d = new Date(iso || "");
+      if (!iso || Number.isNaN(d.getTime())) return false;
+      return periodKeyFor(d, mode) === nowKey;
+    });
+  }
+
+  function msUntilNextMemoReset(mode) {
+    const now = new Date();
+    const next = new Date(now.getTime());
+    next.setSeconds(0, 0);
+    if (now.getHours() < 5) next.setHours(5, 0, 0, 0);
+    else {
+      next.setDate(next.getDate() + 1);
+      next.setHours(5, 0, 0, 0);
+    }
+    if (mode === "week") {
+      while (next.getDay() !== 1) next.setDate(next.getDate() + 1);
+    }
+    return Math.max(1000, next.getTime() - now.getTime() + 500);
+  }
+
+  function scheduleMemoReset() {
+    clearTimeout(memoResetTimer);
+    memoResetTimer = null;
+    const mode = memoCadence(config?.assignmentId);
+    if (!mode || config?.readOnly || config?.teacherReview) return;
+    memoResetTimer = setTimeout(() => {
+      dropExpiredMemos();
+      scheduleMemoReset();
+    }, msUntilNextMemoReset(mode));
+  }
+
+  function dropExpiredMemos() {
+    const mode = memoCadence(config?.assignmentId);
+    if (!mode || config?.readOnly || config?.teacherReview) return;
+    const kept = rawCommentsInPeriod(comments, mode);
+    if (kept.length === comments.length) return;
+    comments = normalizeComments(kept);
+    renderAll();
+    if (!comments.length) {
+      void clearDraftStorage();
+      return;
+    }
+    saveLocal();
+    queueDraftSave();
+  }
+
   function pctClamp(n) {
     return Math.min(98, Math.max(2, n));
   }
@@ -1584,12 +1678,21 @@
     const key = storageKey();
     if (!key) return;
 
-    let localList = [];
+    let localRaw = [];
     let localTs = 0;
     try {
-      localList = normalizeComments(JSON.parse(localStorage.getItem(key) || "[]"));
+      localRaw = JSON.parse(localStorage.getItem(key) || "[]");
       localTs = parseInt(localStorage.getItem(storageTsKey()) || "0", 10) || 0;
     } catch (_) {}
+
+    const mode = memoCadence(config.assignmentId);
+    let dropped = false;
+    if (mode) {
+      const before = Array.isArray(localRaw) ? localRaw.length : 0;
+      localRaw = rawCommentsInPeriod(localRaw, mode);
+      if (localRaw.length !== before) dropped = true;
+    }
+    let localList = normalizeComments(localRaw);
 
     let serverList = null;
     let serverTs = 0;
@@ -1604,11 +1707,25 @@
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.draft?.comments) {
-          serverList = normalizeComments(data.draft.comments);
+          let serverRaw = data.draft.comments;
+          if (mode) {
+            const before = Array.isArray(serverRaw) ? serverRaw.length : 0;
+            serverRaw = rawCommentsInPeriod(serverRaw, mode);
+            if (serverRaw.length !== before) dropped = true;
+          }
+          serverList = normalizeComments(serverRaw);
           serverTs = data.draft.updatedAt ? Date.parse(data.draft.updatedAt) : 0;
         }
       }
     } catch (_) {}
+
+    if (dropped && !localList.length && !(serverList && serverList.length)) {
+      comments = [];
+      await clearDraftStorage();
+      renderAll();
+      scheduleMemoReset();
+      return;
+    }
 
     if (serverList?.length) {
       if (localTs > serverTs && localList.length) {
@@ -1627,8 +1744,11 @@
       comments = deduped.map(sanitizeCloudPos);
       saveLocal();
       queueDraftSave();
+    } else if (dropped) {
+      queueDraftSave();
     }
     renderAll();
+    scheduleMemoReset();
   }
 
   function onSlideChange(e) {
@@ -1757,6 +1877,62 @@
     return true;
   }
 
+  function nudgeOffSlideNav(el, navRect, hostRect) {
+    const rect = el.getBoundingClientRect();
+    const gap = 10;
+    const overlaps =
+      rect.left < navRect.right &&
+      rect.right > navRect.left &&
+      rect.top < navRect.bottom &&
+      rect.bottom > navRect.top;
+    if (!overlaps) return;
+    const moves = [
+      { dx: 0, dy: navRect.bottom + gap - rect.top },
+      { dx: 0, dy: navRect.top - gap - rect.bottom },
+      { dx: navRect.right + gap - rect.left, dy: 0 },
+      { dx: navRect.left - gap - rect.right, dy: 0 },
+    ];
+    moves.sort((a, b) => {
+      const da = Math.abs(a.dx) + Math.abs(a.dy);
+      const db = Math.abs(b.dx) + Math.abs(b.dy);
+      if (Math.abs(da - db) < 36) {
+        if (a.dy > 0 && b.dy <= 0) return -1;
+        if (b.dy > 0 && a.dy <= 0) return 1;
+      }
+      return da - db;
+    });
+    const move = moves[0];
+    const left = parseFloat(el.style.left);
+    const top = parseFloat(el.style.top);
+    if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+    el.style.left = pctClamp(left + (move.dx / hostRect.width) * 100) + "%";
+    el.style.top = pctClamp(top + (move.dy / hostRect.height) * 100) + "%";
+  }
+
+  /** Keep JD notes off question arrows and anything marked data-keep-clear. Visual only. */
+  function clearNotesFromSlideNav() {
+    if (!hostEl || !layersEl) return;
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return;
+    const obstacles = [];
+    hostEl.querySelectorAll(".hw-worksheet__slide-nav, [data-keep-clear]").forEach((el) => {
+      if (el.hidden || el.closest("[hidden]")) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 8 || rect.height < 8) return;
+      obstacles.push(rect);
+    });
+    if (!obstacles.length) return;
+    const seen = new Set();
+    layersEl
+      .querySelectorAll(".hw-hc-review-pair, .hw-hc-memo--expanded, .hw-hc-review-mini-pair, .hw-hc-mini")
+      .forEach((el) => {
+        const box = el.closest(".hw-hc-review-pair") || el;
+        if (seen.has(box)) return;
+        seen.add(box);
+        obstacles.forEach((rect) => nudgeOffSlideNav(box, rect, hostRect));
+      });
+  }
+
   function fitExpandedMemo(id) {
     const memo = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"]');
     if (!memo || !hostEl) return;
@@ -1777,6 +1953,7 @@
     memo.style.left = newX + "%";
     memo.style.top = newY + "%";
     /* Visual-only clamp — don't rewrite the shared mini/memo tip position. */
+    clearNotesFromSlideNav();
     resolveToolLayout(memo);
   }
 
@@ -2066,20 +2243,94 @@
     global.HwReviewMedia?.renderPlayback?.(playback, comment.teacherRemarkMedia);
   }
 
+  function commentById(id) {
+    return comments.find((c) => c.id === id) || null;
+  }
+
+  function savedRecordingKey(commentId, mediaId) {
+    return commentId + ":" + mediaId;
+  }
+
+  function bankRepliesForComment(comment) {
+    const slot = String(typeof comment?.slideIndex === "number" ? comment.slideIndex : 0);
+    const replies = (config?.answerBank || {})[slot];
+    return Array.isArray(replies) ? replies : [];
+  }
+
+  function suggestedRecordingFor(comment) {
+    return (
+      global.HwReviewMedia?.pickSuggestedRecording?.(
+        bankRepliesForComment(comment),
+        comment?.text,
+        null
+      ) || null
+    );
+  }
+
+  function acceptSavedRecording(commentId, media) {
+    updateTeacherRemarkMedia(commentId, media);
+    renderAll();
+  }
+
+  /** Preview only until he taps Use. Same clip id — nothing is uploaded again. */
+  function renderSavedRecordingOffer(mount, comment) {
+    if (!mount || !comment) return;
+    mount.replaceChildren();
+    const live = commentById(comment.id) || comment;
+    if (live.teacherRemarkMedia?.id) {
+      mount.hidden = true;
+      return;
+    }
+    const suggested = suggestedRecordingFor(live);
+    if (!suggested?.id) {
+      mount.hidden = true;
+      return;
+    }
+    mount.hidden = false;
+    const key = savedRecordingKey(live.id, suggested.id);
+    if (dismissedSavedRecordingKeys.has(key)) {
+      global.HwReviewMedia?.mountSavedRecordingReuse?.(mount, {
+        onUse: () => acceptSavedRecording(live.id, suggested),
+      });
+      return;
+    }
+    global.HwReviewMedia?.mountSavedRecordingOffer?.(mount, {
+      media: suggested,
+      onUse: () => acceptSavedRecording(live.id, suggested),
+      onSkip: () => {
+        dismissedSavedRecordingKeys.add(key);
+        renderSavedRecordingOffer(mount, live);
+      },
+    });
+  }
+
   function appendTeacherRemarkRecorder(body, comment) {
     const mediaBlock = document.createElement("div");
     mediaBlock.className = "hw-hc-memo__remark-media";
     const mediaLabel = document.createElement("p");
     mediaLabel.className = "hw-hc-memo__remark-label";
     mediaLabel.textContent = "Audio or video reply (optional)";
+    const offerMount = document.createElement("div");
+    offerMount.className = "hw-saved-recording-mount";
     const mediaMount = document.createElement("div");
     mediaMount.className = "hw-hc-memo__remark-media-mount";
-    mediaBlock.append(mediaLabel, mediaMount);
+    mediaBlock.append(mediaLabel, offerMount, mediaMount);
     body.appendChild(mediaBlock);
+    renderSavedRecordingOffer(offerMount, comment);
     global.HwReviewMedia?.mountRemarkRecorder?.(mediaMount, {
       teacherUsername: config?.teacherUsername || "",
       existing: comment.teacherRemarkMedia,
-      onChange: (media) => updateTeacherRemarkMedia(comment.id, media),
+      onChange: (media) => {
+        const before = commentById(comment.id)?.teacherRemarkMedia;
+        updateTeacherRemarkMedia(comment.id, media);
+        if (!media?.id && before?.id) {
+          const suggested = suggestedRecordingFor(commentById(comment.id) || comment);
+          if (suggested?.id && suggested.id === before.id) {
+            dismissedSavedRecordingKeys.add(savedRecordingKey(comment.id, suggested.id));
+          }
+        }
+        renderSavedRecordingOffer(offerMount, commentById(comment.id) || comment);
+      },
       confirmErase: openRecordingEraseConfirm,
     });
   }
@@ -2173,7 +2424,7 @@
   }
 
   function shouldSkipTouchTarget(target) {
-    return Boolean(target?.closest?.(SKIP_SELECTOR + TOUCH_SKIP_EXTRA));
+    return cloudSkipsTarget(target);
   }
 
   function starTextUnitFromTarget(target) {
@@ -2408,7 +2659,7 @@
         : [document.elementFromPoint(clientX, clientY)];
     for (const el of stack) {
       if (!(el instanceof Element) || !hostEl?.contains(el)) continue;
-      if (el.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA)) continue;
+      if (cloudSkipsTarget(el)) continue;
       if (el.closest(".hw-hc-hover-highlight")) continue;
       if (previewTextContainerFor(el, clientX, clientY)) return el;
     }
@@ -2625,7 +2876,7 @@
       clearWordPreview();
       return;
     }
-    if (ev.target?.closest?.(SKIP_SELECTOR)) {
+    if (cloudSkipsTarget(ev.target)) {
       clearWordPreview();
       return;
     }
@@ -2799,7 +3050,6 @@
       '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="disarm">Exit note mode</button>' +
       '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="reset-tools">Reset tool positions</button>' +
       '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="focus">Focus mode</button>' +
-      '<button type="button" class="hw-hc-sel-menu__sub-btn" data-action="print">Print worksheet</button>' +
       "</div>";
 
     selMenuEl.addEventListener("pointerdown", (ev) => ev.stopPropagation());
@@ -2864,12 +3114,6 @@
     if (action === "focus") {
       hideSelectionMenu();
       worksheetFormEl?.querySelector("[data-hw-focus]")?.click();
-      return;
-    }
-    if (action === "print") {
-      hideSelectionMenu();
-      worksheetFormEl?.querySelector("[data-hw-print]")?.click() ||
-        document.getElementById("hw-offline-print")?.click();
     }
   }
 
@@ -3040,7 +3284,7 @@
   function onHostMouseUp(ev) {
     if (!armed || config?.readOnly) return;
     if (isCoarsePointer()) return;
-    if (ev.target.closest(SKIP_SELECTOR + TOUCH_SKIP_EXTRA)) return;
+    if (cloudSkipsTarget(ev.target)) return;
 
     const down = previewPointerDown;
     previewPointerDown = null;
@@ -3406,6 +3650,8 @@
   }
 
   function initOnboarding() {
+    /* New first-time tips (hw-onboard.js) own this now; old black-screen intro stands down. */
+    if (global.HwOnboard?.owns) return;
     if (config?.readOnly || config?.skipOnboarding) return;
     if (!shellEl || !launcherEl) return;
     try {
@@ -3836,10 +4082,22 @@
       (comment.teacherRemark || comment.teacherRemarkMedia ? " hw-hc-mini--has-remark" : "");
     btn.dataset.id = comment.id;
     applyCloudPos(btn, comment, "mini");
+    const savedClip =
+      comment.author === "teacher"
+        ? global.HwReviewMedia?.pickSuggestedRecording?.(
+            (config?.answerBank || {})[
+              String(typeof comment.slideIndex === "number" ? comment.slideIndex : 0)
+            ],
+            comment.text,
+            comment.teacherRemarkMedia
+          )
+        : null;
     const label =
       comment.author === "teacher"
         ? comment.bankPrefill
-          ? "Your saved reply for this question — open to edit"
+          ? savedClip
+            ? "Your saved reply for this question, with a recording — open to use or replace"
+            : "Your saved reply for this question — open to edit"
           : comment.text.trim()
           ? "View JD note"
           : "Add JD note on this question"
@@ -3931,7 +4189,11 @@
       if (!pick?.text) return;
       setNoteFieldText(input, pick.text);
       updateCommentText(comment.id, pick.text);
+      comment.text = pick.text;
       if (input.tagName === "TEXTAREA") autosizeReviewMemoInput(input);
+      const offer = select.closest(".hw-hc-memo")?.querySelector(".hw-saved-recording-mount");
+      const live = comments.find((c) => c.id === comment.id);
+      if (offer && live) renderSavedRecordingOffer(offer, live);
     });
     return select;
   }
@@ -4093,6 +4355,7 @@
     layoutScheduleRaf = requestAnimationFrame(() => {
       layoutScheduleRaf = null;
       resolveToolLayout(pinEl || null);
+      clearNotesFromSlideNav();
     });
   }
 
@@ -4222,6 +4485,8 @@
 
   function teardown() {
     clearTimeout(draftSaveTimer);
+    clearTimeout(memoResetTimer);
+    memoResetTimer = null;
     clearTimeout(onboardScheduleTimer);
     onboardScheduleTimer = null;
     dragState = null;
@@ -4316,6 +4581,7 @@
     questionMarks = normalizeQuestionMarksMap(options.initialQuestionMarks);
 
     hostEl =
+      options.hostElement ||
       formEl?.closest(".hw-hub-v2-worksheet") ||
       formEl?.closest(".hw-teacher-review-worksheet") ||
       formEl?.parentElement ||

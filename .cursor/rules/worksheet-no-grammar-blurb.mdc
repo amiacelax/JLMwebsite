@@ -1,0 +1,13 @@
+---
+description: Worksheets must not get an invented grammar description. English under a blank comes from glass cards when those exist.
+alwaysApply: true
+---
+
+# Worksheet text
+
+When building a homework sheet:
+
+- Do not write a grammar description. Leave it empty. If a description has to be there, the only text is `coming soon`.
+- Do not add instructions that explain the grammar.
+- The line under a blank is the English meaning, with no parentheses.
+- Use JD's glass-card definition when that word already has one. Do not rewrite his wording. If there is no card, use a short English gloss and say which words had no card.

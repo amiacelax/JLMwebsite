@@ -1,0 +1,157 @@
+.hw-curriculum-textbook {
+  --ct-ink: var(--color-text, #e8edf5);
+  --ct-muted: var(--color-text-muted, #9aa8bd);
+  --ct-line: var(--color-border, rgba(232, 237, 245, 0.16));
+  --ct-fill: color-mix(in srgb, var(--color-surface, #121f36) 88%, transparent);
+  --ct-today: #67c4eb;
+  max-width: 40rem;
+  margin: 0 0 1.5rem;
+  color: var(--ct-ink);
+  font-family: Inter, "Noto Sans JP", system-ui, sans-serif;
+}
+
+.hw-curriculum-textbook[hidden] { display: none !important; }
+
+.hw-curriculum-textbook h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.hw-curriculum-textbook .lede {
+  margin: 0 0 1rem;
+  color: var(--ct-muted);
+  line-height: 1.45;
+}
+
+.hw-curriculum-textbook ol.pages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hw-curriculum-textbook .page {
+  border: 1px solid var(--ct-line);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--ct-fill);
+}
+
+.hw-curriculum-textbook .page.is-today {
+  border-color: color-mix(in srgb, var(--ct-today) 65%, var(--ct-line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ct-today) 35%, transparent);
+}
+
+.hw-curriculum-textbook .page__kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ct-muted);
+}
+
+.hw-curriculum-textbook .page.is-today .page__kicker { color: var(--ct-today); }
+
+.hw-curriculum-textbook .page h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.hw-curriculum-textbook .page h3.hw-hour-prompt {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.hw-curriculum-textbook .hw-grammar-blanks {
+  margin: 0.35rem 0 0.85rem;
+}
+
+.hw-curriculum-textbook .passage {
+  margin: 0 0 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--ct-today) 12%, transparent);
+  line-height: 1.7;
+  font-family: "Noto Sans JP", sans-serif;
+}
+.hw-curriculum-textbook .prompt,
+.hw-curriculum-textbook .jp {
+  margin: 0 0 0.55rem;
+  line-height: 1.6;
+}
+
+.hw-curriculum-textbook .jp {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+
+.hw-curriculum-textbook label {
+  display: block;
+  margin: 0.45rem 0 0.2rem;
+  font-size: 0.92rem;
+}
+
+.hw-curriculum-textbook input[type="text"],
+.hw-curriculum-textbook textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  color: var(--ct-ink);
+  background: transparent;
+  border: 1px solid var(--ct-line);
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.hw-curriculum-textbook .hw-grammar-blanks input {
+  background: color-mix(in srgb, var(--color-bg) 80%, transparent);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.55rem;
+}
+
+.hw-curriculum-textbook textarea { min-height: 4.2rem; resize: vertical; }
+
+.hw-curriculum-textbook .choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.4rem 0;
+}
+
+.hw-curriculum-textbook .choices label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: flex-start;
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+.hw-curriculum-textbook .row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.65rem;
+}
+
+.hw-curriculum-textbook button {
+  font: inherit;
+  font-weight: 650;
+  border-radius: 999px;
+  border: 1px solid var(--ct-line);
+  background: color-mix(in srgb, var(--ct-today) 22%, transparent);
+  color: var(--ct-ink);
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+}
+
+.hw-curriculum-textbook .note {
+  margin: 0;
+  color: var(--ct-muted);
+  font-size: 0.85rem;
+}

@@ -1,15 +1,18 @@
 /**
- * Daily Discord ping: who needs new HW / who’s waiting on review.
- * Fires at 9:00pm Japan time (cron `0 12 * * *` = 12:00 UTC).
+ * Weekly Discord ping: who needs new HW / who’s waiting on review.
+ * Fires Monday 5:00am Japan time (cron `0 20 * * 0` = Sunday 20:00 UTC). Posts to the HW channel.
  */
 
 import {
   collectHwDailyWaitingReport,
   type HwDailyWaitingRow,
 } from "./homework-kv";
+import { listCadenceOwesNewHw } from "./hw-plan-reminders";
 import { getJstYmd } from "./student-birthdays";
+import { resolveRoutedWebhook, type DiscordRouteEnv } from "./discord-channels";
+import { studentPageLink, teacherReviewLink } from "./hub-links";
 
-export interface HwDailyWaitingEnv {
+export interface HwDailyWaitingEnv extends DiscordRouteEnv {
   HOMEWORK_KV?: KVNamespace;
   DISCORD_WEBHOOK_URL?: string;
   DISCORD_CHANNEL_ID?: string;
@@ -58,7 +61,12 @@ function formatJstWeekday(now = new Date()): string {
 }
 
 function lineFor(row: HwDailyWaitingRow): string {
-  return row.title ? `• ${row.displayName} — ${row.title}` : `• ${row.displayName}`;
+  const open =
+    row.bucket === "review" && row.submissionId
+      ? teacherReviewLink(row.submissionId)
+      : studentPageLink(row.username);
+  const who = row.title ? `${row.displayName} — ${row.title}` : row.displayName;
+  return `• ${who}\n  ${open}`;
 }
 
 function section(title: string, rows: HwDailyWaitingRow[]): string[] {
@@ -71,9 +79,9 @@ export function buildHwDailyWaitingMessage(
   now = new Date()
 ): string {
   const lines = [
-    `📋 HW waiting — ${formatJstWeekday(now)}`,
+    `📋 HW waiting (weekly) — ${formatJstWeekday(now)}`,
     "",
-    ...section("Needs new HW (empty / nothing live):", report.needs),
+    ...section("Needs new HW:", report.needs),
     ...section("Need to be reviewed by you:", report.review),
     ...section("Student still reviewing JD notes:", report.reviewingNotes),
     ...section("Student needs to complete HW:", report.sent),
@@ -91,7 +99,7 @@ async function postDiscord(
     .replace(/```/g, "'''")
     .trim()
     .slice(0, 1980);
-  const content = "```\n" + plain + "\n```";
+  const content = plain;
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -105,15 +113,16 @@ export async function runHwDailyWaitingReminders(
   opts?: { force?: boolean }
 ): Promise<{ ok: boolean; skipped?: boolean; message?: string }> {
   const force = opts?.force === true;
-  const webhookUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
+  const hook = await resolveRoutedWebhook(env, "hw");
+  const webhookUrl = hook?.url ?? null;
   if (!webhookUrl) {
-    console.error("hw-daily-waiting: DISCORD_WEBHOOK_URL not configured");
+    console.error("hw-daily-waiting: no Discord webhook configured");
     return { ok: false, message: "Webhook not configured" };
   }
 
   const channelError = await getWebhookChannelMismatch(
     webhookUrl,
-    env.DISCORD_CHANNEL_ID
+    hook?.channelId
   );
   if (channelError) {
     console.error("hw-daily-waiting:", channelError);
@@ -139,6 +148,28 @@ export async function runHwDailyWaitingReminders(
   let report;
   try {
     report = await collectHwDailyWaitingReport(env);
+    const owed = await listCadenceOwesNewHw(env);
+    /* Cadence only adds "make a new sheet" for students who aren't already
+       waiting on you / mid-HW / reading notes — those don't need a new sheet. */
+    const already = new Set(
+      [...report.needs, ...report.review, ...report.sent, ...report.reviewingNotes].map(
+        (row) => row.username
+      )
+    );
+    for (const job of owed) {
+      const username = String(job.username || "")
+        .trim()
+        .toLowerCase();
+      if (!username || already.has(username)) continue;
+      already.add(username);
+      report.needs.push({
+        username,
+        displayName: String(job.displayName || username).trim() || username,
+        title: "cadence — make a new sheet",
+        bucket: "needs",
+      });
+    }
+    report.needs.sort((a, b) => a.displayName.localeCompare(b.displayName));
   } catch (err) {
     console.error("hw-daily-waiting: collect failed", err);
     return { ok: false, message: "Could not collect homework status" };

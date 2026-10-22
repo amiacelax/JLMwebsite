@@ -4,6 +4,7 @@
 (function (global) {
   let submissionsCache = [];
   let expandedId = null;
+  let pendingExpandId = null;
   let loading = false;
   let bound = false;
   let options = null;
@@ -581,20 +582,7 @@
       viewBtn.textContent =
         entry.type === "online" && alreadyReviewed ? "View submission" : "Review";
       viewBtn.addEventListener("click", () => {
-        if (entry.type === "online" && alreadyReviewed && options?.openWorksheetReview) {
-          options.openWorksheetReview(entry);
-          return;
-        }
-        if (entry.type === "online" && options?.openFlashcardReview) {
-          options.openFlashcardReview(entry);
-          return;
-        }
-        if (entry.type === "online" && options?.openWorksheetReview) {
-          options.openWorksheetReview(entry);
-          return;
-        }
-        expandedId = entry.id;
-        renderList();
+        void reviewEntry(entry);
       });
 
       actions.appendChild(viewBtn);
@@ -626,9 +614,10 @@
     renderList();
     try {
       submissionsCache = await fetchSubmissions(session, student);
-      if (expandedId && !submissionsCache.some((entry) => entry.id === expandedId)) {
-        expandedId = null;
-      }
+      const keepId = pendingExpandId || expandedId;
+      pendingExpandId = null;
+      expandedId =
+        keepId && submissionsCache.some((entry) => entry.id === keepId) ? keepId : null;
     } catch (err) {
       const meta = document.getElementById("hw-submissions-meta");
       if (meta) meta.textContent = err.message || "Could not load submissions.";
@@ -698,11 +687,59 @@
     });
   }
 
+  /**
+   * Same path as Submissions → Review.
+   * Online sheets open the notes deck. Photo/audio expand the checker.
+   */
+  async function reviewEntry(entry) {
+    if (!entry?.id) return false;
+    const type = entry.type || "online";
+    const alreadyReviewed = entry.reviewStatus === "reviewed";
+    if (type === "online" && alreadyReviewed && options?.openWorksheetReview) {
+      await options.openWorksheetReview(entry);
+      return true;
+    }
+    if (type === "online" && options?.openFlashcardReview) {
+      await options.openFlashcardReview(entry);
+      return true;
+    }
+    if (type === "online" && options?.openWorksheetReview) {
+      await options.openWorksheetReview(entry);
+      return true;
+    }
+    return openChecker(entry);
+  }
+
+  async function openChecker(entry) {
+    const sid = String(entry?.id || "");
+    if (!sid) return false;
+    const search = document.getElementById("hw-submissions-search");
+    const studentFilter = document.getElementById("hw-submissions-student");
+    const needsFreshList = Boolean(
+      (search && String(search.value || "").trim()) || (studentFilter && studentFilter.value)
+    );
+    if (search) search.value = "";
+    if (studentFilter) studentFilter.value = "";
+    const inCache = submissionsCache.some((row) => row.id === sid);
+    if (needsFreshList || !inCache) {
+      pendingExpandId = sid;
+      if (!loading) await reloadSubmissions();
+      return submissionsCache.some((row) => row.id === sid) || pendingExpandId === sid;
+    }
+    expandedId = sid;
+    renderList();
+    return true;
+  }
+
   function init(opts) {
     options = opts || {};
     bindOnce();
     void reloadSubmissions();
   }
 
-  global.HwTeacherSubmissions = { init, reload: reloadSubmissions };
+  global.HwTeacherSubmissions = {
+    init,
+    reload: reloadSubmissions,
+    reviewEntry,
+  };
 })(window);

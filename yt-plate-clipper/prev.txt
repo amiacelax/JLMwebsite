@@ -1,0 +1,28 @@
+﻿1) Wed 08/19 13:01 ┬╖ 61m ┬╖ Josh 51
+2) Wed 08/19 21:16 ┬╖ 64m ┬╖ Matt 0
+3) Fri 08/21 10:04 ┬╖ 65m ┬╖ Noah 0
+4) Mon 08/24 21:01 ┬╖ 64m ┬╖ Faye 110 ┬╖ [auto-skip: Faye (Mon 9pm+)]
+5) Tue 09/01 10:01 ┬╖ 81m ┬╖ Kaether jer 106
+6) Tue 09/01 13:01 ┬╖ 59m ┬╖ Noah 6
+7) Tue 09/01 21:01 ┬╖ 42m
+8) Wed 09/02 11:30 ┬╖ 65m ┬╖ Matt 1
+9) Wed 09/02 13:01 ┬╖ 62m ┬╖ Josh 52
+10) Fri 09/04 10:01 ┬╖ 64m ┬╖ Ben M
+11) Fri 09/04 12:06 ┬╖ 60m ┬╖ Jay 158
+12) Wed 09/16 11:31 ┬╖ 62m ┬╖ Matt 2
+13) Fri 09/18 10:01 ┬╖ 61m ┬╖ Ben M 35
+14) Fri 09/25 10:00 ┬╖ 65m ┬╖ Ben M 36
+15) Fri 09/25 12:07 ┬╖ 60m ┬╖ Jay 159
+16) Mon 09/28 11:16 ┬╖ 49m ┬╖ Mo 0 ┬╖ [auto-skip: never clip Mo]
+17) Mon 09/28 13:59 ┬╖ 75m ┬╖ Christian 1 ┬╖ [auto-skip: never clip Christian]
+18) Mon 09/28 21:01 ┬╖ 63m ┬╖ Faye 111 ┬╖ [auto-skip: Faye (Mon 9pm+)]
+19) Tue 09/29 10:16 ┬╖ 53m ┬╖ Kaether Emily 107
+20) Wed 09/30 11:33 ┬╖ 65m ┬╖ Josh 53
+21) Wed 09/30 13:01 ┬╖ 61m ┬╖ Matt 3
+22) Wed 09/30 14:19 ┬╖ 59m ┬╖ CJ 2 ┬╖ [auto-skip: never clip CJ]
+23) Fri 10/02 12:03 ┬╖ 63m ┬╖ Jay 160
+24) Fri 10/02 14:04 ┬╖ 71m ┬╖ CJ 3 ┬╖ [auto-skip: never clip CJ]
+25) Mon 10/05 12:37 ┬╖ 62m ┬╖ CJ 4 ┬╖ [auto-skip: never clip CJ]
+26) Mon 10/05 21:07 ┬╖ 56m ┬╖ Faye 112 ┬╖ [auto-skip: Faye (Mon 9pm+)]
+27) Fri 10/09 14:08 ┬╖ 59m ┬╖ CJ 5 ┬╖ [auto-skip: never clip CJ]
+27 plates; 9 auto-skipped

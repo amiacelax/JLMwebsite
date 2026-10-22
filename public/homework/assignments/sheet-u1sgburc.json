@@ -6,164 +6,688 @@
   "status": "draft",
   "forSale": false,
   "salePrice": 0.99,
+  "wsCategory": "core-japanese",
+  "templateType": "custom",
+  "lessonName": "もう・まだ",
+  "topicExplanation": "もう / まだ — polarity changes the meaning\n\nもう + affirmative past ≈ already\nもう + negative ≈ not anymore / won't anymore (もうやらない)\nもう～ていない ≈ no longer doing it\n\nまだ + affirmative ≈ still (まだ生きてる？)\nまだ～ていない / まだ～てない ≈ not yet\n\n12 questions for もう, 12 for まだ.",
   "sections": [
     {
-      "id": "grammar",
-      "title": "Section 1 — Grammar point",
-      "instructions": "Fill in the blank with the correct grammar form. The hint under each blank shows the dictionary form (and conjugation when needed).",
-      "mode": "grammar-blank",
+      "id": "sec-mou-listen",
+      "mode": "audio-listening",
+      "title": "もう — listen",
+      "instructions": "Listen to the clip and write down what you think it's saying in Japanese. (もう)",
+      "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_041_0.19.47.260-0.19.50.263.mp3",
+      "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_041_0.19.48.762.jpg",
       "items": [
         {
-          "id": "s1-1",
+          "id": "blk-oyqfr3x",
           "parts": [
             {
-              "type": "text",
-              "value": ""
-            },
+              "type": "blank",
+              "name": "blk-oyqfr3x",
+              "wide": true,
+              "answer": "あんなの もう 全然[ぜんぜん]気[き]にしてないよ"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_041_0.19.47.260-0.19.50.263.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_041_0.19.48.762.jpg",
+          "englishAnswer": "I... don't hold any grudges at all..."
+        },
+        {
+          "id": "blk-xwc4p07",
+          "parts": [
             {
               "type": "blank",
-              "name": "s1-1",
+              "name": "blk-xwc4p07",
               "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "answer": "はいはい　もういいから― しょうもないことしてないで 出[で]てきなさい"
             }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_031_0.06.49.441-0.06.52.986.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_031_0.06.51.214.jpg",
+          "englishAnswer": "Yes, yes... Stop this foolishness and come out, you."
+        },
+        {
+          "id": "blk-phf5t8z",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-phf5t8z",
+              "wide": true,
+              "answer": "あ ～[〜]はいはいはい もう いちいち ツッコまないから！ あいつをやっつけちゃって！"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_131_0.04.38.830-0.04.44.294.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fairy%20Tail/media/Fairy_Tail_131_0.04.41.562.jpg",
+          "englishAnswer": "Yeah, yeah! I'm not gonna bother gettin' ticked off at you, just get her!"
+        },
+        {
+          "id": "blk-gnfeu96",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-gnfeu96",
+              "wide": true,
+              "answer": "そういうずるいことばっかりやってたらもう 切[せつ]嗣と 遊[あそ]んであげないんだから"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_02_0.09.15.720-0.09.20.770.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_02_0.09.18.245.jpg",
+          "englishAnswer": "I won't play with you if you keep cheating!"
+        }
+      ]
+    },
+    {
+      "id": "sec-mada-listen",
+      "mode": "audio-listening",
+      "title": "まだ — listen",
+      "instructions": "Listen to the clip and write down what you think it's saying in Japanese. (まだ)",
+      "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_19_0.13.29.840-0.13.32.380.mp3",
+      "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_19_0.13.31.110.jpg",
+      "items": [
+        {
+          "id": "blk-aaexe9f",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-aaexe9f",
+              "wide": true,
+              "answer": "とりあえずまあまだ 生[い]きてる"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_19_0.13.29.840-0.13.32.380.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Fate%20Zero/media/Fate_Zero_19_0.13.31.110.jpg",
+          "englishAnswer": "For the moment, I'm alive."
+        },
+        {
+          "id": "blk-28z7gzw",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-28z7gzw",
+              "wide": true,
+              "answer": "なんや　まだ 生[い]きてて― 今[いま]にも　わいらのこと　からかいに 来[く]るような 気[き]いするわ"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Cardcaptor%20Sakura/media/A_CardCaptorSakura36_68_0.09.05.440-0.09.11.310.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Cardcaptor%20Sakura/media/A_CardCaptorSakura36_68_0.09.08.375.jpg",
+          "englishAnswer": "I feel like he's still alive and he'll come to make fun of us at any moment."
+        },
+        {
+          "id": "blk-1x07q63",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-1x07q63",
+              "wide": true,
+              "answer": "ああ まだ 来[き]てないのよ"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Hyouka/media/Hyouka_08_0.04.58.410-0.05.00.610.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Hyouka/media/Hyouka_08_0.04.58.410-0.05.00.610.jpg",
+          "englishAnswer": "She's still not here..."
+        },
+        {
+          "id": "blk-wga0hf6",
+          "parts": [
+            {
+              "type": "blank",
+              "name": "blk-wga0hf6",
+              "wide": true,
+              "answer": "いや、まだ 帰[かえ]ってきてない"
+            }
+          ],
+          "audioUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Clannad/media/A_ClannadS01_E15_1_0.06.24.030-0.06.25.700.mp3",
+          "imageUrl": "https://us-southeast-1.linodeobjects.com/immersionkit/media/anime/Clannad/media/A_ClannadS01_E15_1_0.06.24.865.jpg",
+          "englishAnswer": "No, he's not back yet."
+        }
+      ]
+    },
+    {
+      "id": "sec-mou-order",
+      "mode": "star-order",
+      "title": "もう — order",
+      "instructions": "Drag/drop the words to form the best answer! (もう)",
+      "items": [
+        {
+          "id": "blk-44k4m0o",
+          "tokens": [
+            {
+              "text": "もう",
+              "fixed": true
+            },
+            {
+              "text": "朝ごはん",
+              "fixed": false
+            },
+            {
+              "text": "を",
+              "fixed": false
+            },
+            {
+              "text": "食べ",
+              "fixed": false
+            },
+            {
+              "text": "た",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "朝ごはん",
+            "を",
+            "食べ",
+            "た"
           ]
         },
         {
-          "id": "s1-2",
-          "parts": [
+          "id": "blk-e5yw3ba",
+          "tokens": [
             {
-              "type": "text",
-              "value": ""
+              "text": "もう",
+              "fixed": true
             },
             {
-              "type": "blank",
-              "name": "s1-2",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "text": "その店",
+              "fixed": false
+            },
+            {
+              "text": "に",
+              "fixed": false
+            },
+            {
+              "text": "は",
+              "fixed": false
+            },
+            {
+              "text": "行かない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "その店",
+            "に",
+            "は",
+            "行かない"
           ]
         },
         {
-          "id": "s1-3",
-          "parts": [
+          "id": "blk-sgoicfi",
+          "tokens": [
             {
-              "type": "text",
-              "value": ""
+              "text": "もう",
+              "fixed": true
             },
             {
-              "type": "blank",
-              "name": "s1-3",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "text": "やら",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "から",
+              "fixed": false
+            },
+            {
+              "text": "大丈夫",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "やら",
+            "ない",
+            "から",
+            "大丈夫"
           ]
         },
         {
-          "id": "s1-4",
-          "parts": [
+          "id": "blk-7fw63w5",
+          "tokens": [
             {
-              "type": "text",
-              "value": ""
+              "text": "もう",
+              "fixed": true
             },
             {
-              "type": "blank",
-              "name": "s1-4",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "text": "ゲーム",
+              "fixed": false
+            },
+            {
+              "text": "は",
+              "fixed": false
+            },
+            {
+              "text": "して",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "ゲーム",
+            "は",
+            "して",
+            "ない"
           ]
         },
         {
-          "id": "s1-5",
-          "parts": [
+          "id": "blk-ggerg9b",
+          "tokens": [
             {
-              "type": "text",
-              "value": ""
+              "text": "もう",
+              "fixed": true
             },
             {
-              "type": "blank",
-              "name": "s1-5",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "text": "日本",
+              "fixed": false
+            },
+            {
+              "text": "に",
+              "fixed": false
+            },
+            {
+              "text": "は",
+              "fixed": false
+            },
+            {
+              "text": "住んでない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "日本",
+            "に",
+            "は",
+            "住んでない"
           ]
         },
         {
-          "id": "s1-6",
-          "parts": [
+          "id": "blk-7his243",
+          "tokens": [
             {
-              "type": "text",
-              "value": ""
+              "text": "もう",
+              "fixed": true
             },
             {
-              "type": "blank",
-              "name": "s1-6",
-              "wide": true,
-              "answer": "",
-              "hint": {
-                "dictionary": "",
-                "conjugation": "Now-later"
-              }
+              "text": "いい",
+              "fixed": false
+            },
+            {
+              "text": "よ",
+              "fixed": false
+            },
+            {
+              "text": "帰っ",
+              "fixed": false
+            },
+            {
+              "text": "て",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "いい",
+            "よ",
+            "帰っ",
+            "て"
+          ]
+        },
+        {
+          "id": "blk-262ssgg",
+          "tokens": [
+            {
+              "text": "宿題は",
+              "fixed": true
+            },
+            {
+              "text": "もう",
+              "fixed": false
+            },
+            {
+              "text": "終わ",
+              "fixed": false
+            },
+            {
+              "text": "っ",
+              "fixed": false
+            },
+            {
+              "text": "た",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "もう",
+            "終わ",
+            "っ",
+            "た"
           ]
         }
       ]
     },
     {
-      "id": "context",
-      "title": "Section 2 — Your words",
-      "instructions": "Write your own sentences using this grammar in the boxes below.",
-      "mode": "context-blank",
+      "id": "sec-mada-order",
+      "mode": "star-order",
+      "title": "まだ — order",
+      "instructions": "Drag/drop the words to form the best answer! (まだ)",
       "items": [
         {
-          "id": "s2-1",
-          "parts": [
+          "id": "blk-4hddie0",
+          "tokens": [
             {
-              "type": "blank",
-              "name": "s2-1",
-              "wide": true
+              "text": "まだ",
+              "fixed": true
+            },
+            {
+              "text": "生き",
+              "fixed": false
+            },
+            {
+              "text": "て",
+              "fixed": false
+            },
+            {
+              "text": "る",
+              "fixed": false
+            },
+            {
+              "text": "？",
+              "fixed": false
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "生き",
+            "て",
+            "る",
+            "？"
           ]
         },
         {
-          "id": "s2-2",
-          "parts": [
+          "id": "blk-f6n9qtk",
+          "tokens": [
             {
-              "type": "blank",
-              "name": "s2-2",
-              "wide": true
+              "text": "まだ",
+              "fixed": true
+            },
+            {
+              "text": "朝ごはん",
+              "fixed": false
+            },
+            {
+              "text": "を",
+              "fixed": false
+            },
+            {
+              "text": "食べ",
+              "fixed": false
+            },
+            {
+              "text": "てない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "朝ごはん",
+            "を",
+            "食べ",
+            "てない"
           ]
         },
         {
-          "id": "s2-3",
-          "parts": [
+          "id": "blk-yor28ke",
+          "tokens": [
             {
-              "type": "blank",
-              "name": "s2-3",
-              "wide": true
+              "text": "宿題は",
+              "fixed": true
+            },
+            {
+              "text": "まだ",
+              "fixed": false
+            },
+            {
+              "text": "終わ",
+              "fixed": false
+            },
+            {
+              "text": "って",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
             }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "まだ",
+            "終わ",
+            "って",
+            "ない"
           ]
+        },
+        {
+          "id": "blk-3hxu701",
+          "tokens": [
+            {
+              "text": "彼は",
+              "fixed": true
+            },
+            {
+              "text": "まだ",
+              "fixed": false
+            },
+            {
+              "text": "来",
+              "fixed": false
+            },
+            {
+              "text": "て",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "まだ",
+            "来",
+            "て",
+            "ない"
+          ]
+        },
+        {
+          "id": "blk-fdpooiu",
+          "tokens": [
+            {
+              "text": "まだ",
+              "fixed": true
+            },
+            {
+              "text": "学生",
+              "fixed": false
+            },
+            {
+              "text": "で",
+              "fixed": false
+            },
+            {
+              "text": "す",
+              "fixed": false
+            },
+            {
+              "text": "か",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "学生",
+            "で",
+            "す",
+            "か"
+          ]
+        },
+        {
+          "id": "blk-wutbvj3",
+          "tokens": [
+            {
+              "text": "映画は",
+              "fixed": true
+            },
+            {
+              "text": "まだ",
+              "fixed": false
+            },
+            {
+              "text": "見",
+              "fixed": false
+            },
+            {
+              "text": "て",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "まだ",
+            "見",
+            "て",
+            "ない"
+          ]
+        },
+        {
+          "id": "blk-s9sezq4",
+          "tokens": [
+            {
+              "text": "まだ",
+              "fixed": true
+            },
+            {
+              "text": "決め",
+              "fixed": false
+            },
+            {
+              "text": "て",
+              "fixed": false
+            },
+            {
+              "text": "ない",
+              "fixed": false
+            },
+            {
+              "text": "よ",
+              "fixed": false
+            },
+            {
+              "text": "。",
+              "fixed": true
+            }
+          ],
+          "prefix": "",
+          "suffix": "。",
+          "pieces": [
+            "決め",
+            "て",
+            "ない",
+            "よ"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sec-mou-mada-video",
+      "mode": "video-response",
+      "title": "もう / まだ — video",
+      "instructions": "",
+      "items": [
+        {
+          "id": "blk-jd7lknl",
+          "prompt": "もうやらないこと、何かありますか。どうしてですか。",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "blk-q1ju67o",
+          "prompt": "まだ～てないこと、何かありますか。詳しく教えてください。",
+          "recordLabel": "Record your answer"
         }
       ]
     }

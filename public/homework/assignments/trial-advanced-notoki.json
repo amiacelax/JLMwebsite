@@ -8,10 +8,12 @@
   "status": "published",
   "forSale": false,
   "salePrice": 0.99,
-  "wsCategory": "core-japanese",
+  "wsCategory": "other",
   "freeTrial": true,
   "trialLevel": "advanced",
-  "students": [],
+  "students": [
+    "demo2"
+  ],
   "topicExplanation": "時 = とき\nverb/いending + 時 = when \nnoun/なadj + の時 = when\n\nDon't get this confused with the question word いつ. \"When is your birthday?\" does not use とき",
   "sections": [
     {

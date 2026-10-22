@@ -16,6 +16,8 @@
   const ACCOUNT_LABELS = {
     current_student: "Current Student",
     homework_only: "Homework Only",
+    quest_only: "Quest Only",
+    curriculum: "Curriculum",
   };
 
   /** @type {Record<string, { name: string, price: number|null, hwPerMonth: number|null, videoIncluded: boolean }>} */
@@ -23,7 +25,7 @@
     tier1: {
       id: "tier1",
       name: "Basic",
-      price: 5,
+      price: 9,
       hwPerMonth: 1,
       videoIncluded: false,
     },
@@ -55,11 +57,18 @@
       hwPerMonth: null,
       videoIncluded: false,
     },
+    quest_only: {
+      id: "quest_only",
+      name: "Quest Only",
+      price: 0.99,
+      hwPerMonth: 0,
+      videoIncluded: false,
+    },
   };
 
   const PAYPAL = {
     basic:
-      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3BS11069X4737034MNJ563OA",
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3C015132V3458352HNLDR7AY",
     premium:
       "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-7RC25164AJ430933DNJ564GY",
     ultra:
@@ -69,6 +78,8 @@
     /* Paste real plan_id when the $25 Student Ultra PayPal plan is ready. */
     "student-ultra":
       "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=REPLACE_STUDENT_ULTRA",
+    "quest-only":
+      "https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=REPLACE_QUEST_ONLY",
   };
 
   const WEEKLY_HOMEWORK_UPGRADE_PRICE = 10;
@@ -87,8 +98,8 @@
       password: "demo",
       displayName: "Ben M",
       role: "student",
-      accountLabel: "current_student",
-      tier: "pending",
+      accountLabel: "curriculum",
+      tier: "student_special",
       videoResponseUnlock: false,
     },
     joshs: {
@@ -120,6 +131,22 @@
       displayName: "benc",
       role: "student",
       accountLabel: "current_student",
+      tier: "student_special",
+      videoResponseUnlock: false,
+    },
+    demo2: {
+      password: "demo",
+      displayName: "Demo3",
+      role: "student",
+      accountLabel: "curriculum",
+      tier: "tier2",
+      videoResponseUnlock: false,
+    },
+    christian: {
+      password: "jelly",
+      displayName: "Christian",
+      role: "student",
+      accountLabel: "curriculum",
       tier: "student_special",
       videoResponseUnlock: false,
     },
@@ -195,19 +222,228 @@
     };
   }
 
+  const CURRICULUM_TRIAL_HOMEWORK_ID = "sheet-secret-hiragana";
+  /** Same hub as Christian until this instant, then the subscribe page. Not shown anywhere. */
+  const NOAH_CURRICULUM_UNTIL = Date.parse("2026-10-13T04:55:58.443Z");
+
+  /**
+   * Christian Curriculum hub (Today / Prayer / Situation look) — not the basic Homework tab.
+   * Keep usernames here; server AccountLabel has no "curriculum" value yet.
+   */
+  const CHRISTIAN_CURRICULUM_USERS = new Set([
+    "christian",
+    "demo2",
+    "curriculum",
+    "alex",
+    "sykohpath", // Alex
+    "secretsister5", // Emily K
+    "kaetherjk", // Jeremiah
+    "benm", // Ben M
+    "noahjorton", // Noah
+    "baranymatthewjr", // Matt
+  ]);
+
+  function isChristianCurriculumUser(sessionOrUsername) {
+    const user =
+      typeof sessionOrUsername === "string"
+        ? normalizeUsername(sessionOrUsername)
+        : normalizeUsername(sessionOrUsername?.username);
+    return Boolean(user) && CHRISTIAN_CURRICULUM_USERS.has(user);
+  }
+
+  function isNoahName(session) {
+    const user = String(session?.username || "").trim().toLowerCase();
+    return user === "noahjorton";
+  }
+
+  function isNoahCurriculumOpen(session) {
+    const s = session || getSession();
+    if (!isNoahName(s)) return false;
+    /* Permanent Christian Curriculum for Noah — trial date no longer gates the hub. */
+    if (isChristianCurriculumUser(s)) return true;
+    return Date.now() < NOAH_CURRICULUM_UNTIL;
+  }
+
+  function applyNoahLikeChristian(data) {
+    if (!isNoahName(data)) return data;
+    const open = Date.now() < NOAH_CURRICULUM_UNTIL;
+    const label = open ? "curriculum" : "homework_only";
+    const tier = open ? "student_special" : "pending";
+    const tierMeta = TIERS[tier] || TIERS.pending;
+    const next = {
+      ...data,
+      accountLabel: label,
+      accountLabelDisplay: ACCOUNT_LABELS[label] || label,
+      tier,
+      tierDisplay: tierMeta.name,
+    };
+    delete next.curriculumTrialEndsAt;
+    delete next.curriculumTrialBaseLabel;
+    delete next.curriculumTrialBaseTier;
+    delete next.curriculumTrialHomeworkId;
+    return next;
+  }
+
+  function curriculumTrialEndsMs(session) {
+    const raw = String(session?.curriculumTrialEndsAt || "").trim();
+    if (!raw) return null;
+    const ms = Date.parse(raw);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  /** Access stops at the stored UTC instant. Same instant the Worker uses. */
+  function isCurriculumTrialActive(session) {
+    const s = session || getSession();
+    const ms = curriculumTrialEndsMs(s);
+    if (ms === null) return false;
+    const baseLabel = s?.curriculumTrialBaseLabel || s?.accountLabel;
+    const baseTier = s?.curriculumTrialBaseTier || s?.tier;
+    if (baseLabel === "current_student") return false;
+    if (baseTier && baseTier !== "pending") return false;
+    return Date.now() < ms;
+  }
+
+  function curriculumTrialHomeworkId(session) {
+    const s = session || getSession();
+    if (!isCurriculumTrialActive(s)) return "";
+    return String(s.curriculumTrialHomeworkId || CURRICULUM_TRIAL_HOMEWORK_ID);
+  }
+
+  function trialFieldsFrom(data) {
+    const endsAt = String(data?.curriculumTrialEndsAt || "").trim();
+    if (!endsAt || curriculumTrialEndsMs({ curriculumTrialEndsAt: endsAt }) === null) return null;
+    return {
+      curriculumTrialEndsAt: endsAt,
+      curriculumTrialBaseLabel:
+        data.curriculumTrialBaseLabel || data.accountLabel || "homework_only",
+      curriculumTrialBaseTier: data.curriculumTrialBaseTier || data.tier || "pending",
+      curriculumTrialHomeworkId: data.curriculumTrialHomeworkId || CURRICULUM_TRIAL_HOMEWORK_ID,
+    };
+  }
+
+  /**
+   * While the trial instant is in the future, show the curriculum hub and
+   * Student Special. After it, restore the stored unpaid account.
+   */
+  function applyCurriculumTrialExperience(data) {
+    if (!data?.username) return data;
+    const fields = trialFieldsFrom(data);
+    if (!fields) return data;
+    const active = isCurriculumTrialActive({ ...data, ...fields });
+    const label = active ? "curriculum" : data.accountLabel || fields.curriculumTrialBaseLabel;
+    const tier = active ? "student_special" : data.tier || fields.curriculumTrialBaseTier;
+    const tierMeta = TIERS[tier] || TIERS.pending;
+    return {
+      ...data,
+      ...fields,
+      accountLabel: label,
+      accountLabelDisplay: ACCOUNT_LABELS[label] || label,
+      tier,
+      tierDisplay: tierMeta.name,
+    };
+  }
+
+  function sessionForStorage(session) {
+    if (!session?.curriculumTrialEndsAt) return session;
+    const label = session.curriculumTrialBaseLabel || session.accountLabel;
+    const tier = session.curriculumTrialBaseTier || session.tier;
+    if (!label && !tier) return session;
+    const tierMeta = TIERS[tier] || TIERS.pending;
+    return {
+      ...session,
+      accountLabel: label || session.accountLabel,
+      accountLabelDisplay: ACCOUNT_LABELS[label] || session.accountLabelDisplay,
+      tier: tier || session.tier,
+      tierDisplay: tierMeta.name,
+    };
+  }
+
+  function readStoredSessionRaw() {
+    try {
+      const raw = readStoredSession();
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      return data && typeof data === "object" ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Copy the Worker trial record onto this login so an already-open session
+   * picks up the end time without a new password entry.
+   */
+  function mergeCurriculumTrial(patch) {
+    const endsAt = String(patch?.endsAt || "").trim();
+    if (!endsAt || curriculumTrialEndsMs({ curriculumTrialEndsAt: endsAt }) === null) {
+      return { changed: false };
+    }
+    if (getViewAsStudent()) return { changed: false };
+    const current = getSession();
+    if (!current || current.role !== "student" || current.viewAs) return { changed: false };
+    const raw = readStoredSessionRaw();
+    if (!raw || raw.role === "teacher" || raw.viewAs) return { changed: false };
+    const beforeEnds = String(raw.curriculumTrialEndsAt || "");
+    const beforeActive = isCurriculumTrialActive(current);
+    const next = {
+      ...raw,
+      curriculumTrialEndsAt: endsAt,
+      curriculumTrialBaseLabel:
+        patch.baseLabel || raw.curriculumTrialBaseLabel || raw.accountLabel || "homework_only",
+      curriculumTrialBaseTier: patch.baseTier || raw.curriculumTrialBaseTier || raw.tier || "pending",
+      curriculumTrialHomeworkId: patch.homeworkId || CURRICULUM_TRIAL_HOMEWORK_ID,
+    };
+    const remember = Boolean(localStorage.getItem(SESSION_KEY));
+    persistSession(next, remember);
+    const afterActive = isCurriculumTrialActive(getSession());
+    return {
+      changed: beforeEnds !== endsAt || beforeActive !== afterActive,
+      endsAt,
+      active: afterActive,
+    };
+  }
+
+  let trialExpiryTimer = 0;
+  function armCurriculumTrialExpiryReload() {
+    if (trialExpiryTimer) {
+      clearTimeout(trialExpiryTimer);
+      trialExpiryTimer = 0;
+    }
+    let ms = curriculumTrialEndsMs(getSession());
+    const user = String(getSession()?.username || "").trim().toLowerCase();
+    if (ms === null && user === "noahjorton") ms = NOAH_CURRICULUM_UNTIL;
+    if (ms === null) return;
+    const delay = ms - Date.now();
+    if (delay <= 0 || delay > 2147483647) return;
+    trialExpiryTimer = global.setTimeout(() => {
+      trialExpiryTimer = 0;
+      try {
+        sessionStorage.removeItem("jlm-hw-trial-sync");
+      } catch {
+        /* ignore */
+      }
+      global.location.reload();
+    }, delay + 500);
+  }
+
   function enrichSession(data) {
-    return enrichSessionRaw(applyAccountOverride(data));
+    return applyNoahLikeChristian(
+      applyCurriculumTrialExperience(enrichSessionRaw(applyAccountOverride(data)))
+    );
   }
 
   function enrichSessionRaw(data) {
     if (!data?.username) return null;
 
     if (data.source === "server") {
-      const tier = data.tier || "pending";
+      /* A cancelled plan keeps working until planEndsAt, then the account has no plan. */
+      const planEndsMs = Date.parse(String(data.planEndsAt || ""));
+      const planEnded = Number.isFinite(planEndsMs) && Date.now() >= planEndsMs;
+      const tier = planEnded ? "pending" : data.tier || "pending";
       const tierMeta = TIERS[tier] || TIERS.pending;
       const accountLabel = data.accountLabel || "homework_only";
       const videoResponseUnlock =
-        tier === "tier3" || Boolean(data.videoResponseUnlock);
+        !planEnded && (tier === "tier3" || Boolean(data.videoResponseUnlock));
       return {
         username: data.username,
         displayName: data.displayName || data.username,
@@ -219,10 +455,20 @@
         tierDisplay: tierMeta.name,
         courses: Array.isArray(data.courses) ? data.courses : [],
         videoResponseUnlock,
-        paypalBilling: Boolean(data.paypalBilling),
+        paypalBilling: Boolean(data.paypalBilling) && !planEnded,
+        ...(data.planEndsAt ? { planEndsAt: data.planEndsAt } : {}),
         source: "server",
         loggedInAt: data.loggedInAt || Date.now(),
         viewAs: Boolean(data.viewAs),
+        ...(data.curriculumTrialEndsAt
+          ? {
+              curriculumTrialEndsAt: data.curriculumTrialEndsAt,
+              curriculumTrialBaseLabel: data.curriculumTrialBaseLabel || data.accountLabel,
+              curriculumTrialBaseTier: data.curriculumTrialBaseTier || data.tier,
+              curriculumTrialHomeworkId:
+                data.curriculumTrialHomeworkId || CURRICULUM_TRIAL_HOMEWORK_ID,
+            }
+          : {}),
       };
     }
 
@@ -251,6 +497,15 @@
       source: "local",
       loggedInAt: data.loggedInAt || Date.now(),
       viewAs: Boolean(data.viewAs),
+      ...(data.curriculumTrialEndsAt
+        ? {
+            curriculumTrialEndsAt: data.curriculumTrialEndsAt,
+            curriculumTrialBaseLabel: data.curriculumTrialBaseLabel || data.accountLabel,
+            curriculumTrialBaseTier: data.curriculumTrialBaseTier || data.tier,
+            curriculumTrialHomeworkId:
+              data.curriculumTrialHomeworkId || CURRICULUM_TRIAL_HOMEWORK_ID,
+          }
+        : {}),
     };
   }
 
@@ -359,7 +614,9 @@
         username: key,
         displayName: account.displayName,
         role: "student",
-        accountLabel: account.accountLabel,
+        accountLabel: isChristianCurriculumUser(key)
+          ? "curriculum"
+          : account.accountLabel,
         tier: account.tier,
         videoResponseUnlock:
           account.tier === "tier3" ||
@@ -376,10 +633,10 @@
 
     return enrichSession({
       username: key,
-      displayName: fromList?.displayName || key,
+      displayName: fromList?.displayName || fromList?.teacherListName || key,
       role: "student",
-      accountLabel: "homework_only",
-      tier: "pending",
+      accountLabel: isChristianCurriculumUser(key) ? "curriculum" : "homework_only",
+      tier: isChristianCurriculumUser(key) ? "student_special" : "pending",
       videoResponseUnlock: false,
       loggedInAt: Date.now(),
       viewAs: true,
@@ -481,7 +738,7 @@
     /* Never write a View-as overlay (or any student) over the teacher login. */
     if (session.viewAs) return;
     if (getViewAsStudent() && session.role !== "teacher") return;
-    const payload = JSON.stringify(session);
+    const payload = JSON.stringify(sessionForStorage(session));
     writeSessionRaw(payload, remember);
   }
 
@@ -594,6 +851,12 @@
         account.tier === "tier3" ||
         account.videoResponseUnlock ||
         isVideoUnlockStored(key),
+      curriculumTrialEndsAt: account.curriculumTrialEndsAt,
+      curriculumTrialBaseLabel: account.curriculumTrialEndsAt ? account.accountLabel : undefined,
+      curriculumTrialBaseTier: account.curriculumTrialEndsAt ? account.tier : undefined,
+      curriculumTrialHomeworkId: account.curriculumTrialEndsAt
+        ? CURRICULUM_TRIAL_HOMEWORK_ID
+        : undefined,
       loggedInAt: Date.now(),
     });
 
@@ -714,7 +977,15 @@
 
   function hasActiveSubscription(session) {
     const s = session || getSession();
-    return Boolean(s && s.tier && s.tier !== "pending");
+    if (!s) return false;
+    if (s.tier === "quest_only") return true;
+    return Boolean(s.tier && s.tier !== "pending");
+  }
+
+  function hasQuestOnlyAccess(session) {
+    const s = session || getSession();
+    if (!s || s.role !== "student") return false;
+    return s.tier === "quest_only" || s.accountLabel === "quest_only";
   }
 
   /** Homework hub games — open for all student and homework-only accounts. */
@@ -809,6 +1080,7 @@
     requestPasswordResetAsync,
     resetPasswordAsync,
     hasActiveSubscription,
+    hasQuestOnlyAccess,
     hasGameHubAccess,
     logout,
     requireAuth,
@@ -834,5 +1106,11 @@
     persistSession,
     setAccountOverride,
     getAccountOverride,
+    isCurriculumTrialActive,
+    isNoahCurriculumOpen,
+    isChristianCurriculumUser,
+    curriculumTrialHomeworkId,
+    mergeCurriculumTrial,
+    armCurriculumTrialExpiryReload,
   };
 })(window);

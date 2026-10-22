@@ -1,4 +1,17 @@
+import { handlePaypalWebhookRequest } from "./paypal-webhook";
+import { publicVapidKey, runStudyReminders, saveStudyReminder, sendStudyReminderNow } from "./study-reminders";
 import { runBirthdayReminders } from "./birthday-reminders";
+import { verifyPassword } from "./password";
+import { guardEnv, hasMojibake, looksBinary, repairDeep, repairMojibakeUtf8 } from "./homework-encoding";
+import {
+  DISCORD_CHANNELS,
+  isDemoUser,
+  resolveRoutedWebhook,
+  resolveRoutedWebhookDetailed,
+  notifyHw,
+  notifyOther,
+  type DiscordRoute,
+} from "./discord-channels";
 import { runHwDailyWaitingReminders } from "./hw-daily-waiting-reminders";
 import {
   armSocialReminder,
@@ -11,6 +24,7 @@ import {
 import {
   armHwPlanReminder,
   clearHwPlanReminder,
+  fulfillHwPlanAwaitingNew,
   mapCheckoutPlanToTier,
   planLabelFromTier,
   runHwPlanReminders,
@@ -46,6 +60,11 @@ import {
   notifyStudentWithTeacherFallback,
   type DiscordNotifyResult,
 } from "./discord-notify";
+import { notifyStudentHomework } from "./student-notify";
+import { curriculumTabFromAssignmentId, studentPageLink } from "./hub-links";
+import { handleBooking } from "./booking";
+import { buildCancellationEmail } from "./student-email-text";
+import { cancelPaypalSubscription, getPaypalSubscriptionInfo } from "./paypal";
 import {
   formatInquiryEmailBody,
   inquiryEmailConfigured,
@@ -68,6 +87,7 @@ import {
   setWorksheetWsCategory,
   deleteWorksheetFromLibrary,
   loadPublishedAssignment,
+  assignmentIdLookupKeys,
   listTeacherIdeas,
   listTeacherIdeaTags,
   saveTeacherIdea,
@@ -93,11 +113,12 @@ import {
   type TeacherIdeaImageDeletePayload,
   saveHomeworkOnlineSubmission,
   saveHomeworkPhotoSubmission,
+  saveHomeworkInlineMedia,
   saveHomeworkVideoSubmission,
   listHomeworkSubmissions,
   getHomeworkSubmission,
   saveHomeworkReview,
-  readAnswerBank,
+  readAnswerBankForReview,
   saveHomeworkReviewAck,
   listHomeworkNotebook,
   loadHomeworkSubmissionPhoto,
@@ -108,10 +129,15 @@ import {
   deleteHomeworkDraft,
   getDailyNotebook,
   saveDailyNotebook,
+  listDailyExerciseSubmissions,
+  saveDailyExerciseSubmission,
+  listSitCardSubmissions,
+  saveSitCardSubmission,
   type DailyNotebookSaveInput,
   getImmersionQuests,
   saveImmersionQuestDraft,
   completeImmersionQuest,
+  advanceImmersionQuest,
   getKanjiNotebook,
   saveKanjiNotebook,
   type KanjiNotebookSaveInput,
@@ -156,12 +182,16 @@ import {
   type LanternWordSetDeletePayload,
   reorderHomeworkWaitingQueue,
   type HomeworkWaitingQueueReorderPayload,
+  invalidateStudentListSnapshot,
 } from "./homework-kv";
+import { extractPlaylistId, fetchPlaylistEntries, videoUrlFromId } from "./youtube-playlist";
+import { getStudentLessonPlaylist } from "./homework-kv";
 import {
   changeOwnPassword,
   createPasswordResetToken,
   createUserAccount,
   deleteOwnAccount,
+  cancelOwnSubscription,
   deleteUserAccount,
   getUserAccount,
   loginUserAccount,
@@ -193,6 +223,11 @@ import {
 interface Env {
   ASSETS: Fetcher;
   HOMEWORK_KV?: KVNamespace;
+  /** Trial booking (Google Calendar) — secrets, see src/booking.ts */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_CALENDAR_REFRESH_TOKEN?: string;
+  GOOGLE_CALENDAR_ID?: string;
   DISCORD_WEBHOOK_URL?: string;
   /** Discord notify channel — used to verify the webhook posts to the right place */
   DISCORD_CHANNEL_ID?: string;
@@ -212,6 +247,7 @@ interface Env {
   PAYPAL_CLIENT_SECRET?: string;
   /** "live" (default) or "sandbox" */
   PAYPAL_MODE?: string;
+  PAYPAL_WEBHOOK_ID?: string;
   HARRIS_PREVIEW_USER?: string;
   HARRIS_PREVIEW_PASSWORD?: string;
   JEM_PREVIEW_USER?: string;
@@ -228,6 +264,9 @@ interface Env {
   SEND_EMAIL?: { send: (message: unknown) => Promise<unknown> };
   /** Cloudflare Email Sending — outbound to students. */
   SEND_EMAIL_OUT?: { send: (message: unknown) => Promise<unknown> };
+  /** Web Push key pair. Public key is safe to expose. Private JWK stays a secret. */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_JWK?: string;
 }
 
 interface HomeworkAnswerRow {
@@ -296,6 +335,12 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+/**
+ * Homework Hub is not taking new subscribers. People who already have a plan can still switch plans.
+ * Set to false (and HUB_PAUSED_FOR_NEW in public/js/hw-checkout.js) to open the doors again.
+ */
+const HW_NEW_SUBSCRIBERS_PAUSED = true;
+
 function jsonResponse(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -360,26 +405,16 @@ type ResolvedHomeworkWebhook = {
   usedFallback: boolean;
 };
 
-function resolveHomeworkWebhook(env: Env): ResolvedHomeworkWebhook | null {
-  const homeworkUrl = sanitizeWebhookUrl(env.DISCORD_HOMEWORK_WEBHOOK_URL);
-  if (homeworkUrl) {
-    return {
-      url: homeworkUrl,
-      channelId: env.DISCORD_HOMEWORK_CHANNEL_ID,
-      usedFallback: false,
-    };
-  }
-  const siteUrl = sanitizeWebhookUrl(env.DISCORD_WEBHOOK_URL);
-  if (siteUrl) {
-    return {
-      url: siteUrl,
-      channelId: env.DISCORD_CHANNEL_ID,
-      usedFallback: true,
-    };
-  }
-  return null;
+/** Homework / HW-hub pings go to the HW channel. Demo accounts never ping (returns null). */
+async function resolveHomeworkWebhook(
+  env: Env,
+  username?: string | null
+): Promise<ResolvedHomeworkWebhook | null> {
+  if (isDemoUser(username)) return null;
+  const routed = await resolveRoutedWebhook(env, "hw");
+  if (!routed) return null;
+  return { url: routed.url, channelId: routed.channelId, usedFallback: !routed.routed };
 }
-
 async function getWebhookChannelMismatch(
   webhookUrl: string,
   expectedChannelId: string | undefined,
@@ -533,7 +568,10 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   const error = validateContact(data);
   if (error) return jsonResponse({ error }, 400);
 
-  const webhookUrl = getWebhook(env);
+  const contactRoute: DiscordRoute =
+    String(data.service || "").trim() === "Homework Hub" ? "hw" : "inquiries";
+  const contactHook = await resolveRoutedWebhook(env, contactRoute);
+  const webhookUrl = contactHook?.url ?? null;
   const canEmail = inquiryEmailConfigured(env);
   if (!webhookUrl && !canEmail) {
     return jsonResponse(
@@ -549,7 +587,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   if (webhookUrl) {
     const channelError = await getWebhookChannelMismatch(
       webhookUrl,
-      env.DISCORD_CHANNEL_ID,
+      contactHook?.channelId,
       "Discord notify channel"
     );
     if (channelError) {
@@ -632,7 +670,8 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   const error = validatePromoEmail(data);
   if (error) return jsonResponse({ error }, 400);
 
-  const webhookUrl = getWebhook(env);
+  const promoHook = await resolveRoutedWebhook(env, "email");
+  const webhookUrl = promoHook?.url ?? null;
   const canEmail = inquiryEmailConfigured(env);
   if (!webhookUrl && !canEmail) {
     return jsonResponse(
@@ -645,7 +684,7 @@ async function handlePromoSignup(request: Request, env: Env): Promise<Response> 
   if (webhookUrl) {
     const channelError = await getWebhookChannelMismatch(
       webhookUrl,
-      env.DISCORD_CHANNEL_ID,
+      promoHook?.channelId,
       "Discord notify channel"
     );
     if (channelError) {
@@ -774,11 +813,14 @@ async function handleFeatureReport(request: Request, env: Env): Promise<Response
   try {
     const report = await saveFeatureReport(data, env);
 
-    const webhookUrl = getWebhook(env);
+    const reportHook = isDemoUser(report.username)
+      ? null
+      : await resolveRoutedWebhook(env, "other");
+    const webhookUrl = reportHook?.url ?? null;
     if (webhookUrl && (report.kind === "bug" || report.kind === "feature")) {
       const channelError = await getWebhookChannelMismatch(
         webhookUrl,
-        env.DISCORD_CHANNEL_ID,
+        reportHook?.channelId,
         "Discord notify channel"
       );
       if (channelError) {
@@ -1009,7 +1051,7 @@ async function handleAuthActivatePlan(request: Request, env: Env): Promise<Respo
   if (!username) return jsonResponse({ error: "Username is required." }, 400);
   if (!tier) {
     return jsonResponse(
-      { error: "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra)." },
+      { error: "Choose a valid plan (basic, premium, ultra, student-special, student-ultra, or quest-only)." },
       400
     );
   }
@@ -1020,16 +1062,49 @@ async function handleAuthActivatePlan(request: Request, env: Env): Promise<Respo
       return jsonResponse({ error: "Account not found. Log in and try again." }, 404);
     }
 
+    /* New-student pause: no plan yet → only a real, PayPal-confirmed subscription gets in. */
+    if (HW_NEW_SUBSCRIBERS_PAUSED && existing.tier === "pending") {
+      const claimedId = String(data.subscriptionId || "").trim();
+      let confirmed = false;
+      if (claimedId && paypalCredentialsConfigured(env)) {
+        try {
+          const info = await getPaypalSubscriptionInfo(claimedId, env);
+          confirmed = Boolean(info && (info.status === "ACTIVE" || info.status === "APPROVED"));
+        } catch {
+          confirmed = false;
+        }
+      }
+      if (!confirmed) {
+        return jsonResponse(
+          { error: "Homework Hub is full right now. New spots open later.", code: "HUB_PAUSED" },
+          403
+        );
+      }
+    }
+
     const updated = await updateUserAccountSettings(username, { tier }, env);
     if (!updated) {
       return jsonResponse({ error: "Account not found. Log in and try again." }, 404);
     }
 
+    const questPlan = planRaw === "quest-only" || planRaw === "quest_only";
+    if (!questPlan) updated.paypalPaid = true;
+
     // Ultra / Student Ultra also unlock video responses.
     if (planRaw === "ultra" || planRaw === "student-ultra" || planRaw === "student_ultra") {
       updated.videoResponseUnlock = true;
-      await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(updated));
     }
+
+    if (questPlan) {
+      updated.accountLabel = "quest_only";
+    }
+
+    /* Picking a plan again means an earlier cancel no longer applies. */
+    delete updated.planEndsAt;
+    delete updated.planCancelledAt;
+
+    await env.HOMEWORK_KV?.put(`user-account:${username}`, JSON.stringify(updated));
+    await invalidateStudentListSnapshot(env.HOMEWORK_KV);
 
     const subscriptionId = String(data.subscriptionId || "").trim();
     if (subscriptionId) {
@@ -1038,6 +1113,24 @@ async function handleAuthActivatePlan(request: Request, env: Env): Promise<Respo
         { paypalSubscriptionId: subscriptionId, paypalPlan: planRaw },
         env
       );
+      /* Switching plans: stop the old PayPal subscription so they are not billed twice.
+         Only when PayPal says the new one is real, because this route has no password. */
+      const oldSubscriptionId = String(existing.paypalSubscriptionId || "").trim();
+      if (
+        oldSubscriptionId &&
+        oldSubscriptionId !== subscriptionId &&
+        !String(existing.planCancelledAt || "").trim() &&
+        paypalCredentialsConfigured(env)
+      ) {
+        try {
+          const fresh = await getPaypalSubscriptionInfo(subscriptionId, env);
+          if (fresh && (fresh.status === "ACTIVE" || fresh.status === "APPROVED")) {
+            await cancelPaypalSubscription(oldSubscriptionId, env, "Switched to a different plan");
+          }
+        } catch (err) {
+          console.error("activate-plan: could not cancel the old PayPal plan:", err);
+        }
+      }
     }
 
     const saved = (await getUserAccount(username, env)) || updated;
@@ -1058,11 +1151,14 @@ async function handleAuthActivatePlan(request: Request, env: Env): Promise<Respo
       console.error("activate-plan: arm HW reminder failed:", err);
     }
 
-    const webhookUrl = getWebhook(env);
+    const paidHook = isDemoUser(session.username)
+      ? null
+      : await resolveRoutedWebhook(env, "other");
+    const webhookUrl = paidHook?.url ?? null;
     if (webhookUrl) {
       const channelError = await getWebhookChannelMismatch(
         webhookUrl,
-        env.DISCORD_CHANNEL_ID,
+        paidHook?.channelId,
         "Discord notify channel"
       );
       if (channelError) {
@@ -1170,7 +1266,7 @@ async function handlePaypalCreateSubscription(
   const plan = normalizeHwCheckoutPlan(data.plan);
   if (!plan) {
     return jsonResponse(
-      { error: "Choose a valid plan (basic, premium, ultra, student-special, or student-ultra)." },
+      { error: "Choose a valid plan (basic, premium, ultra, student-special, student-ultra, or quest-only)." },
       400
     );
   }
@@ -1179,6 +1275,16 @@ async function handlePaypalCreateSubscription(
     .trim()
     .toLowerCase();
   if (!username) return jsonResponse({ error: "Username is required." }, 400);
+
+  if (HW_NEW_SUBSCRIBERS_PAUSED) {
+    const existingAccount = await getUserAccount(username, env).catch(() => null);
+    if (!existingAccount || existingAccount.tier === "pending") {
+      return jsonResponse(
+        { error: "Homework Hub is full right now. New spots open later.", code: "HUB_PAUSED" },
+        403
+      );
+    }
+  }
 
   const reqUrl = new URL(request.url);
   const origin = String(data.origin || `${reqUrl.protocol}//${reqUrl.host}`).replace(
@@ -1199,11 +1305,13 @@ async function handlePaypalCreateSubscription(
       env
     );
     try {
+      /* A student who already pays keeps their current plan id until the new one is active. */
       await savePaypalSubscription(
         username,
         {
           paypalSubscriptionId: result.subscriptionId,
           paypalPlan: result.plan,
+          asPending: true,
         },
         env
       );
@@ -1486,11 +1594,14 @@ async function handleAuthSignup(request: Request, env: Env): Promise<Response> {
     const data = (await request.json()) as SignupInput;
     const result = await createUserAccount(data, env);
 
-    const webhookUrl = getWebhook(env);
+    const signupHook = isDemoUser(result.session.username)
+      ? null
+      : await resolveRoutedWebhook(env, "hw");
+    const webhookUrl = signupHook?.url ?? null;
     if (webhookUrl) {
       const channelError = await getWebhookChannelMismatch(
         webhookUrl,
-        env.DISCORD_CHANNEL_ID,
+        signupHook?.channelId,
         "Discord notify channel"
       );
       if (channelError) {
@@ -1682,6 +1793,139 @@ async function handleAuthChangePassword(request: Request, env: Env): Promise<Res
   }
 }
 
+function formatPlanEndDate(iso: string): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "";
+  return new Date(ms).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** Student cancels their own subscription. PayPal stops billing; the plan runs to the end of the paid period. */
+async function handleAuthCancelSubscription(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as { username?: string; password?: string };
+    const result = await cancelOwnSubscription(
+      {
+        username: String(data.username || ""),
+        password: String(data.password || ""),
+      },
+      env
+    );
+    const endsOn = formatPlanEndDate(result.planEndsAt);
+    const planName = planLabelFromTier(result.tier);
+
+    if (!result.alreadyCancelled) {
+      const who = `${result.displayName || result.username} (${result.username})`;
+      const teacherNote = result.manual
+        ? `Subscription cancel request: ${who} says they are cancelling their ${planName} plan, but there is no PayPal link on file. They were told to cancel it in PayPal themselves. Set their end date by hand.`
+        : `Subscription cancelled: ${who}, ${planName} plan. PayPal billing is stopped. Access ends ${endsOn || "at the end of the paid period"}.`;
+      try {
+        await notifyOther(env, teacherNote);
+      } catch (err) {
+        console.error("cancel-subscription: teacher note failed:", err);
+      }
+
+      if (!result.manual && result.email && outboundEmailConfigured(env)) {
+        try {
+          const mail = buildCancellationEmail({
+            name: result.displayName,
+            planName,
+            endsOn,
+            loginUrl: `${new URL(request.url).origin}/homework.html?user=${encodeURIComponent(result.username)}`,
+          });
+          await sendOutboundEmail(env, {
+            to: result.email,
+            subject: mail.subject,
+            text: mail.text,
+            html: mail.html,
+          });
+        } catch (err) {
+          console.error("cancel-subscription: confirmation email failed:", err);
+        }
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      session: result.session,
+      planEndsAt: result.planEndsAt,
+      manual: result.manual,
+      alreadyCancelled: result.alreadyCancelled,
+      planLabel: planName,
+      message: result.manual
+        ? "JD has been told. Cancel the plan in PayPal so you are not charged again."
+        : endsOn
+          ? `Your subscription is cancelled. Your plan stays active until ${endsOn}.`
+          : "Your subscription is cancelled. Your plan stays active for 30 days after your last payment.",
+    });
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Account storage is not configured." }, 503);
+    }
+    if (code === "INVALID_CREDENTIALS") {
+      return jsonResponse({ error: "Username or password is wrong." }, 401);
+    }
+    if (code === "NO_ACTIVE_PLAN") {
+      return jsonResponse({ error: "There is no active plan on this account." }, 400);
+    }
+    if (
+      code === "PAYPAL_CANCEL_FAILED" ||
+      code === "PAYPAL_AUTH_FAILED" ||
+      code === "PAYPAL_READ_FAILED" ||
+      code === "PAYPAL_NOT_CONFIGURED"
+    ) {
+      return jsonResponse(
+        {
+          error:
+            "Couldn't reach PayPal to cancel, so nothing was changed. Try again in a moment, or cancel in PayPal directly.",
+          code,
+        },
+        502
+      );
+    }
+    console.error("auth cancel-subscription failed:", err);
+    return jsonResponse({ error: "Could not cancel your subscription." }, 500);
+  }
+}
+
+/** Quiet heads-up to JD when a student opens the Cancel subscription dialog (at most once an hour each). */
+async function handleAuthCancelIntent(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  }
+  try {
+    const data = (await request.json()) as { username?: string };
+    const username = String(data.username || "").trim().toLowerCase();
+    const kv = env.HOMEWORK_KV;
+    if (!username || !kv) return jsonResponse({ ok: true });
+    const account = await getUserAccount(username, env);
+    if (!account || account.tier === "pending") return jsonResponse({ ok: true });
+    const rateKey = `cancel-intent:${username}`;
+    if (await kv.get(rateKey)) return jsonResponse({ ok: true });
+    await kv.put(rateKey, "1", { expirationTtl: 3600 });
+    await notifyOther(
+      env,
+      `Cancel button clicked: ${account.displayName || username} (${username}), ${planLabelFromTier(account.tier)} plan, opened Cancel subscription. They have not confirmed yet.`
+    );
+  } catch (err) {
+    console.error("cancel-intent failed:", err);
+  }
+  return jsonResponse({ ok: true });
+}
 async function handleAuthDeleteOwnAccount(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -2552,12 +2796,18 @@ async function handleHomeworkSubmit(request: Request, env: Env): Promise<Respons
     if (code === "UNKNOWN_STUDENT") {
       return jsonResponse({ error: "Unknown student account." }, 400);
     }
+    if (code === "CURRICULUM_TRIAL_ENDED") {
+      return jsonResponse(
+        { error: "Your curriculum trial has ended. Subscribe to continue." },
+        403
+      );
+    }
     if (code !== "KV_NOT_CONFIGURED") {
       console.error("homework-submit store failed:", err);
     }
   }
 
-  const webhook = resolveHomeworkWebhook(env);
+  const webhook = await resolveHomeworkWebhook(env, data.username);
   let discordOk = false;
   if (webhook) {
   if (webhook.usedFallback) {
@@ -2685,7 +2935,7 @@ async function handleHomeworkPhotoUpload(request: Request, env: Env): Promise<Re
       }
     }
 
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env, username);
     let discordOk = false;
     if (webhook) {
       const safeName = safeKeyPart(file.name, "homework-photo.jpg");
@@ -2789,9 +3039,13 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
     };
 
     let stored = false;
-    let saveResult: { id: string; videoId: string } | null = null;
+    let saveResult: { id?: string; videoId: string } | null = null;
     try {
-      saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
+      if (inlineSave) {
+        saveResult = await saveHomeworkInlineMedia(videoMeta, file, env);
+      } else {
+        saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
+      }
       stored = true;
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -2826,7 +3080,7 @@ async function handleHomeworkVideoUpload(request: Request, env: Env): Promise<Re
       });
     }
 
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env, username);
     let discordOk = false;
     if (webhook) {
       const safeName = safeKeyPart(file.name, "homework-video.webm");
@@ -2929,7 +3183,6 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     if (file.size > 12 * 1024 * 1024) {
       return jsonResponse({ error: "Audio must be under 12 MB." }, 400);
     }
-
     const videoMeta: HomeworkVideoSubmitInput = {
       username,
       displayName,
@@ -2938,9 +3191,13 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
     };
 
     let stored = false;
-    let saveResult: { id: string; videoId: string } | null = null;
+    let saveResult: { id?: string; videoId: string } | null = null;
     try {
-      saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
+      if (inlineSave) {
+        saveResult = await saveHomeworkInlineMedia(videoMeta, file, env);
+      } else {
+        saveResult = await saveHomeworkVideoSubmission(videoMeta, file, env);
+      }
       stored = true;
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -2975,7 +3232,7 @@ async function handleHomeworkAudioUpload(request: Request, env: Env): Promise<Re
       });
     }
 
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env, username);
     let discordOk = false;
     if (webhook) {
       const safeName = safeKeyPart(file.name, "homework-audio.webm");
@@ -3248,17 +3505,19 @@ async function handleHomeworkAssignment(request: Request, env: Env): Promise<Res
       const published = await loadPublishedAssignment(env.HOMEWORK_KV, id);
       if (published) return jsonResponse(published);
     }
-    const assetRes = await env.ASSETS.fetch(
-      new URL(`/homework/assignments/${id}.json`, "https://assets.local").toString()
-    );
-    if (isJsonAssetResponse(assetRes)) {
-      return new Response(assetRes.body, {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...CORS_HEADERS,
-        },
-      });
+    for (const key of assignmentIdLookupKeys(id)) {
+      const assetRes = await env.ASSETS.fetch(
+        new URL(`/homework/assignments/${key}.json`, "https://assets.local").toString()
+      );
+      if (isJsonAssetResponse(assetRes)) {
+        return new Response(assetRes.body, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...CORS_HEADERS,
+          },
+        });
+      }
     }
     return jsonResponse({ error: "Assignment not found." }, 404);
   } catch (err) {
@@ -3288,6 +3547,13 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
     const studentUsername = String(data.studentUsername || "")
       .trim()
       .toLowerCase();
+    if (result.newlyAssigned && studentUsername) {
+      try {
+        await fulfillHwPlanAwaitingNew(studentUsername, env);
+      } catch (err) {
+        console.error("homework-publish: cadence fulfill failed:", err);
+      }
+    }
     const title = String(
       data.assignment?.title || data.catalogEntry?.title || result.id || "Homework"
     ).trim();
@@ -3313,20 +3579,26 @@ async function handleHomeworkPublish(request: Request, env: Env): Promise<Respon
     if (!silent && env.HOMEWORK_KV && studentUsername) {
       try {
         const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
-        discordNotify = await notifyStudentWithTeacherFallback(env, {
+        discordNotify = await notifyStudentHomework(env, {
           studentUsername,
           discordUserId,
           studentContent: publishDm,
-          teacherContent: discordUserId
-            ? "（→ " + studentUsername + "）\n" + publishDm
-            : "宿題を送れませんでした（Discord user ID 未設定）: " +
-              studentUsername +
-              "\n【" +
-              title +
-              "】\n" +
-              loginLink,
+          teacherContent: "（→ " + studentUsername + "）\n" + publishDm,
+          teacherContentNoDiscord: (emailNote) =>
+            "宿題はHubに入りました（Discord ID未設定のためDMなし）: " +
+            studentUsername +
+            "\n【" +
+            title +
+            "】\n" +
+            loginLink +
+            (emailNote ? "\n" + emailNote : ""),
           copyTeacherOnStudentDm: true,
           teacherCopyContent: "（→ " + studentUsername + "）\n" + publishDm,
+          email: {
+            kind: result.queued ? "queued" : "assigned",
+            title,
+            loginUrl,
+          },
         });
       } catch (err) {
         console.error("homework-publish discord notify:", err);
@@ -3524,11 +3796,18 @@ async function handleHomeworkTrialRequest(request: Request, env: Env): Promise<R
       },
       env
     );
+    if (result.newlyAssigned) {
+      try {
+        await fulfillHwPlanAwaitingNew(username, env);
+      } catch (err) {
+        console.error("homework-trial: cadence fulfill failed:", err);
+      }
+    }
 
     const origin = new URL(request.url).origin;
     const loginUrl =
       origin + "/homework.html?user=" + encodeURIComponent(username);
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env, username);
     if (webhook?.url) {
       const text = [
         "Free trial request — " + username,
@@ -4251,6 +4530,98 @@ async function handleDiscordBotStatus(request: Request, env: Env): Promise<Respo
   }
 }
 
+async function handleLessonUploaded(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed." }, 405);
+  let body: { teacherUsername?: string; studentUsername?: string; title?: string; videoId?: string };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  const allowed = (env.HW_TEACHER_USER || "jlm").toLowerCase();
+  if (String(body.teacherUsername || "").trim().toLowerCase() !== allowed) {
+    return jsonResponse({ error: "Teacher login required." }, 403);
+  }
+  const student = String(body.studentUsername || "").trim().toLowerCase();
+  if (!student) return jsonResponse({ error: "Student required." }, 400);
+  if (!(await isKnownStudent(student, env))) {
+    return jsonResponse({ error: "Unknown student account." }, 403);
+  }
+  const title = String(body.title || "").trim().slice(0, 120);
+  const videoId = String(body.videoId || "").trim();
+  const watch = /^[\w-]{6,20}$/.test(videoId) ? "https://youtu.be/" + videoId : "";
+  const studentContent = ["JD uploaded your lesson to YouTube.", title, watch].filter(Boolean).join("\n");
+  const kv = env.HOMEWORK_KV;
+  const discordUserId = kv ? await getStudentDiscordUserId(kv, student) : "";
+  const sent = await notifyStudentWithTeacherFallback(env, {
+    studentUsername: student,
+    discordUserId,
+    studentContent,
+    teacherContent:
+      "Told " + student + " their lesson is on YouTube" + (title ? ": " + title : "") + (watch ? "\n" + watch : ""),
+    skipTeacherNotify: true,
+  });
+  if (sent.mode !== "student_dm") {
+    const why = sent.mode === "no_discord" ? "no Discord ID" : sent.detail || "DM failed";
+    try {
+      await notifyHw(env, "Could not DM " + student + " about their YouTube lesson (" + why + ")." + (title ? "\n" + title : "") + (watch ? "\n" + watch : ""));
+    } catch (err) {
+      console.error("lesson-uploaded hw channel failed:", err);
+    }
+  }
+  return jsonResponse({ ok: sent.ok, mode: sent.mode });
+}
+
+async function handleLessonPlaylist(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  if (request.method !== "GET") return jsonResponse({ error: "Method not allowed." }, 405);
+  const student = new URL(request.url).searchParams.get("student")?.trim().toLowerCase() || "";
+  if (!/^[a-z0-9][a-z0-9._-]{1,40}$/.test(student)) {
+    return jsonResponse({ error: "Student required." }, 400);
+  }
+  if (!(await isKnownStudent(student, env))) {
+    return jsonResponse({ videos: [] });
+  }
+  const staticCatalog = await loadStaticCatalog(env);
+  const staticProfile = staticCatalog.studentProfiles?.[student] || {};
+  let playlistUrl = String(staticProfile.lessonPlaylistUrl || staticProfile.reviewPlaylistUrl || "").trim();
+  const kv = env.HOMEWORK_KV;
+  if (kv) {
+    const saved = String((await getStudentLessonPlaylist(kv, student)) || "").trim();
+    if (saved) playlistUrl = saved;
+  }
+  const playlistId = extractPlaylistId(playlistUrl);
+  if (!playlistId) return jsonResponse({ videos: [] });
+
+  const cacheKey = "playlist-titles-v1:" + playlistId;
+  if (kv) {
+    const cached = await kv.get(cacheKey);
+    if (cached) {
+      try {
+        const videos = JSON.parse(cached) as { title?: string; url?: string }[];
+        if (Array.isArray(videos) && videos.length) return jsonResponse({ videos });
+      } catch {
+        /* refetch */
+      }
+    }
+  }
+
+  const entries = await fetchPlaylistEntries(playlistId);
+  const videos = entries.map((entry) => ({
+    title: entry.title,
+    url: videoUrlFromId(entry.videoId),
+  }));
+  if (kv && videos.length) {
+    await kv.put(cacheKey, JSON.stringify(videos), { expirationTtl: 60 * 30 });
+  }
+  return jsonResponse({ videos });
+}
+
 async function handleStudentMistakes(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -4499,7 +4870,7 @@ async function handleHomeworkSubmissionDiscordPreview(
       descriptionBody,
     ].join("\n");
 
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env);
     if (!webhook) {
       return jsonResponse({ error: "Homework Discord webhook is not configured." }, 503);
     }
@@ -4575,6 +4946,12 @@ async function handleHomeworkDraft(request: Request, env: Env): Promise<Response
       if (code === "ASSIGNMENT_REQUIRED") {
         return jsonResponse({ error: "Assignment id is required." }, 400);
       }
+      if (code === "CURRICULUM_TRIAL_ENDED") {
+        return jsonResponse(
+          { error: "Your curriculum trial has ended. Subscribe to continue." },
+          403
+        );
+      }
       console.error("homework-draft PUT failed:", err);
       return jsonResponse({ error: "Could not save draft." }, 500);
     }
@@ -4622,6 +4999,55 @@ async function handleHomeworkDraft(request: Request, env: Env): Promise<Response
   }
 }
 
+const HUB_PAGE_NAMES: Record<string, string> = {
+  today: "To-do list",
+  prayer: "Prayer",
+  situations: "Situation Cards",
+  notebook: "Daily Exercise",
+  core: "Core Japanese",
+  quest: "Quest",
+  chapters: "Chapters",
+  week: "Whole week",
+  allcards: "All cards",
+};
+
+/** DM/ping JD once for each new student memo made outside a worksheet. */
+async function pingOutsideHwMemos(
+  env: Env,
+  username: string,
+  assignmentId: string,
+  comments: HomeworkComment[] | undefined
+): Promise<void> {
+  const kv = env.HOMEWORK_KV;
+  if (!kv || !Array.isArray(comments) || !comments.length) return;
+  const prev = await loadHomeworkCommentsDraft(env, username, assignmentId);
+  const seen = new Set((prev?.comments || []).map((c) => c.id));
+  const fresh = comments.filter(
+    (c) => c && c.id && !seen.has(c.id) && c.author !== "teacher" && String(c.text || "").trim()
+  );
+  for (const c of fresh.slice(0, 5)) {
+    const pingKey = `hw-memo-ping:${username}:${assignmentId}:${c.id}`;
+    if (await kv.get(pingKey)) continue;
+    await kv.put(pingKey, "1", { expirationTtl: 60 * 60 * 24 * 30 });
+    const tab = curriculumTabFromAssignmentId(assignmentId);
+    const page = HUB_PAGE_NAMES[tab] || assignmentId;
+    const anchor = String(c.anchor || "").trim();
+    const open = studentPageLink(username, { tab, memo: c.id });
+    const content =
+      "☁️ **" +
+      username +
+      "** made a cloud memo outside a WS/HW — on **" +
+      page +
+      "**" +
+      (anchor ? ' (on "' + anchor.slice(0, 60) + '")' : "") +
+      ':\n> ' +
+      String(c.text || "").trim().slice(0, 600).replace(/\n/g, "\n> ") +
+      "\n" +
+      open;
+    await notifyHw(env, content.slice(0, 1900));
+  }
+}
+
 async function handleHomeworkCommentsDraft(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -4658,6 +5084,15 @@ async function handleHomeworkCommentsDraft(request: Request, env: Env): Promise<
       }
       if (!assignmentId) {
         return jsonResponse({ error: "Assignment id is required." }, 400);
+      }
+      /* A cloud memo made on a hub page (Prayer, To-do, Situation cards...) instead of a worksheet:
+         tell JD, because it never shows up in a submitted HW. */
+      if (/^curriculum-/i.test(assignmentId)) {
+        try {
+          await pingOutsideHwMemos(env, username, assignmentId, body.comments);
+        } catch (err) {
+          console.error("outside-hw memo ping failed:", err);
+        }
       }
       await saveHomeworkCommentsDraft({ ...body, username, assignmentId }, env);
       return jsonResponse({ success: true });
@@ -4729,9 +5164,9 @@ async function handleHomeworkAnswerBank(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: "Invalid assignment id." }, 400);
   }
   try {
-    const bank = await readAnswerBank(env.HOMEWORK_KV, assignmentId);
+    const slides = await readAnswerBankForReview(env.HOMEWORK_KV, assignmentId);
     return jsonResponse(
-      { ok: true, assignmentId, slides: bank?.slides || {} },
+      { ok: true, assignmentId, slides },
       200,
       { "Cache-Control": "private, no-store" }
     );
@@ -4773,7 +5208,12 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
     const submission = await saveHomeworkReview(body, env);
 
     let discordNotify = null;
-    const newlyReviewed = submission.reviewStatus === "reviewed" && !wasReviewed;
+    /* Teacher can ask for a fresh "notes are done" ping on an already-reviewed sheet. */
+    const forcePing =
+      (body as { notifyStudent?: unknown }).notifyStudent === true &&
+      submission.reviewStatus === "reviewed";
+    const newlyReviewed =
+      (submission.reviewStatus === "reviewed" && !wasReviewed) || forcePing;
     if (newlyReviewed && env.HOMEWORK_KV) {
       try {
         const studentUsername = String(submission.username || "").trim().toLowerCase();
@@ -4786,7 +5226,7 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
         const lesson = String(submission.lessonName || submission.assignmentId || "Homework").trim();
         if (studentUsername) {
           const discordUserId = await getStudentDiscordUserId(env.HOMEWORK_KV, studentUsername);
-          discordNotify = await notifyStudentWithTeacherFallback(env, {
+          discordNotify = await notifyStudentHomework(env, {
             studentUsername,
             discordUserId,
             studentContent: [
@@ -4798,9 +5238,11 @@ async function handleHomeworkReview(request: Request, env: Env): Promise<Respons
             ]
               .filter(Boolean)
               .join("\n"),
-            teacherContent: discordUserId
-              ? `Review ready for ${studentUsername}: ${lesson}\nHomework login: ${loginUrl}`
-              : `Review ready for ${studentUsername} (${lesson}) — no Discord user ID linked. Add it in Student info so they get DMs.\nHomework login: ${loginUrl}`,
+            teacherContent: `Review ready for ${studentUsername}: ${lesson}\nHomework login: ${loginUrl}`,
+            teacherContentNoDiscord: (emailNote) =>
+              `Review ready on Hub for ${studentUsername} (${lesson}) — no Discord ID linked, so no student DM. Add it in Student info.\nHomework login: ${loginUrl}` +
+              (emailNote ? "\n" + emailNote : ""),
+            email: { kind: "reviewed", title: lesson, loginUrl },
           });
         }
       } catch (err) {
@@ -4927,6 +5369,209 @@ async function handleDailyNotebook(request: Request, env: Env): Promise<Response
   return jsonResponse({ error: "Method not allowed." }, 405);
 }
 
+async function handleStudyReminder(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+  const url = new URL(request.url);
+
+  if (request.method === "GET") {
+    const key = publicVapidKey(env);
+    if (!key) return jsonResponse({ error: "Phone pings are not set up yet." }, 503);
+    return jsonResponse({ publicKey: key }, 200, { "Cache-Control": "public, max-age=3600" });
+  }
+
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed." }, 405);
+  let body: {
+    username?: string;
+    message?: string;
+    time?: string;
+    repeat?: string;
+    weekday?: unknown;
+    timeZone?: string;
+    subscription?: unknown;
+    test?: boolean;
+  };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  }
+  try {
+    if (url.searchParams.get("test") === "1" || body.test === true) {
+      await sendStudyReminderNow(env, String(body.username || ""));
+      return jsonResponse({ ok: true }, 200, { "Cache-Control": "private, no-store" });
+    }
+    const saved = await saveStudyReminder(env, body);
+    return jsonResponse(
+      { ok: true, time: saved.time, repeat: saved.repeat, message: saved.message },
+      200,
+      { "Cache-Control": "private, no-store" }
+    );
+  } catch (err) {
+    const code = err instanceof Error ? err.message : "";
+    if (code === "KV_NOT_CONFIGURED" || code === "PUSH_NOT_CONFIGURED") {
+      return jsonResponse({ error: "Phone pings are not set up yet." }, 503);
+    }
+    if (code === "UNKNOWN_STUDENT") return jsonResponse({ error: "Log in, then save the reminder." }, 403);
+    if (code === "TIME_INVALID") return jsonResponse({ error: "Pick a time." }, 400);
+    if (code === "TIMEZONE_INVALID") return jsonResponse({ error: "Could not read this phone's clock." }, 400);
+    if (code === "SUBSCRIPTION_REQUIRED") {
+      return jsonResponse({ error: "Allow notifications, then save again." }, 400);
+    }
+    if (code === "REMINDER_MISSING") return jsonResponse({ error: "Save a reminder first." }, 400);
+    if (code === "PUSH_FAILED") return jsonResponse({ error: "The phone did not accept the ping." }, 502);
+    console.error("study reminder failed:", err);
+    return jsonResponse({ error: "Could not save that reminder." }, 500);
+  }
+}
+
+async function handleDailyExercise(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+
+  if (request.method === "GET") {
+    const username = String(url.searchParams.get("username") || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Student login required." }, 403);
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const payload = await listDailyExerciseSubmissions(env, username);
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Could not load submissions." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      console.error("daily-exercise GET failed:", err);
+      return jsonResponse({ error: "Could not load submissions." }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    let body: { username?: string; prompt?: string; lines?: unknown; audioIds?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Student login required." }, 403);
+    try {
+      const saved = await saveDailyExerciseSubmission(env, body);
+      return jsonResponse({ ok: true, ...saved }, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Could not save that exercise." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "LINES_REQUIRED") {
+        return jsonResponse({ error: "Write a sentence first." }, 400);
+      }
+      if (code === "LINE_TOO_LONG") {
+        return jsonResponse({ error: "One of those sentences is too long." }, 400);
+      }
+      console.error("daily-exercise save failed:", err);
+      return jsonResponse({ error: "Could not save that exercise." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
+async function handleSitCard(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
+  const url = new URL(request.url);
+
+  if (request.method === "GET") {
+    const username = String(url.searchParams.get("username") || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Student login required." }, 403);
+    try {
+      if (!(await isKnownStudent(username, env))) {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      const payload = await listSitCardSubmissions(env, username);
+      return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Could not load submissions." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      console.error("sit-card GET failed:", err);
+      return jsonResponse({ error: "Could not load submissions." }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    let body: { username?: string; displayName?: string; cardTitle?: string; audioId?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return jsonResponse({ error: "Invalid JSON body." }, 400);
+    }
+    const username = String(body.username || "")
+      .trim()
+      .toLowerCase();
+    if (!username) return jsonResponse({ error: "Student login required." }, 403);
+    try {
+      const saved = await saveSitCardSubmission(env, body);
+      const who = String(body.displayName || username).trim() || username;
+      const listen = homeworkSubmissionMediaUrl(request, env, saved.submission.audioId, false);
+      const open = studentPageLink(username, { tab: "situations", sitpast: true });
+      try {
+        await notifyHw(
+          env,
+          [
+            "🎧 **" + who + "** sent a Situation Card recording",
+            "Card: " + saved.submission.cardTitle,
+            "[Listen](" + listen + ") · [Open](" + open + ")",
+          ].join("\n")
+        );
+      } catch (err) {
+        console.error("sit-card notify failed:", err);
+      }
+      return jsonResponse({ ok: true, ...saved }, 200, { "Cache-Control": "private, no-store" });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
+      if (code === "KV_NOT_CONFIGURED") {
+        return jsonResponse({ error: "Could not save that recording." }, 503);
+      }
+      if (code === "UNKNOWN_STUDENT") {
+        return jsonResponse({ error: "Unknown student account." }, 403);
+      }
+      if (code === "AUDIO_REQUIRED") {
+        return jsonResponse({ error: "Record first." }, 400);
+      }
+      console.error("sit-card save failed:", err);
+      return jsonResponse({ error: "Could not save that recording." }, 500);
+    }
+  }
+
+  return jsonResponse({ error: "Method not allowed." }, 405);
+}
+
 async function handleImmersionQuests(request: Request, env: Env): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -4954,7 +5599,7 @@ async function handleImmersionQuests(request: Request, env: Env): Promise<Respon
       if (!(await isKnownStudent(username, env))) {
         return jsonResponse({ error: "Unknown student account." }, 403);
       }
-      const payload = await getImmersionQuests(env, username);
+      const payload = await getImmersionQuests(env, username, url.searchParams.get("period"));
       return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -4977,6 +5622,10 @@ async function handleImmersionQuests(request: Request, env: Env): Promise<Respon
       day?: unknown;
       key?: string;
       complete?: boolean;
+      advance?: boolean;
+      advanceMode?: string;
+      ymd?: string;
+      period?: string;
     };
     try {
       body = (await request.json()) as typeof body;
@@ -4994,9 +5643,11 @@ async function handleImmersionQuests(request: Request, env: Env): Promise<Respon
         return jsonResponse({ error: "Unknown student account." }, 403);
       }
       const complete = request.method === "POST" || body.complete === true;
-      const payload = complete
-        ? await completeImmersionQuest(env, body)
-        : await saveImmersionQuestDraft(env, body);
+      const payload = !complete
+        ? await saveImmersionQuestDraft(env, body)
+        : body.advance === true
+          ? await advanceImmersionQuest(env, body)
+          : await completeImmersionQuest(env, body);
       return jsonResponse(payload, 200, { "Cache-Control": "private, no-store" });
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
@@ -5008,15 +5659,12 @@ async function handleImmersionQuests(request: Request, env: Env): Promise<Respon
       }
       if (code === "ALREADY_DONE_TODAY") {
         return jsonResponse(
-          { error: "Already completed a quest today.", code },
+          { error: "Already completed this week's quest.", code },
           409
         );
       }
       if (code === "QUEST_STALE") {
         return jsonResponse({ error: "Quest already moved on.", code }, 409);
-      }
-      if (code === "EXAMPLE_REQUIRED") {
-        return jsonResponse({ error: "Write at least one example.", code }, 400);
       }
       if (code === "ALL_DONE") {
         return jsonResponse({ error: "All 365 quests are already done.", code }, 409);
@@ -5171,7 +5819,7 @@ async function handleHomeworkReviewAck(request: Request, env: Env): Promise<Resp
     const ackResult = await saveHomeworkReviewAck(body, env);
     const submission = ackResult.submission;
     const nextHomeworkId = ackResult.nextHomeworkId;
-    const webhook = resolveHomeworkWebhook(env);
+    const webhook = await resolveHomeworkWebhook(env, submission.username);
     if (webhook && !wasAlreadyAcked) {
       const name = submission.displayName || submission.username;
       const lesson =
@@ -5884,6 +6532,11 @@ function withFreshHtmlHeaders(res: Response): Response {
   headers.set("Cloudflare-CDN-Cache-Control", "no-store");
   headers.set("Pragma", "no-cache");
   headers.set("Expires", "0");
+  /* Without charset, Windows treats the page as Latin-1 and dashes show up as â€”. */
+  const ct = headers.get("Content-Type") || "";
+  if (/text\/html/i.test(ct) && !/charset\s*=/i.test(ct)) {
+    headers.set("Content-Type", ct.replace(/;?\s*$/, "") + "; charset=utf-8");
+  }
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
@@ -5909,7 +6562,9 @@ async function spaFallback(_request: Request, _env: Env, assetResponse: Response
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, rawEnv: Env): Promise<Response> {
+    /* Baked-language guard: anything saved to KV through this Worker is un-garbled first. */
+    const env = guardEnv(rawEnv);
     const url = new URL(request.url);
 
     // Old marketing URL looked like the main Hub entry; always send to login.
@@ -5957,6 +6612,10 @@ export default {
       return handleContact(request, env);
     }
 
+    if (url.pathname === "/api/booking/slots") {
+      return handleBooking(request, env);
+    }
+
     if (url.pathname === "/api/auth/signup") {
       return handleAuthSignup(request, env);
     }
@@ -5985,12 +6644,24 @@ export default {
       return handleAuthChangePassword(request, env);
     }
 
+    if (url.pathname === "/api/auth/cancel-subscription") {
+      return handleAuthCancelSubscription(request, env);
+    }
+
+    if (url.pathname === "/api/auth/cancel-intent") {
+      return handleAuthCancelIntent(request, env);
+    }
+
     if (url.pathname === "/api/auth/delete-own-account") {
       return handleAuthDeleteOwnAccount(request, env);
     }
 
     if (url.pathname === "/api/auth/self-extras") {
       return handleAuthSelfExtras(request, env);
+    }
+
+    if (url.pathname === "/api/paypal/webhook") {
+      return handlePaypalWebhookRequest(request, env);
     }
 
     if (url.pathname === "/api/paypal/create-subscription") {
@@ -6057,6 +6728,18 @@ export default {
       return handleDailyNotebook(request, env);
     }
 
+    if (url.pathname === "/api/daily-exercise") {
+      return handleDailyExercise(request, env);
+    }
+
+    if (url.pathname === "/api/sit-card") {
+      return handleSitCard(request, env);
+    }
+
+    if (url.pathname === "/api/study-reminder") {
+      return handleStudyReminder(request, env);
+    }
+
     if (url.pathname === "/api/immersion-quests") {
       return handleImmersionQuests(request, env);
     }
@@ -6081,6 +6764,14 @@ export default {
       return handleStudentMistakes(request, env);
     }
 
+    if (url.pathname === "/api/lesson-uploaded") {
+      return handleLessonUploaded(request, env);
+    }
+
+    if (url.pathname === "/api/lesson-playlist") {
+      return handleLessonPlaylist(request, env);
+    }
+
     if (url.pathname === "/api/local-dev-mistakes-key") {
       return handleLocalDevMistakesKey(request, env);
     }
@@ -6095,6 +6786,119 @@ export default {
 
     if (url.pathname === "/api/student-mistakes/restore") {
       return handleStudentMistakeRestore(request, env);
+    }
+
+    /* Teacher-only: Discord ping to JD summarizing mistakes just logged from a lesson. */
+    if (url.pathname === "/api/student-mistakes/digest") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      }
+      if (request.method !== "POST") {
+        return jsonResponse({ error: "Method not allowed." }, 405);
+      }
+      try {
+        const data = (await request.json()) as {
+          teacherUsername?: string;
+          mistakesKey?: string;
+          content?: string;
+        };
+        if (!isTeacherMistakesAccess(data, env)) {
+          return jsonResponse({ error: "Teacher login required." }, 403);
+        }
+        const content = String(data.content || "").trim().slice(0, 1900);
+        if (!content) return jsonResponse({ error: "Nothing to send." }, 400);
+        const sent = await notifyHw(env, content);
+        return jsonResponse({ ok: sent });
+      } catch (err) {
+        console.error("student-mistakes digest failed:", err);
+        return jsonResponse({ error: "Could not send digest." }, 500);
+      }
+    }
+
+    if (url.pathname === "/api/baked-check") {
+      /* Scan saved homework data (KV) for baked language (garbled Japanese). ?fix=1 repairs it.
+         Pages through KV: call again with ?cursor=<nextCursor> until done. */
+      const who = (url.searchParams.get("teacherUsername") || "").trim().toLowerCase();
+      if (who !== (env.HW_TEACHER_USER || "jlm").toLowerCase()) {
+        return jsonResponse({ error: "Teacher login required." }, 403);
+      }
+      const kv = env.HOMEWORK_KV;
+      if (!kv) return jsonResponse({ error: "KV not configured." }, 503);
+      const fix = url.searchParams.get("fix") === "1";
+      const prefix = url.searchParams.get("prefix") || undefined;
+      const listed = await kv.list({ prefix, cursor: url.searchParams.get("cursor") || undefined, limit: 300 });
+      const skip = /^(media|hw-m|subvid|submission-video|submission-photo|submission-audio|video|audio|photo|img|blob):/i;
+      const bad: Array<{ key: string; strings: number; fixed: boolean; sample: string }> = [];
+      let scanned = 0;
+      const broken: Array<{ key: string; lost: number }> = [];
+      for (const k of listed.keys) {
+        if (skip.test(k.name)) continue;
+        const raw = await kv.get(k.name);
+        if (!raw || raw.length > 2_000_000 || looksBinary(raw)) continue;
+        scanned++;
+        let strings = 0;
+        let sample = "";
+        let next = raw;
+        try {
+          const t = raw.trimStart();
+          if (t.startsWith("{") || t.startsWith("[")) {
+            const r = repairDeep(JSON.parse(raw));
+            strings = r.repaired;
+            if (strings) next = JSON.stringify(r.value);
+          } else if (hasMojibake(raw)) {
+            strings = 1;
+            next = repairMojibakeUtf8(raw);
+          }
+        } catch {
+          continue;
+        }
+        const lostChars = (raw.match(/\ufffd/g) || []).length;
+        if (lostChars) broken.push({ key: k.name, lost: lostChars });
+        if (!strings) continue;
+        const at = (() => {
+          for (let i = 0; i < Math.min(raw.length, next.length); i++) if (raw[i] !== next[i]) return i;
+          return 0;
+        })();
+        sample = raw.slice(Math.max(0, at - 10), at + 40) + "  ->  " + next.slice(Math.max(0, at - 10), at + 30);
+        let fixed = false;
+        if (fix) {
+          await kv.put(k.name, next, {
+            ...(k.expiration ? { expiration: k.expiration } : {}),
+            ...(k.metadata ? { metadata: k.metadata } : {}),
+          });
+          fixed = true;
+        }
+        bad.push({ key: k.name, strings, fixed, sample });
+      }
+      return jsonResponse({
+        scanned,
+        listed: listed.keys.length,
+        bad,
+        broken,
+        nextCursor: listed.list_complete ? null : (listed as { cursor?: string }).cursor || null,
+      });
+    }
+    if (url.pathname === "/api/discord-routes") {
+      const who = (url.searchParams.get("teacherUsername") || "").trim().toLowerCase();
+      if (who !== (env.HW_TEACHER_USER || "jlm").toLowerCase()) {
+        return jsonResponse({ error: "Teacher login required." }, 403);
+      }
+      const sendTest = url.searchParams.get("test") === "1";
+      const out: Record<string, unknown> = {};
+      for (const route of Object.keys(DISCORD_CHANNELS) as Array<keyof typeof DISCORD_CHANNELS>) {
+        const { result, note } = await resolveRoutedWebhookDetailed(env, route);
+        let posted: boolean | null = null;
+        if (sendTest && result?.routed) {
+          const r = await fetch(result.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: `✅ Routing test — this channel now gets: ${route}` }),
+          });
+          posted = r.ok;
+        }
+        out[route] = { channelId: DISCORD_CHANNELS[route], routed: !!result?.routed, note, posted };
+      }
+      return jsonResponse(out);
     }
 
     if (url.pathname === "/api/homework-submissions/discord-preview") {
@@ -6295,19 +7099,21 @@ export default {
 
   async scheduled(
     event: ScheduledEvent,
-    env: Env,
+    rawEnv: Env,
     ctx: ExecutionContext
   ): Promise<void> {
+    const env = guardEnv(rawEnv);
     if (event.cron === "0 0 * * *") {
       ctx.waitUntil(runBirthdayReminders(env));
     }
-    if (event.cron === "0 12 * * *") {
-      /* 12:00 UTC = 9:00pm Japan */
+    if (event.cron === "0 20 * * SUN") {
+      /* Sunday 20:00 UTC = Monday 5:00am Japan (weekly HW waiting list) */
       ctx.waitUntil(runHwDailyWaitingReminders(env));
     }
     if (event.cron === "* * * * *") {
       ctx.waitUntil(runSocialReminders(env));
       ctx.waitUntil(runHwPlanReminders(env));
+      ctx.waitUntil(runStudyReminders(env));
     }
   },
 };

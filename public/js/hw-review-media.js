@@ -345,6 +345,11 @@
       setStatus("");
     }
 
+    function stopControlBubble(el) {
+      el.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      el.addEventListener("click", (ev) => ev.stopPropagation());
+    }
+
     function renderSaved() {
       if (!previewEl) return;
       previewEl.replaceChildren();
@@ -354,6 +359,33 @@
         return;
       }
       renderPlayback(previewEl, currentMedia);
+      /* Question-note recorder has no compact toolbar, so save used to hide
+         Record and leave no way to delete. Keep both after the clip is saved. */
+      if (!options.compactToolbar) {
+        const actions = document.createElement("div");
+        actions.className = "hw-review-media__saved-actions";
+        const again = document.createElement("button");
+        again.type = "button";
+        again.className = "btn btn--ghost btn--sm hw-review-media__record-again";
+        again.textContent = "Record a new one";
+        stopControlBubble(again);
+        again.addEventListener("click", () => {
+          confirmEraseIfNeeded(again, () => {
+            resetSavedClip();
+            void startRecording({ skipConfirm: true });
+          });
+        });
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn btn--ghost btn--sm hw-review-media__remove";
+        remove.textContent = "Delete recording";
+        stopControlBubble(remove);
+        remove.addEventListener("click", () => {
+          confirmEraseIfNeeded(remove, () => resetSavedClip());
+        });
+        actions.append(again, remove);
+        previewEl.appendChild(actions);
+      }
       showSaved();
     }
 
@@ -512,8 +544,7 @@
           };
           mediaRecorder.onstop = finishRecording;
           mediaRecorder.onerror = () => {
-            setStatus("Recording error — try again.");
-            showIdle();
+            stopRecording();
           };
           mediaRecorder.start(1000);
           recordStartedAt = Date.now();
@@ -541,7 +572,10 @@
     }
 
     function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        if (global.HwCompat?.flushRecorder) global.HwCompat.flushRecorder(mediaRecorder);
+        else mediaRecorder.stop();
+      }
       stopTimer();
     }
 
@@ -556,6 +590,10 @@
       void startRecording();
     });
     mount.querySelector(".hw-review-media__stop")?.addEventListener("click", stopRecording);
+    global.HwCompat?.bindRecordingSurvive?.(mount, {
+      isLive: () => !!(mediaRecorder && mediaRecorder.state === "recording"),
+      flush: () => stopRecording(),
+    });
 
     function bindToolbarRecord(btn, nextMode) {
       btn?.addEventListener("click", () => {
@@ -590,9 +628,96 @@
     else showIdle();
   }
 
+  function normalizeSuggestedMedia(raw) {
+    if (!raw || !raw.id) return null;
+    const id = String(raw.id).trim();
+    if (!id) return null;
+    return {
+      id,
+      kind: raw.kind === "video" ? "video" : "audio",
+      mimeType: raw.mimeType ? String(raw.mimeType) : undefined,
+    };
+  }
+
+  /**
+   * Recording already used on this question. Same slide + wording as the text
+   * bank. Not attached until he chooses it. Null when this note already has a clip.
+   */
+  function pickSuggestedRecording(replies, text, existingMedia) {
+    if (existingMedia?.id) return null;
+    const list = Array.isArray(replies) ? replies : [];
+    const trimmed = String(text || "").trim();
+    if (trimmed) {
+      const exact = list.find((row) => String(row?.text || "").trim() === trimmed);
+      const fromExact = exact ? normalizeSuggestedMedia(exact.media) : null;
+      if (fromExact) return fromExact;
+    }
+    const newest = list.find((row) => row?.media?.id);
+    return normalizeSuggestedMedia(newest?.media);
+  }
+
+  function mountSavedRecordingOffer(mount, options) {
+    options = options || {};
+    if (!mount) return;
+    const media = normalizeSuggestedMedia(options.media);
+    mount.replaceChildren();
+    if (!media) return;
+    mount.classList.add("hw-saved-recording");
+    mount.classList.remove("hw-saved-recording--quiet");
+    const hint = document.createElement("p");
+    hint.className = "hw-saved-recording__hint";
+    hint.textContent =
+      "Saved recording for this question. Play it, then use it, or record a new one.";
+    const play = document.createElement("div");
+    play.className = "hw-saved-recording__play";
+    renderPlayback(play, media);
+    const actions = document.createElement("div");
+    actions.className = "hw-saved-recording__actions";
+    const useBtn = document.createElement("button");
+    useBtn.type = "button";
+    useBtn.className = "btn btn--primary btn--sm";
+    useBtn.textContent = "Use this recording";
+    const skipBtn = document.createElement("button");
+    skipBtn.type = "button";
+    skipBtn.className = "btn btn--ghost btn--sm";
+    skipBtn.textContent = "Don't use";
+    [useBtn, skipBtn].forEach((btn) => {
+      btn.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      btn.addEventListener("click", (ev) => ev.stopPropagation());
+    });
+    useBtn.addEventListener("click", () => options.onUse?.(media));
+    skipBtn.addEventListener("click", () => options.onSkip?.());
+    actions.append(useBtn, skipBtn);
+    mount.append(hint, play, actions);
+    if (mount.dataset.offerBound !== "1") {
+      mount.dataset.offerBound = "1";
+      mount.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    }
+  }
+
+  function mountSavedRecordingReuse(mount, options) {
+    options = options || {};
+    if (!mount) return;
+    mount.replaceChildren();
+    mount.classList.add("hw-saved-recording", "hw-saved-recording--quiet");
+    const reuse = document.createElement("button");
+    reuse.type = "button";
+    reuse.className = "btn btn--ghost btn--sm hw-saved-recording__reuse";
+    reuse.textContent = "Use saved recording";
+    reuse.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+    reuse.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      options.onUse?.();
+    });
+    mount.appendChild(reuse);
+  }
+
   global.HwReviewMedia = {
     mountRemarkRecorder,
     renderPlayback,
     mediaUrl,
+    pickSuggestedRecording,
+    mountSavedRecordingOffer,
+    mountSavedRecordingReuse,
   };
 })(typeof window !== "undefined" ? window : globalThis);

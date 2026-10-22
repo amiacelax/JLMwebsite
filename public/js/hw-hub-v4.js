@@ -282,13 +282,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  function requestPrint() {
-    const form = worksheetForm || document.getElementById("hw-worksheet-form");
-    if (!form || typeof global.HwWorksheet?.printBlank !== "function") return;
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-    global.HwWorksheet.printBlank(form);
-  }
-
   function mockSubmit() {
     const answered = countAnsweredBlanks(worksheetForm);
     const total = totalBlanks(worksheetForm);
@@ -417,7 +410,6 @@
   }
 
   function bindActions() {
-    document.getElementById("hw-pill-print")?.addEventListener("click", requestPrint);
     document.getElementById("hw-v2-onboard-next")?.addEventListener("click", nextOnboard);
     document.getElementById("hw-v2-onboard-skip")?.addEventListener("click", skipOnboard);
 

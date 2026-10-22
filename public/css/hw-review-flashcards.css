@@ -195,6 +195,16 @@
   display: none !important;
 }
 
+.hw-rfc-note-recording:empty,
+.hw-rfc-note-recording[hidden] {
+  display: none;
+}
+
+.hw-rfc-note-recording,
+.hw-rfc-note-media {
+  margin-top: 0.55rem;
+}
+
 .hw-rfc-saved:empty {
   display: none;
 }

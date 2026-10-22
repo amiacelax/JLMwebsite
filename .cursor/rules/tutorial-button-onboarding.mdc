@@ -1,0 +1,16 @@
+---
+description: Keep the Homework Hub Tutorial button in sync whenever onboarding tips are added or changed
+alwaysApply: true
+---
+
+# Tutorial button = every onboarding tip
+
+The **Tutorial** button (footer, next to "Add to phone") replays onboarding via `HwOnboard.replay()` in `public/js/hw-onboard.js`.
+
+Whenever you add, rename, reorder, or remove a first-time tip / onboarding section on the Homework Hub:
+
+1. Put it in `STEPS` in `hw-onboard.js` (or, for a special one like the Grammar description, make sure `replay()` also triggers it). The Tutorial replays everything in `STEPS`, so a step in `STEPS` is automatically included.
+2. Do **not** build a separate black-screen / one-off intro that bypasses `HwOnboard` — the Tutorial button would miss it.
+3. Add the new tip to `public/preview/onboarding-review/index.html` (`ITEMS`) so JD can review it.
+4. Test: tap Tutorial from the To-do tab and confirm the new tip shows in the right order.
+5. Bump the `hw-onboard.js?v=` / `hw-onboard.css?v=` cache numbers in `public/homework/platform.html`.

@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#1a2744">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Homework Hub">
+  <link rel="manifest" href="/homework/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -12,16 +17,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20260825-pastpill2">
+  <link rel="stylesheet" href="/css/styles.css?v=20261021-n5once">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=15">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=8">
-  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=97">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260825-ackgap" data-hw-comments-css="1">
-  <link rel="stylesheet" href="/css/hw-review-flashcards.css?v=20260813-deck">
+  <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=101">
+  <link rel="stylesheet" href="/css/hw-onboard.css?v=2">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260928-savedrec" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-review-flashcards.css?v=20260928-savedrec">
   <link rel="stylesheet" href="/css/hw-glass-deck.css?v=20260813-glass">
-  <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=1" data-hw-fonts="1">
-  <script src="/js/hw-auth.js?v=20260821-viewas"></script>
-  <script src="/js/hw-feature-flags.js?v=16"></script>
+  <link rel="stylesheet" href="/css/hw-missionary.css?v=2">
+  <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=2" data-hw-fonts="1">
+  <script src="/js/hw-auth.js?v=20261008-demo3"></script>
+  <script src="/js/hw-feature-flags.js?v=26"></script>
   <script>
     (function () {
       function loadStudentHandwritingFont() {
@@ -29,7 +36,7 @@
           if (document.querySelector('link[data-hw-fonts="1"]')) return;
           var link = document.createElement('link');
           link.rel = 'stylesheet';
-          link.href = '/css/hw-hub-fonts.css?v=1';
+          link.href = '/css/hw-hub-fonts.css?v=2';
           link.setAttribute('data-hw-fonts', '1');
           document.head.appendChild(link);
         }
@@ -59,14 +66,14 @@
         }
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=164">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=300">');
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
         else window.addEventListener('load', loadStudentHandwritingFont, { once: true });
       }
       if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=22">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=24">');
       }
     })();
   </script>
@@ -156,6 +163,8 @@
     <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="hw_ultra">HW Ultra</button>
     <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_no_hw">Student no HW</button>
     <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="student_lessons">Student</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="quest_only">Quest Only</button>
+    <button type="button" class="hw-hub-v2-demo-bar__btn" data-v5-demo-account="curriculum">Curriculum</button>
     <a class="hw-hub-v2-demo-bar__btn" href="/homework/platform.html" style="text-decoration:none">← Normal hub</a>
   </div>
 
@@ -240,7 +249,7 @@
                     <span class="course-card__status-text course-card__status-text--locked">Locked</span>
                     <span class="course-card__status-text course-card__status-text--unlock">Details</span>
                   </button>
-                  <span class="course-card__price" aria-label="Price: five dollars per month">$5<span class="course-card__price-suffix">/mo</span></span>
+                  <span class="course-card__price" aria-label="Price: nine dollars per month">$9<span class="course-card__price-suffix">/mo</span></span>
                 </div>
               </article>
               <article class="course-card course-card--locked hw-hub-tier-plan" data-hw-tier-plan="premium" data-hw-tier-detail="premium" tabindex="0">
@@ -294,6 +303,7 @@
                 <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-websites" data-hub-v6-tab="websites" aria-selected="false" aria-controls="hw-hub-v6-pane-websites">Websites</button>
                 <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-gamelab" data-hub-v6-tab="gamelab" aria-selected="false" aria-controls="hw-hub-v6-pane-gamelab">Game Lab</button>
                 <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-ideas" data-hub-v6-tab="ideas" aria-selected="false" aria-controls="hw-hub-v6-pane-ideas">Ideas &amp; Memos</button>
+                <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-missionary" data-hub-v6-tab="missionary" aria-selected="false" aria-controls="hw-hub-v6-pane-missionary">Missionary</button>
                 <button type="button" class="hw-hub-v6-tabs__btn" role="tab" id="hw-hub-v6-tab-hubpreview" data-hub-v6-tab="hubpreview" aria-selected="false" aria-controls="hw-hub-v6-pane-hubpreview">Hub Preview</button>
               </div>
 
@@ -362,6 +372,10 @@
                 </details>
               </div>
 
+              <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-missionary" role="tabpanel" data-hub-v6-pane="missionary" aria-labelledby="hw-hub-v6-tab-missionary" hidden>
+                <div class="hw-hub-v6-mount" data-v6-mount="missionary"></div>
+              </div>
+
               <div class="hw-hub-v6-pane" id="hw-hub-v6-pane-hubpreview" role="tabpanel" data-hub-v6-pane="hubpreview" aria-labelledby="hw-hub-v6-tab-hubpreview" hidden>
                 <div class="hw-hub-v6-mount" data-v6-mount="hubv2"></div>
               </div>
@@ -373,6 +387,7 @@
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-account" aria-selected="false" aria-controls="hw-teacher-account" data-teacher-tab="account">Student info</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-library" aria-selected="false" aria-controls="hw-teacher-library" data-teacher-tab="library">Worksheet library</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-ideas" aria-selected="false" aria-controls="hw-teacher-ideas" data-teacher-tab="ideas">Ideas &amp; memos</button>
+            <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-missionary" aria-selected="false" aria-controls="hw-teacher-missionary" data-teacher-tab="missionary">Missionary</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-submissions" aria-selected="false" aria-controls="hw-teacher-submissions" data-teacher-tab="submissions">Submissions</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-mistakes" aria-selected="false" aria-controls="hw-teacher-mistakes" data-teacher-tab="mistakes">Mistakes</button>
             <button type="button" class="hw-teacher-tabs__btn" role="tab" id="hw-teacher-tab-promo" aria-selected="false" aria-controls="hw-teacher-promo" data-teacher-tab="promo">Email list</button>
@@ -414,12 +429,14 @@
                   <select name="accountLabel" id="hw-teacher-account-label">
                     <option value="current_student">Current Student</option>
                     <option value="homework_only">Homework Only</option>
+                    <option value="quest_only">Quest Only</option>
                   </select>
                 </label>
                 <label class="hw-maker-field">
                   Plan tier
                   <select name="accountTier" id="hw-teacher-account-tier">
                     <option value="pending">No plan yet</option>
+                    <option value="quest_only">Quest Only</option>
                     <option value="student_special">Student Special</option>
                     <option value="tier1">Basic</option>
                     <option value="tier2">Premium</option>
@@ -443,10 +460,10 @@
                 </div>
                 <label class="hw-maker-field hw-maker-field--wide">
                   Lesson playlist
-                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=… (leave blank for no lessons)">
+                  <input type="text" name="lessonPlaylistUrl" id="hw-teacher-playlist" inputmode="url" placeholder="https://www.youtube.com/playlist?list=&#8230; (leave blank for no lessons)">
                 </label>
                 <label class="hw-maker-field hw-maker-field--wide">
-                  Latest lesson — YouTube (optional override)
+                  Latest lesson &#8212; YouTube (optional override)
                   <input type="text" name="youtubeUrl" id="hw-teacher-youtube" inputmode="url" placeholder="Leave blank to use newest video in playlist">
                 </label>
                 <label class="hw-maker-field hw-maker-field--wide">
@@ -456,7 +473,7 @@
               </div>
               <div class="hw-teacher-meta__actions">
                 <button type="button" class="btn btn--primary" id="hw-teacher-account-save-btn">Save student info</button>
-                <button type="button" class="btn btn--ghost" id="hw-teacher-account-wipe-btn">Wipe student…</button>
+                <button type="button" class="btn btn--ghost" id="hw-teacher-account-wipe-btn">Wipe student&#8230;</button>
                 <button type="button" class="btn btn--ghost" id="hw-teacher-discord-bot-check-btn">Check Discord bot</button>
                 <label class="hw-teacher-meta__notify" for="hw-teacher-account-notify">
                   <input type="checkbox" id="hw-teacher-account-notify">
@@ -494,6 +511,7 @@
               <button type="button" class="hw-ws-cat-tab is-active" role="tab" data-ws-cat="core-japanese" aria-selected="true">Core Japanese</button>
               <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="jlpt" aria-selected="false">JLPT</button>
               <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="christian" aria-selected="false">Christian</button>
+              <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="music" aria-selected="false">Music</button>
               <button type="button" class="hw-ws-cat-tab" role="tab" data-ws-cat="other" aria-selected="false">Other</button>
               <button type="button" class="hw-ws-cat-tab hw-ws-cat-tab--add" role="tab" data-ws-cat-add="1" aria-label="Add worksheet category">+</button>
             </div>
@@ -546,6 +564,18 @@
             </div>
             <p class="hw-library-meta" id="hw-ideas-meta" aria-live="polite"></p>
             <ul class="hw-ideas-list" id="hw-ideas-list"></ul>
+          </section>
+
+          <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-missionary" id="hw-teacher-missionary" role="tabpanel" aria-labelledby="hw-teacher-tab-missionary" hidden>
+            <p class="hw-platform-card__desc">Conversation textbook — past first, HW online + real-life. Check units off as you build.</p>
+            <div class="hw-missionary__open-row">
+              <a class="btn btn--primary btn--sm" href="/preview/missionary-course/index.html" target="_blank" rel="noopener noreferrer">Student pitch (meeting)</a>
+              <a class="btn btn--ghost btn--sm" href="/preview/missionary-curriculum/index.html" target="_blank" rel="noopener noreferrer">Teacher outline</a>
+              <a class="btn btn--ghost btn--sm" href="/preview/you-need-this-japanese/index.html" target="_blank" rel="noopener noreferrer">Core Japanese</a>
+              <a class="btn btn--ghost btn--sm" href="/preview/sit-cards-lesson.html" target="_blank" rel="noopener noreferrer">Situation cards · whole view</a>
+              <a class="btn btn--ghost btn--sm" href="/preview/sit-cards-deck/index.html" target="_blank" rel="noopener noreferrer">Situation cards · card view</a>
+            </div>
+            <div class="hw-missionary" id="hw-missionary-root"></div>
           </section>
 
           <section class="hw-platform-card hw-platform-card--wide hw-teacher-panel hw-teacher-mistakes" id="hw-teacher-mistakes" role="tabpanel" aria-labelledby="hw-teacher-tab-mistakes" hidden>
@@ -991,14 +1021,6 @@
               <p class="hw-submission-view-banner" id="hw-submission-view-banner" hidden role="status"></p>
             </section>
 
-            <div class="hw-hub-v5-entry-row" id="hw-hub-v5-entry-row">
-              <details class="hw-platform-card hw-hub-v5-past-box" id="hw-student-past-fold">
-                <summary class="hw-hub-v5-past-box__summary" id="hw-student-past-title">Past homework</summary>
-                <p class="hw-platform-card__desc hw-platform-card__desc--tight">Submitted work — open to review answers and JD’s notes (read-only).</p>
-                <p class="hw-library-meta" id="hw-student-past-meta" aria-live="polite"></p>
-                <ul class="hw-hub-v2-past-list" id="hw-student-past-list"></ul>
-              </details>
-            </div>
           </div>
 
           <div class="hw-platform-grid hw-platform-grid--student" id="hw-student-grid">
@@ -1035,7 +1057,7 @@
             </div>
 
             <div class="hw-grid-upload-col">
-              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card">
+              <section class="hw-platform-card hw-platform-card--compact hw-grid-mistakes" id="hw-student-mistakes-card" hidden data-hw-mistakes-off="1">
                 <h2 class="hw-platform-card__title" id="hw-student-mistakes-title">Recent mistakes</h2>
                 <p class="hw-platform-card__desc hw-platform-card__desc--tight" id="hw-student-mistakes-desc">From your lessons — tap to select, then copy or delete.</p>
                 <p class="hw-library-meta hw-student-mistakes-meta" id="hw-student-mistakes-meta" aria-live="polite"></p>
@@ -1135,7 +1157,7 @@
 
             <div class="hw-hub-feedback-pill-wrap" id="hw-hub-feedback-pill-wrap">
               <button type="button" class="btn hw-hub-past-homework-pill" id="hw-hub-past-homework-pill">
-                Browse past homework
+                Past submissions
               </button>
               <button type="button" class="btn btn--ghost hw-current-assignment__pill hw-hub-feedback-pill" id="hw-hub-feedback-pill">
                 Feature request / Bug report
@@ -1185,12 +1207,8 @@
         <div class="subpage-back hw-platform-footer-nav" id="hw-platform-footer-nav">
           <div class="hw-platform-footer-nav__row">
             <div class="hw-print-menu" id="hw-print-menu" hidden>
-              <button type="button" class="btn btn--ghost" id="hw-print-menu-toggle" aria-expanded="false" aria-haspopup="menu" aria-controls="hw-print-menu-popup">Print</button>
-              <div class="hw-print-menu__popup" id="hw-print-menu-popup" role="menu" hidden>
-                <button type="button" class="hw-print-menu__item" role="menuitem" id="hw-offline-print" data-hw-print>Print</button>
-                <button type="button" class="hw-print-menu__item" role="menuitem" data-hw-photo-take>Take Picture</button>
-                <button type="button" class="hw-print-menu__item" role="menuitem" data-hw-photo-choose>Choose File</button>
-              </div>
+              <button type="button" class="btn btn--ghost" data-hw-photo-take>Take Picture</button>
+              <button type="button" class="btn btn--ghost" data-hw-photo-choose>Choose File</button>
             </div>
           </div>
           <button type="button" class="btn btn--ghost hw-platform-footer-nav__logout" id="hw-platform-logout-footer" hidden>Log out</button>
@@ -1247,11 +1265,11 @@
       <h2 class="hw-breakdown-modal__title" id="hw-tier-detail-title">Plan details</h2>
 
       <article class="hw-breakdown-card hw-breakdown-card--featured hw-tier-detail-panel" id="hw-tier-detail-basic" data-tier-detail-panel hidden>
-        <p class="hw-breakdown-card__price">$5<span>/mo</span></p>
+        <p class="hw-breakdown-card__price">$9<span>/mo</span></p>
         <h3>Basic</h3>
         <ul class="hw-breakdown-card__list">
           <li>One HW assignment each month</li>
-          <li>Kept at $5 so anyone can take part</li>
+          <li>Kept at $9 so anyone can take part</li>
           <li>Written notes when you turn it in</li>
         </ul>
         <button type="button" class="btn btn--primary btn--full" data-hw-checkout="basic">Subscribe — Basic</button>
@@ -1282,6 +1300,18 @@
         <p class="hw-platform-card__desc hw-platform-card__desc--tight">The video walk-through is only on Ultra — not sold separately.</p>
         <button type="button" class="btn btn--primary btn--full" data-hw-checkout="ultra">Subscribe — Ultra</button>
       </article>
+
+      <article class="hw-breakdown-card hw-tier-detail-panel" id="hw-tier-detail-student-special" data-tier-detail-panel hidden>
+        <p class="hw-breakdown-card__badge">For current students</p>
+        <p class="hw-breakdown-card__price">$10<span>/mo</span></p>
+        <h3>Student Special</h3>
+        <ul class="hw-breakdown-card__list">
+          <li><u>Four</u> HW assignments each month</li>
+          <li>Premium-level homework at the student rate</li>
+          <li><u>Written</u> notes and advice from JD</li>
+        </ul>
+        <button type="button" class="btn btn--primary btn--full" data-hw-checkout="student-special">Subscribe — Student Special</button>
+      </article>
     </div>
   </div>
 
@@ -1294,6 +1324,32 @@
       <p class="hw-past-assignments-modal__intro">Open a submitted worksheet to review your answers (read-only).</p>
       <p class="hw-library-meta" id="hw-past-assignments-modal-meta" aria-live="polite"></p>
       <ul class="hw-hub-v2-past-list hw-past-assignments-modal__list" id="hw-past-assignments-modal-list"></ul>
+    </div>
+  </div>
+
+  <div class="hw-breakdown-modal hw-past-assignments-modal" id="hw-daily-past-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-daily-past-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-past-assignments-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-daily-past-modal-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-daily-past-close aria-label="Close past submissions">×</button>
+      <p class="section__eyebrow">Daily Exercise</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-daily-past-modal-title">Past submissions</h2>
+      <p class="hw-past-assignments-modal__intro" id="hw-daily-past-modal-intro">Open a day to read what you sent.</p>
+      <p class="hw-library-meta" id="hw-daily-past-modal-meta" aria-live="polite"></p>
+      <ul class="hw-hub-v2-past-list hw-past-assignments-modal__list" id="hw-daily-past-modal-list"></ul>
+      <div id="hw-daily-past-modal-detail" hidden></div>
+    </div>
+  </div>
+
+  <div class="hw-breakdown-modal hw-past-assignments-modal" id="hw-sit-past-modal" hidden>
+    <div class="hw-breakdown-modal__backdrop" data-hw-sit-past-close aria-hidden="true"></div>
+    <div class="hw-breakdown-modal__dialog hw-past-assignments-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="hw-sit-past-modal-title">
+      <button class="hw-breakdown-modal__close" type="button" data-hw-sit-past-close aria-label="Close past submissions">×</button>
+      <p class="section__eyebrow">Situation Cards</p>
+      <h2 class="hw-breakdown-modal__title" id="hw-sit-past-modal-title">Past submissions</h2>
+      <p class="hw-past-assignments-modal__intro" id="hw-sit-past-modal-intro">Open a day to hear what you sent.</p>
+      <p class="hw-library-meta" id="hw-sit-past-modal-meta" aria-live="polite"></p>
+      <ul class="hw-hub-v2-past-list hw-past-assignments-modal__list" id="hw-sit-past-modal-list"></ul>
+      <div id="hw-sit-past-modal-detail" hidden></div>
     </div>
   </div>
 
@@ -1311,7 +1367,7 @@
         </a>
       </div>
       <p class="hw-post-submit-next-modal__past">
-        <button type="button" class="hw-post-submit-next-modal__past-btn" data-hw-next-past>Browse past homework</button>
+        <button type="button" class="hw-post-submit-next-modal__past-btn" data-hw-next-past>Past submissions</button>
       </p>
     </div>
   </div>
@@ -1336,25 +1392,27 @@
   <script src="/js/hw-loading.js?v=5" defer></script>
   <script src="/js/hw-audio-player.js?v=20260825-vol" defer></script>
   <script src="/js/hw-video-player.js?v=20260786" defer></script>
-  <script src="/js/hw-compat.js?v=20260807a" defer></script>
-  <script src="/js/hw-video-inline.js?v=20260807a" defer></script>
-  <script src="/js/hw-audio-inline.js?v=20260807a" defer></script>
+  <script src="/js/hw-compat.js?v=20260930-keep" defer></script>
+  <script src="/js/hw-video-inline.js?v=20260930-keep" defer></script>
+  <script src="/js/hw-audio-inline.js?v=20261021-mic" defer></script>
   <script src="/js/hw-submit-format.js?v=20260805" defer></script>
-  <script src="/js/hw-worksheet.js?v=20260825-ytlink" defer></script>
-  <script src="/js/hw-star-block.js?v=20260728" defer></script>
+  <script src="/js/hw-worksheet.js?v=20261021-n5once" defer></script>
+  <script src="/js/hw-star-block.js?v=20261002-gift" defer></script>
   <script src="/js/hw-mc-block.js?v=20260805-mc-fit" defer></script>
-  <script src="/js/hw-furigana-auto.js?v=20260684" defer></script>
-  <script src="/js/hw-mg-lexicon.js?v=20" defer></script>
+  <script src="/js/hw-furigana-auto.js?v=20260687" defer></script>
+  <script src="/js/hw-mg-lexicon.js?v=23" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=5" defer></script>
-  <script src="/js/hw-worksheet-tools-layout.js?v=64" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=87" defer></script>
-  <script src="/js/hw-review-media.js?v=20260807a" defer></script>
-  <script src="/js/hw-homework-comments.js?v=111" defer></script>
+  <script src="/js/hw-worksheet-tools-layout.js?v=66" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=99" defer></script>
+  <script src="/js/hw-review-media.js?v=20260930-keep" defer></script>
+  <script src="/js/hw-homework-comments.js?v=118" defer></script>
   <script src="/js/hw-toolbar-q-icons.js?v=5" defer></script>
-  <script src="/js/hw-student-toolbar.js?v=15" defer></script>
+  <script src="/js/hw-student-toolbar.js?v=22" defer></script>
+  <script src="/js/hw-onboard.js?v=4" defer></script>
+  <script src="/js/hw-next-update.js?v=6" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
-  <script src="/js/hw-account.js?v=11" defer></script>
-  <script src="/js/hw-platform-boot.js?v=102" defer></script>
+  <script src="/js/hw-account.js?v=15" defer></script>
+  <script src="/js/hw-platform-boot.js?v=215" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {

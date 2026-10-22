@@ -1,0 +1,45 @@
+---
+description: Anime-clip teaching Reels/Shorts layout (face + anime stack, JP/romaji white card, yellow EN). Use when JD teaches from anime clips, anime line explainers, or asks for that genoa_nopi-style format.
+alwaysApply: false
+---
+
+# Anime-clip teaching format
+
+Reference look: Instagram Reels dual-pane explainers (e.g. genoa_nopi_japanese — white JP+romaji card over yellow EN). **JD’s version is not repeat-and-translate** — he **explains the grammar / nuance** while the anime line is on screen.
+
+## Layout (1080×1920)
+
+1. **Top half** — JD face cam (talking to camera). One shot of him, not a second video of the board.
+2. **Bottom half** — the **anime clip** (or source scene) that has the line.
+3. **Center stack** (over the seam between face and anime):
+   - **White rounded card** — Japanese line on top, **romaji under it** (same card).
+   - **Yellow card** directly under — English meaning (natural / punchy, can be rough).
+
+Do **not** use the old board-over-face lesson stack for anime teaches. Do **not** use face-only zoom with no anime pane for this format.
+
+## What goes on screen vs what he says
+
+| On screen | In his mouth / audio |
+|-----------|----------------------|
+| The line (JP + romaji) | He **explains** it — grammar, nuance, who says it, why that form, trap vs normal, etc. |
+| EN on the yellow card | Translation is support; **not** the whole video. Don’t make a “say it / here’s English” loop. |
+
+She (reference) mostly repeats the line and translates. **We don’t.** Hook can still be the line or the vibe; the meat is the explain.
+
+## Caption / card rules
+
+- White card: JP then romaji. Keep readable; don’t crowd.
+- Yellow card: EN only.
+- Spoken captions (if burned later) still follow oneblock punctuation rules (no `,` `.` `;` `:` `。` in burned spoken text). The JP/romaji/EN **cards** can use normal punctuation for the line itself when matching the reference look.
+- CTA / end card: same locked line as other Reels when shipping a finished post (`Book a trial lesson` → link in bio on IG).
+
+## When building or prompting
+
+- Call this format **anime dual-pane** (face top / anime bottom + white JP·romaji + yellow EN).
+- CapCut / ffmpeg / pipeline prompts must name that stack explicitly.
+- If he only drops an anime clip path with no face take yet, still plan the dual-pane and note face cam is required for the final.
+
+## Related
+
+- Lesson-OBS Shorts (whiteboard lessons): different format — face zoom or lesson crop; hunt warning / analogy / wrong-then-right. See `shorts-reel-post-workflow.mdc`.
+- This rule wins for **anime / clip-line teaching** posts.

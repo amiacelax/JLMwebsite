@@ -22,6 +22,8 @@
   let queueIndex = 0;
   /** Replies JD already used on this worksheet, keyed by question slide index. */
   let bankSlides = {};
+  /** Saved recordings he skipped or deleted on this card, so they are not put back. */
+  let dismissedNoteRecordings = new Set();
 
   const DRAFT_MS = 1500;
 
@@ -427,6 +429,92 @@
     });
   }
 
+  function noteClip(media) {
+    if (!media?.id) return null;
+    return {
+      id: String(media.id),
+      kind: media.kind === "video" ? "video" : "audio",
+      mimeType: media.mimeType ? String(media.mimeType) : undefined,
+    };
+  }
+
+  function slideBankReplies(slideIndex) {
+    const list = bankSlides[String(slideIndex ?? 0)];
+    return Array.isArray(list) ? list : [];
+  }
+
+  function acceptNoteRecording(slideIndex, media) {
+    const note = ensureTeacherNote(slideIndex);
+    note.teacherRemarkMedia = noteClip(media);
+    note.updatedAt = new Date().toISOString();
+    scheduleDraftSave();
+    renderNoteRecordingOffer(slideIndex);
+    bindNoteRecorder(slideIndex, note);
+  }
+
+  function renderNoteRecordingOffer(slideIndex) {
+    const mount = el("hw-rfc-note-recording");
+    if (!mount) return;
+    const note = findTeacherNoteForSlide(slideIndex);
+    const suggested = global.HwReviewMedia?.pickSuggestedRecording?.(
+      slideBankReplies(slideIndex),
+      note?.text || el("hw-rfc-note-input")?.value || "",
+      note?.teacherRemarkMedia
+    );
+    if (!suggested?.id) {
+      mount.replaceChildren();
+      mount.hidden = true;
+      return;
+    }
+    const key = String(slideIndex) + ":" + suggested.id;
+    mount.hidden = false;
+    if (dismissedNoteRecordings.has(key)) {
+      global.HwReviewMedia?.mountSavedRecordingReuse?.(mount, {
+        onUse: () => acceptNoteRecording(slideIndex, suggested),
+      });
+      return;
+    }
+    global.HwReviewMedia?.mountSavedRecordingOffer?.(mount, {
+      media: suggested,
+      onUse: () => acceptNoteRecording(slideIndex, suggested),
+      onSkip: () => {
+        dismissedNoteRecordings.add(key);
+        renderNoteRecordingOffer(slideIndex);
+      },
+    });
+  }
+
+  /** Same recorder as the full sheet: delete, or record a new clip over this note. */
+  function bindNoteRecorder(slideIndex, note) {
+    const mount = el("hw-rfc-note-media");
+    if (!mount) return;
+    mount.replaceChildren();
+    delete mount.dataset.bound;
+    const session = options?.getTeacherSession?.();
+    global.HwReviewMedia?.mountRemarkRecorder?.(mount, {
+      teacherUsername: session?.username || "",
+      existing: note?.teacherRemarkMedia || null,
+      onChange: (media) => {
+        const target = ensureTeacherNote(slideIndex);
+        const beforeId = String(target.teacherRemarkMedia?.id || "");
+        target.teacherRemarkMedia = media?.id ? noteClip(media) : null;
+        target.updatedAt = new Date().toISOString();
+        if (!media?.id && beforeId) {
+          const suggested = global.HwReviewMedia?.pickSuggestedRecording?.(
+            slideBankReplies(slideIndex),
+            target.text,
+            null
+          );
+          if (suggested?.id && suggested.id === beforeId) {
+            dismissedNoteRecordings.add(String(slideIndex) + ":" + suggested.id);
+          }
+        }
+        scheduleDraftSave();
+        renderNoteRecordingOffer(slideIndex);
+      },
+    });
+  }
+
   function renderEmpty() {
     showStage("empty");
     syncProgress();
@@ -499,6 +587,7 @@
       note.updatedAt = new Date().toISOString();
       noteInput.value = pick.text;
       scheduleDraftSave();
+      renderNoteRecordingOffer(unit.slideIndex);
     });
     mount.appendChild(select);
   }
@@ -586,6 +675,8 @@
       '<p class="hw-rfc-panel__label">Question note</p>' +
       '<div class="hw-rfc-saved" id="hw-rfc-saved"></div>' +
       '<textarea class="hw-rfc-textarea" id="hw-rfc-note-input" rows="3" maxlength="2000" placeholder="Write a note on this question for the student…"></textarea>' +
+      '<div class="hw-rfc-note-recording" id="hw-rfc-note-recording"></div>' +
+      '<div class="hw-rfc-note-media" id="hw-rfc-note-media"></div>' +
       "</div>" +
       '<div class="hw-rfc-actions hw-rfc-actions--edit">' +
       actionsTop.join("") +
@@ -633,6 +724,8 @@
         scheduleDraftSave();
       });
       renderSavedReplies(unit, noteInput, saved);
+      renderNoteRecordingOffer(unit.slideIndex);
+      bindNoteRecorder(unit.slideIndex, findTeacherNoteForSlide(unit.slideIndex));
     }
 
     el("hw-rfc-btn-remark")?.addEventListener("click", () => {
@@ -742,7 +835,13 @@
         /* ignore */
       }
 
-      options?.showToast?.("Notes sent — student can see your feedback.");
+      options?.showToast?.("Notes sent — taken off homework notes. The student can see your feedback.");
+      const clearedId = submission.id;
+      try {
+        await global.HwHubV6?.releaseSubmittedNotesDeck?.(clearedId);
+      } catch {
+        /* list refresh is best-effort; the review itself already saved */
+      }
       const kept = {
         ...submission,
         ...(data.submission || {}),
@@ -801,6 +900,7 @@
     queue = [];
     queueIndex = 0;
     bankSlides = {};
+    dismissedNoteRecordings = new Set();
     setStatus("");
   }
 
@@ -882,6 +982,7 @@
       return;
     }
 
+    dismissedNoteRecordings = new Set();
     bankSlides =
       entry.reviewStatus === "reviewed" ? {} : await loadAnswerBank(entry.assignmentId);
 

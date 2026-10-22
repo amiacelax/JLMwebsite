@@ -45,6 +45,13 @@ html:has(body.hw-hub-v5-page) {
   padding-top: 2.15rem;
 }
 
+.hw-hub-v5-reviewed-banner,
+#hw-v2-feedback,
+.hw-hub-jd-memo--overlap,
+body.hw-hub-v5-page .hw-hub-jd-memo {
+  display: none !important;
+}
+
 .hw-hub-v5-reviewed-banner {
   position: absolute;
   top: 0;
@@ -1958,6 +1965,21 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
   outline: none;
 }
 
+.hw-hub-v5-notebook__date-btn-when--quest {
+  font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
+  font-size: clamp(1.35rem, 5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hw-hub-v5-notebook__q-btn--quest {
+  min-width: 3.65rem;
+}
+
+.hw-hub-v5-notebook__pack-panel--quest {
+  margin-top: 0.35rem;
+}
+
 .hw-hub-v5-notebook__q-btn.is-active {
   background: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 78%, #000);
   border-color: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 78%, #000);
@@ -2024,6 +2046,60 @@ body.hw-hub-v5-archive-mode .hw-hub-v2-worksheet {
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row--mark-wrong .hw-hub-v5-notebook__detail-block--student {
   box-shadow: inset 3px 0 0 0 #c1121f;
   background: color-mix(in srgb, #c1121f 8%, transparent);
+}
+
+.hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row--mark-correct .hw-hub-v5-notebook__detail-block--student {
+  box-shadow: inset 3px 0 0 0 #1f8a4c;
+  background: color-mix(in srgb, #2d6a4f 12%, transparent);
+}
+
+.hw-hub-v5-notebook__row--detail {
+  position: relative;
+}
+
+.hw-hub-v5-notebook__mark-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.4rem;
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.hw-hub-v5-notebook__mark-badge--correct {
+  color: #1f8a4c;
+}
+
+.hw-hub-v5-notebook__mark-badge--wrong {
+  color: #d12a2a;
+}
+
+.hw-hub-v5-notebook__q-btn--correct {
+  border-color: #1f8a4c;
+  background: #1f8a4c;
+}
+
+.hw-hub-v5-notebook__q-btn--wrong {
+  border-color: #c1121f;
+  background: #c1121f;
+}
+
+.hw-hub-v5-notebook__q-btn--correct:hover,
+.hw-hub-v5-notebook__q-btn--correct.is-active {
+  border-color: #17703c;
+  background: #17703c;
+}
+
+.hw-hub-v5-notebook__q-btn--wrong:hover,
+.hw-hub-v5-notebook__q-btn--wrong.is-active {
+  border-color: #a00f19;
+  background: #a00f19;
+}
+
+.hw-hub-v5-notebook__q-mark {
+  margin-left: 0.35rem;
+  font-weight: 800;
 }
 
 .hw-hub-v5-notebook-diary .hw-hub-v5-notebook__row--detail .hw-hub-v5-notebook__open {
@@ -2965,6 +3041,66 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   color: var(--color-text-muted);
 }
 
+/* current students: latest lesson as a picture card that opens YouTube */
+.hw-lesson-latest {
+  display: block;
+  margin: 0;
+  padding: 0.6rem;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.hw-lesson-latest__pic {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: #0b1222;
+}
+
+.hw-lesson-latest__pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hw-lesson-latest__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+  background: var(--color-accent-vivid, #e85545);
+}
+
+.hw-lesson-latest__play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 0.6rem 0 0.6rem 0.95rem;
+  border-color: transparent transparent transparent #fff;
+}
+
+.hw-lesson-latest__cap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.3rem 0.1rem;
+  font-weight: 600;
+}
+
+.hw-lesson-latest__cap small {
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
 .hw-hub-v5-lessons-promo__actions {
   display: flex;
   flex-wrap: wrap;
@@ -2981,6 +3117,13 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   padding: 0;
 }
 
+.hw-hub-v5-lesson-tabs[hidden],
+.hw-hub-v5-lessons-promo[hidden],
+#hw-latest-lesson[hidden],
+#hw-lesson-playlist[hidden] {
+  display: none !important;
+}
+
 .hw-hub-v5-lesson-tabs__btn {
   appearance: none;
   display: inline-flex;
@@ -2988,10 +3131,10 @@ body.hw-hub-v5-page .hw-hub-v5-app {
   justify-content: center;
   margin: 0;
   padding: 0.38rem 0.85rem;
-  border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 32%, #b7c9b8);
+  border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 70%, #fff);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-green, #4ade80) 14%, #fff);
-  color: #1f4632;
+  background: var(--color-green, #4ade80);
+  color: #0d1b2a;
   font-family: Inter, sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
@@ -3006,32 +3149,81 @@ body.hw-hub-v5-page .hw-hub-v5-app {
     border-color 0.18s ease;
 }
 
-a.hw-hub-v5-lesson-tabs__btn:hover,
-a.hw-hub-v5-lesson-tabs__btn:focus-visible {
-  color: #0d1b2a;
-  background: color-mix(in srgb, var(--color-green, #4ade80) 55%, #fff);
-  border-color: var(--color-green, #4ade80);
-  outline: none;
-}
-
-a.hw-hub-v5-lesson-tabs__btn[aria-disabled="true"] {
+.hw-hub-v5-lesson-tabs__btn[aria-disabled="true"] {
   opacity: 0.62;
   cursor: default;
   pointer-events: none;
 }
 
-.hw-hub-v5-lesson-tabs__btn:hover,
-.hw-hub-v5-lesson-tabs__btn:focus-visible {
+.hw-hub-v5-lesson-tabs__btn.is-on {
+  opacity: 1;
+  box-shadow: 0 0 0 2px #0d1b2a, 0 0 0 4px currentColor;
+}
+
+.hw-lesson-body {
+  text-align: center;
+  padding: 0.35rem 0.2rem 0.2rem;
+}
+
+.hw-lesson-title-link {
+  display: inline-block;
+  max-width: 28rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.hw-lesson-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 28rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.hw-lesson-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 16%, transparent);
+}
+
+.hw-lesson-list a {
+  display: block;
+  padding: 0.5rem 0.15rem;
+  color: var(--color-text);
+  text-decoration: none;
+  line-height: 1.35;
+}
+
+.hw-lesson-list a:hover,
+.hw-lesson-list a:focus-visible {
+  color: var(--color-brand-blue, #67c4eb);
+}
+
+#hw-latest-lesson:hover,
+#hw-latest-lesson:focus-visible,
+.hw-hub-v5-lesson-tabs__btn:not(.hw-lesson-playlist):hover,
+.hw-hub-v5-lesson-tabs__btn:not(.hw-lesson-playlist):focus-visible {
   color: #0d1b2a;
-  background: color-mix(in srgb, var(--color-green, #4ade80) 55%, #fff);
+  background: color-mix(in srgb, var(--color-green, #4ade80) 82%, #fff);
   border-color: var(--color-green, #4ade80);
   outline: none;
 }
 
-.hw-hub-v5-lesson-tabs__btn.is-active {
-  background: var(--color-green, #4ade80);
-  border-color: color-mix(in srgb, var(--color-green, #4ade80) 70%, #fff);
-  color: #0d1b2a;
+.hw-hub-v5-lesson-tabs__btn.hw-lesson-playlist {
+  background: var(--color-accent-vivid, #e85545);
+  border-color: var(--color-accent-vivid, #e85545);
+  color: #fff;
+}
+
+.hw-hub-v5-lesson-tabs__btn.hw-lesson-playlist:hover,
+.hw-hub-v5-lesson-tabs__btn.hw-lesson-playlist:focus-visible {
+  color: #fff;
+  background: var(--color-accent-hover, #e74c3c);
+  border-color: var(--color-accent-hover, #e74c3c);
+  outline: none;
 }
 
 .hw-hub-v5-lesson-pane[hidden] {
@@ -3318,6 +3510,145 @@ body.hw-hub-v5-page #hw-hub-v4-homework.hw-v5-homework-zone .hw-hub-jd-memo__bod
   color: var(--color-text);
 }
 
+.hw-hub-v5-noplan .hw-tier-student-bar {
+  margin: 0.9rem 0 0;
+  width: 100%;
+}
+
+.hw-add-phone {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0.55rem 0 0;
+}
+
+.hw-platform-footer-nav .hw-add-phone {
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+
+/* "12 hours until next Quest" line at the top of timed tabs */
+.hw-next-update {
+  margin: 0 0 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+/* same timer, tucked in the top-right corner of the green prompt box */
+.hw-quest__target-box.has-next-update {
+  position: relative;
+  padding-bottom: 1.95rem;
+}
+
+.hw-next-update.hw-next-update--in-box {
+  position: absolute;
+  bottom: 0.4rem;
+  left: 0.7rem;
+  margin: 0;
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: left;
+  opacity: 0.9;
+}
+
+/* ticking clock: days:hours:minutes, colons blink once a second */
+.hw-next-update {
+  font-variant-numeric: tabular-nums;
+}
+
+.hw-next-update b {
+  font-weight: inherit;
+  animation: hw-clock-tick 1s steps(1, end) infinite;
+}
+
+@keyframes hw-clock-tick {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-next-update b {
+    animation: none;
+  }
+}
+
+.hw-platform-footer-nav .hw-tutorial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+
+.hw-add-phone-note {
+  flex: 1 0 100%;
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.hw-study-reminder__dialog {
+  width: min(calc(100vw - 2rem), 26rem);
+}
+
+.hw-study-reminder__lead {
+  margin: 0 0 1rem;
+  color: #fff;
+}
+
+.hw-study-reminder__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.hw-study-reminder__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+/* "Which day?" only shows for Once a week (the label's display:flex was beating [hidden]). */
+.hw-study-reminder__form label[hidden] {
+  display: none;
+}
+
+.hw-study-reminder__form input,
+.hw-study-reminder__form select {
+  font: inherit;
+  color: #102033;
+  background: #fff;
+  border: 0;
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.hw-study-reminder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.hw-study-reminder__note {
+  margin: 0.15rem 0 0;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.88rem;
+}
+
+.hw-study-reminder__note.is-error {
+  color: #f0a0a0;
+}
+
 .hw-hub-v5-trial__link {
   display: inline-block;
   margin: 0;
@@ -3528,6 +3859,19 @@ body.hw-hub-no-linked-assignment #hw-toolbar-bar,
 body.hw-hub-no-linked-assignment .hw-mg-widget,
 body.hw-hub-no-linked-assignment .hw-hc-launcher {
   display: none !important;
+}
+
+/* Curriculum Prayer / Situation — keep Christian's Glass·Cloud pill even with no HW sheet */
+body.hw-hub-no-linked-assignment.hw-prayer-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-noplan-view.hw-prayer-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-no-hw-view.hw-prayer-toolbar #hw-toolbar-bar,
+body.hw-hub-no-linked-assignment.hw-sit-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-noplan-view.hw-sit-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-no-hw-view.hw-sit-toolbar #hw-toolbar-bar,
+body.hw-hub-no-linked-assignment.hw-hub-content-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-noplan-view.hw-hub-content-toolbar #hw-toolbar-bar,
+body.hw-hub-v5-no-hw-view.hw-hub-content-toolbar #hw-toolbar-bar {
+  display: flex !important;
 }
 
 .hw-hub-v5-price-compare {
@@ -4221,6 +4565,75 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   color: rgba(244, 246, 250, 0.55);
 }
 
+/* Collapse toggle — small circle handle (shown on mobile / when collapsed) */
+.hw-tool-layout-tools__toggle {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.3);
+  color: #f4f6fa;
+  cursor: pointer;
+}
+
+.hw-tool-layout-tools__toggle-dots,
+.hw-tool-layout-tools__toggle-dots::before,
+.hw-tool-layout-tools__toggle-dots::after {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.hw-tool-layout-tools__toggle-dots {
+  position: relative;
+  display: inline-block;
+}
+
+.hw-tool-layout-tools__toggle-dots::before,
+.hw-tool-layout-tools__toggle-dots::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.hw-tool-layout-tools__toggle-dots::before {
+  top: -5px;
+}
+
+.hw-tool-layout-tools__toggle-dots::after {
+  top: 5px;
+}
+
+/* Collapsed: panel shrinks to just the circle handle */
+.hw-tool-layout-tools.is-collapsed {
+  min-width: 0;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.hw-tool-layout-tools.is-collapsed > :not(.hw-tool-layout-tools__toggle) {
+  display: none !important;
+}
+
+.hw-tool-layout-tools.is-collapsed .hw-tool-layout-tools__toggle {
+  position: static;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
 .hw-tool-layout-tools__readout {
   margin: 0 0 0.55rem;
   font-variant-numeric: tabular-nums;
@@ -4263,6 +4676,101 @@ body.hw-hub-v5-toolbar-embed.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
   font-size: 0.65rem;
   line-height: 1.3;
   color: rgba(244, 246, 250, 0.5);
+}
+
+/* Send HW (teacher viewing a student) */
+.hw-tool-layout-tools__quicksend {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hw-tool-layout-tools__quicksend[hidden] {
+  display: none !important;
+}
+
+.hw-tool-layout-tools__send-combo {
+  position: relative;
+  margin: 0 0 0.4rem;
+}
+
+.hw-tool-layout-tools__send-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.3);
+  color: #f4f6fa;
+  font: 500 0.72rem/1.3 var(--font-sans, system-ui, sans-serif);
+}
+
+.hw-tool-layout-tools__send-input::placeholder {
+  color: rgba(244, 246, 250, 0.45);
+}
+
+/* Autocomplete suggestions (Google-style) */
+.hw-tool-layout-tools__suggest {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 5002;
+  margin: 0;
+  padding: 0.2rem;
+  list-style: none;
+  max-height: 13rem;
+  overflow-y: auto;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(16, 24, 42, 0.98);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+}
+
+.hw-tool-layout-tools__suggest[hidden] {
+  display: none !important;
+}
+
+.hw-tool-layout-tools__suggest-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.hw-tool-layout-tools__suggest-item:hover,
+.hw-tool-layout-tools__suggest-item.is-active {
+  background: rgba(212, 138, 56, 0.28);
+}
+
+.hw-tool-layout-tools__suggest-title {
+  font: 600 0.72rem/1.25 var(--font-sans, system-ui, sans-serif);
+  color: #f4f6fa;
+}
+
+.hw-tool-layout-tools__suggest-title mark {
+  background: transparent;
+  color: #ffcf8f;
+  font-weight: 800;
+}
+
+.hw-tool-layout-tools__suggest-id {
+  font: 500 0.6rem/1.2 var(--font-sans, system-ui, sans-serif);
+  color: rgba(244, 246, 250, 0.5);
+}
+
+.hw-tool-layout-tools__send-status {
+  margin: 0.4rem 0 0;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  color: rgba(244, 246, 250, 0.7);
+  word-break: break-word;
+}
+
+.hw-tool-layout-tools__send-status.is-error {
+  color: #ffb4a8;
 }
 
 .hw-tool-coord-toast {
@@ -4313,7 +4821,8 @@ body.hw-account-mode #hw-v5-status-bubble-wrap {
 
 body:not(.hw-account-mode) #hw-v5-panel-profile,
 body:not(.hw-account-mode) #hw-v5-panel-subscription,
-body:not(.hw-account-mode) #hw-v5-panel-notifications {
+body:not(.hw-account-mode) #hw-v5-panel-notifications,
+body:not(.hw-account-mode) #hw-v5-panel-features {
   display: none !important;
 }
 
@@ -4321,7 +4830,7 @@ body.hw-account-mode #hw-v5-panel-homework {
   display: none !important;
 }
 
-body.hw-account-mode #hw-v5-below > .hw-hub-v5-panel:not([data-v5-panel="profile"]):not([data-v5-panel="subscription"]):not([data-v5-panel="notifications"]) {
+body.hw-account-mode #hw-v5-below > .hw-hub-v5-panel:not([data-v5-panel="profile"]):not([data-v5-panel="subscription"]):not([data-v5-panel="notifications"]):not([data-v5-panel="features"]) {
   display: none !important;
 }
 
@@ -4681,6 +5190,69 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   overflow: visible;
 }
 
+/* Cancel subscription block under the plan cards */
+.hw-account-cancel {
+  max-width: 48rem;
+  margin: 1.6rem auto 0.4rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border-strong, rgba(255, 255, 255, 0.18));
+  border-radius: 0.8rem;
+  text-align: center;
+}
+
+.hw-account-cancel[hidden] {
+  display: none;
+}
+
+.hw-account-cancel__title {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+}
+
+.hw-account-cancel__line {
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+
+.hw-account-cancel__line--soft {
+  opacity: 0.8;
+  font-size: 0.92rem;
+}
+
+.hw-account-cancel__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  margin: 0.4rem 0 0;
+}
+
+.hw-account-cancel__manage {
+  font-size: 0.9rem;
+}
+
+.hw-account-cancel__keep {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+[data-cancel-step][hidden] {
+  display: none;
+}
+
+[data-cancel-step] .hw-account-delete-dialog__actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
 .hw-account-plans .hw-hub-tier-plan {
   position: relative;
   overflow: visible;
@@ -4821,17 +5393,41 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 .hw-account-notify-error {
   max-width: 22rem;
   margin: -0.35rem 0 0.95rem;
-  color: var(--color-accent, #c0392b);
+  color: #fff;
   font-weight: 600;
   font-size: 0.9rem;
   line-height: 1.4;
   text-align: left;
 }
 
+.hw-account-discord-need-link {
+  color: #fff;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.hw-account-discord-need-link:hover,
+.hw-account-discord-need-link:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.hw-account-features-note {
+  max-width: 22rem;
+  margin: 0 0 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  text-align: left;
+}
+
+/* Sits right after the tab name (not stuck in the cell corner, where it looked like it belonged to the next tab). */
 .hw-hub-v5-tabs__star {
-  position: absolute;
-  top: 0.04rem;
-  right: 0.14rem;
+  position: relative;
+  display: inline-block;
+  top: -0.12em;
+  margin-left: 0.25rem;
   font-size: 0.7rem;
   line-height: 1;
   color: #d4a017;
@@ -4839,24 +5435,220 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   text-shadow: 0 0 6px color-mix(in srgb, #ffe08a 70%, transparent);
 }
 
-.hw-hub-v5-tabs__btn:has(.hw-hub-v5-tabs__star:not([hidden])) {
-  padding-right: 0.95rem;
-}
-
 .hw-quest-root {
   min-width: 0;
+  max-width: 100%;
+  padding-bottom: 6.5rem;
 }
 
 .hw-quest {
+  position: relative;
   padding: 1rem 1.05rem 1.2rem;
   border: 1px solid var(--color-border-strong);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--color-bg-card) 88%, transparent);
   text-align: center;
   width: 100%;
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   box-sizing: border-box;
+  /* Tip pops over content — don’t clip the overlay. */
+  overflow: visible;
+}
+
+/* Quest toolbar — same pill as HW, fixed at bottom when Quest tab is open. */
+.hw-quest-toolbar.hw-toolbar-bar {
+  pointer-events: auto;
+}
+
+body:not(.hw-account-mode) #hw-v5-panel-quest:not([hidden]) ~ .hw-quest-toolbar,
+#hw-v5-quest-root .hw-quest-toolbar {
+  display: flex;
+}
+
+.hw-quest-toolbar[hidden] {
+  display: none !important;
+}
+
+.hw-quest__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin: 0 auto 0.75rem;
+  max-width: 16rem;
+}
+
+.hw-quest__nav-day {
+  min-width: 5.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-quest__nav-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-green) 45%, var(--color-border-strong));
+  background: color-mix(in srgb, var(--color-bg-elevated) 88%, var(--color-green));
+  color: var(--color-text);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-quest__nav-btn:hover:not(:disabled),
+.hw-quest__nav-btn:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-green) 62%, transparent);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-green) 22%, transparent);
+}
+
+.hw-quest__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.hw-toolbar-bar__icon--puzzle svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+/* Monthly animal puzzle dialog */
+.hw-quest-puzzle-open {
+  overflow: hidden;
+}
+
+.hw-quest-puzzle-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.hw-quest-puzzle-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #0f1629 72%, transparent);
+}
+
+.hw-quest-puzzle-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  max-height: min(92vh, 42rem);
+  overflow: auto;
+  padding: 1rem 1rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg-card) 96%, var(--color-bg));
+  box-shadow: 0 18px 48px color-mix(in srgb, #000 38%, transparent);
+}
+
+.hw-quest-puzzle-dialog__head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.5rem;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
+
+.hw-quest-puzzle-dialog__title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.hw-quest-puzzle-dialog__sub {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.hw-quest-puzzle-dialog__close {
+  appearance: none;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-quest-puzzle-dialog__hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.hw-quest-puzzle {
+  position: relative;
+  aspect-ratio: 364 / 280;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-green) 6%, #f4efe6);
+  border: 1px solid color-mix(in srgb, var(--color-green) 28%, var(--color-border-strong));
+}
+
+.hw-quest-puzzle--snake {
+  background:
+    radial-gradient(ellipse at 65% 40%, color-mix(in srgb, var(--color-green) 10%, transparent), transparent 50%),
+    #f3eee4;
+}
+
+.hw-quest-puzzle__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hw-quest-puzzle__piece path {
+  fill: color-mix(in srgb, #c4b49a 55%, #fff);
+  stroke: color-mix(in srgb, #5a4a38 45%, transparent);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  opacity: 0.42;
+  transition: fill 0.15s ease, opacity 0.15s ease, stroke 0.15s ease;
+}
+
+.hw-quest-puzzle__piece.is-earned path {
+  fill: color-mix(in srgb, var(--color-green) 62%, #e8f5ec);
+  stroke: color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 55%, transparent);
+  opacity: 1;
+  filter: drop-shadow(0 1px 0.5px color-mix(in srgb, #000 16%, transparent));
+}
+
+.hw-quest-puzzle__piece.is-head.is-earned path {
+  fill: color-mix(in srgb, var(--color-green) 72%, #fff);
+}
+
+.hw-quest-puzzle__piece-num {
+  fill: color-mix(in srgb, var(--color-text-muted) 70%, transparent);
+  font-size: 7.5px;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-quest-puzzle__piece.is-earned .hw-quest-puzzle__piece-num {
+  fill: color-mix(in srgb, #14301c 85%, transparent);
 }
 
 .hw-quest--soon-only {
@@ -4893,67 +5685,217 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
 }
 
 .hw-quest__target-box {
+  position: relative;
   margin: 0 auto 0.85rem;
-  padding: 0.85rem 0.9rem;
+  padding: 1.45rem 1.15rem;
   max-width: 100%;
   border-radius: 0.95rem;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  /* Elevated plaque — stands off the quest card using hub greens, not cream. */
+  border: 1.5px solid color-mix(in srgb, var(--color-green) 52%, var(--color-border-strong));
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-accent-soft, rgba(103, 196, 235, 0.18)) 82%, transparent),
-    color-mix(in srgb, var(--color-bg) 92%, transparent)
+    color-mix(in srgb, var(--color-green) 10%, var(--color-bg-elevated)),
+    color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 8%, var(--color-bg-card))
   );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--hw-diary-spine, #3d5c48) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-green) 22%, transparent),
+    0 6px 16px color-mix(in srgb, #0f1629 34%, transparent);
   overflow: hidden;
 }
 
 .hw-quest__target {
   margin: 0;
+  font-family: "Noto Sans JP", "Josefin Sans", Inter, sans-serif;
   font-size: clamp(1.65rem, 7vw, 3.35rem);
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.2;
+  color: var(--color-text);
   text-wrap: balance;
   word-break: break-word;
 }
 
+/* Arm in the prompt box flips Daily Exercise over to this week's workout. */
+.hw-hour-quest .hw-ex-arm {
+  position: absolute;
+  top: auto;
+  bottom: 0.12rem;
+  right: 0.15rem;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.85rem, 9vw, 2.35rem);
+  height: clamp(1.85rem, 9vw, 2.35rem);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-hour-quest .hw-ex-arm:hover {
+  filter: brightness(1.08);
+}
+
+.hw-hour-quest .hw-ex-arm[aria-pressed="true"] {
+  box-shadow: none;
+  filter: drop-shadow(0 0 0.35rem var(--color-accent-vivid, #e85545));
+}
+
+.hw-hour-quest .hw-ex-arm__ico {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.hw-hour-quest.is-workout .hw-workout-pic {
+  display: block;
+  width: 100%;
+  height: 11.5rem;
+  object-fit: contain;
+  margin: 0 0 0.85rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 18%, var(--color-bg-elevated));
+}
+
+.hw-workout-pic[hidden] {
+  display: none !important;
+}
+
+.hw-hour-quest.is-workout .hw-ex-arm {
+  top: 0.4rem;
+  bottom: auto;
+}
+
+.hw-hour-quest.is-workout .hw-quest__target-box {
+  border-color: color-mix(in srgb, var(--color-accent-vivid, #e85545) 58%, var(--color-border-strong));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent-vivid, #e85545) 16%, var(--color-bg-elevated)),
+    color-mix(in srgb, var(--color-accent-vivid, #e85545) 6%, var(--color-bg-card))
+  );
+}
+
+.hw-hour-quest.is-workout .hw-quest__target {
+  font-size: clamp(1.05rem, 2.8vw, 1.45rem);
+  font-weight: 650;
+  line-height: 1.4;
+  padding: 0.15rem 0.2rem 0.1rem;
+}
+
+.hw-hour-quest.is-workout .hw-next-update,
+#hw-v5-panel-workouts:has(.hw-hour-quest.is-workout) .hw-next-update {
+  display: none;
+}
+
+.hw-ex-workout {
+  margin: 0.2rem auto 0;
+  max-width: 36rem;
+  text-align: center;
+}
+
+.hw-ex-workout[hidden] {
+  display: none !important;
+}
+
+.hw-ex-workout__task {
+  margin: 0 0 0.85rem;
+  color: var(--color-text);
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.hw-ex-workout__examples {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.hw-ex-workout__examples li {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.hw-ex-workout__actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/*
+ * Important tip: wrap/button keep normal flow size.
+ * Message is absolute so opening it never grows article.hw-quest.
+ */
 .hw-quest__important-wrap {
+  position: relative;
+  z-index: 4;
   display: flex;
   justify-content: center;
   margin: 0 0 0.95rem;
   width: 100%;
-  max-width: 34rem;
+  max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
-.hw-quest__important {
+/* Beat global .hw-recording-tip { display: contents } so absolute tip anchors here. */
+.hw-quest .hw-recording-tip.hw-quest__important {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin: 0;
-  display: grid;
-  justify-items: center;
   width: 100%;
-  max-width: 34rem;
+  max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .hw-quest__important .hw-recording-tip__trigger {
   margin: 0 auto;
   min-width: 0;
+  flex: 0 0 auto;
 }
 
 .hw-quest__important .hw-recording-tip__message {
-  width: 100%;
-  max-width: 100%;
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  width: auto;
+  max-width: none;
   min-width: 0;
   display: block;
   box-sizing: border-box;
-  margin: 0.55rem auto 0;
+  margin: 0;
   padding: 0.75rem 0.9rem;
-  white-space: pre-wrap;
+  white-space: pre-line;
   overflow-wrap: anywhere;
   word-break: break-word;
   overflow-x: hidden;
   text-align: left;
   border: 1px solid color-mix(in srgb, var(--color-border-strong) 76%, transparent);
   border-radius: 0.8rem;
-  background: color-mix(in srgb, var(--color-bg) 96%, transparent);
+  background: color-mix(in srgb, var(--color-bg-card) 96%, var(--color-bg));
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 28%, transparent);
+  z-index: 5;
+}
+
+/* Must beat the display:block above — otherwise Important never collapses. */
+.hw-quest__important .hw-recording-tip__message[hidden] {
+  display: none !important;
 }
 
 .hw-quest__examples {
@@ -4978,6 +5920,220 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   font: inherit;
 }
 
+.hw-ex-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* display:flex above beats the hidden attribute, so rows 6-10 showed all at once. */
+.hw-ex-line[hidden],
+.hw-ex-view[hidden],
+.hw-quest__more [hidden] {
+  display: none;
+}
+
+.hw-ex-line input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  text-overflow: ellipsis;
+}
+
+.hw-ex-line.has-view input {
+  padding-right: 2.3rem;
+}
+
+/* a line you've typed in gets the white outline (like the Past submissions button) */
+.hw-ex-line input:not(:placeholder-shown),
+.hw-quest__examples input:not(:placeholder-shown) {
+  border-color: var(--color-text, #e8edf5);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text, #e8edf5) 35%, transparent);
+}
+
+/* mic = brand orange; after a take it turns into a brand-blue play triangle (same as the worksheet player) */
+.hw-ex-line .hw-ex-rec {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--color-accent-vivid, #e85545);
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hw-ex-line .hw-ex-rec .hw-ex-ico {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.hw-ex-line .hw-ex-rec:hover {
+  filter: brightness(1.08);
+}
+
+.hw-ex-line .hw-ex-rec.is-live {
+  animation: hw-ex-live 1.1s ease-in-out infinite;
+}
+
+@keyframes hw-ex-live {
+  50% {
+    box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--color-accent-vivid, #e85545) 30%, transparent);
+  }
+}
+
+.hw-ex-line .hw-ex-rec.has-clip {
+  background: var(--color-brand-blue, #67c4eb);
+  color: var(--hw-hourglass-stroke, #1a2744);
+}
+
+.hw-lesson-latest__pic img:not([src]) {
+  display: none;
+}
+
+.hw-ex-line .hw-ex-rec.has-clip.is-playing {
+  background: color-mix(in srgb, var(--color-accent-vivid, #e85545) 28%, var(--color-brand-blue, #67c4eb));
+}
+
+/* remove-example × : PC only, sits just right of the row, only on lines that have something in them */
+.hw-ex-del {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 0.4rem);
+  transform: translateY(-50%);
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-ex-del:hover {
+  color: var(--color-accent-vivid, #e85545);
+  background: color-mix(in srgb, var(--color-accent-vivid, #e85545) 14%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 700px) {
+  .hw-ex-line:has(input:not(:placeholder-shown)) .hw-ex-del,
+  .hw-ex-line:has(.hw-ex-rec.has-clip) .hw-ex-del,
+  .hw-quest__ex-row:has(input:not(:placeholder-shown):not([readonly])) .hw-ex-del {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.hw-quest__ex-row {
+  position: relative;
+}
+
+/* phones: let a left swipe on a filled line be ours */
+.hw-quest__ex-row,
+.hw-ex-line:not(.hw-ex-line--add) {
+  touch-action: pan-y;
+}
+
+.hw-ex-line .hw-ex-rec--ghost {
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+/* the next empty line looks like the others: a field + a mic, just faded and dashed */
+.hw-ex-line .hw-ex-add-field {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hw-ex-line .hw-ex-add-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hw-plus-ico {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.hw-quest__more {
+  text-align: center;
+}
+
+.hw-quest__more .hw-quest__plus {
+  width: 2.6rem;
+  min-height: 2rem;
+  padding: 0.3rem 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hw-ex-line .hw-ex-add-field:hover {
+  color: var(--color-text);
+  border-style: solid;
+}
+
+/* long sentence: little "see all" button at the end of the line */
+.hw-ex-line .hw-ex-view {
+  position: absolute;
+  top: 50%;
+  right: calc(2.35rem + 0.45rem + 0.3rem);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--color-bg-card) 70%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.hw-ex-line .hw-ex-view[hidden] {
+  display: none;
+}
+
+.hw-ex-line .hw-ex-view .hw-ex-ico {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.hw-ex-line .hw-ex-view:hover {
+  color: var(--color-text);
+}
+
+.hw-ex-clip {
+  width: 8.5rem;
+  height: 2rem;
+}
+
 .hw-quest__more {
   margin: -0.25rem 0 0.95rem;
 }
@@ -4991,6 +6147,98 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   margin-bottom: 1.1rem;
 }
 
+.hw-quest__actions .btn {
+  min-width: 12rem;
+}
+
+/* Submit + Past submissions: outside the card, same size, like Past homework under the HW tab */
+.hw-ex-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.75rem 0 0.35rem;
+}
+
+#hw-v5-panel-notebook[hidden] + .hw-ex-actions,
+#hw-v5-panel-situations[hidden] + .hw-sit-actions {
+  display: none;
+}
+
+/* Situation card on the hub: the title lives in the green box above, not again on the card */
+.hw-sit-cards--one .hw-sit-flip__face--jp .hw-sit-flip__title {
+  display: none;
+}
+
+.hw-sit-cards--one .hw-sit-titlebox {
+  margin-bottom: 0.65rem;
+}
+
+.hw-sit-cards--one .hw-sit-titlebox .hw-quest__target {
+  text-align: center;
+}
+
+.hw-sit-cards--one .hw-sit-flip-hint {
+  margin: 0 0 0.2rem;
+  text-align: center;
+}
+
+.hw-ex-actions__btn {
+  width: 12rem;
+  max-width: 100%;
+  min-height: 2.45rem;
+  justify-content: center;
+}
+
+/* small Play / Delete prompt on a finished recording */
+.hw-ex-pop {
+  position: fixed;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.8rem;
+  background: var(--color-bg-card);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 35%, transparent);
+}
+
+.hw-ex-pop > .btn {
+  min-width: 6.5rem;
+}
+
+.hw-ex-pop__q {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.hw-ex-pop__row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.hw-ex-pop__danger {
+  color: var(--color-accent-vivid, #e85545);
+}
+
+/* whole sentence popup */
+.hw-ex-sentence__text {
+  margin: 0.5rem 0 0.25rem;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 1.5rem;
+  line-height: 2.3;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.hw-ex-sentence__text rt {
+  font-size: 0.5em;
+  color: var(--color-green, #4ade80);
+}
+
 .hw-quest__save-msg {
   margin: 0;
   font-size: 0.85rem;
@@ -5001,35 +6249,30 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   color: var(--color-accent, #c0392b);
 }
 
-.hw-quest__puzzle {
-  margin: 0 auto;
-  max-width: 20rem;
+.hw-daily-past-lines {
+  margin: 0.35rem 0 0;
+  padding-left: 1.25rem;
+  font-family: Inter, sans-serif;
+  line-height: 1.55;
 }
 
-.hw-quest__puzzle-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  min-width: 12rem;
-  padding: 0.75rem 1rem;
-  border: 1px dashed color-mix(in srgb, var(--color-border-strong) 80%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-bg) 55%, transparent);
-  color: var(--color-text);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
+.hw-daily-past-lines li + li {
+  margin-top: 0.4rem;
 }
 
-.hw-quest__puzzle-link:hover,
-.hw-quest__puzzle-link:focus-visible {
-  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  outline: none;
+#hw-daily-past-modal-detail .btn {
+  margin-bottom: 0.65rem;
 }
 
-.hw-quest__puzzle-icon {
-  font-size: 1.1rem;
+.hw-quest-confirm-popover {
+  min-width: 11rem;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+}
+
+.hw-quest-confirm-popover .hw-delete-confirm-popover__q {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .hw-quest__soon {
@@ -5038,7 +6281,2011 @@ body.hw-account-mode.hw-role-teacher #hw-account-teacher-app {
   letter-spacing: 0.02em;
 }
 
-.hw-quest__puzzle .hw-quest__soon-note {
-  margin-bottom: 0;
+/* Quest Only — intro video placeholder */
+.hw-quest-intro {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(26, 39, 68, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
 }
 
+.hw-quest-intro__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.hw-quest-intro__desc {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-quest-intro__video {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 9rem;
+  border-radius: var(--radius-md, 8px);
+  background: linear-gradient(135deg, rgba(87, 167, 115, 0.12), rgba(26, 39, 68, 0.06));
+  border: 1px dashed rgba(26, 39, 68, 0.18);
+}
+
+.hw-quest-intro__video-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.hw-quest__video-soon {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #9aa8bd);
+}
+
+.hw-quest__wonder {
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+}
+
+.hw-quest__wonder-note {
+  margin: 0 0 0.2rem;
+  line-height: 1.45;
+}
+
+.hw-sit-cards .hw-sit-ruby {
+  display: none;
+}
+
+.hw-sit-cards.is-furi .hw-sit-plain {
+  display: none;
+}
+
+.hw-sit-cards.is-furi .hw-sit-ruby {
+  display: inline;
+}
+
+.hw-sit-cards rt {
+  font-size: 0.55em;
+  font-weight: 500;
+}
+
+.hw-prayer-part {
+  margin: 0 0 1.1rem;
+}
+
+.hw-prayer-part .hw-star-block__pool {
+  align-items: start;
+}
+
+.hw-prayer-part__label {
+  margin: 0 0 0.35rem;
+  text-align: center;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hw-prayer-part__spoken {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.hw-prayer-part__fixed {
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+.hw-prayer-part .hw-star-block__chip,
+.hw-prayer-part .hw-star-block__slot-text,
+.hw-prayer__sheet ruby {
+  line-height: 1.85;
+}
+
+.hw-prayer-part rt,
+.hw-prayer__sheet rt {
+  font-size: 0.55em;
+  font-weight: 500;
+}
+
+.hw-prayer-create,
+.hw-prayer-change {
+  display: block;
+  margin: 0.85rem auto 0;
+}
+
+.hw-prayer-create {
+  background: var(--color-accent-vivid, #e85545);
+  border-color: var(--color-accent-vivid, #e85545);
+  color: #fff;
+}
+
+.hw-prayer-create[hidden],
+.hw-prayer-build[hidden],
+.hw-prayer-result[hidden],
+.hw-prayer-part[hidden] {
+  display: none !important;
+}
+
+.hw-prayer-part .hw-star-block__chip[hidden],
+.hw-prayer-part .hw-star-block__slot[hidden],
+.hw-prayer-part [data-prayer-wo][hidden] {
+  display: none !important;
+}
+
+.hw-prayer-build > .hw-worksheet__slide-nav-row {
+  margin-bottom: 0.35rem;
+}
+
+/* Quest Only hub — hide HW chrome */
+body.hw-hub-v5-quest-only #hw-v5-panel-homework {
+  display: none !important;
+}
+
+body.hw-hub-v5-quest-only .hw-hub-v5-tabs-wrap {
+  margin-top: 0.25rem;
+}
+
+/* Weekly workouts */
+.hw-workout-root {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.hw-workout {
+  padding: 0.25rem 0 1.5rem;
+}
+
+.hw-workout-root--embed {
+  margin-top: 1.5rem;
+}
+
+.hw-workout__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.hw-workout__status {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.hw-workout__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hw-workout__nav-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(26, 39, 68, 0.15);
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+.hw-workout__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hw-workout__nav-label {
+  font-weight: 700;
+  min-width: 5rem;
+  text-align: center;
+}
+
+.hw-workout__card {
+  padding: 1.1rem 1.15rem;
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  margin-bottom: 1rem;
+}
+
+html[data-theme="light"] .hw-workout__card {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(26, 39, 68, 0.08);
+}
+
+.hw-workout__card--rest {
+  background: rgba(87, 167, 115, 0.1);
+}
+
+.hw-workout__card-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.hw-workout__task {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hw-workout__examples {
+  margin: 0.75rem 0 0;
+  padding-left: 1.15rem;
+  line-height: 1.55;
+}
+
+.hw-workout__examples li {
+  margin: 0.2rem 0;
+}
+
+.hw-workout__tip,
+.hw-workout__bonus {
+  margin: 0.75rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.hw-workout__tip {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(87, 167, 115, 0.1);
+  color: var(--color-text);
+}
+
+.hw-workout__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.hw-workout__foot {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.hw-workout__soon-only,
+.hw-workout--soon-only .hw-workout__soon-only {
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+/* Curriculum hubs on a computer: two rows, every tab visible.
+   Phones use .hw-tab-slides instead — 4 tabs, swipe for the next set. */
+body.hw-curriculum-hub .hw-hub-v5-tabs-wrap {
+  display: block;
+}
+
+body.hw-curriculum-hub .hw-hub-v5-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+body.hw-curriculum-hub .hw-hub-v5-tabs__btn {
+  flex: 1 1 8.6rem;
+}
+
+@media (max-width: 820px) {
+  body.hw-tab-slides .hw-hub-v5-tabs,
+  body.hw-curriculum-hub.hw-tab-slides .hw-hub-v5-tabs {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  body.hw-tab-slides .hw-hub-v5-tabs__btn,
+  body.hw-curriculum-hub.hw-tab-slides .hw-hub-v5-tabs__btn {
+    flex: 1 1 0;
+  }
+
+  body.hw-tab-slides .hw-hub-v5-tabs__btn[hidden] {
+    display: none !important;
+  }
+
+  .hw-slide-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    margin: 0.35rem 0 0;
+  }
+
+  .hw-slide-dots__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    cursor: pointer;
+  }
+
+  .hw-slide-dots__dot.is-on {
+    background: var(--color-green);
+    transform: scale(1.25);
+  }
+
+  body.hw-tab-slides .hw-hub-v5-tabs.is-nudge {
+    animation: hw-tab-nudge 0.7s ease;
+  }
+}
+
+@keyframes hw-tab-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  45% {
+    transform: translateX(-12px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.hw-hub-v5-tabs__arrow {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg-card) 78%, transparent);
+  color: var(--color-text);
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-hub-v5-tabs__arrow[hidden] {
+  display: none !important;
+}
+
+.hw-sit-cards h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.hw-sit-cards__lede {
+  margin: 0 0 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.hw-sit-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1.1rem;
+}
+
+.hw-sit-flip {
+  appearance: none;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  perspective: 900px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Japanese face stays in normal flow so the button has a real width and
+   height. Absolute faces + overflow:auto collapsed it to an empty scrollbar. */
+.hw-sit-flip__inner {
+  position: relative;
+  display: grid;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 0.45s ease;
+}
+
+.hw-sit-flip.is-flipped .hw-sit-flip__inner {
+  transform: rotateY(180deg);
+}
+
+.hw-sit-flip__face {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.85rem;
+  box-sizing: border-box;
+  padding: 1.05rem 1.15rem 1.2rem;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--color-brand-blue, #67c4eb) 42%, var(--color-border-strong));
+  background: var(--color-bg-card);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  min-width: 0;
+  grid-area: 1 / 1;
+}
+
+.hw-sit-flip__face--jp {
+  position: relative;
+  transform: rotateY(0deg);
+}
+
+.hw-sit-flip__face--en {
+  position: relative;
+  inset: auto;
+  height: 100%;
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.hw-sit-flip img {
+  width: 100%;
+  height: 11.5rem;
+  object-fit: contain;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--color-brand-blue, #67c4eb) 18%, var(--color-bg-elevated));
+  flex: 0 0 auto;
+}
+
+.hw-sit-flip__kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hw-sit-flip__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.hw-sit-flip__face--jp .hw-sit-flip__title {
+  font-family: "Noto Sans JP", sans-serif;
+  line-height: 1.85;
+}
+
+.hw-sit-flip__face--jp .hw-sit-flip__title rt {
+  font-size: 0.5em;
+  font-weight: 500;
+}
+
+.hw-sit-flip__text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.hw-sit-flip__face--jp .hw-sit-flip__text {
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+.hw-today h2,
+.hw-prayer h2,
+.hw-core-page h2,
+.hw-chapters h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+}
+
+.hw-prayer h2 {
+  text-align: center;
+}
+
+/* 今日は2026年10月9日、金曜日です — furigana on, centered. */
+.hw-datebar {
+  margin: 0 0 1rem;
+  text-align: center;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  font-size: 1.45rem;
+  line-height: 2.2;
+  color: var(--color-text, inherit);
+  /* one line always; a little script shrinks the text when the phone is narrow */
+  white-space: nowrap;
+}
+
+.hw-datebar ruby {
+  ruby-align: center;
+  margin: 0 0.08em;
+}
+
+.hw-datebar rt {
+  font-size: 0.52em;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--color-text-muted, inherit);
+}
+
+#hw-datebar-hw {
+  margin: 0 0 0.5rem;
+}
+
+.hw-today__lede,
+.hw-prayer__lede,
+.hw-ch-note,
+.hw-core-page > p,
+.hw-core-strip p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.hw-today > ol {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* To-do rows: memo cloud A. Words stay white. Checked: same cloud, text crossed out. */
+.hw-today h2 {
+  text-align: center;
+  font-size: 2rem;
+}
+
+.hw-today__row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 4.25rem;
+  padding: 1.05rem 1.2rem;
+  border-radius: 0.85rem;
+  color: #fff;
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #2d6a4f));
+  border: 1.5px solid color-mix(in srgb, var(--color-green, #2d6a4f) 35%, transparent);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  font-size: 1.05rem;
+  line-height: 1.45;
+}
+
+/* List rows: teacher memo green (open cloud, not the hub-tab pill). Font only is white. */
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) {
+  color: #fff;
+  background: color-mix(in srgb, #36b87a 22%, #1a2744);
+  border: 1.5px solid #36b87a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) .hw-today__go,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) ruby,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) rt {
+  color: #fff;
+}
+
+/* Struck-through completed labels (prayer, word, exercise, cards, quest) use memo green. */
+.hw-today > ol > .hw-today__row.is-done:not(.hw-today__row--map) .hw-today__go,
+.hw-today > ol > .hw-today__row.is-done:not(.hw-today__row--map) ruby,
+.hw-today > ol > .hw-today__row.is-done:not(.hw-today__row--map) rt {
+  color: #36b87a;
+}
+
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map):hover .hw-today__go,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) .hw-today__go:hover,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map) .hw-today__go:focus-visible,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map):hover ruby,
+.hw-today > ol > .hw-today__row:not(.hw-today__row--map):hover rt {
+  color: #8dffc4;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+/* Checked row: same open-cloud memo green. Label is green and struck through. */
+.hw-today > ol > .hw-today__row.is-done:not(.hw-today__row--map) {
+  color: #fff;
+  background: color-mix(in srgb, #36b87a 22%, #1a2744);
+  border: 1.5px solid #36b87a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.hw-today__row.is-done .hw-today__go {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.hw-today__row--map {
+  width: 100%;
+  justify-content: center;
+  align-self: center;
+  padding: 0.9rem 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+}
+
+.hw-today__row--map .hw-today__go {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 2px 12px var(--color-accent-glow);
+}
+
+.hw-today__row--map .hw-today__go:hover,
+.hw-today__row--map .hw-today__go:focus-visible {
+  background: var(--color-accent-hover);
+  color: #fff;
+}
+
+.hw-today__box {
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.hw-today__box input {
+  appearance: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  border-radius: 0.4rem;
+  border: 1.5px solid #36b87a;
+  background: #36b87a;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.hw-today__box input::after {
+  content: "";
+  width: 0.28rem;
+  height: 0.52rem;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.hw-today__row:not(.is-done) .hw-today__box input {
+  border-color: #36b87a;
+  background: #36b87a;
+}
+
+.hw-today__box input:checked {
+  border-color: #36b87a;
+  background: #36b87a;
+  box-shadow: none;
+}
+
+.hw-today__box input:checked::after {
+  border-color: #fff;
+}
+
+.hw-today__box input:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.hw-today__go {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  flex: 1;
+}
+
+.hw-today__example {
+  grid-column: 2;
+  margin: 0.15rem 0 0;
+  font-family: "Noto Sans JP", sans-serif;
+  line-height: 1.6;
+}
+
+.hw-today__row .hw-core-strip {
+  grid-column: 2;
+  margin: 0.25rem 0 0;
+}
+
+.hw-today__overview {
+  margin: 1rem 0 0;
+}
+
+.hw-today__overview .hw-today__go,
+.hw-curriculum-textbook .lede .hw-today__go,
+.hw-sit-cards .hw-today__go {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 55%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  color: var(--color-gold);
+  text-decoration: none;
+}
+
+.hw-hc-armed.hw-prayer,
+.hw-hc-armed .hw-prayer__sheet {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.hw-prayer__sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 1.15rem 1.3rem;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  font-weight: 450;
+  color: #fff;
+  line-height: 1.65;
+  cursor: default;
+}
+
+.hw-prayer__sheet p {
+  margin: 0;
+  font-weight: 450;
+  color: #fff;
+}
+
+.hw-prayer__scripture {
+  margin-top: 0.7rem;
+}
+
+.hw-prayer__verse-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #9aa3b5);
+}
+
+.hw-prayer__verse {
+  color: var(--color-gold);
+  font-weight: 450;
+  font-family: "Noto Sans JP", Inter, sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hw-prayer__scripture-text {
+  margin: 0.45rem 0 0;
+  padding: 0.85rem 1.05rem 0.7rem;
+  border-radius: 0.85rem;
+  color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-bg-elevated) 92%, var(--color-green));
+  border: 1.5px solid color-mix(in srgb, var(--color-green) 35%, transparent);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 450;
+  line-height: 2;
+}
+
+.hw-prayer__verse ruby,
+.hw-prayer__scripture-text ruby {
+  ruby-position: over;
+}
+
+.hw-prayer__verse rt,
+.hw-prayer__scripture-text rt {
+  font-size: 0.55em;
+  font-weight: 450;
+  line-height: 1;
+}
+
+.hw-quest__na {
+  font-size: 0.62em;
+  font-weight: 650;
+}
+
+.hw-core-kind {
+  margin: 0.15rem 0 0.4rem;
+  text-align: center;
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+.hw-core-kind-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+.hw-core-kind-list span {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.hw-core-kind-list .is-on {
+  color: #0d1b2a;
+  background: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-green) 70%, #fff);
+}
+
+.hw-core-says {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0 auto;
+  max-width: 36rem;
+  text-align: left;
+}
+
+.hw-say {
+  margin: 0;
+  padding: 0.9rem 1.05rem;
+  border-radius: 0.85rem;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 450;
+  line-height: 1.55;
+  color: var(--color-text);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.hw-say__label {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-family: Inter, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.hw-say--plain {
+  background: color-mix(in srgb, var(--color-bg-elevated) 86%, #ffe14a);
+  border: 1.5px solid color-mix(in srgb, #ffe14a 42%, transparent);
+}
+
+.hw-say--plain .hw-say__label {
+  color: #ffe14a;
+}
+
+.hw-say--polite {
+  background: color-mix(in srgb, var(--color-bg-elevated) 86%, #3ec5ff);
+  border: 1.5px solid color-mix(in srgb, #3ec5ff 45%, transparent);
+}
+
+.hw-say--polite .hw-say__label {
+  color: #3ec5ff;
+}
+
+.hw-word-pill {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(30rem, 100%);
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  text-align: center;
+}
+
+.hw-say__line {
+  font-weight: 450;
+}
+
+.hw-core-page .hw-quest__target-box {
+  overflow: visible;
+  margin-bottom: 0.55rem;
+  padding-top: 2rem;
+}
+
+.hw-core-page .hw-quest__target .hw-furi i {
+  font-size: 0.34em;
+  font-weight: 600;
+  transform: translate(-50%, -0.06rem);
+}
+
+.hw-core-page .hw-core-kind-list {
+  margin: 0 0 0.7rem;
+}
+
+.hw-core-page .hw-core-chip--green {
+  cursor: default;
+}
+
+.hw-word-pill__more {
+  display: block;
+  margin-top: 0.45rem;
+  max-width: none;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-family: Inter, sans-serif;
+  font-size: clamp(0.74rem, 3.2vw, 0.95rem);
+  font-weight: 450;
+  line-height: 1.35;
+  cursor: default;
+}
+
+.hw-word-pill__note {
+  display: none;
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  /* Overlay the Daily Exercise title: jump past the question box (negative top + own height). */
+  top: -6.05rem;
+  transform: translate(-50%, -100%);
+  width: min(16.5rem, 72vw);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  background: #10192c;
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  font-family: Inter, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 450;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.hw-word-pill:hover .hw-word-pill__note,
+.hw-word-pill.is-open .hw-word-pill__note {
+  display: block;
+}
+
+.hw-word-play__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.hw-word-play__row:has(.hw-word-play__arrow:not([hidden])) {
+  grid-template-columns: 2.1rem minmax(0, 1fr) 2.1rem;
+  column-gap: 0.45rem;
+}
+
+.hw-word-play__arrow {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--color-green) 70%, #fff);
+  background: color-mix(in srgb, var(--color-bg-elevated) 55%, var(--color-green));
+  color: #fff;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hw-word-play__row:has(.hw-word-play__arrow:not([hidden])) .hw-word-play__arrow[data-word-dir="-1"] {
+  grid-column: 1;
+  justify-self: center;
+  padding-right: 0.08rem;
+}
+
+.hw-word-play__row:has(.hw-word-play__arrow:not([hidden])) .hw-word-play__arrow[data-word-dir="1"] {
+  grid-column: 3;
+  justify-self: center;
+  padding-left: 0.08rem;
+}
+
+.hw-word-play__arrow[hidden] {
+  display: none;
+}
+
+.hw-word-play__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.hw-word-play [data-word-chip] {
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.hw-word-play__row:has(.hw-word-play__arrow:not([hidden])) [data-word-chip] {
+  grid-column: 2;
+  justify-self: stretch;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.hw-core-row,
+.hw-core-page ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.hw-core-row--low {
+  margin-top: 0.45rem;
+}
+
+.hw-core-today-word {
+  margin: 0 0 0.45rem;
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+.hw-core-chip {
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.55rem;
+  line-height: 1.35;
+  font-size: 1rem;
+  border: 1px solid transparent;
+}
+
+/* Live word pills copy the hub tab’s selected green until JD picks on the comparison page. */
+.hw-core-chip--green {
+  background: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-green) 70%, #fff);
+  color: #0d1b2a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.hw-core-chip--green[data-word-chip] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hw-core-chip--orange {
+  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-gold) 50%, transparent);
+  color: var(--color-gold);
+}
+
+.hw-core-chip--green span {
+  color: #0d1b2a;
+}
+
+.hw-core-chip span {
+  font-weight: 500;
+}
+
+.hw-ch-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+}
+
+.hw-ch-nums button {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, rgba(232, 237, 245, 0.2));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hw-ch-nums button:nth-child(-n+6) {
+  color: var(--color-green);
+  border-color: color-mix(in srgb, var(--color-green) 45%, transparent);
+  background: color-mix(in srgb, var(--color-green) 14%, transparent);
+}
+
+.hw-ch-nums button:nth-child(n+7) {
+  color: var(--color-gold);
+  border-color: color-mix(in srgb, var(--color-gold) 50%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 16%, transparent);
+}
+
+.hw-ch-nums button.is-on {
+  border-color: transparent;
+  color: #0f1629;
+}
+
+.hw-ch-nums button:nth-child(-n+6).is-on {
+  background: var(--color-green);
+}
+
+.hw-ch-nums button:nth-child(n+7).is-on {
+  background: var(--color-gold);
+}
+
+.hw-ch-card {
+  position: relative;
+  margin: 1rem 0 0;
+  padding: 1.35rem 1.15rem 1.15rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ch, #a78bfa) 40%, var(--color-border, rgba(232, 237, 245, 0.14)));
+  background: color-mix(in srgb, var(--ch, #a78bfa) 12%, #121f36);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ch, #a78bfa) 14%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.hw-ch-card__badge {
+  position: absolute;
+  top: -0.65rem;
+  left: 1rem;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: #0b162a;
+  border-radius: 999px;
+  background: var(--ch, #a78bfa);
+}
+
+.hw-ch-card__title {
+  margin: 0 0 0.65rem;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(1.2rem, 4.5vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.7;
+  color: var(--color-text, #e8edf5);
+}
+
+.hw-ch-card__en {
+  display: block;
+  margin: -0.4rem 0 0.75rem;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-muted, #9aa8bd);
+}
+
+.hw-ch-card ruby {
+  ruby-align: center;
+}
+
+.hw-ch-card rt {
+  font-size: 0.55em;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--ch, var(--color-gold)) 70%, var(--color-text-muted, #9aa8bd));
+}
+
+.hw-ch-rules,
+.hw-ch-lines {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.hw-ch-rules li,
+.hw-ch-lines li {
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--ch, #a78bfa) 40%, transparent);
+  background: color-mix(in srgb, var(--ch, #a78bfa) 16%, #0a1424);
+}
+
+.hw-ch-rules li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hw-ch-rules b {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--ch, #a78bfa);
+}
+
+.hw-ch-rules span {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--color-text-muted, #9aa8bd);
+}
+
+.hw-ch-lines li {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  line-height: 1.85;
+  color: var(--color-text, #e8edf5);
+}
+
+.hw-ch-later {
+  margin: 0.15rem 0 0;
+  color: var(--color-text-muted, #9aa8bd);
+  line-height: 1.45;
+}
+
+.hw-ch-links li:nth-child(odd) .hw-soft {
+  color: var(--color-green);
+}
+
+.hw-ch-links li:nth-child(even) .hw-soft {
+  color: var(--color-gold);
+}
+
+.hw-ch-links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.hw-soft {
+  position: relative;
+  display: inline-block;
+  color: var(--color-link, #8fd0f0);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.18em;
+  cursor: help;
+}
+
+.hw-soft__tip {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  width: min(22rem, 70vw);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  background: #10192c;
+  color: var(--color-text, #e8edf5);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.hw-soft:hover .hw-soft__tip,
+.hw-soft:focus-within .hw-soft__tip {
+  display: block;
+}
+
+body.hw-curriculum-hub .hw-hub-v5-panel--homework[hidden],
+body.hw-curriculum-hub .hw-hub-v5-below .hw-hub-v5-panel[hidden] {
+  display: none !important;
+}
+
+/* Demo1 uses Christian's hub layout (Daily Exercise lives in notebook). */
+
+body.hw-curriculum-hub .hw-hub-v5-panels,
+body.hw-curriculum-hub #hw-v5-below {
+  width: 100%;
+  max-width: 52rem;
+  justify-items: stretch;
+}
+
+body.hw-curriculum-hub #hw-v5-below > .hw-hub-v5-panel {
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+  align-self: stretch;
+  height: auto;
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem 1.6rem;
+  box-sizing: border-box;
+}
+
+body.hw-curriculum-hub #hw-v5-panel-today {
+  min-height: 0;
+}
+
+body.hw-curriculum-hub #hw-v5-panel-chapters {
+  height: 48.55rem;
+  min-height: 48.55rem;
+  overflow: auto;
+}
+
+@media (max-width: 767px) {
+  body.hw-curriculum-hub #hw-v5-panel-chapters {
+    height: auto;
+    min-height: min(48.55rem, 70vh);
+  }
+}
+
+body.hw-curriculum-hub #hw-curriculum-textbook,
+body.hw-curriculum-hub #hw-curriculum-week {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+body.hw-curriculum-hub .hw-hour-quest.hw-quest {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0.1rem 0 0;
+}
+
+.hw-quest__target ruby,
+.hw-quest__status ruby,
+.hw-today__go ruby {
+  ruby-position: over;
+}
+
+.hw-quest__target rt {
+  font-size: 0.28em;
+  font-weight: 500;
+}
+
+.hw-quest__status rt,
+.hw-today__go rt {
+  font-size: 0.7em;
+  font-weight: 500;
+}
+
+.hw-quest__target--ask {
+  font-size: clamp(1.45rem, 4.2vw, 2.15rem);
+  line-height: 1.45;
+}
+
+.hw-word-write {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.hw-furi {
+  position: relative;
+  display: inline;
+  font-weight: 700;
+  letter-spacing: 0;
+  vertical-align: baseline;
+}
+
+.hw-core-chip span.hw-furi,
+.hw-quest__target .hw-furi {
+  font-weight: 700;
+}
+
+.hw-furi i {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, 0.12rem);
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.hw-core-chip:has(.hw-furi) {
+  padding-top: 0.95rem;
+}
+
+.hw-hour-quest .hw-core-chip--green {
+  display: inline-block;
+  margin: 0;
+}
+
+.hw-word-play__row:has(.hw-word-play__arrow:not([hidden])) [data-word-chip].hw-core-chip--green {
+  display: flex;
+  width: 100%;
+}
+
+.hw-word-play__row:has([data-word-chip] .hw-furi) .hw-word-play__arrow {
+  margin-top: 0.45rem;
+}
+
+.hw-curriculum-textbook .hw-hour-quest .btn {
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 2px 12px var(--color-accent-glow);
+}
+
+.hw-curriculum-textbook .hw-hour-quest .btn--sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.hw-curriculum-textbook .hw-hour-quest .btn--ghost {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+}
+
+.hw-curriculum-textbook .hw-hour-quest .btn--primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.hw-sit-cards--one .hw-sit-cards__title {
+  margin: 0 0 0.45rem;
+  text-align: center;
+  font-size: 1.85rem;
+  font-weight: 700;
+}
+
+.hw-sit-cards__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0 0 0.85rem;
+}
+
+.hw-sit-furi,
+.hw-task-done {
+  display: flex;
+  justify-content: center;
+  margin: 0.35rem 0 0.85rem;
+}
+
+.hw-sit-furi .btn {
+  border: 0;
+  border-radius: 999px;
+  min-height: 2.4rem;
+  padding: 0.4rem 1.05rem;
+  color: #1a2744;
+  background: #d4a853;
+  font-weight: 650;
+}
+
+.hw-task-done .btn {
+  border-radius: 999px;
+}
+
+/* Core Japanese: give Complete task breathing room below the Polite card */
+.hw-core-says + .hw-task-done {
+  margin-top: 1.5rem;
+}
+
+/* one audio recorder under today's situation card */
+.hw-sit-rec {
+  margin: 1rem auto 0;
+  text-align: center;
+}
+
+.hw-sit-rec__label {
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.hw-sit-rec .hw-audio-inline__idle,
+.hw-sit-rec .hw-audio-inline__live {
+  justify-content: center;
+}
+
+.hw-sit-rec .hw-ex-rec {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--color-accent-vivid, #e85545);
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hw-sit-rec .hw-ex-rec .hw-ex-ico {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.hw-sit-rec .hw-ex-rec:hover {
+  filter: brightness(1.08);
+}
+
+.hw-sit-word {
+  margin: 0.85rem 0 0;
+  text-align: center;
+}
+
+.hw-hour-quest + .lede {
+  text-align: center;
+}
+
+.hw-sit-cards--one .hw-sit-cards__intro .hw-sit-flip-hint {
+  margin: 0;
+}
+
+.hw-sit-cards--one .hw-sit-cards__intro .hw-sit-cards__all {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+}
+
+.hw-sit-cards--one .hw-sit-cards__all .hw-today__go {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.hw-prayer {
+  position: relative;
+}
+
+/* Prayer focus: black screen, bigger prayer, toolbar stays at the bottom */
+body.hw-prayer-focus {
+  overflow: hidden;
+}
+
+body.hw-prayer-focus .site-header,
+body.hw-prayer-focus footer,
+body.hw-prayer-focus .hw-hub-v5-tabs-wrap,
+body.hw-prayer-focus #hw-v5-slide-dots {
+  display: none !important;
+}
+
+body.hw-prayer-focus #hw-v5-panel-prayer .hw-prayer {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1.5rem 1.25rem 2rem;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body.hw-prayer-focus #hw-v5-panel-prayer .hw-prayer > * {
+  width: min(100%, 44rem);
+}
+
+body.hw-prayer-focus #hw-v5-panel-prayer .hw-prayer > #hw-toolbar-bar {
+  width: max-content;
+}
+
+@media (min-width: 700px) {
+  body.hw-prayer-focus #hw-v5-panel-prayer .hw-prayer > * {
+    zoom: 1.2;
+  }
+}
+
+body.hw-prayer-toolbar #hw-toolbar-bar,
+body.hw-hub-content-toolbar #hw-toolbar-bar {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin-top: 1.1rem;
+  transform: none;
+}
+
+body.hw-prayer-toolbar #hw-toolbar-bar [data-tb-tool="send"],
+body.hw-prayer-toolbar #hw-toolbar-bar [data-tb-tool="answers"],
+body.hw-sit-toolbar #hw-toolbar-bar [data-tb-tool="send"],
+body.hw-sit-toolbar #hw-toolbar-bar [data-tb-tool="answers"],
+body.hw-hub-content-toolbar:not(.hw-hub-content-toolbar--sheet) #hw-toolbar-bar [data-tb-tool="send"],
+body.hw-hub-content-toolbar:not(.hw-hub-content-toolbar--sheet) #hw-toolbar-bar [data-tb-tool="answers"] {
+  display: none;
+}
+
+body.hw-sit-toolbar #hw-toolbar-bar {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  margin-top: 1.1rem;
+  transform: none;
+}
+
+#hw-sit-focus {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: #000;
+  pointer-events: auto;
+}
+
+#hw-sit-focus[hidden] {
+  display: none !important;
+}
+
+.hw-sit-focus__phone {
+  pointer-events: auto;
+  width: min(390px, 100%);
+  height: min(844px, calc(100dvh - 2.5rem));
+  display: flex;
+  flex-direction: column;
+  background: #0f1629;
+  color: #e8edf5;
+  border-radius: 36px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+
+.hw-sit-focus__top,
+.hw-sit-focus__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.hw-sit-focus__top {
+  padding: 0.75rem 1rem 0.55rem;
+  background: color-mix(in srgb, #1a2744 92%, #000);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hw-sit-focus__top h2 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--color-gold);
+}
+
+.hw-sit-focus__top-right {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.hw-sit-focus__count {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.hw-sit-focus__shuffle,
+.hw-sit-focus__controls button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: #e8edf5;
+  background: #243556;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.hw-sit-focus__shuffle {
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+}
+
+.hw-sit-focus__card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0.75rem 0.85rem 0.35rem;
+  background: #1a2744;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.hw-sit-focus__head {
+  padding: 0.95rem 1.1rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #161f35;
+}
+
+.hw-sit-focus__head h3 {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-gold);
+}
+
+.hw-sit-focus__head p {
+  margin: 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  text-align: right;
+}
+
+.hw-sit-focus__image {
+  margin: 0.85rem 0.9rem 0;
+  height: 38%;
+  min-height: 140px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0b1222;
+  overflow: hidden;
+}
+
+.hw-sit-focus__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.hw-sit-focus__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 1.15rem 1.25rem;
+}
+
+.hw-sit-focus__ask {
+  margin: 0 0 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.hw-sit-focus__text {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.12rem;
+  line-height: 1.75;
+  color: #fff;
+}
+
+.hw-sit-focus__en {
+  margin: 0.9rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #b8c4d8;
+}
+
+.hw-sit-focus__hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  padding: 0 1rem 0.35rem;
+}
+
+.hw-sit-focus__controls {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 0.55rem;
+  padding: 0.35rem 0.85rem 0.65rem;
+}
+
+.hw-sit-focus__controls button {
+  min-height: 48px;
+  font-size: 0.92rem;
+}
+
+.hw-sit-focus__controls .is-english {
+  background: var(--color-gold);
+  color: #1a2744;
+  border-color: transparent;
+}
+
+.hw-sit-focus__tools .hw-toolbar-bar {
+  position: relative;
+  margin: 0 auto 0.75rem;
+}
+
+@media (max-width: 519px) {
+  #hw-sit-focus {
+    padding: 0;
+  }
+
+  .hw-sit-focus__phone {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+  }
+}
+
+.hw-sit-cards--one .hw-sit-flip {
+  max-width: 40rem;
+  margin: 0.75rem auto 0;
+}
+
+/*
+ * Focus mode + light theme: the page stays black, but the homework boxes use the same
+ * white-ish card look as the normal light hub (instead of the dark theater cards), with
+ * dark text, white pager arrows, and readable highlight colors.
+ */
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet--slide-mode .hw-worksheet__line:not(.hw-worksheet__line--listen):not(.hw-worksheet__line--audio-prompt):not(.hw-worksheet__line--audio-mimic):not(.hw-worksheet__line--video) > .hw-worksheet__content,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-listen-card,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-audio-prompt,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-video-prompt,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-audio-mimic,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__topic-brief[open] > .hw-worksheet__topic-brief-body {
+  background: color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 7%, #fff);
+  border-color: color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 14%, transparent);
+  color: var(--color-text);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 8%, transparent),
+    0 14px 36px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-audio-mimic {
+  border-left-color: #3d8a9a;
+}
+
+/* Sheets that are not slide-by-slide: the whole sheet is one box */
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) {
+  background: color-mix(in srgb, var(--hw-hourglass-day, #67c4eb) 7%, #fff);
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 14%, transparent);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) .hw-worksheet__meta-title,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) .hw-worksheet__section-title {
+  color: var(--color-text);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) .hw-worksheet__meta-hint,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) .hw-worksheet__meta-date,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet:not(.hw-worksheet--slide-mode) .hw-worksheet__section-intro {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-audio-prompt__listen .hw-listen-card {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-listen-card .hw-audio-chrome__bar {
+  background: color-mix(in srgb, var(--hw-hourglass-night-snow) 55%, #fff);
+  border-color: color-mix(in srgb, var(--hw-hourglass-night, #1e5082) 16%, transparent);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-listen-card .hw-audio-player__el {
+  color-scheme: light;
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-video-prompt__instruction,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-star-block__hint,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-mc-block__hint,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-listen-instruction,
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__topic-video-soon {
+  color: var(--color-text-muted);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__topic-explanation {
+  color: var(--color-text);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__topic-video-link {
+  color: #1f6f9f;
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet .hw-blank {
+  color: var(--color-text);
+  background: rgba(74, 222, 128, 0.15);
+  border-color: rgba(26, 39, 68, 0.18);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet .hw-blank:focus {
+  background: rgba(74, 222, 128, 0.25);
+}
+
+/* Pager arrows: white buttons, dark arrows (page behind them is black) */
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__slide-btn {
+  color: #1a2744;
+  background: #fff;
+  border-color: rgba(26, 39, 68, 0.18);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__slide-btn:hover:not(:disabled) {
+  color: #1a2744;
+  background: #fff;
+  border-color: var(--color-brand-blue);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__slide-btn:disabled {
+  opacity: 0.5;
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-item-num {
+  color: #f4f9fd;
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-check-results {
+  color: var(--color-text);
+  background: var(--color-bg);
+  border-color: rgba(26, 39, 68, 0.1);
+}
+
+html[data-theme="light"] body.hw-hw-focus-mode .hw-worksheet__teacher-answer {
+  color: #0c9a60;
+}
+
+/* Highlighted words (Cloud notes): the pale rose chip is for dark cards; on white use red */
+html[data-theme="light"] body.hw-hw-focus-mode .hw-hc-mark {
+  color: #c62828 !important;
+  background: color-mix(in srgb, #c62828 14%, transparent);
+}
+
+/* 4-tab Quest: small circle button (top-left of the card) that swaps the big target for today's date. */
+.hw-quest__date-btn {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg-card) 80%, transparent);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.hw-quest__date-btn:hover,
+.hw-quest__date-btn:focus-visible,
+.hw-quest__date-btn.is-on {
+  color: var(--color-text);
+  border-color: var(--color-green);
+}
+.hw-quest__date-btn svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+.hw-quest__target.hw-quest__target--date {
+  font-size: clamp(1rem, 4vw, 1.6rem);
+  line-height: 2.3;
+}
+.hw-quest__target.hw-quest__target--date rt {
+  font-size: 0.55em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hw-quest__target.hw-quest__target--date ruby {
+  ruby-align: center;
+  margin: 0 0.05em;
+}

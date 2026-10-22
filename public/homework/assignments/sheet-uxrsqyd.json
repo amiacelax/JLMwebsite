@@ -6,6 +6,7 @@
   "status": "draft",
   "forSale": false,
   "salePrice": 0.99,
+  "wsCategory": "core-japanese",
   "sections": [
     {
       "id": "sec-5z8vt73",

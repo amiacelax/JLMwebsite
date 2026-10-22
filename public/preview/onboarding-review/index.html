@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Onboarding review (JD only)</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: #12141a; color: #e8eaf0; display: flex; height: 100vh; }
+    aside { width: 360px; flex: none; overflow-y: auto; padding: 14px; border-right: 1px solid #2a2f3a; background: #181b23; }
+    main { flex: 1; display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 12px; }
+    h1 { font-size: 16px; margin: 0 0 4px; }
+    .sub { color: #98a0b3; font-size: 12px; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+    select, button { font: inherit; border-radius: 8px; border: 1px solid #343a48; background: #222633; color: inherit; padding: 6px 10px; cursor: pointer; }
+    button.play { background: #1f7a4d; border-color: #2a9d63; font-weight: 600; }
+    button.play:hover { background: #249459; }
+    button[disabled] { opacity: .4; cursor: not-allowed; }
+    .item { border: 1px solid #2a2f3a; border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #1c202a; }
+    .item h2 { font-size: 14px; margin: 0 0 4px; }
+    .item p { margin: 4px 0 8px; color: #b4bbcc; font-size: 12.5px; }
+    .item .where { color: #7f88a0; font-size: 11px; }
+    .verdict { display: flex; gap: 6px; margin-top: 8px; }
+    .verdict button { flex: 1; font-size: 12px; padding: 4px; }
+    .verdict button.on-good { background: #1f7a4d; }
+    .verdict button.on-fix { background: #a8741a; }
+    .verdict button.on-bad { background: #a8321f; }
+    #frameWrap { background: #000; border-radius: 10px; overflow: hidden; border: 1px solid #2a2f3a; }
+    iframe { display: block; border: 0; background: #fff; }
+    #status { font-size: 12px; color: #9fd8b5; margin: 6px 0 10px; min-height: 16px; }
+    a { color: #7db7ff; }
+    #summary { border: 1px solid #2a2f3a; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; background: #151922; font-size: 12.5px; }
+    #summary b { color: #fff; }
+    #summary ul { margin: 6px 0 0; padding-left: 18px; color: #b4bbcc; }
+    .group { margin: 16px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7f88a0; font-weight: 700; }
+    .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+    .badge.review { background: #3b2f10; color: #ffcf66; }
+    .badge.fix { background: #4a1f18; color: #ff9a8a; }
+    .badge.done { background: #163a28; color: #7ee2a8; }
+    .badge.todo { background: #2a2f3a; color: #aab1c3; }
+    .item.is-done { opacity: .72; }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Onboarding review</h1>
+    <div class="sub">Local only. Each Play button resets that one thing (as if you were a brand-new student) and reloads the hub on the right. Mark Good / Needs fix / Kill it and the list re-sorts itself.</div>
+    <div id="summary"></div>
+
+    <div class="row">
+      <label>Account
+        <select id="acct">
+          <option value="demoprem">Demo2 (demoprem)</option>
+          <option value="christian">CJ hub (christian)</option>
+        </select>
+      </label>
+      <label>Screen
+        <select id="size">
+          <option value="1100x760">Desktop</option>
+          <option value="390x780">Phone</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <button id="openHw">Click the HW tab</button>
+      <button id="reload">Reload as-is</button>
+      <button id="clearMarks" title="Forget my Good / Needs fix / Kill it marks">Clear my marks</button>
+    </div>
+    <div id="status"></div>
+
+    <div id="items"></div>
+  </aside>
+
+  <main>
+    <div id="frameWrap"><iframe id="f" title="Hub"></iframe></div>
+  </main>
+
+  <script>
+    (function () {
+      var NEW = "jlm-hw-onboard-v2";
+      var MG = "hw-mg-onboarding-v1";
+      var HC = "hw-hc-onboarding-v1";
+      var STAR = "jlm-hw-tab-star-seen-v1";
+      var MINI = "hw-mini-cloud-onboard:";
+      var VERDICT_KEY = "jlm-onboarding-review-verdicts";
+
+      var SESSIONS = {
+        demoprem: { username: "demoprem", displayName: "Demo", role: "student", accountLabel: "homework_only", tier: "tier2", source: "server" },
+        christian: { username: "christian", displayName: "Christian", role: "student", accountLabel: "curriculum", tier: "student_special", source: "server" }
+      };
+
+      function briefSeen() {
+        ["demoprem", "christian"].forEach(function (u) { localStorage.setItem("hw-topic-brief-seen:" + u + ":sheet-introducing-yourself", "1"); });
+      }
+      function briefUnseen() { clearPrefix("hw-topic-brief-seen:"); }
+      function clearPrefix(prefix) {
+        Object.keys(localStorage).forEach(function (k) { if (k.indexOf(prefix) === 0) localStorage.removeItem(k); });
+      }
+
+      var ITEMS = [
+        {
+          id: "glass",
+          title: "1. Glass tip",
+          status: "review",
+          where: "hw-onboard.js (rebuilt)",
+          text: "Should stay quiet on the To-do list, then pop up once the HW sheet is showing: light dim, green ring on the Glass button, a card with the explanation. Click the HW tab and wait ~2 seconds.",
+          setup: function () { localStorage.removeItem(NEW); localStorage.removeItem(MG); localStorage.setItem(HC, "1"); briefSeen(); }
+        },
+        {
+          id: "cloud",
+          title: "2. Cloud tip",
+          status: "review",
+          where: "hw-onboard.js (rebuilt)",
+          text: "Same idea, ring on the Cloud button. Glass is marked seen here so you see this one alone. Click the HW tab and wait ~2 seconds.",
+          setup: function () { localStorage.removeItem(NEW); localStorage.setItem(MG, "1"); localStorage.removeItem(HC); briefSeen(); }
+        },
+        {
+          id: "both",
+          title: "3. Real new-student order",
+          status: "review",
+          where: "hw-worksheet.js + hw-onboard.js",
+          text: "Exactly what a brand-new student gets: grammar box first (Got it), then the Glass tip, then the Cloud tip. Click the HW tab and follow the Got its.",
+          setup: function () { localStorage.removeItem(NEW); localStorage.removeItem(MG); localStorage.removeItem(HC); briefUnseen(); }
+        },
+        {
+          id: "brief",
+          title: "4. Grammar description pops open",
+          status: "review",
+          where: "hw-onboard.js + hw-worksheet.js (+ live KV text)",
+          text: "Same look as the others: screen dims, the Grammar description box opens inside a lit window with a green ring, and a card says \u201CRead this first\u201D with the green Got it. Got it closes the box. It always comes first (grammar \u2192 Glass \u2192 Cloud). Click the HW tab.",
+          setup: function () { localStorage.setItem(MG, "1"); localStorage.setItem(HC, "1"); briefUnseen(); }
+        },
+        {
+          id: "stars",
+          title: "5. Yellow stars on tabs",
+          status: "killed",
+          where: "hw-hub-v5-live.js (tabStarIds returns nothing)",
+          text: "Killed per JD. No more yellow stars on tabs, and no window/text for them. (The little \u201Cnew quest\u201D star on the Quest tab is a different thing and is untouched.)",
+          setup: function () { localStorage.setItem(MG, "1"); localStorage.setItem(HC, "1"); localStorage.removeItem(STAR); briefSeen(); }
+        },
+        {
+          id: "mini",
+          title: "6. Note-clouds legend (reviewed homework)",
+          status: "todo",
+          where: "hw-homework-comments.js (still the OLD black-screen style)",
+          text: "\u201CYour notes / JD\u2019s notes\u201D legend shown up to 2 times in 14 days on reviewed homework. Needs a real reviewed homework with notes \u2014 I can\u2019t fake one here yet, so I\u2019ll screenshot it from real data.",
+          disabled: true,
+          setup: function () { clearPrefix(MINI); }
+        },
+        {
+          id: "tutorial",
+          title: "8. Tutorial button",
+          status: "review",
+          where: "hw-hub-v5-live.js + hw-onboard.js",
+          text: "Bottom of the hub, next to \u201CAdd to phone\u201D. Tap it from any tab: it jumps to the HW sheet and replays Grammar description \u2192 Glass \u2192 Cloud. Click the To-do tab first, then scroll down and tap Tutorial.",
+          setup: function () { localStorage.setItem(NEW, JSON.stringify({ demoprem: { glass: 1, cloud: 1 }, christian: { glass: 1, cloud: 1 } })); localStorage.setItem(MG, "1"); localStorage.setItem(HC, "1"); briefSeen(); }
+        },
+        {
+          id: "returning",
+          title: "7. Returning student (nothing should pop up)",
+          status: "ok",
+          where: "\u2014",
+          text: "Everything already seen. I tested Demo1 and CJ: nothing pops up. Play it only if you want to see the quiet version yourself.",
+          setup: function () { localStorage.setItem(MG, "1"); localStorage.setItem(HC, "1"); briefSeen(); }
+        }
+      ];
+
+      var f = document.getElementById("f");
+      var acct = document.getElementById("acct");
+      var size = document.getElementById("size");
+      var statusEl = document.getElementById("status");
+
+      function say(msg) { statusEl.textContent = msg; }
+      function verdicts() { try { return JSON.parse(localStorage.getItem(VERDICT_KEY) || "{}"); } catch (e) { return {}; } }
+
+      function applySize() {
+        var p = size.value.split("x");
+        f.style.width = p[0] + "px";
+        f.style.height = p[1] + "px";
+      }
+
+      function load() {
+        var user = acct.value;
+        var s = Object.assign({}, SESSIONS[user], { loggedInAt: Date.now() });
+        localStorage.setItem("jlm-hw-session", JSON.stringify(s));
+        var hash = user === "demoprem" ? "#hw-browse-sheet-introducing-yourself" : "";
+        var url = "/homework/platform.html?ob=" + Date.now() + hash;
+        applySize();
+        f.src = "about:blank";
+        setTimeout(function () { f.src = url; }, 50);
+      }
+
+      function play(item) {
+        item.setup();
+        load();
+        say("Playing: " + item.title + " (give it ~5 seconds, then click the HW tab if needed)");
+      }
+
+      /* Which pile an item is in: your verdict wins, otherwise my status. */
+      function groupOf(item, v) {
+        var mark = v[item.id];
+        if (mark === "fix" || mark === "bad") return "fix";
+        if (mark === "good") return "approved";
+        if (item.status === "killed") return "killed";
+        if (item.status === "todo") return "todo";
+        if (item.status === "ok") return "approved";
+        return "review";
+      }
+
+      var GROUPS = [
+        { id: "review", label: "Needs your eyes" },
+        { id: "fix", label: "You said: fix / kill (my turn)" },
+        { id: "approved", label: "Done" },
+        { id: "todo", label: "Not started yet" },
+        { id: "killed", label: "Killed (scrapped)" }
+      ];
+
+      function renderSummary(v) {
+        var counts = { review: 0, fix: 0, approved: 0, todo: 0, killed: 0 };
+        ITEMS.forEach(function (i) { counts[groupOf(i, v)]++; });
+        var s = document.getElementById("summary");
+        s.innerHTML =
+          "<b>Where we\u2019re at</b>" +
+          "<ul>" +
+          "<li><b>" + counts.review + "</b> waiting for you to look</li>" +
+          "<li><b>" + counts.fix + "</b> you marked fix / kill</li>" +
+          "<li><b>" + counts.approved + "</b> done</li>" +
+          "<li><b>" + counts.todo + "</b> not started (item 6 \u2014 you said do it last)</li>" +
+          "<li><b>" + counts.killed + "</b> killed (item 5, stars)</li>" +
+          "</ul>" +
+          "<div style=\"margin-top:8px;color:#98a0b3\">The Tutorial button (bottom, next to \u201CAdd to phone\u201D) replays every tip above in order. Any new tip added to the list is picked up automatically.</div>";
+      }
+
+      function render() {
+        var wrap = document.getElementById("items");
+        var v = verdicts();
+        wrap.innerHTML = "";
+        renderSummary(v);
+        GROUPS.forEach(function (g) {
+          var members = ITEMS.filter(function (i) { return groupOf(i, v) === g.id; });
+          if (!members.length) return;
+          var head = document.createElement("div");
+          head.className = "group";
+          head.textContent = g.label + " (" + members.length + ")";
+          wrap.appendChild(head);
+          members.forEach(function (item) { wrap.appendChild(buildItem(item, v, g.id)); });
+        });
+      }
+
+      function buildItem(item, v, group) {
+        var el = document.createElement("div");
+        el.className = "item" + (group === "approved" ? " is-done" : "");
+        {
+          el.innerHTML =
+            "<h2></h2><p></p><div class=\"where\"></div>" +
+            "<div class=\"row\" style=\"margin-top:8px\"><button class=\"play\">Play this</button></div>" +
+            "<div class=\"verdict\">" +
+            "<button data-v=\"good\">Good</button><button data-v=\"fix\">Needs fix</button><button data-v=\"bad\">Kill it</button></div>";
+          var h2 = el.querySelector("h2");
+          h2.textContent = item.title;
+          var badge = document.createElement("span");
+          var mark = v[item.id];
+          if (mark === "good") { badge.className = "badge done"; badge.textContent = "approved by you"; }
+          else if (mark === "fix") { badge.className = "badge fix"; badge.textContent = "needs fix"; }
+          else if (mark === "bad") { badge.className = "badge fix"; badge.textContent = "kill it"; }
+          else if (item.status === "ok") { badge.className = "badge done"; badge.textContent = "checked \u2014 fine"; }
+          else if (item.status === "todo") { badge.className = "badge todo"; badge.textContent = "not started"; }
+          else { badge.className = "badge review"; badge.textContent = "built \u2014 look at it"; }
+          h2.appendChild(badge);
+          el.querySelector("p").textContent = item.text;
+          el.querySelector(".where").textContent = item.where;
+          var btn = el.querySelector(".play");
+          if (item.disabled) { btn.disabled = true; btn.textContent = "Needs real reviewed HW"; }
+          btn.addEventListener("click", function () { play(item); });
+          el.querySelectorAll(".verdict button").forEach(function (b) {
+            if (v[item.id] === b.getAttribute("data-v")) b.classList.add("on-" + b.getAttribute("data-v"));
+            b.addEventListener("click", function () {
+              var all = verdicts();
+              all[item.id] = b.getAttribute("data-v");
+              localStorage.setItem(VERDICT_KEY, JSON.stringify(all));
+              render();
+            });
+          });
+        }
+        return el;
+      }
+
+      document.getElementById("openHw").addEventListener("click", function () {
+        try {
+          var b = f.contentDocument.querySelector('[data-v5-tab="homework"]');
+          if (b) { b.click(); say("Clicked the HW tab."); } else say("No HW tab found yet — wait for the hub to load.");
+        } catch (e) { say("Could not reach the frame: " + e.message); }
+      });
+      document.getElementById("reload").addEventListener("click", function () { load(); say("Reloaded without changing anything."); });
+      document.getElementById("clearMarks").addEventListener("click", function () {
+        localStorage.removeItem(VERDICT_KEY);
+        render();
+        say("Marks cleared.");
+      });
+      acct.addEventListener("change", load);
+      size.addEventListener("change", applySize);
+
+      applySize();
+      render();
+      say("Pick an item and press Play this.");
+    })();
+  </script>
+</body>
+</html>

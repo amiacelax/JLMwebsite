@@ -35,7 +35,11 @@
 
   /** Custom reading + gloss — wins over Jisho; also makes these highlightable/clickable. */
   const CUSTOM = {
+    名前: { reading: "なまえ", definition: "name" },
     仕事: { reading: "しごと", definition: "work; job" },
+    趣味: { reading: "しゅみ", definition: "hobby" },
+    何才: { reading: "なんさい", definition: "how old" },
+    住んで: { reading: "すんで", definition: "live (て-form of 住む)" },
     やめたい: { reading: "やめたい", definition: "want to quit (～たい)" },
     たい: { reading: "たい", definition: "want (～たい)" },
     けど: { reading: "けど", definition: "but" },
@@ -52,6 +56,8 @@
     行き: "行く",
     やめ: "やめる",
     やめたい: "やめる",
+    住んで: "住む",
+    何才: "何歳",
   };
 
   /**
@@ -263,23 +269,48 @@
     });
   }
 
+  function forceUnitCandidates() {
+    const keys = [
+      ...FORCE_UNITS,
+      ...Object.keys(CUSTOM),
+      ...Object.keys(previewLayer?.custom || {}),
+    ];
+    return [...new Set(keys.map((s) => String(s || "").trim()).filter(Boolean))];
+  }
+
+  function isHonorificStem(surface) {
+    const word = String(surface || "").trim();
+    if (!word) return false;
+    return Boolean(
+      CUSTOM[word] || previewLayer?.custom?.[word] || FORCE_UNITS.includes(word)
+    );
+  }
+
   function pickForceUnit(text, offset) {
-    if (!FORCE_UNITS.length || !text || offset < 0) return null;
-    const ordered = [...FORCE_UNITS].sort((a, b) => b.length - a.length);
-    for (const unit of ordered) {
+    const candidates = forceUnitCandidates();
+    if (!candidates.length || !text || offset < 0) return null;
+    let best = null;
+    for (const unit of candidates) {
+      if (isSkipped(unit, null)) continue;
       let from = 0;
       while (from <= text.length) {
         const start = text.indexOf(unit, from);
         if (start < 0) break;
         const end = start + unit.length;
         if (offset >= start && offset < end) {
-          if (isSkipped(unit, null)) return null;
-          return { surface: unit, start, end, lemma: null, reading: null };
+          const cand = { surface: unit, start, end, lemma: null, reading: null };
+          if (
+            !best ||
+            cand.start > best.start ||
+            (cand.start === best.start && cand.surface.length > best.surface.length)
+          ) {
+            best = cand;
+          }
         }
         from = start + 1;
       }
     }
-    return null;
+    return best;
   }
 
   async function simulateSplit(text) {
@@ -386,11 +417,11 @@
   }
 
   function pickForceUnitAt(text, index) {
-    if (!FORCE_UNITS.length || !text || index < 0) return null;
-    const ordered = [...FORCE_UNITS].sort((a, b) => b.length - a.length);
+    const ordered = forceUnitCandidates().sort((a, b) => b.length - a.length);
+    if (!ordered.length || !text || index < 0) return null;
     for (const unit of ordered) {
       if (unit && text.startsWith(unit, index)) {
-        if (isSkipped(unit, null)) return null;
+        if (isSkipped(unit, null)) continue;
         return { surface: unit, start: index, end: index + unit.length, lemma: null, reading: null };
       }
     }
@@ -410,6 +441,33 @@
       };
     }
     return null;
+  }
+
+  /* Grammar points the glass highlights as one unit (te-form + みる = "try doing it"). */
+  const GRAMMAR_TE_MIRU_RE = /^[てで]み(る)?$/;
+  const GRAMMAR_TE_MIRU_DEF =
+    "te-form of a verb + みる: to try doing it, lit. \u201Cto give it a go\u201D";
+
+  function grammarEntry(surface) {
+    if (GRAMMAR_TE_MIRU_RE.test(String(surface || ""))) {
+      return { reading: "", definition: GRAMMAR_TE_MIRU_DEF, grammar: true };
+    }
+    return null;
+  }
+
+  function isGrammarSurface(surface) {
+    return Boolean(grammarEntry(surface));
+  }
+
+  function tryGrammarMerge(spans, index) {
+    if (index + 1 >= spans.length) return null;
+    const head = spans[index];
+    const tail = spans[index + 1];
+    if (head.surface !== "て" && head.surface !== "で") return null;
+    if (head.token?.pos !== "助詞") return null;
+    if (tail.token?.pos !== "動詞" || tail.token?.basic_form !== "みる") return null;
+    if (!/^(み|みる)$/.test(tail.surface)) return null;
+    return combineSpans(spans, index, 2);
   }
 
   function tryPatternMerge(spans, index) {
@@ -470,6 +528,17 @@
           ruleKind: "sequence",
         });
         index += sequence.count;
+        continue;
+      }
+
+      const grammar = tryGrammarMerge(spans, index);
+      if (grammar) {
+        merged.push({
+          ...grammar,
+          rawSurfaces: [spans[index].surface, spans[index + 1].surface],
+          ruleKind: "grammar",
+        });
+        index += 2;
         continue;
       }
 
@@ -694,7 +763,11 @@
     if (previewLayer?.segmentSurfaces?.length) {
       return quickUnitsWithSegments(sample, previewLayer.segmentSurfaces);
     }
-    if (SEGMENT_RULES.surfaceSequences.length || FORCE_UNITS.length) {
+    if (
+      SEGMENT_RULES.surfaceSequences.length ||
+      FORCE_UNITS.length ||
+      forceUnitCandidates().length
+    ) {
       return quickUnitsWithOverlayRules(sample);
     }
     return quickUnitsBase(sample);
@@ -715,10 +788,21 @@
     const under = units[index];
     if (!under || under.skip) return null;
 
+    let surface = under.surface;
+    let start = under.start;
+    const end = under.end;
+    if (/^[おご]/.test(surface) && surface.length > 2) {
+      const rest = surface.slice(1);
+      if (isHonorificStem(rest)) {
+        surface = rest;
+        start += 1;
+      }
+    }
+
     return enrich({
-      surface: under.surface,
-      start: under.start,
-      end: under.end,
+      surface,
+      start,
+      end,
       lemma: null,
       reading: null,
     });
@@ -785,6 +869,12 @@
   }
 
   function customEntry(surface, lemma) {
+    const grammar = grammarEntry(surface);
+    /* Grammar units (てみる ...) can be edited from the popup like any word; the edit wins but stays "grammar". */
+    if (grammar) {
+      const edited = previewLayer?.custom?.[surface] || CUSTOM[surface];
+      return edited ? { ...grammar, ...edited, grammar: true } : grammar;
+    }
     if (previewLayer?.custom?.[surface]) return previewLayer.custom[surface];
     return CUSTOM[surface] || (lemma && CUSTOM[lemma]) || null;
   }
@@ -904,6 +994,7 @@
     isLatinOrDigits,
     isSkipped,
     customEntry,
+    isGrammarSurface,
     resolve,
     enrich,
     mergeTokenSpans,

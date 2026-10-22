@@ -162,5 +162,6 @@
     }
   ],
   "topicExplanation": "時 = とき\nverb/いending + 時 = when \nnoun/なadj + の時 = when\n\nDon't get this confused with the question word いつ. \"When is your birthday?\" does not use とき",
-  "register": "casual"
+  "register": "casual",
+  "wsCategory": "core-japanese"
 }

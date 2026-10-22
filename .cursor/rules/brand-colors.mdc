@@ -1,0 +1,15 @@
+---
+description: "Brand orange / logo orange / our orange" and other named colors mean existing site colors
+alwaysApply: true
+---
+
+# Brand colors
+
+When JD says "brand orange", "logo orange", "our orange" (same for blue, green, other colors already on the site), use the **existing site/logo color** - never invent a new one.
+
+- Logo orange: `--color-accent-vivid` (`#e85545`, same as `--hw-hourglass-sun`)
+- Brand blue: `--color-brand-blue` (`#67c4eb`)
+- Green: `--color-green` (`#4ade80`)
+- WS audio play button: `.hw-audio-chrome__play` (blue bg, navy glyph `--hw-hourglass-stroke`)
+
+No new colors unless JD explicitly asks.

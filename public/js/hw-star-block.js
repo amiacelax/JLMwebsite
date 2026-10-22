@@ -31,7 +31,9 @@
     const hidden = line.querySelector(".hw-star-block__answer");
     const resetBtn = line.querySelector(".hw-star-block__reset");
     if (!hidden) return;
-    const order = slots.map((slot) => String(slot.dataset.value || "").trim());
+    const order = slots
+      .filter((slot) => !slot.hidden)
+      .map((slot) => String(slot.dataset.value || "").trim());
     const complete = order.length && order.every(Boolean);
     hidden.value = complete ? JSON.stringify(order) : "";
     hidden.dispatchEvent(new Event("input", { bubbles: true }));
@@ -126,11 +128,17 @@
     return Number.isFinite(z) && Math.abs(z - 1) > 0.001;
   }
 
-  function createDragGhost(rect, piece, colorIndex) {
+  function rubyHtmlFrom(el) {
+    if (el && el.querySelector && el.querySelector("ruby")) return el.innerHTML;
+    return "";
+  }
+
+  function createDragGhost(rect, piece, colorIndex, displayHtml) {
     const ghost = document.createElement("div");
     ghost.className =
       "hw-star-block__chip hw-star-block__chip--drag-ghost hw-star-block__chip--" + colorIndex;
-    ghost.textContent = piece;
+    if (displayHtml) ghost.innerHTML = displayHtml;
+    else ghost.textContent = piece;
     ghost.style.position = "fixed";
     ghost.style.width = rect.width + "px";
     ghost.style.height = rect.height + "px";
@@ -145,7 +153,7 @@
   }
 
   function setDragImage(e, rect, piece, colorIndex, sourceEl) {
-    const ghost = createDragGhost(rect, piece, colorIndex);
+    const ghost = createDragGhost(rect, piece, colorIndex, rubyHtmlFrom(sourceEl));
     e.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
     /* Browser has snapshotted; drop the DOM clone so it cannot paint at static pos. */
     requestAnimationFrame(() => {
@@ -181,7 +189,12 @@
 
     const text = document.createElement("span");
     text.className = "hw-star-block__slot-text";
-    text.textContent = piece;
+    const line = slot.closest(".hw-worksheet__line");
+    const pool = line && line.querySelector(".hw-star-block__pool");
+    const chip = pool && findChip(pool, piece);
+    const displayHtml = rubyHtmlFrom(chip);
+    if (displayHtml) text.innerHTML = displayHtml;
+    else text.textContent = piece;
     slot.appendChild(text);
 
     return clearBtn;
@@ -200,8 +213,11 @@
   }
 
   function placeInSlot(slot, piece, pool, line) {
-    if (!piece || slot.dataset.value) return false;
+    if (!piece || slot.hidden || slot.dataset.value) return false;
     const chip = findChip(pool, piece);
+    if (chip && slot.dataset.accept && chip.dataset.pool && slot.dataset.accept !== chip.dataset.pool) {
+      return false;
+    }
     if (!chip) return false;
 
     const drag = line._starDrag;
@@ -249,7 +265,7 @@
     const el = document.elementFromPoint(clientX, clientY);
     if (!el) return null;
     const slot = el.closest(".hw-star-block__slot");
-    if (slot && line.contains(slot)) return { type: "slot", el: slot };
+    if (slot && !slot.hidden && line.contains(slot)) return { type: "slot", el: slot };
     const pool = el.closest(".hw-star-block__pool");
     if (pool && line.contains(pool)) return { type: "pool", el: pool };
     return null;
@@ -365,6 +381,8 @@
           dropped: false,
         };
 
+        const displayHtml = rubyHtmlFrom(ptr.sourceEl) || rubyHtmlFrom(ptr.fromSlot);
+
         if (ptr.fromSlot) {
           ptr.fromSlot.classList.add("hw-star-block__slot--dragging");
           emptySlot(ptr.fromSlot);
@@ -373,7 +391,7 @@
           ptr.sourceEl.classList.add("hw-star-block__chip--dragging");
         }
 
-        ptr.ghost = createDragGhost(rect, ptr.piece, ptr.colorIndex);
+        ptr.ghost = createDragGhost(rect, ptr.piece, ptr.colorIndex, displayHtml);
         ptr.ghost.style.left = e.clientX - ptr.offsetX + "px";
         ptr.ghost.style.top = e.clientY - ptr.offsetY + "px";
       }
@@ -593,7 +611,7 @@
         if (starInteractionBlocked()) return;
         if (line._starSuppressClickUntil && Date.now() < line._starSuppressClickUntil) return;
         if (chip.classList.contains("hw-star-block__chip--placed")) return;
-        const empty = slots.find((slot) => !slot.dataset.value);
+        const empty = slots.find((slot) => !slot.hidden && !slot.dataset.value);
         if (empty) {
           placeInSlot(empty, chip.dataset.piece || "", pool, line);
         }
@@ -675,7 +693,7 @@
       });
 
       slot.addEventListener("dragover", (e) => {
-        if (starInteractionBlocked()) return;
+        if (starInteractionBlocked() || slot.hidden) return;
         e.preventDefault();
         if (!slot.dataset.value) slot.classList.add("hw-star-block__slot--over");
       });
@@ -731,7 +749,11 @@
 
     const text = document.createElement("span");
     text.className = "hw-star-block__slot-text";
-    text.textContent = piece;
+    const pool = line && line.querySelector(".hw-star-block__pool");
+    const chip = pool && findChip(pool, piece);
+    const displayHtml = rubyHtmlFrom(chip);
+    if (displayHtml) text.innerHTML = displayHtml;
+    else text.textContent = piece;
     slot.appendChild(text);
   }
 

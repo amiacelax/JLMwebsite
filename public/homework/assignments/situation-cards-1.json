@@ -1,0 +1,160 @@
+{
+  "id": "situation-cards-1",
+  "title": "Situation Cards 1 — 日本での一日",
+  "date": "2026-09-16",
+  "register": "casual",
+  "studentLabel": "",
+  "lessonName": "Situation Cards 1",
+  "templateType": "custom",
+  "status": "draft",
+  "forSale": false,
+  "salePrice": 0.99,
+  "wsCategory": "other",
+  "students": [],
+  "sections": [
+    {
+      "id": "sec-sit-cards",
+      "mode": "audio-prompt",
+      "title": "Situation Cards",
+      "instructions": "Look at the picture. Read the Japanese. You’re in that moment in Japan — say what you’d say (or what you’d do) out loud, then record. No perfect answer. Real Japanese for a real situation.",
+      "items": [
+        {
+          "id": "sit-1-fever",
+          "prompt": "あなたは今起きました。頭を触ってみるとやっぱりあつい。まず、どうしますか？",
+          "english": "You just woke up with a fever. What do you do first?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-1-fever.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-2-doctor",
+          "prompt": "熱が40度を越えてしまいました。どうしますか？",
+          "english": "Fever over 40°C. What do you do?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-2-doctor.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-3-seat",
+          "prompt": "あなたの席がこの人に取られました。言ってやってください！",
+          "english": "Someone took your seat! Say something!",
+          "imageUrl": "/homework/media/situation-cards-1/sit-3-seat.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-4-konbini-wallet",
+          "prompt": "お弁当を温めようとしたら、財布を家に忘れたことに気づきました。店員さんの岩崎さんに何と言いますか？",
+          "english": "Forgot your wallet at the konbini. Clerk is Iwazaki-san.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-4-konbini.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-5-train-late",
+          "prompt": "友達のりかちゃんとの大事な約束に間に合いません。次の電車まで８分。友達に何を伝えますか？",
+          "english": "Late for plans with Rika-chan. Next train in 8 minutes.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-5-train.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-6-allergy",
+          "prompt": "色々な食べ物のアレルギーがあります。注文の前に、店員さんにちゃんと伝えてください。",
+          "english": "Tell the staff about your food allergies before ordering.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-6-restaurant.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-7-noise",
+          "prompt": "夜中なのに隣がうるさいです。明日仕事があります。どうしますか？言ってみてください。",
+          "english": "Neighbors are loud at night. Work tomorrow. What do you do?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-7-noise.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-11-wrong-drink",
+          "prompt": "頼んだものと違う飲み物が来ました。怒らずに、でもはっきり言ってください。",
+          "english": "The wrong drink arrived. Correct the order without sounding angry.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-11-cafe.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h1-birthday",
+          "prompt": "今日は友達のセラの誕生日です。大事なプレゼントを考えて買ったんだけど、渡す前に何と言いますか？",
+          "english": "Birthday gift for Sera. What do you say first?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-h1-birthday.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h3-thanks",
+          "prompt": "店員さんの大和さんがドライヤーを買うのにとても親切でした。お礼を言ってください。",
+          "english": "大和さん helped with a hair dryer. Say thanks.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-h3-thanks.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-h4-reunion",
+          "prompt": "久しぶりに会えた友達の家族とばったり会いました。最初に何と言いますか？",
+          "english": "Ran into a friend’s family. What do you say first?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-h4-reunion.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-12-first-meet",
+          "prompt": "初めて会う人です。自己紹介をしてください。",
+          "english": "You’re meeting someone for the first time. Introduce yourself.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-12-first-meet.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-13-keychain",
+          "prompt": "向こうの人がキーホルダーを落としました。本人は気づかずに、とても急いで歩いて行きます。どうしますか？",
+          "english": "Someone dropped their keychain and is walking away fast. What do you do?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-13-keychain.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-14-rain-child",
+          "prompt": "雨が降っています。コンビニの前に、傘を持っていない悲しそうな子どもがいます。どうしますか？",
+          "english": "Raining. Sad child by a konbini with no umbrella. What do you do?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-14-rain-child.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-15-rain-station",
+          "prompt": "駅へ向かって歩いているけど、急に雨が降り始めました。家に傘があるけど、戻るのはめんどくさいです。どうしますか？",
+          "english": "Raining, already walking to the station, don’t feel like going back for your umbrella. What do you do?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-15-rain-station.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-16-priority-seat",
+          "prompt": "優先座席に、スマホを見ている若い人が座っています。妊婦さんが立っています。席をゆずってもらうように、その人に言ってください。",
+          "english": "A young man is on his phone in the priority seats. A pregnant woman is standing. Ask him to give her his seat.",
+          "imageUrl": "/homework/media/situation-cards-1/sit-16-priority-seat.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        },
+        {
+          "id": "sit-17-lost-keys",
+          "prompt": "鍵が見つかりません。自分に何と言いますか？",
+          "english": "You can't find your keys. What do you say to yourself?",
+          "imageUrl": "/homework/media/situation-cards-1/sit-17-lost-keys.png",
+          "imageAlign": "center",
+          "recordLabel": "Record your answer"
+        }
+      ]
+    }
+  ]
+}

@@ -69,8 +69,29 @@
     });
   }
 
+  /**
+   * kuromoji joins dicPath with path.join, which turns "https://cdn…" into "https:/cdn…".
+   * The browser then reads that as a path on OUR site and gets the home page back
+   * ("invalid file signature"). Put the second slash back before the request goes out.
+   */
+  let kuromojiXhrFixed = false;
+  function fixKuromojiXhrUrls() {
+    if (kuromojiXhrFixed || typeof XMLHttpRequest === "undefined") return;
+    kuromojiXhrFixed = true;
+    const origOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function patchedOpen(method, url) {
+      const raw = typeof url === "string" ? url : url && url.toString ? url.toString() : "";
+      const at = raw.indexOf("cdn.jsdelivr.net/npm/kuromoji@");
+      if (at >= 0 && !/^https:\/\/cdn\.jsdelivr\.net\//.test(raw)) {
+        arguments[1] = "https://" + raw.slice(at);
+      }
+      return origOpen.apply(this, arguments);
+    };
+  }
+
   function ensureTokenizer() {
     if (tokenizerPromise) return tokenizerPromise;
+    fixKuromojiXhrUrls();
     tokenizerPromise = loadKuromojiScript()
       .then(
         () =>
@@ -105,14 +126,36 @@
         reading &&
         normalizeReading(reading) !== normalizeReading(surface);
 
+      const addPlain = (str) => {
+        if (!str) return;
+        const last = segments[segments.length - 1];
+        if (last && !last.rt) last.text += str;
+        else segments.push({ text: str });
+      };
+
       if (needsReading) {
-        segments.push({ text: surface, rt: reading });
+        /* Okurigana stays plain: 越え -> 越(こ)え, not 越え(こえ). */
+        let base = surface;
+        let rt = reading;
+        let tail = "";
+        const kanaTail = surface.match(/[\u3040-\u309f]+$/);
+        if (kanaTail && surface.length > kanaTail[0].length) {
+          for (let n = kanaTail[0].length; n > 0; n--) {
+            const t = kanaTail[0].slice(-n);
+            if (reading.endsWith(t) && reading.length > t.length) {
+              tail = t;
+              base = surface.slice(0, surface.length - n);
+              rt = reading.slice(0, reading.length - n);
+              break;
+            }
+          }
+        }
+        segments.push({ text: base, rt });
+        addPlain(tail);
         return;
       }
 
-      const last = segments[segments.length - 1];
-      if (last && !last.rt) last.text += surface;
-      else segments.push({ text: surface });
+      addPlain(surface);
     });
     return segments;
   }

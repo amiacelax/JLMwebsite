@@ -1226,7 +1226,270 @@
     return copyTextToClipboard(formatCoordsBlurb(pos));
   }
 
-  const LAYOUT_TOOLS_PANEL_VERSION = "3";
+  const LAYOUT_TOOLS_PANEL_VERSION = "4";
+  const LAYOUT_TOOLS_COLLAPSE_MQ = "(max-width: 767px)";
+
+  /** Mobile: the panel is a small circle until tapped (it was too big). */
+  function isLayoutToolsMobile() {
+    try {
+      return window.matchMedia(LAYOUT_TOOLS_COLLAPSE_MQ).matches;
+    } catch {
+      return false;
+    }
+  }
+
+  function setLayoutToolsCollapsed(panel, collapsed) {
+    if (!panel) return;
+    panel.classList.toggle("is-collapsed", !!collapsed);
+    const toggle = panel.querySelector(".hw-tool-layout-tools__toggle");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      toggle.setAttribute(
+        "aria-label",
+        collapsed ? "Show tool positions panel" : "Hide tool positions panel"
+      );
+    }
+  }
+
+  function escapeHtmlLocal(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, (ch) => {
+      return (
+        {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[ch] || ch
+      );
+    });
+  }
+
+  /**
+   * "Send HW" controls inside the Tool positions bubble — only when a teacher
+   * is viewing a student's page. Uses global.HwQuickSend (hw-platform.js).
+   */
+  function buildQuickSendSection(panel) {
+    const host = panel && panel.querySelector("#hw-quicksend");
+    if (!host) return;
+    const quick = global.HwQuickSend;
+    const target = quick?.getTarget?.();
+    if (!quick || !target) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<p class="hw-tool-layout-tools__label">Send HW \u2192 ' +
+      escapeHtmlLocal(target.displayName) +
+      "</p>" +
+      '<div class="hw-tool-layout-tools__send-combo">' +
+      '<input type="text" class="hw-tool-layout-tools__send-input" id="hw-quicksend-input" ' +
+      'role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="hw-quicksend-suggest" ' +
+      'placeholder="Search worksheets\u2026" autocomplete="off" spellcheck="false" ' +
+      'data-1p-ignore="true" data-lpignore="true">' +
+      '<ul class="hw-tool-layout-tools__suggest" id="hw-quicksend-suggest" role="listbox" hidden></ul>' +
+      "</div>" +
+      '<div class="hw-tool-layout-tools__row">' +
+      '<button type="button" class="hw-tool-layout-tools__btn hw-tool-layout-tools__btn--save" id="hw-quicksend-send">Send</button>' +
+      '<button type="button" class="hw-tool-layout-tools__btn" id="hw-quicksend-silent">Silent swap</button>' +
+      "</div>" +
+      '<p class="hw-tool-layout-tools__send-status" id="hw-quicksend-status"></p>';
+
+    const input = host.querySelector("#hw-quicksend-input");
+    const suggestEl = host.querySelector("#hw-quicksend-suggest");
+    const statusEl = host.querySelector("#hw-quicksend-status");
+    const sendBtn = host.querySelector("#hw-quicksend-send");
+    const silentBtn = host.querySelector("#hw-quicksend-silent");
+
+    let worksheets = [];
+    let matches = [];
+    let activeIndex = -1;
+    let selectedId = "";
+
+    const setStatus = (msg, isError) => {
+      if (!statusEl) return;
+      statusEl.textContent = msg || "";
+      statusEl.classList.toggle("is-error", !!isError);
+    };
+
+    quick
+      .listWorksheets()
+      .then((list) => {
+        worksheets = Array.isArray(list) ? list : [];
+        setStatus(worksheets.length ? "" : "No worksheets found.");
+      })
+      .catch(() => setStatus("Couldn't load worksheet list.", true));
+
+    /* Google-style: match the typed text anywhere in title OR id. */
+    const filterWorksheets = (q) => {
+      const needle = q.trim().toLowerCase();
+      if (!needle) return worksheets.slice(0, 8);
+      const starts = [];
+      const contains = [];
+      worksheets.forEach((ws) => {
+        const title = (ws.title || "").toLowerCase();
+        const id = (ws.id || "").toLowerCase();
+        if (title.startsWith(needle) || id.startsWith(needle)) starts.push(ws);
+        else if (title.includes(needle) || id.includes(needle)) contains.push(ws);
+      });
+      return starts.concat(contains).slice(0, 8);
+    };
+
+    const closeSuggest = () => {
+      if (!suggestEl) return;
+      suggestEl.hidden = true;
+      suggestEl.innerHTML = "";
+      activeIndex = -1;
+      input?.setAttribute("aria-expanded", "false");
+    };
+
+    const highlight = (text, q) => {
+      const safe = escapeHtmlLocal(text);
+      const needle = q.trim();
+      if (!needle) return safe;
+      const idx = text.toLowerCase().indexOf(needle.toLowerCase());
+      if (idx < 0) return safe;
+      const before = escapeHtmlLocal(text.slice(0, idx));
+      const hit = escapeHtmlLocal(text.slice(idx, idx + needle.length));
+      const after = escapeHtmlLocal(text.slice(idx + needle.length));
+      return before + "<mark>" + hit + "</mark>" + after;
+    };
+
+    const renderSuggest = () => {
+      if (!suggestEl) return;
+      const q = String(input?.value || "");
+      matches = filterWorksheets(q);
+      if (!matches.length) {
+        closeSuggest();
+        return;
+      }
+      suggestEl.innerHTML = matches
+        .map((ws, i) => {
+          const title = ws.title || ws.id;
+          const idLine = ws.title && ws.id && ws.title !== ws.id
+            ? '<span class="hw-tool-layout-tools__suggest-id">' + escapeHtmlLocal(ws.id) + "</span>"
+            : "";
+          return (
+            '<li class="hw-tool-layout-tools__suggest-item' +
+            (i === activeIndex ? " is-active" : "") +
+            '" role="option" data-idx="' +
+            i +
+            '" aria-selected="' +
+            (i === activeIndex ? "true" : "false") +
+            '"><span class="hw-tool-layout-tools__suggest-title">' +
+            highlight(title, q) +
+            "</span>" +
+            idLine +
+            "</li>"
+          );
+        })
+        .join("");
+      suggestEl.hidden = false;
+      input?.setAttribute("aria-expanded", "true");
+    };
+
+    const pick = (ws) => {
+      if (!ws) return;
+      selectedId = ws.id;
+      if (input) input.value = ws.title || ws.id;
+      closeSuggest();
+    };
+
+    const resolveId = () => {
+      const raw = String(input?.value || "").trim();
+      if (!raw) return "";
+      /* A fresh pick wins only if the box still shows that title. */
+      if (selectedId) {
+        const sel = worksheets.find((w) => w.id === selectedId);
+        if (sel && (sel.title || sel.id) === raw) return selectedId;
+      }
+      const byId = worksheets.find((w) => w.id === raw);
+      if (byId) return byId.id;
+      const byTitle = worksheets.find((w) => (w.title || "").toLowerCase() === raw.toLowerCase());
+      if (byTitle) return byTitle.id;
+      const filtered = filterWorksheets(raw);
+      if (filtered.length) return filtered[0].id;
+      return raw;
+    };
+
+    input?.addEventListener("input", () => {
+      selectedId = "";
+      activeIndex = -1;
+      renderSuggest();
+    });
+
+    input?.addEventListener("focus", () => {
+      if (worksheets.length) renderSuggest();
+    });
+
+    input?.addEventListener("keydown", (ev) => {
+      if (suggestEl?.hidden) {
+        if (ev.key === "ArrowDown" && worksheets.length) {
+          renderSuggest();
+        }
+        return;
+      }
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        activeIndex = Math.min(matches.length - 1, activeIndex + 1);
+        renderSuggest();
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        activeIndex = Math.max(0, activeIndex - 1);
+        renderSuggest();
+      } else if (ev.key === "Enter") {
+        if (activeIndex >= 0 && matches[activeIndex]) {
+          ev.preventDefault();
+          pick(matches[activeIndex]);
+        }
+      } else if (ev.key === "Escape") {
+        closeSuggest();
+      }
+    });
+
+    suggestEl?.addEventListener("mousedown", (ev) => {
+      /* mousedown (not click) so it fires before the input blur. */
+      const item = ev.target.closest?.("[data-idx]");
+      if (!item) return;
+      ev.preventDefault();
+      const idx = Number(item.getAttribute("data-idx"));
+      pick(matches[idx]);
+      input?.focus();
+    });
+
+    input?.addEventListener("blur", () => {
+      window.setTimeout(closeSuggest, 120);
+    });
+
+    const doSend = async (silent) => {
+      const worksheetId = resolveId();
+      if (!worksheetId) {
+        setStatus("Pick or type a worksheet first.", true);
+        return;
+      }
+      if (sendBtn) sendBtn.disabled = true;
+      if (silentBtn) silentBtn.disabled = true;
+      setStatus((silent ? "Silently swapping \u201c" : "Sending \u201c") + worksheetId + "\u201d\u2026");
+      try {
+        const data = await quick.send({ worksheetId, silent });
+        setStatus(data.message || (silent ? "Swapped." : "Sent."));
+        const who = target.displayName || target.student;
+        global.HwToast?.show?.(
+          (silent ? "Silently swapped \u2192 " : "Sent \u2713 \u2192 ") + who
+        );
+      } catch (err) {
+        setStatus((err && err.message) || "Send failed.", true);
+        global.HwToast?.show?.("Send failed \u2014 " + ((err && err.message) || "try again"));
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+        if (silentBtn) silentBtn.disabled = false;
+      }
+    };
+
+    sendBtn?.addEventListener("click", () => void doSend(false));
+    silentBtn?.addEventListener("click", () => void doSend(true));
+  }
 
   function ensureSaveHomesControl() {
     if (!canUseLayoutTools()) return;
@@ -1234,6 +1497,11 @@
     if (existing) {
       if (existing.dataset.hwToolsPanel === LAYOUT_TOOLS_PANEL_VERSION) {
         refreshLayoutToolsReadout();
+        /* HwQuickSend may have loaded after the panel was first built. */
+        const qs = existing.querySelector("#hw-quicksend");
+        if (qs && qs.hidden && global.HwQuickSend?.getTarget?.()) {
+          buildQuickSendSection(existing);
+        }
         return;
       }
       existing.remove();
@@ -1244,6 +1512,8 @@
     panel.className = "hw-tool-layout-tools";
     panel.dataset.hwToolsPanel = LAYOUT_TOOLS_PANEL_VERSION;
     panel.innerHTML =
+      '<button type="button" class="hw-tool-layout-tools__toggle" aria-expanded="true" aria-label="Hide tool positions panel" title="Tool positions">' +
+      '<span class="hw-tool-layout-tools__toggle-dots" aria-hidden="true"></span></button>' +
       '<p class="hw-tool-layout-tools__label">Tool positions</p>' +
       '<p class="hw-tool-layout-tools__readout" id="hw-tool-coords-readout">Copy point, or Highlight element</p>' +
       '<div class="hw-tool-layout-tools__row">' +
@@ -1253,6 +1523,7 @@
       '<button type="button" class="hw-tool-layout-tools__btn" id="hw-clear-pick-coords" hidden>Clear</button>' +
       '<button type="button" class="hw-tool-layout-tools__btn hw-tool-layout-tools__btn--save" id="hw-save-tool-homes">Save as home</button>' +
       "</div>" +
+      '<div class="hw-tool-layout-tools__quicksend" id="hw-quicksend" hidden></div>' +
       '<p class="hw-tool-layout-tools__hint" id="hw-tool-layout-hint">Copy point for a spot, or Highlight element to show me what you mean</p>';
 
     panel.querySelector("#hw-pick-point-coords").addEventListener("click", () => {
@@ -1311,7 +1582,25 @@
       }, 1600);
     });
 
+    const toggle = panel.querySelector(".hw-tool-layout-tools__toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        setLayoutToolsCollapsed(panel, !panel.classList.contains("is-collapsed"));
+      });
+    }
+
     document.body.appendChild(panel);
+    /* Start collapsed on phones; expanded on desktop. */
+    setLayoutToolsCollapsed(panel, isLayoutToolsMobile());
+    try {
+      const mq = window.matchMedia(LAYOUT_TOOLS_COLLAPSE_MQ);
+      const onMqChange = (ev) => setLayoutToolsCollapsed(panel, ev.matches);
+      if (mq.addEventListener) mq.addEventListener("change", onMqChange);
+      else if (mq.addListener) mq.addListener(onMqChange);
+    } catch {
+      /* ignore */
+    }
+    buildQuickSendSection(panel);
     refreshPickChrome();
     refreshLayoutToolsReadout();
     document.addEventListener(

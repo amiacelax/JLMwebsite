@@ -134,6 +134,15 @@ function isTeacher(username: string | undefined, env: KvEnv): boolean {
   );
 }
 
+/** Presenting logins that may save glass-word edits (not the full teacher hub). */
+function canEditGlassLexicon(username: string | undefined, env: KvEnv): boolean {
+  if (isTeacher(username, env)) return true;
+  const user = String(username || "")
+    .trim()
+    .toLowerCase();
+  return user === "demo2" || user === "benm";
+}
+
 function emptyOverlay(): MgLexiconGlobalOverlay {
   return {
     custom: {},
@@ -553,7 +562,7 @@ export async function patchMgLexiconOverlay(
 ): Promise<{ overlay: MgLexiconGlobalOverlay }> {
   const kv = env.HOMEWORK_KV;
   if (!kv) throw new Error("KV_NOT_CONFIGURED");
-  if (!isTeacher(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
+  if (!canEditGlassLexicon(data.teacherUsername, env)) throw new Error("TEACHER_ONLY");
 
   const surface = String(data.surface || "").trim();
   if (!surface) throw new Error("SURFACE_REQUIRED");

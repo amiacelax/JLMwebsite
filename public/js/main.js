@@ -44,55 +44,21 @@
   const SCHEDULE_SHARE_PATH = "/availability";
 
   const JAPAN_TIMEZONE = "Asia/Tokyo";
-  const JAPAN_WEEKLY_AVAILABILITY = {
-    0: { label: "Sunday", note: "Japanese Sundays are unavailable.", slots: [] },
-    1: {
-      label: "Monday",
-      slots: [
-        [[10, 0], [11, 0]],
-        [[11, 15], [12, 15]],
-        [[12, 30], [13, 30]],
-        [[13, 45], [14, 45]],
-        [[22, 0], [23, 0]],
-      ],
+  const JAPAN_WEEKDAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const JAPAN_DAY_NOTES = {
+    0: {
+      text: "Remember the Sabbath day, to keep it holy.",
+      more: "Six days you shall labor, and do all your work, but the seventh day is a Sabbath to the Lord your God. On it you shall not do any work, you, or your son, or your daughter, your male servant, or your female servant, or your livestock, or the sojourner who is within your gates. For in six days the Lord made the heavens and the earth, the sea, and all that is in them, and rested on the seventh day. Therefore the Lord blessed the Sabbath day and made it holy.",
     },
-    2: {
-      label: "Tuesday",
-      slots: [
-        [[12, 15], [13, 15]],
-        [[21, 15], [22, 15]],
-      ],
-    },
-    3: {
-      label: "Wednesday",
-      slots: [
-        [[11, 15], [12, 15]],
-        [[12, 30], [13, 30]],
-        [[13, 45], [14, 45]],
-        [[15, 0], [16, 0]],
-        [[21, 15], [22, 15]],
-      ],
-    },
-    4: { label: "Thursday", note: "Thursday sometimes opens up — ask me directly.", slots: [] },
-    5: {
-      label: "Friday",
-      slots: [
-        [[11, 15], [12, 15]],
-        [[12, 30], [13, 30]],
-        [[13, 45], [14, 45]],
-      ],
-    },
-    6: {
-      label: "Saturday",
-      note: "Makeup day for missed lessons.",
-      slots: [
-        [[10, 0], [11, 15]],
-        [[11, 30], [12, 30]],
-        [[12, 45], [13, 45]],
-        [[21, 15], [22, 15]],
-      ],
-    },
+    4: "Thursday sometimes opens up — ask me directly.",
+    6: "I spend time with my kids",
   };
+  const SCHEDULE_WEEKS_AHEAD = 8;
+  const SCHEDULE_SLOT_MINUTES = 60;
+  const SCHEDULE_NOTICE_HOURS_BEFORE_DAY = 4; // a day's times close at 8 PM Japan time the day before
+  // Open times come live from JD's Google Calendar (GET /api/booking/slots).
+  let scheduleSlotStarts = [];
+  let scheduleLoadState = "idle";
 
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
@@ -114,6 +80,9 @@
     const profileUrl = resolveDiscordProfileUrl(window.JLM_DISCORD_PROFILE_URL);
     if (profileUrl) contactDiscordLink.href = profileUrl;
   }
+
+  const scheduleDiscordLink = document.getElementById("lesson-scheduler-discord");
+  if (scheduleDiscordLink && contactDiscordLink) scheduleDiscordLink.href = contactDiscordLink.href;
 
   /* Theme toggle */
   function getTheme() {
@@ -288,45 +257,119 @@
     }
   }
 
+  function japanClock(date) {
+    const j = new Date(date.getTime() + 9 * 3600000);
+    return String(j.getUTCHours()).padStart(2, "0") + ":" + String(j.getUTCMinutes()).padStart(2, "0");
+  }
+
   function buildScheduleDays(weekOffset) {
     const todayJapan = japanDateParts(new Date());
     const weekStart = (weekOffset || 0) * 7;
     return Array.from({ length: 7 }, (_, offset) => {
       const parts = addJapanDays(todayJapan, weekStart + offset);
       const weekday = japanWeekday(parts);
-      const availability = JAPAN_WEEKLY_AVAILABILITY[weekday] || JAPAN_WEEKLY_AVAILABILITY[0];
-      const slots = availability.slots.map(([start, end]) => {
-        const startDate = dateFromJapanTime(parts, start[0], start[1]);
-        const endDate = dateFromJapanTime(parts, end[0], end[1]);
-        return {
-          available: true,
-          localDateLabel: formatScheduleDate(startDate),
-          localTimeLabel: formatScheduleTime(startDate) + "–" + formatScheduleTime(endDate),
-          japanTimeLabel:
-            availability.label +
-            " " +
-            String(start[0]).padStart(2, "0") +
-            ":" +
-            String(start[1]).padStart(2, "0") +
-            "–" +
-            String(end[0]).padStart(2, "0") +
-            ":" +
-            String(end[1]).padStart(2, "0") +
-            " JST",
-        };
-      });
+      const dayLabel = JAPAN_WEEKDAY_LABELS[weekday];
+      const dayStart = dateFromJapanTime(parts, 0, 0).getTime();
+      const slots = scheduleSlotStarts
+        .filter((s) => s.getTime() >= dayStart && s.getTime() < dayStart + 86400000)
+        .map((startDate) => {
+          const endDate = new Date(startDate.getTime() + SCHEDULE_SLOT_MINUTES * 60000);
+          return {
+            available: true,
+            start: startDate,
+            localDateLabel: formatScheduleDate(startDate),
+            localTimeLabel: formatScheduleTime(startDate) + "–" + formatScheduleTime(endDate),
+            japanTimeLabel: dayLabel + " " + japanClock(startDate) + "–" + japanClock(endDate) + " JST",
+          };
+        });
+
+      let note = "";
+      let noteMore = "";
+      if (!slots.length) {
+        const dayNote = JAPAN_DAY_NOTES[weekday];
+        if (dayNote && typeof dayNote === "object") {
+          note = dayNote.text;
+          noteMore = dayNote.more;
+        } else {
+          note = dayNote || "";
+        }
+        if (!note) {
+          const tooSoon = Date.now() >= dayStart - SCHEDULE_NOTICE_HOURS_BEFORE_DAY * 3600000;
+          if (scheduleLoadState === "loading") note = "Loading open times…";
+          else if (scheduleLoadState === "error") note = "Couldn't load times — message me directly.";
+          else if (tooSoon) note = "Too soon to book online — message me directly.";
+          else note = "Fully booked — pick another day.";
+        }
+      }
 
       return {
         dateBubbleLabel: formatJapanScheduleDate(dateFromJapanTime(parts, 12, 0)),
         japanDateLabel: formatJapanScheduleDate(dateFromJapanTime(parts, 12, 0)),
-        japanDayLabel: availability.label,
-        note: availability.note || "",
+        japanDayLabel: dayLabel,
+        note,
+        noteMore,
         slots,
       };
     });
   }
 
+  function loadScheduleSlots() {
+    scheduleLoadState = "loading";
+    renderScheduleDates();
+    return fetch("/api/booking/slots", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("slots " + r.status))))
+      .then((data) => {
+        scheduleSlotStarts = (data.slots || []).map((s) => new Date(s));
+        scheduleLoadState = "ok";
+      })
+      .catch(() => {
+        scheduleSlotStarts = [];
+        scheduleLoadState = "error";
+      })
+      .then(() => {
+        if (!scheduleModal || scheduleModal.hidden) return;
+        const days = buildScheduleDays(scheduleWeekOffset);
+        const firstOpen = days.findIndex((d) => d.slots.length);
+        selectedScheduleDateIndex = firstOpen >= 0 ? firstOpen : 0;
+        renderScheduleDates();
+      });
+  }
+
+  function updateScheduleEmailLink() {
+    const link = document.getElementById("lesson-scheduler-email");
+    if (!link) return;
+    const lines = ["Hi JD,", "", "I'd like to book a free trial lesson."];
+    if (selectedScheduleSlot) {
+      lines.push(
+        "",
+        "Preferred time: " +
+          selectedScheduleSlot.localDateLabel +
+          " at " +
+          selectedScheduleSlot.localTimeLabel +
+          " (" +
+          timezoneLabel() +
+          "). Japan time: " +
+          selectedScheduleSlot.japanTimeLabel +
+          "."
+      );
+    }
+    lines.push("", "My name:", "My Japanese level / goals:", "", "Thanks!");
+    const subject = encodeURIComponent("Free trial lesson");
+    const body = encodeURIComponent(lines.join("\n"));
+    // Phones open their mail app; on a computer many people have no mail app set up, so open a Gmail draft.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      link.href = "mailto:JD@japaneselanguagementor.com?subject=" + subject + "&body=" + body;
+      link.removeAttribute("target");
+    } else {
+      link.href =
+        "https://mail.google.com/mail/?view=cm&fs=1&to=JD%40japaneselanguagementor.com&su=" + subject + "&body=" + body;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
+  }
+
   function updateScheduleSelected() {
+    updateScheduleEmailLink();
     if (!scheduleSelected || !scheduleUseBtn) return;
     if (!selectedScheduleSlot) {
       scheduleSelected.textContent = "Select a date and time to add it to your message.";
@@ -344,6 +387,63 @@
       selectedScheduleSlot.japanTimeLabel +
       ".";
     scheduleUseBtn.disabled = false;
+  }
+
+  /** First sentence shows; hover (desktop), click, or tap reveals the rest in a popup. */
+  function buildSabbathNote(text, more) {
+    const wrap = document.createElement("div");
+    wrap.className = "lesson-scheduler-sabbath";
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "lesson-scheduler-slot lesson-scheduler-slot--unavailable lesson-scheduler-sabbath__trigger";
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.textContent = text + " …";
+
+    const pop = document.createElement("div");
+    pop.className = "lesson-scheduler-sabbath__popup";
+    pop.setAttribute("role", "tooltip");
+    pop.hidden = true;
+    pop.textContent = more;
+
+    let pinned = false;
+    const show = () => {
+      pop.hidden = false;
+      trigger.setAttribute("aria-expanded", "true");
+    };
+    const hide = () => {
+      pop.hidden = true;
+      pinned = false;
+      trigger.setAttribute("aria-expanded", "false");
+    };
+    const canHover = window.matchMedia("(hover: hover)").matches;
+
+    if (canHover) {
+      wrap.addEventListener("mouseenter", show);
+      wrap.addEventListener("mouseleave", () => {
+        if (!pinned) hide();
+      });
+    }
+    trigger.addEventListener("click", () => {
+      if (pop.hidden) {
+        show();
+        pinned = true;
+      } else if (pinned || !canHover) {
+        hide();
+      } else {
+        pinned = true;
+      }
+    });
+    document.addEventListener("click", (e) => {
+      if (!wrap.isConnected) return;
+      if (!wrap.contains(e.target)) hide();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && wrap.isConnected) hide();
+    });
+
+    wrap.append(trigger, pop);
+    return wrap;
   }
 
   function renderScheduleSlots() {
@@ -366,6 +466,12 @@
     const day =
       buildScheduleDays(scheduleWeekOffset)[selectedScheduleDateIndex] ||
       buildScheduleDays(scheduleWeekOffset)[0];
+
+    if (!day.slots.length && day.noteMore) {
+      scheduleSlotOptions.appendChild(buildSabbathNote(day.note, day.noteMore));
+      updateScheduleSelected();
+      return;
+    }
 
     if (!day.slots.length) {
       const btn = document.createElement("button");
@@ -425,13 +531,15 @@
         formatScheduleDate(dateFromJapanTime(endParts, 12, 0));
     }
     if (scheduleWeekPrev) scheduleWeekPrev.disabled = scheduleWeekOffset <= 0;
+    if (scheduleWeekNext) scheduleWeekNext.disabled = scheduleWeekOffset >= SCHEDULE_WEEKS_AHEAD;
   }
 
   function changeScheduleWeek(delta) {
     const next = scheduleWeekOffset + delta;
-    if (next < 0) return;
+    if (next < 0 || next > SCHEDULE_WEEKS_AHEAD) return;
     scheduleWeekOffset = next;
-    selectedScheduleDateIndex = 0;
+    const firstOpenDay = buildScheduleDays(scheduleWeekOffset).findIndex((d) => d.slots.length);
+    selectedScheduleDateIndex = firstOpenDay >= 0 ? firstOpenDay : 0;
     selectedScheduleSlot = null;
     updateScheduleWeekNav();
     renderScheduleDates();
@@ -484,7 +592,8 @@
       scheduleTimezone.textContent = "Timezone: " + timezoneLabel();
     }
     updateScheduleWeekNav();
-    renderScheduleDates();
+    updateScheduleEmailLink();
+    loadScheduleSlots();
     scheduleModal.querySelector("[data-schedule-close]")?.focus();
   }
 
@@ -580,7 +689,7 @@
     window.addEventListener("scrollend", focus, { once: true });
   }
 
-  const serviceSelect = document.getElementById("service");
+
 
   function preselectService(serviceName) {
     if (!serviceSelect || !serviceName) return;
@@ -597,12 +706,13 @@
     try {
       const params = new URLSearchParams(window.location.search);
       const fromQuery = params.get("service");
-      if (fromQuery) preselectService(fromQuery);
+      const serviceName = fromQuery === "Free consultation" ? "Book a trial lesson" : fromQuery;
+      if (serviceName) preselectService(serviceName);
       const fromMessage = params.get("message");
       if (fromMessage && messageField && !messageField.value.trim()) {
         messageField.value = fromMessage;
       }
-      if (fromQuery === "Free consultation" && !isNarrowPhone()) focusContactNameSoon();
+      if (serviceName === "Book a trial lesson" && !isNarrowPhone()) focusContactNameSoon();
     } catch (_) {
       /* ignore */
     }
@@ -783,10 +893,108 @@
     if (type) formStatus.classList.add(`is-${type}`);
   }
 
+  /* After sending: popup asking them to check spam (JD's replies land there until they email first). */
+  function showSpamPopup(payload) {
+    document.getElementById("spam-popup")?.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "spam-popup";
+    wrap.className = "spam-popup";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-modal", "true");
+    wrap.setAttribute("aria-labelledby", "spam-popup-title");
+
+    const card = document.createElement("div");
+    card.className = "spam-popup__card";
+
+    const please = document.createElement("p");
+    please.id = "spam-popup-title";
+    please.className = "spam-popup__please";
+    please.textContent = "PLEASE";
+
+    const body = document.createElement("p");
+    body.className = "spam-popup__body";
+    const red = document.createElement("span");
+    red.className = "spam-popup__red";
+    red.textContent = "check your spam folder";
+    body.append(red, " for my replies.", document.createElement("br"));
+    body.append("You can also ");
+    const link = document.createElement("a");
+    link.href =
+      "mailto:JD@japaneselanguagementor.com?subject=" +
+      encodeURIComponent("Hi JD — " + (payload.service || "Japanese lessons")) +
+      "&body=" +
+      encodeURIComponent("Hi JD,\n\n" + (payload.message || "") + "\n\n" + (payload.name || ""));
+    link.textContent = "click here to send me a quick email";
+    body.append(link, " to prevent it from going to spam.");
+
+    const ok = document.createElement("button");
+    ok.type = "button";
+    ok.className = "btn btn--primary";
+    ok.textContent = "Got it";
+
+    const close = () => {
+      wrap.remove();
+      document.removeEventListener("keydown", onKey);
+      showSentToast();
+    };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") close();
+    };
+    ok.addEventListener("click", close);
+    wrap.addEventListener("click", (ev) => {
+      if (ev.target === wrap) close();
+    });
+    document.addEventListener("keydown", onKey);
+
+    card.append(please, body, ok);
+    wrap.append(card);
+    document.body.append(wrap);
+    ok.focus();
+  }
+
+  /* "Sent" toast — shows after the popup is closed. */
+  function showSentToast() {
+    document.getElementById("sent-toast")?.remove();
+    const t = document.createElement("div");
+    t.id = "sent-toast";
+    t.className = "sent-toast";
+    t.setAttribute("role", "status");
+    t.textContent = "Sent";
+    document.body.append(t);
+    window.setTimeout(() => t.classList.add("is-hiding"), 2200);
+    window.setTimeout(() => t.remove(), 2700);
+  }
+  /* Trial lesson / private lessons need a meeting time before sending. */
+  function needsMeetingTime(service) {
+    return service === "Book a trial lesson" || service === "Private Lessons";
+  }
+
+  function promptForMeetingTime() {
+    showStatus("Please pick a time to meet before sending.", "error");
+    document.getElementById("contact-pick-time")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  /* "Pick a time" pill shows once Book a trial lesson / Private Lessons is chosen. */
+  const pickTimeBtn = document.getElementById("contact-pick-time");
+  const contactServiceSelect = document.getElementById("service");
+  function syncPickTimeBtn() {
+    if (!pickTimeBtn || !contactServiceSelect) return;
+    pickTimeBtn.hidden = !needsMeetingTime(contactServiceSelect.value);
+  }
+  contactServiceSelect?.addEventListener("change", syncPickTimeBtn);
+  syncPickTimeBtn();
   contactForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     showStatus("");
 
+    {
+      const fd = new FormData(contactForm);
+      const hasTime = /Preferred time:/i.test(String(fd.get("message") || ""));
+      if (needsMeetingTime(String(fd.get("service") || "")) && !hasTime) {
+        promptForMeetingTime();
+        return;
+      }
+    }
     const formData = new FormData(contactForm);
     const payload = {
       name: formData.get("name"),
@@ -799,13 +1007,21 @@
     submitBtn.textContent = "Sending…";
 
     try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      /* Local-only test: open /?fakesend#contact on localhost to run the whole flow without sending anything. */
+      const fakeSend =
+        /^(localhost|127\.0\.0\.1)$/.test(location.hostname) &&
+        new URLSearchParams(location.search).has("fakesend");
+      const res = fakeSend
+        ? { ok: true }
+        : await fetch("/api/contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
 
-      const data = await res.json();
+      const data = fakeSend
+        ? { message: "Thank you! I'll get back to you within 24 hours." }
+        : await res.json();
 
       if (!res.ok) {
         showStatus(data.error || "Something went wrong. Please try again.", "error");
@@ -813,7 +1029,9 @@
       }
 
       showStatus(data.message, "success");
+      showSpamPopup(payload);
       contactForm.reset();
+      syncPickTimeBtn();
     } catch {
       showStatus("Network error. Please check your connection and try again.", "error");
     } finally {

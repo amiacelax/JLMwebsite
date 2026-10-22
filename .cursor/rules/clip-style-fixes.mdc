@@ -1,0 +1,61 @@
+---
+description: Clip look and edit fixes from JD's Batch G review. Use whenever making or fixing Shorts/Reels from lesson plates.
+globs: yt-plate-clipper/**/*
+alwaysApply: false
+---
+
+# Clip style fixes (from JD, Batch G review)
+
+Batches E and F are the look. The plate (greenscreen) is the only footage change. Do not invent a new caption style.
+
+## Picture
+- Face and body big, close, like E1. A small JD at the bottom is wrong.
+- Pixel background covers the whole frame. The room must not show. In OBS the green does not reach the left edge — crop inside the green (`screen_x`), never the wall.
+- Hair and shoulders stay a clean key. Do not eat the shirt or the face.
+
+## Top titles
+- Always both pills. Black line on top, orange line tucked under it.
+- Black pill stays **JLPT Tips**. "Best JLPT Advice" overclaims the obvious tips. He does not want to be called out for "best."
+- Orange pill is one hook for the whole clip. It does not change mid-clip. Make it hooky. Weak labels like "This question" or "You know these" are out.
+- Hooks he named: G1 **Buy a watch**, G2 **Don't just guess**, G3 **Wring it out**, G4 **First Instinct**.
+
+## Blue words
+- Same blue, Open Sans, black outline, on the chest (E1), not floating in the sky.
+- Clean lines. No transcript dump, no smashed words (`likeOh`), no one-letter flashes (`k`).
+- Wrong word red, right word green, same as E1. Red is a real correction (やみ vs やま). A familiar kanji he is not correcting (山 and 木) is orange, the same orange as the pill.
+- When the right line lands ("first instinct is always right"), the whole line is green and the correct sound plays once. That sound is `good idea sound` (the ding already used on E2/F), not the generated bell.
+- An analogy has two parts: the thing that is true, and the picture. The thing for the towel is: a question has more to study than the answer, so milk it. The picture is the wet towel.
+- To keep the viewer, open on the picture once ("it's like a wet towel"), then the true thing. Do not say the picture twice. Skip the gag ("eww, oh it's wet") and cut to the payoff ("it will dry"). Skip filler bridges ("I think this makes studying easier", "if you just", "right?" after the picture). Cut dead audio fast (a long held "not").
+- Subtitle every word of a line he kept. "Squeezing out all the water of one question" stays whole.
+- Question marks can stay. Commas, periods, and the other banned marks do not.
+- Captions follow his mouth. Do not skip a line he says (`and I swear to you`). Do not drop a phrase to make the line punchier. He decides what gets left out.
+- Do not put the point in the blue words before he says it. The orange title is the hook he names, and it can be on from the start.
+- Put the new fact early so they stay. On the watch clip that is the board updates, right after the question.
+- Cut a repeat of the same phrase, a yeah or yup, and the dead air around it. "Same forever" does not also need "it's always been that way." Do not cut a pause that is inside a sentence.
+
+## End card
+- Match E, not old D3: **Book a trial lesson**, then the site on YouTube and **link in bio** on Instagram.
+- Last 2 seconds are the blur. Picture and voice keep playing under the blur. Do not freeze the frame or cut the audio.
+
+## The clip itself
+- A warning opens on the question to the viewer ("did you buy a watch yet?"), then the warning. They should feel asked.
+- Show his real slide markup (glosses, circles, "not a word"). Do not draw a new one when his is already on the lesson video.
+- If he is looking at a question, show that question (the lesson recording has the slide; the plate does not). Match it by plate time. He likes the real slide, including his red scribbles.
+- Open that clip with his head big and the question small. Hold that for about half a second, then trade sizes over about 1.4 seconds.
+- While the screenshot is up, his head stays small. Do not grow it back.
+- On an analogy, the question he is milking stays on screen (his real markup). The cold open can still be the picture line.
+- Open on the question, read out loud, so a stranger can follow. The blank is the context (`ねるまえにおふろに○○`, `あきは○○`). The question stays on screen. Advice with no question feels like "he's giving advice but I can't follow."
+- Walking a student through every step is dead air. It only helps that student. Leave it out.
+- Keep the line that makes the advice make sense. For the あきは clip that is: he said `あきはやまがきれいです`, then "you know you know 山 and 木", then "what you did is you felt familiar and that's why."
+- Skip: a question he gets all right, a bit too short to stand alone, a joke the mic can't hear, student-only chatter.
+- `ひとります` is not a word (close to `ふとります`, to get fat). Do not teach it as vocab. It is not part of the wet-towel clip.
+- If he says the same point twice and one take is clearer, borrow that take into the other clip. First instinct is the one he named. Do not invent lines. Do not drop a line inside a take he is using.
+- Cut for emphasis. Long rambles and meaning leftovers get tightened. Say so when a clip is only a meaning.
+- **Tight first.** Cut the non-essential before he sees it. Leave extra time / padding only when he says to. He remembers things the cut can drop; do not leave a walkthrough "so he can trim."
+
+## Both files
+- Write the YouTube file and the Instagram file unless he says one platform. Same cut. YouTube end line is `japaneselanguagementor.com`. Instagram end line is `link in bio`.
+
+## Do not
+- Upload to YouTube or Instagram unless he asks. Sending the files in Discord is only when he asks.
+- Clip Mo, CJ (including Christian), or Faye. Matt and Ben M are ok.

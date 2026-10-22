@@ -12,10 +12,9 @@
       .replace(/^-+|-+$/g, "");
   }
 
-  function makeAssignmentId(studentUsername, grammarPoint) {
-    const student = slugify(studentUsername) || "student";
+  function makeAssignmentId(_studentUsername, grammarPoint) {
     const grammar = slugify(grammarPoint) || "homework";
-    return student + "-" + grammar;
+    return "sheet-" + grammar;
   }
 
   function parseLine(line, mode, index, sectionPrefix) {

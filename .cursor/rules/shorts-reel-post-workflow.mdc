@@ -12,10 +12,9 @@ When the user sends a finished clip path (e.g. `e:\Da Vinci\...\BatchA2yt.mp4` o
 When JD asks for a **CapCut AI prompt** (or similar) to cut Japanese lessons into Shorts/Reels, **plan two platform shapes** — do not treat YT and IG as the same edit:
 
 ### Instagram Reels (discovery + follows + saves)
-- Lean **storytelling / path / mindset / aspirational** hooks (“fastest path…”, fluency thesis).
-- Soft thesis + high-value framing → people **save** and **follow**.
+- Lead with a **warning** or a landed **analogy**, not a definition. That’s what got saved and followed.
+- Soft thesis / “fastest path” still works only if the first beat is a trap or a picture they can keep.
 - Strong IG signal: high saves, non-follower reach, profile follows.
-- Cold open can sell a **big idea** before the grammar detail.
 
 ### YouTube Shorts (feed is pickier)
 - Lean **concrete mistake → quiz → fix** (“I hear this mistake…”, opposite of X?, wrong vs right).
@@ -23,10 +22,26 @@ When JD asks for a **CapCut AI prompt** (or similar) to cut Japanese lessons int
 - Shorts-native: conjugation puzzle, te-form fail, specific wrong answer.
 - If reusing a storytelling lesson for YT, **re-prompt CapCut** to open on a specific fail before the thesis.
 
+### What to hunt in a lesson (3 types)
+
+When dissecting a lesson into clips, **look for these three**. Don’t start by cutting “what this word means.” Sep 2026 IG: warnings got saved and followed; meaning clips watched and moved on.
+
+1. **Warning** — hunt this first. He flags a trap: don’t, doesn’t mean, be careful, this is where you mess up, can’t say it that way. The save is the stop sign, not the definition. (`どこにも` doesn’t mean anything by itself. Don’t translate `いつ` as English “when.”)
+2. **Analogy** — yes, pick these out. The tell is a **map onto something else**, not a definition. Listen for “it’s like”, “think of it as”, “same as when you…”, a picture, a habit, an English sentence he holds up beside the Japanese. If he only explains what the word means, that is a meaning, not an analogy. When you find one, name the line and the thing he’s comparing it to so he can confirm the catch.
+3. **Wrong then right** — he says the bad line out loud, then the good one (or a quiz beat, then the fix). Different from a warning: a warning is the stop; this is the pair. YouTube wants this in the first second. Instagram still opens on the warning if both are in the same stretch.
+
+**Meanings** (what a word means, a grammar label, a pattern explained) are leftover. Clip them only if the lesson has no warning, analogy, or wrong-then-right — and say so. Don’t lead a batch with them.
+
+When listing cuts, tag each one `warning` / `analogy` / `wrong-then-right` and put warnings first.
+
 ### When writing CapCut prompts
 - Prefer **separate YT vs IG prompt variants** (or one prompt with explicit “YT cut” / “IG cut” instructions).
+- Cold open: warning or the wrong line — not a meaning.
 - Call out cold open, on-screen text style, and pacing per platform using the above.
 - Keep pedagogy: mistake→fix in captions is intentional — don’t “correct” it away.
+
+### Anime-clip teaches (different format)
+When the source is an **anime line** (or similar clip) and JD is teaching that line: use the **anime dual-pane** layout in `anime-clip-teach-format.mdc` — face top, anime bottom, white JP+romaji card, yellow EN card. He **explains** grammar/nuance; do not copy “repeat + translate only” creators.
 
 ## 1. Review the clip
 - Prefer `ffprobe` + a few sample frames if tools are available.
@@ -37,7 +52,7 @@ When JD asks for a **CapCut AI prompt** (or similar) to cut Japanese lessons int
 - Clip numbering / filenames: **leave as-is**. The **title alone** is enough to identify which clip — no extra “Batch A2” labels needed in pings unless the user asks.
 
 ## 2. Paste-ready copy (separate labeled blocks)
-Offer wording is **Free consultation** (not “free trial lessons”; not Homework Hub unless user says otherwise).
+Offer wording is **Book a trial lesson** (not “free consultation”; not Homework Hub unless user says otherwise).
 CTA / Link sticker URL (always this — contact form, **not** availability):
 
 `https://japaneselanguagementor.com/#contact`
@@ -45,15 +60,21 @@ CTA / Link sticker URL (always this — contact form, **not** availability):
 | Platform | Block | Notes |
 |----------|--------|--------|
 | YouTube | **Title** | Clear, hooky (identifies the clip) |
-| YouTube | **Description** | Light hashtags + Free consultation URL. On-screen cue: free trial / consultation + japaneselanguagementor.com |
-| YouTube | **Pin comment** | Always include — `Free consultation →` + URL; note Shorts description links aren’t reliably clickable |
-| Instagram | **Caption** | CTA = link in bio; hashtags at end. End line: `Free consultation → link in bio` |
-| Instagram | **Story caption** | Always include a **short** Story text. Default: `Free consultation ↑` (Link sticker sits above the caption) |
+| YouTube | **Description** | Light hashtags + Book a trial lesson URL. On-screen cue: Book a trial lesson + japaneselanguagementor.com |
+| YouTube | **Pin comment** | Always include — `Book a trial lesson →` + URL; note Shorts description links aren’t reliably clickable |
+| Instagram | **Caption** | CTA = link in bio; hashtags at end. End line: `Book a trial lesson → link in bio` |
+| Instagram | **Story caption** | Always include a **short** Story text. Default: `Book a trial lesson ↑` (Link sticker sits above the caption) |
 | Instagram | **Link sticker URL** | Always include the `#contact` URL above for the Story Link sticker |
 
-In chat, show paste blocks for: **YT title**, **YT description**, **IG caption** only.
+When he asks for the post info, send it to the **video notifications** Discord channel (`1555467510281805844`). One message per clip. Each message has only:
 
-Do **not** paste YT pin comment, IG Story caption, or Link sticker URL in the review chat — those go in the later Discord/Hub ping when the reminder is armed. Still generate them internally so the ping is ready (defaults below).
+- YouTube **title**
+- YouTube **description**
+- Instagram **caption**
+
+Do not dump those blocks in chat. One line that they were sent is enough.
+
+Do **not** include the YT pin comment, IG Story caption, or Link sticker URL. Those go in the later Discord/Hub ping when the reminder is armed. Still keep them ready internally (defaults below).
 
 ## 3. Arm reminder → Cloudflare (not PC sleeper)
 
@@ -66,7 +87,9 @@ Clip review alone never schedules Discord.
 - If schedule can’t be read, ask once for fire time (JP or LA), then arm.
 - Title in the ping = the video’s title (or the paste-ready YT title from review).
 
-- Default slot **only when they ask to arm without a time:** today’s **6:30pm Los Angeles / Pacific** if still ahead; otherwise tomorrow 6:30pm LA — **or** the exact time they gave (e.g. `8/6 10:30am jp`).
+- Default slot **only when they ask to arm without a time:** **Wed / Fri at 9:00 AM JST** (JD's standing schedule as of Oct 2026 — 2 posts/week). Two clips/week → Wed + Fri 9:00am JST; one → Wed 9:00am JST. Or the exact time they gave (e.g. `8/6 10:30am jp`).
+  - 9:00am JST ≈ **5:00pm PDT (prev. day)** / 4:00pm PST — anchor is **Japan time now**, not Pacific.
+  - Legacy notes: older defaults were 6:30pm LA, then Insights-primetime Wed/Sat/Sun 3:00pm — do **not** use those unless JD asks.
 - Convert to **UTC ISO** carefully (JST = UTC+9; LA PDT = UTC−7 / PST = UTC−8).
 - If multiple clips same day: **one** ping listing all titles — do not Discord-spam.
 - After arming, confirm fire time in user language (JP + LA) + job id.
@@ -77,7 +100,7 @@ Clip review alone never schedules Discord.
 Prefer production API via script (after Worker is deployed):
 
 ```bash
-node scripts/arm-social-reminder.mjs --fire 2026-08-06T01:30:00Z --titles "Want Disneyland? hoshii vs -tai" --story "Free consultation ↑"
+node scripts/arm-social-reminder.mjs --fire 2026-08-06T01:30:00Z --titles "Want Disneyland? hoshii vs -tai" --story "Book a trial lesson ↑"
 ```
 
 Or `POST https://japaneselanguagementor.com/api/social-reminders` with JSON:
@@ -87,8 +110,8 @@ Or `POST https://japaneselanguagementor.com/api/social-reminders` with JSON:
   "teacherUsername": "jlm",
   "fireAtUtc": "2026-08-06T01:30:00.000Z",
   "clipTitles": "...",
-  "ytPinComment": "Free consultation → https://japaneselanguagementor.com/#contact",
-  "igStoryCaption": "Free consultation ↑",
+  "ytPinComment": "Book a trial lesson → https://japaneselanguagementor.com/#contact",
+  "igStoryCaption": "Book a trial lesson ↑",
   "linkSticker": "https://japaneselanguagementor.com/#contact"
 }
 ```
@@ -121,8 +144,8 @@ Worker cron `* * * * *` loads `sr-pending:*` from `HOMEWORK_KV` and fires due jo
 ````
 
 Defaults:
-- Story caption: **`Free consultation ↑`**
-- Pin: **`Free consultation → https://japaneselanguagementor.com/#contact`**
+- Story caption: **`Book a trial lesson ↑`**
+- Pin: **`Book a trial lesson → https://japaneselanguagementor.com/#contact`**
 - Link sticker: `https://japaneselanguagementor.com/#contact`
 
 Also saves Teacher Hub `kind: reminder` with the same body (no second Discord from that path).

@@ -1649,6 +1649,17 @@ body:has(dialog[open]) .site-footer {
   user-select: none;
 }
 
+/*
+ * Hub dialogs (Send to JD, wipe, etc.) live inside <main>. Blurring main also
+ * sets pointer-events:none on ancestors — without this, Send/Cancel clicks die
+ * even though keyboard focus (messageEl.focus) still works.
+ */
+body:has(dialog[open]) dialog[open] {
+  pointer-events: auto;
+  filter: none;
+  user-select: auto;
+}
+
 html.hw-shot-capture .site-header,
 html.hw-shot-capture main,
 html.hw-shot-capture .site-footer {
@@ -1771,6 +1782,12 @@ body:has(dialog[open]) main video {
   line-height: 1.45;
   color: var(--color-text);
   text-align: left;
+}
+
+/* Student Special strip is kept quiet: hidden on the public pages and the no-plan welcome.
+   Delete the "display: none" rule right below to show it again. The markup stays in place. */
+.hw-tier-student-bar {
+  display: none !important;
 }
 
 /* Flat Student Special strip under Basic / Premium / Ultra */
@@ -2516,27 +2533,41 @@ body:has(dialog[open]) main video {
   transition: border-color var(--transition), background var(--transition), color var(--transition), transform var(--transition);
 }
 
+.lesson-scheduler-date,
+.lesson-scheduler-slot {
+  border-color: var(--color-accent-hover);
+}
+
 .lesson-scheduler-date:hover,
 .lesson-scheduler-slot:hover:not(:disabled) {
   border-color: var(--color-accent-hover);
+  background: var(--color-accent-soft);
   transform: translateY(-1px);
 }
 
 .lesson-scheduler-date[aria-pressed="true"],
 .lesson-scheduler-slot[aria-pressed="true"] {
-  color: #fff;
-  background: var(--color-accent);
-  border-color: var(--color-accent-hover);
+  color: #0b1a2e;
+  background: var(--color-brand-blue);
+  border-color: var(--color-brand-blue);
+  box-shadow: 0 2px 14px var(--color-brand-blue-soft);
 }
 
 .lesson-scheduler-date--unavailable {
   color: var(--color-text-faint);
+  border-color: color-mix(in srgb, var(--color-accent-hover) 60%, transparent);
   border-style: dashed;
+}
+
+.lesson-scheduler-date--unavailable[aria-pressed="true"] {
+  color: #0b1a2e;
+  border-color: var(--color-brand-blue);
 }
 
 .lesson-scheduler-slot--unavailable {
   color: var(--color-text-faint);
   background: transparent;
+  border-color: color-mix(in srgb, var(--color-accent-hover) 60%, transparent);
   border-style: dashed;
   cursor: not-allowed;
   opacity: 0.65;
@@ -2559,6 +2590,54 @@ body:has(dialog[open]) main video {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+.lesson-scheduler-modal__chat {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.lesson-scheduler-modal__link {
+  color: var(--color-brand-blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lesson-scheduler-modal__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.lesson-scheduler-sabbath {
+  position: relative;
+  flex-basis: 100%;
+}
+
+.lesson-scheduler-sabbath__trigger {
+  text-align: left;
+  cursor: pointer;
+}
+
+.lesson-scheduler-sabbath__trigger:hover,
+.lesson-scheduler-sabbath__trigger:focus-visible {
+  opacity: 1;
+}
+
+.lesson-scheduler-sabbath__popup {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.lesson-scheduler-sabbath__popup[hidden] {
+  display: none;
 }
 
 .pricing-banner {
@@ -4814,6 +4893,13 @@ body.hw-role-student .subpage-back {
 .hw-print-menu {
   position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+}
+
+.hw-print-menu[hidden] {
+  display: none !important;
 }
 
 .hw-print-menu__popup {
@@ -7141,13 +7227,28 @@ dialog.hw-hub-feedback-dialog[open] {
   box-sizing: border-box;
 }
 
+/* Match .hw-listen-card / .hw-video-prompt chrome (fill, border, radius, padding, shadow) */
 .hw-audio-prompt {
-  margin: 0 0 1rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--color-border);
-  border-left: 3px solid #6b5b9a;
+  --hw-hourglass-day: #67c4eb;
+  --hw-hourglass-snow: #f4f6fa;
+  --hw-hourglass-night: #1e5082;
+  --hw-hourglass-night-snow: #c8d8ea;
+  --hw-hourglass-stroke: #1a2744;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto 0.75rem;
+  padding: 0.65rem 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--hw-hourglass-snow) 18%, transparent);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--hw-hourglass-snow) 8%, #0b162a);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.28),
+    0 10px 28px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
 }
 
 .hw-audio-prompt__head {
@@ -7155,14 +7256,26 @@ dialog.hw-hub-feedback-dialog[open] {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem 0.65rem;
-  margin-bottom: 0.65rem;
+  gap: 0.4rem 0.6rem;
+  margin: 0.15rem 0 0;
+  width: 100%;
   text-align: center;
+}
+
+.hw-audio-prompt__head .hw-recording-tip {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hw-audio-prompt__head .hw-recording-tip__message {
+  text-align: left;
 }
 
 .hw-audio-prompt__text {
   margin: 0;
-  flex: 0 1 auto;
+  flex: 1 1 100%;
   min-width: 0;
   font-family: "Noto Sans JP", Inter, sans-serif;
   font-size: 1rem;
@@ -7241,6 +7354,79 @@ dialog.hw-hub-feedback-dialog[open] {
   margin: 0 0 0.75rem;
 }
 
+.hw-audio-prompt__listen {
+  margin: 0 0 0.75rem;
+}
+
+.hw-toolbar-line-menu {
+  position: fixed;
+  z-index: 80;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.35rem;
+  border-radius: 0.9rem;
+  background: var(--color-bg-elevated, #1b2744);
+  border: 1px solid color-mix(in srgb, var(--color-accent-vivid, #e85545) 40%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  line-height: 1.2;
+}
+
+.hw-toolbar-line-menu[hidden] {
+  display: none;
+}
+
+.hw-toolbar-line-menu button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hw-toolbar-line-menu button[aria-pressed="true"] {
+  background: var(--color-accent-vivid, #e85545);
+}
+
+.hw-audio-prompt__line-reveal {
+  margin: 0.15rem 0 0.85rem;
+  padding-top: 0.85em;
+  font-family: "Furifont Sans", "Yu Gothic", "Hiragino Sans", Meiryo, sans-serif;
+  font-feature-settings: "ccmp" 1, "rclt" 1;
+  font-variant-ligatures: contextual;
+  font-size: 1.45rem;
+  line-height: 1.15;
+  text-align: center;
+  color: #fff;
+  overflow: visible;
+}
+
+/* Teacher question player sits on the blue card — no second nested listen-card panel */
+.hw-audio-prompt__listen .hw-listen-card {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hw-audio-prompt__listen-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
 .hw-audio-prompt__typein-label {
   display: flex;
   flex-direction: column;
@@ -7272,6 +7458,33 @@ dialog.hw-hub-feedback-dialog[open] {
 
 .hw-audio-prompt__recorder .hw-audio-inline__status {
   text-align: center;
+}
+
+/* Same orange mic as Daily Exercise, in place of the Record pill. */
+.hw-audio-prompt__recorder .hw-ex-rec {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: var(--color-accent-vivid, #e85545);
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hw-audio-prompt__recorder .hw-ex-rec .hw-ex-ico {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.hw-audio-prompt__recorder .hw-ex-rec:hover {
+  filter: brightness(1.08);
 }
 
 .hw-audio-prompt__note {
@@ -8104,11 +8317,15 @@ body.hw-hw-focus-mode .hw-listen-card {
     0 14px 36px rgba(0, 0, 0, 0.45);
 }
 
+body.hw-hw-focus-mode .hw-audio-prompt__listen .hw-listen-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 body.hw-hw-focus-mode .hw-audio-prompt {
   background: #161b26;
-  border: 1px solid rgba(232, 237, 245, 0.16);
-  border-left: 3px solid #6b5b9a;
-  border-radius: var(--radius-md);
+  border-color: rgba(232, 237, 245, 0.16);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.4),
     0 14px 36px rgba(0, 0, 0, 0.45);
@@ -8189,12 +8406,19 @@ body.hw-hw-focus-mode
     0 8px 20px rgba(26, 39, 68, 0.08);
 }
 
-[data-theme="light"] .hw-listen-card {
+[data-theme="light"] .hw-listen-card,
+[data-theme="light"] .hw-audio-prompt {
   background: color-mix(in srgb, var(--hw-hourglass-day) 7%, #fff);
   border-color: color-mix(in srgb, var(--hw-hourglass-night) 14%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--hw-hourglass-night) 6%, transparent),
     0 8px 20px rgba(26, 39, 68, 0.08);
+}
+
+[data-theme="light"] .hw-audio-prompt__listen .hw-listen-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 [data-theme="light"] .hw-listen-card .hw-audio-chrome__bar {
@@ -9484,11 +9708,9 @@ body.hw-role-teacher #hw-teacher-hub {
   box-sizing: border-box;
   line-height: 0;
   color: var(--hw-tb-accent);
-  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--hw-tb-accent));
-  border: 1.5px solid color-mix(in srgb, var(--hw-tb-accent) 35%, transparent);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  background: color-mix(in srgb, var(--color-bg-elevated, #fff) 92%, var(--color-green, #4ade80));
+  border: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .hw-toolbar-bar[hidden] {
@@ -9510,6 +9732,7 @@ body.hw-role-teacher #hw-teacher-hub {
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
+  box-shadow: none;
   color: var(--hw-tb-accent);
   font: inherit;
   line-height: 0;
@@ -9526,7 +9749,6 @@ body.hw-role-teacher #hw-teacher-hub {
 .hw-toolbar-bar__icon {
   display: grid;
   place-items: center;
-  color: var(--hw-tb-accent);
   width: 3.375rem;
   height: 3.375rem;
   margin: 0;
@@ -12016,7 +12238,7 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
 }
 
 .hw-teacher-hw-hub__item--queued {
-  border-left: 3px solid var(--color-brand-orange, #e07a3a);
+  border-left: 3px solid var(--color-gold);
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -12032,7 +12254,7 @@ body.hw-hw-focus-mode .hw-toolbar-bar:not([hidden]) {
 }
 
 .hw-teacher-hw-hub__item--queued.is-drop-target {
-  outline: 2px dashed var(--color-brand-orange, #e07a3a);
+  outline: 2px dashed var(--color-gold);
   outline-offset: -2px;
 }
 
@@ -13869,6 +14091,12 @@ button.hw-register__pill {
   text-decoration: underline;
 }
 
+.hw-worksheet__topic-brief-gotit {
+  margin-top: 0.875rem;
+  display: flex;
+  justify-content: center;
+}
+
 .hw-worksheet__topic-video-soon {
   margin: 0.75rem 0 0;
   font-family: Inter, sans-serif;
@@ -14067,6 +14295,20 @@ button.hw-tense-pill {
 .hw-worksheet__content .ja-okuri,
 .hw-worksheet__teacher-answer .ja-okuri {
   font-size: inherit;
+}
+
+.hw-worksheet__content:has(ruby),
+.hw-worksheet__section-intro:has(ruby),
+.hw-worksheet__topic-explanation:has(ruby),
+.hw-worksheet__teacher-answer:has(ruby),
+.hw-audio-prompt__text:has(ruby) {
+  line-height: 2.15;
+}
+
+.hw-worksheet rt {
+  font-size: 0.5em;
+  font-weight: 500;
+  color: var(--color-green);
 }
 
 .hw-worksheet[lang="ja"] .hw-worksheet__line {
@@ -15820,3 +16062,98 @@ body.hw-hw-focus-mode .hw-sachiko-modal {
 .legal-prose a {
   color: var(--color-accent);
 }
+
+/* Music sing sheets — papery iframe in the hub */
+.hw-worksheet--music-sing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: min(78vh, 820px);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.hw-music-sing__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.15rem;
+}
+.hw-music-sing__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text, #1a2744);
+}
+.hw-music-sing__frame {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: min(70vh, 760px);
+  border: 0;
+  border-radius: 18px;
+  background: #3a2f24;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+.hw-music-sing__note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted, #64748b);
+}
+
+.form-status__email-first a { color: inherit; font-weight: 600; text-decoration: underline; }
+
+.form-status__email-first { display: block; margin-top: .5rem; font-weight: 700; }
+
+.form-status__time-prompt { display: block; font-weight: 700; margin-bottom: .5rem; }
+.form-status__time-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+
+.spam-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 8, 20, 0.75);
+}
+.spam-popup__card {
+  width: min(26rem, 100%);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: #16213e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.spam-popup__title { margin: 0 0 .75rem; font-size: 1.25rem; line-height: 1.3; }
+.spam-popup__body { margin: 0 0 1.25rem; line-height: 1.5; }
+.spam-popup__body a { color: #7dd3fc; font-weight: 700; text-decoration: underline; }
+
+.spam-popup__please { margin: 0; font-size: 2.25rem; font-weight: 800; letter-spacing: .08em; line-height: 1.1; color: #22c55e; }
+
+
+.sent-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  padding: 1rem 2.25rem;
+  background: var(--color-bg-card);
+  border: 3px solid var(--color-green);
+  border-radius: var(--radius-md);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.sent-toast.is-hiding { opacity: 0; }
+.spam-popup__red { color: #ef4444; text-decoration: underline; font-weight: 700; }
+.spam-popup__please { margin-bottom: .5rem; }
+#contact-pick-time { margin: 0 0 1.25rem; }

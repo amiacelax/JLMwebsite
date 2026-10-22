@@ -570,6 +570,7 @@
   }
 
   function closePopup() {
+    clearCommittedHighlight();
     exitPopupEditMode(false);
     lookupBusy = false;
     popupDragState = null;
@@ -583,6 +584,21 @@
   /** True when logged in as teacher (including view-as-student admin mode). */
   function isTeacherUser() {
     return Boolean(global.HwAuth?.getTeacherSession?.());
+  }
+
+  /** demo2 and the demo student (benm) can edit glass words while presenting. */
+  function canEditGlassWords() {
+    if (isTeacherUser()) return true;
+    const user = String(global.HwAuth?.getSession?.()?.username || "")
+      .trim()
+      .toLowerCase();
+    return user === "demo2" || user === "benm";
+  }
+
+  function glassEditorUsername() {
+    const teacher = global.HwAuth?.getTeacherSession?.();
+    if (teacher?.username) return teacher.username;
+    return String(global.HwAuth?.getSession?.()?.username || "").trim();
   }
 
   function parseHighlightParts(raw) {
@@ -750,8 +766,8 @@
   }
 
   async function savePopupLexiconEdit(ctx) {
-    const teacher = global.HwAuth?.getTeacherSession?.();
-    if (!teacher?.username) {
+    const editor = glassEditorUsername();
+    if (!canEditGlassWords() || !editor) {
       showToast("Teacher login required");
       return;
     }
@@ -762,7 +778,7 @@
     const highlight = String(ctx.highlight || surface).trim();
 
     const payload = {
-      teacherUsername: teacher.username,
+      teacherUsername: editor,
       surface,
       ...buildHighlightLexiconPatch(surface, highlight, reading, definition),
     };
@@ -889,8 +905,8 @@
   }
 
   async function skipPopupHighlight(ctx) {
-    const teacher = global.HwAuth?.getTeacherSession?.();
-    if (!teacher?.username) {
+    const editor = glassEditorUsername();
+    if (!canEditGlassWords() || !editor) {
       showToast("Teacher login required");
       return;
     }
@@ -903,7 +919,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          teacherUsername: teacher.username,
+          teacherUsername: editor,
           surface,
           skipSurface: surface,
         }),
@@ -951,10 +967,90 @@
     return false;
   }
 
+  function situationJapaneseTarget(el) {
+    if (!el?.closest) return false;
+    const hit = el.closest(
+      ".hw-sit-flip__face--jp [lang='ja'], .hw-sit-focus__text, .hw-sit-focus__head h3, .hw-sit-cards [data-word-chip] .hw-furi, .hw-sit-focus [data-word-chip] .hw-furi"
+    );
+    if (!hit) return false;
+    return JA_CHAR.test(hit.textContent || "");
+  }
+
+  /**
+   * Furigana must not join the lookup string or the highlight box.
+   * Readings are <rt> or the small <i> above a .hw-furi base.
+   */
+  function isFuriganaText(node) {
+    const el = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    if (!el?.closest) return false;
+    if (el.closest("rt")) return true;
+    const reading = el.closest("i");
+    return Boolean(reading && reading.parentElement?.classList?.contains("hw-furi"));
+  }
+
+  function rubyBaseTextNode(node) {
+    const el = node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+    const ruby = el?.closest?.("ruby, .hw-furi");
+    if (!ruby) return null;
+    const walker = document.createTreeWalker(ruby, NodeFilter.SHOW_TEXT);
+    let textNode = null;
+    while ((textNode = walker.nextNode())) {
+      if (isFuriganaText(textNode)) continue;
+      if ((textNode.textContent || "").length) return textNode;
+    }
+    return null;
+  }
+
+  function rangeOffFurigana(range) {
+    if (!range || range.startContainer?.nodeType !== Node.TEXT_NODE) return range;
+    if (!isFuriganaText(range.startContainer)) return range;
+    const base = rubyBaseTextNode(range.startContainer);
+    if (!base) return null;
+    const next = range.cloneRange();
+    const at = Math.min(base.textContent.length, Math.max(0, Math.floor((base.textContent.length || 1) / 2)));
+    next.setStart(base, at);
+    next.setEnd(base, at);
+    return next;
+  }
+
+  /** Range text with furigana left out. Range.toString() still includes the reading. */
+  function rangePlainText(range) {
+    if (!range) return "";
+    const root = range.commonAncestorContainer;
+    const scope = root?.nodeType === Node.ELEMENT_NODE ? root : root?.parentElement;
+    if (!scope) return "";
+    let out = "";
+    let started = false;
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    let node = null;
+    while ((node = walker.nextNode())) {
+      if (isFuriganaText(node)) continue;
+      let hit = false;
+      try {
+        hit = range.intersectsNode(node);
+      } catch {
+        hit = false;
+      }
+      if (!hit) {
+        if (started) break;
+        continue;
+      }
+      const text = node.textContent || "";
+      const from = node === range.startContainer ? range.startOffset : 0;
+      const to = node === range.endContainer ? range.endOffset : text.length;
+      out += text.slice(Math.max(0, from), Math.max(0, to));
+      started = true;
+      if (node === range.endContainer) break;
+    }
+    return out;
+  }
+
   function isLookupTarget(el) {
     if (!el || !(el instanceof Element) || !hostEl?.contains(el)) return false;
     if (el.closest(".hw-mg-popup") || el.closest(".hw-mg-widget") || el.closest(".hw-mg-onboard")) return false;
     if (armed && isStarLookupElement(el)) return true;
+    /* Situation cards: Japanese on a button is a lookup, not the card's other click. */
+    if (armed && situationJapaneseTarget(el)) return true;
     if (
       el.closest(
         ".hw-star-block__chip, .hw-star-block__slot:not(.hw-star-block__slot--filled), .hw-star-block__pool"
@@ -965,7 +1061,7 @@
     if (el.closest(SKIP_SELECTOR)) return false;
     return Boolean(
       el.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-star-block__prefix, .hw-star-block__suffix, .hw-star-block__fixed, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-worksheet, .hw-today, .hw-curriculum-textbook, .hw-core-page, .hw-chapters, .hw-ch-lines, .hw-quest__target, .hw-word-write, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
       )
     );
   }
@@ -992,6 +1088,7 @@
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let node = null;
     while ((node = walker.nextNode())) {
+      if (isFuriganaText(node)) continue;
       out += node.textContent || "";
     }
     return out;
@@ -1002,6 +1099,7 @@
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let node = null;
     while ((node = walker.nextNode())) {
+      if (isFuriganaText(node)) continue;
       if (node === endNode) return pos + endOffset;
       pos += (node.textContent || "").length;
     }
@@ -1009,7 +1107,7 @@
   }
 
   function caretOffsetIn(container, clientX, clientY) {
-    const range = caretRangeAtPoint(clientX, clientY);
+    const range = rangeOffFurigana(caretRangeAtPoint(clientX, clientY));
     if (!range || !container.contains(range.startContainer)) return -1;
     if (range.startContainer.nodeType === Node.TEXT_NODE) {
       return caretOffsetFromTextNodes(container, range.startContainer, range.startOffset);
@@ -1017,12 +1115,16 @@
     const pre = document.createRange();
     pre.selectNodeContents(container);
     pre.setEnd(range.startContainer, range.startOffset);
-    return pre.toString().length;
+    return rangePlainText(pre).length;
   }
 
   function pointerNearRange(clientX, clientY, range, maxPx) {
     if (!range) return false;
-    const rects = range.getClientRects();
+    let rects = highlightClientRects(range);
+    if (!rects.length) {
+      /* A caret point (collapsed range) has a zero-width rect — still valid for "is the pointer here". */
+      rects = [...range.getClientRects()].filter((r) => r.height > 1);
+    }
     for (const rect of rects) {
       const dx = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
       const dy = clientY < rect.top ? rect.top - clientY : clientY > rect.bottom ? clientY - rect.bottom : 0;
@@ -1032,7 +1134,7 @@
   }
 
   function caretOffsetNearPointer(container, clientX, clientY, maxPx) {
-    const range = caretRangeAtPoint(clientX, clientY);
+    const range = rangeOffFurigana(caretRangeAtPoint(clientX, clientY));
     if (!range || !container.contains(range.startContainer)) return -1;
     if (!pointerNearRange(clientX, clientY, range, maxPx)) return -1;
     if (range.startContainer.nodeType === Node.TEXT_NODE) {
@@ -1041,7 +1143,7 @@
     const pre = document.createRange();
     pre.selectNodeContents(container);
     pre.setEnd(range.startContainer, range.startOffset);
-    return pre.toString().length;
+    return rangePlainText(pre).length;
   }
 
   function isStarTextContainer(el) {
@@ -1077,6 +1179,7 @@
   }
 
   function expandRangeToJapaneseWordRange(range, container) {
+    range = rangeOffFurigana(range);
     if (!range || !range.startContainer) return null;
     const node = range.startContainer;
     if (node.nodeType !== Node.TEXT_NODE) return null;
@@ -1117,7 +1220,7 @@
   }
 
   function expandRangeToJapaneseWord(range) {
-    return expandRangeToJapaneseWordRange(range)?.toString().trim() || "";
+    return rangePlainText(expandRangeToJapaneseWordRange(range)).trim();
   }
 
   function lookupContainerFor(el, clientX, clientY) {
@@ -1144,7 +1247,7 @@
     }
     return (
       el?.closest(
-        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
+        ".hw-worksheet__content, .hw-translation-block__japanese, .hw-star-block__sentence, .hw-open-topic, .hw-video-prompt__text, .hw-audio-prompt__text, .hw-today, .hw-curriculum-textbook, .hw-core-page, .hw-chapters, .hw-ch-lines, .hw-quest__target, .hw-word-write, .hw-lookup-lexicon-playground__content, .hw-lookup-lexicon-playground__text, [lang='ja']"
       ) || el
     );
   }
@@ -1290,6 +1393,7 @@
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
     let node = null;
     while ((node = walker.nextNode())) {
+      if (isFuriganaText(node)) continue;
       const len = (node.textContent || "").length;
       if (!started && pos + len > start) {
         range.setStart(node, Math.max(0, start - pos));
@@ -1314,6 +1418,37 @@
     hoverHighlightEl = null;
   }
 
+  /** The word you clicked stays boxed while its popup is open (X / Esc / another click clears it). */
+  let committedHighlightEl = null;
+
+  function clearCommittedHighlight() {
+    committedHighlightEl?.remove();
+    committedHighlightEl = null;
+  }
+
+  function renderCommittedHighlight(range) {
+    clearCommittedHighlight();
+    if (!shellEl || !range) return;
+    const shellRect = shellEl.getBoundingClientRect();
+    const scale = shellClientScale();
+    const el = document.createElement("div");
+    el.className = "hw-mg-hover-highlight hw-mg-hover-highlight--committed";
+    el.setAttribute("aria-hidden", "true");
+    for (const rect of highlightClientRects(range)) {
+      if (!rect.width || !rect.height) continue;
+      const box = document.createElement("span");
+      box.className = "hw-mg-hover-highlight__rect";
+      box.style.left = (rect.left - shellRect.left) / scale.x + "px";
+      box.style.top = (rect.top - shellRect.top) / scale.y + "px";
+      box.style.width = rect.width / scale.x + "px";
+      box.style.height = rect.height / scale.y + "px";
+      el.appendChild(box);
+    }
+    if (!el.childElementCount) return;
+    shellEl.appendChild(el);
+    committedHighlightEl = el;
+  }
+
   function renderHoverHighlight(range) {
     if (!shellEl || !hostEl || !range) {
       clearHoverHighlight();
@@ -1330,7 +1465,7 @@
     }
 
     hoverHighlightEl.replaceChildren();
-    const rects = mergeClientRects(Array.from(range.getClientRects()));
+    const rects = highlightClientRects(range);
     for (const rect of rects) {
       if (!rect.width || !rect.height) continue;
       const box = document.createElement("span");
@@ -1345,6 +1480,63 @@
     if (!hoverHighlightEl.childElementCount) {
       clearHoverHighlight();
     }
+  }
+
+  function furiganaClientRects(range) {
+    const root = range?.commonAncestorContainer;
+    let scope = root?.nodeType === Node.ELEMENT_NODE ? root : root?.parentElement;
+    if (!scope?.querySelectorAll) return [];
+    const host = scope.closest?.(
+      ".hw-star-block__chip, .hw-star-block__slot-text, .hw-star-block__fixed, .hw-star-block__sentence, .hw-worksheet__content, .hw-prayer__sheet, .hw-prayer-part, [lang='ja']"
+    );
+    if (host) scope = host;
+    const boxes = [];
+    scope.querySelectorAll("rt, .hw-furi > i").forEach((el) => {
+      const box = el.getBoundingClientRect();
+      if (box.width > 0 && box.height > 0) boxes.push(box);
+    });
+    return boxes;
+  }
+
+  function rectMostlyOnFurigana(rect, furigana) {
+    const area = rect.width * rect.height;
+    if (!area) return false;
+    for (const box of furigana) {
+      const overlapW = Math.min(rect.right, box.right) - Math.max(rect.left, box.left);
+      const overlapH = Math.min(rect.bottom, box.bottom) - Math.max(rect.top, box.top);
+      if (overlapW <= 0 || overlapH <= 0) continue;
+      if ((overlapW * overlapH) / area > 0.55) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A word range often runs through the <rt> sitting between base characters.
+   * Drop those boxes, and trim any leftover that still covers the reading.
+   */
+  function highlightClientRects(range) {
+    const furigana = furiganaClientRects(range);
+    const raw = [];
+    for (const rect of range.getClientRects()) {
+      if (!rect.width || !rect.height) continue;
+      if (rectMostlyOnFurigana(rect, furigana)) continue;
+      let top = rect.top;
+      let bottom = rect.bottom;
+      const left = rect.left;
+      const right = rect.right;
+      for (const box of furigana) {
+        const overlapW = Math.min(right, box.right) - Math.max(left, box.left);
+        if (overlapW < Math.min(4, box.width * 0.3)) continue;
+        if (box.top < top + (bottom - top) * 0.55 && box.bottom > top && box.bottom < bottom) {
+          top = Math.max(top, box.bottom);
+        }
+      }
+      const width = right - left;
+      const height = bottom - top;
+      if (width < 1 || height < 2) continue;
+      raw.push({ left, top, right, bottom, width, height });
+    }
+    return mergeClientRects(raw);
   }
 
   /**
@@ -1420,12 +1612,12 @@
       const unit = global.HwMgLexicon?.pickQuickUnit?.(text, offset);
       if (unit) return rangeFromOffsets(container, unit.start, unit.end);
     }
-    const range = caretRangeAtPoint(clientX, clientY);
+    const range = rangeOffFurigana(caretRangeAtPoint(clientX, clientY));
     if (!range || !container.contains(range.startContainer)) return null;
     if (!pointerNearRange(clientX, clientY, range, 24)) return null;
     const expanded = expandRangeToJapaneseWordRange(range, container);
     if (!expanded) return null;
-    const surface = expanded.toString().trim();
+    const surface = rangePlainText(expanded).trim();
     if (surface && lookupSurfaceBlocked(surface, null)) return null;
     return expanded;
   }
@@ -1452,7 +1644,7 @@
     if (wordRange && container.contains(wordRange.startContainer)) {
       const expanded = expandRangeToJapaneseWordRange(wordRange);
       if (expanded) {
-        const surface = expanded.toString().trim();
+        const surface = rangePlainText(expanded).trim();
         if (!lookupSurfaceBlocked(surface, null)) {
           const start = text.indexOf(surface);
           if (start >= 0) {
@@ -1625,7 +1817,12 @@
     const offset = caretOffsetForContainer(container, clientX, clientY, maxPointerPx);
     if (offset < 0) return null;
 
-    const quickEarly = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    /* てみる etc. need the real tokenizer (the quick path would cut it at て). */
+    const nearGrammar = /[てで]み/.test(text.slice(Math.max(0, offset - 4), offset + 4));
+
+    const quickEarly = nearGrammar
+      ? null
+      : pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
     if (quickEarly?.definition) return quickEarly;
 
     await lexReady;
@@ -1638,7 +1835,9 @@
       }
     }
 
-    const quick = pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
+    const quick = nearGrammar
+      ? null
+      : pickQuickLookupUnit(text, offset, clientX, clientY, container, maxPointerPx);
     if (quick) return quick;
 
     const tokens = await tokenizeText(text);
@@ -1925,6 +2124,107 @@
     popup.addEventListener("click", (ev) => ev.stopPropagation());
   }
 
+  const KANJI_RE = /[\u4e00-\u9fff\u3005]/;
+  const JA_WORD_RE = /[\u3040-\u30ff\u4e00-\u9fff]/;
+  const KANA_ONLY_RE = /^[\u3040-\u309f\u30a0-\u30ff\u30fc]+$/;
+
+  /**
+   * What the popup shows under the word (not edit mode):
+   *  - kanji word        -> green reading ("あたま"); furigana sits on the word itself
+   *  - conjugated word   -> dictionary form + "(root)"   (起きました -> おきる (root))
+   *  - kana-only word    -> "—" (the reading would just repeat the word); if conjugated, then the root line
+   */
+  function popupReadingLines(result, rootOverride) {
+    const surface = String(result?.surface || "").trim();
+    const lemma = String(rootOverride?.lemma || result?.unit?.lemma || result?.lemma || "").trim();
+    const reading = String(rootOverride?.reading || result?.reading || "").trim();
+    const hasKanji = KANJI_RE.test(surface);
+    const conjugated = Boolean(lemma) && lemma !== surface;
+    const lines = [];
+
+    if (!conjugated) {
+      const same = !reading || reading === surface || (KANA_ONLY_RE.test(surface) && !hasKanji);
+      lines.push({ text: hasKanji && reading ? reading : same ? "\u2014" : reading, root: false });
+      return lines;
+    }
+
+    const rootText = KANA_ONLY_RE.test(reading) ? reading : KANA_ONLY_RE.test(lemma) ? lemma : reading || lemma;
+    if (!hasKanji) lines.push({ text: "\u2014", root: false });
+    lines.push({ text: rootText || "\u2014", root: true });
+    return lines;
+  }
+
+  /**
+   * Find the root (dictionary form) of a conjugated word by reading it with the tokenizer,
+   * so it works no matter how the word was put together (merged, forced, single).
+   */
+  async function detectPopupRoot(result) {
+    const surface = String(result?.surface || "").trim();
+    if (!surface || !JA_WORD_RE.test(surface)) return null;
+    if (global.HwMgLexicon?.isGrammarSurface?.(surface)) return null;
+    const tokens = await tokenizeText(surface);
+    const tok = tokens.find(
+      (t) => (t.pos === "動詞" || t.pos === "形容詞") && t.basic_form && t.basic_form !== "*"
+    );
+    if (!tok || tok.basic_form === surface) return null;
+    const lemma = tok.basic_form;
+    if (KANA_ONLY_RE.test(lemma)) return { lemma, reading: lemma };
+    const okurigana = lemma.replace(/^[\u4e00-\u9fff\u3005]+/, "");
+    const given = String(result?.reading || "").trim();
+    if (KANA_ONLY_RE.test(given) && given !== surface && (!okurigana || given.endsWith(okurigana)) && given.length <= lemma.length + 3) {
+      return { lemma, reading: given };
+    }
+    try {
+      const found = await fetchLookup({ surface: lemma });
+      const r = String(found?.reading || "").trim();
+      if (KANA_ONLY_RE.test(r)) return { lemma, reading: r };
+    } catch {
+      /* fall through */
+    }
+    return { lemma, reading: "" };
+  }
+
+  function paintPopupReadings(container, lines) {
+    container.textContent = "";
+    lines.forEach((line) => {
+      const readingEl = document.createElement("p");
+      readingEl.className = "hw-mg-popup__reading";
+      readingEl.appendChild(document.createTextNode(line.text));
+      if (line.root) {
+        const tag = document.createElement("span");
+        tag.className = "hw-mg-popup__root";
+        tag.textContent = " root";
+        readingEl.appendChild(tag);
+      }
+      container.appendChild(readingEl);
+    });
+  }
+
+  /** Green furigana over the word in the popup title (async — the tokenizer may still be loading). */
+  function addPopupFurigana(wordEl, surface) {
+    if (!KANJI_RE.test(surface)) return;
+    const auto = global.HwFuriganaAuto;
+    if (!auto?.textToRubySegments) return;
+    Promise.resolve(auto.textToRubySegments(surface))
+      .then((segments) => {
+        if (!wordEl.isConnected || !Array.isArray(segments) || !segments.some((seg) => seg?.rt)) return;
+        wordEl.textContent = "";
+        segments.forEach((seg) => {
+          if (seg?.rt) {
+            const ruby = document.createElement("ruby");
+            ruby.appendChild(document.createTextNode(seg.text));
+            const rt = document.createElement("rt");
+            rt.textContent = seg.rt;
+            ruby.appendChild(rt);
+            wordEl.appendChild(ruby);
+          } else {
+            wordEl.appendChild(document.createTextNode(seg?.text || ""));
+          }
+        });
+      })
+      .catch(() => {});
+  }
+
   function renderPopup(result, localX, localY, opts) {
     const preservePosition = Boolean(opts?.preservePosition);
     const savedLeft = preservePosition && popupEl ? parseFloat(popupEl.style.left) || 0 : null;
@@ -1961,7 +2261,16 @@
       const wordEl = document.createElement("p");
       wordEl.className = "hw-mg-popup__word";
       wordEl.textContent = result.surface;
+      if (!edit) addPopupFurigana(wordEl, result.surface);
       titlebar.appendChild(wordEl);
+
+      if (!edit && global.HwMgLexicon?.isGrammarSurface?.(result.surface)) {
+        const badge = document.createElement("span");
+        badge.className = "hw-mg-popup__grammar";
+        badge.title = "Grammar point";
+        badge.innerHTML = '<span class="hw-mg-popup__grammar-icon" aria-hidden="true">\u6587</span>grammar';
+        titlebar.appendChild(badge);
+      }
 
       if (!edit && result.jishoUrl) {
         const link = document.createElement("a");
@@ -1996,10 +2305,15 @@
       readingInput.addEventListener("pointerdown", (ev) => ev.stopPropagation());
       head.appendChild(readingLabel);
     } else {
-      const readingEl = document.createElement("p");
-      readingEl.className = "hw-mg-popup__reading";
-      readingEl.textContent = result.reading || "—";
-      head.appendChild(readingEl);
+      const readings = document.createElement("div");
+      readings.className = "hw-mg-popup__readings";
+      paintPopupReadings(readings, popupReadingLines(result));
+      void detectPopupRoot(result)
+        .then((root) => {
+          if (root && readings.isConnected) paintPopupReadings(readings, popupReadingLines(result, root));
+        })
+        .catch(() => {});
+      head.appendChild(readings);
     }
     popupEl.appendChild(head);
 
@@ -2053,7 +2367,7 @@
     const footer = document.createElement("div");
     footer.className = "hw-mg-popup__footer";
 
-    if (isTeacherUser()) {
+    if (canEditGlassWords()) {
       const teacherRow = document.createElement("div");
       teacherRow.className = "hw-mg-popup__teacher-row";
 
@@ -2072,21 +2386,23 @@
       });
       teacherRow.appendChild(actionBtn);
 
-      const queueBtn = document.createElement("button");
-      queueBtn.type = "button";
-      queueBtn.className = "hw-mg-popup__queue";
-      queueBtn.textContent = "Queue";
-      queueBtn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        void queuePopupLexicon(popupContext);
-      });
-      teacherRow.appendChild(queueBtn);
+      if (isTeacherUser()) {
+        const queueBtn = document.createElement("button");
+        queueBtn.type = "button";
+        queueBtn.className = "hw-mg-popup__queue";
+        queueBtn.textContent = "Queue";
+        queueBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          void queuePopupLexicon(popupContext);
+        });
+        teacherRow.appendChild(queueBtn);
+      }
 
       footer.appendChild(teacherRow);
     }
 
-    if (isTeacherUser()) {
+    if (canEditGlassWords()) {
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.className = "hw-mg-popup__delete";
@@ -2169,7 +2485,10 @@
       const container = lookupContainerFor(e.target, e.clientX, e.clientY);
       if (container && Number.isFinite(data.start) && Number.isFinite(data.end)) {
         const hitRange = rangeFromOffsets(container, data.start, data.end);
-        if (hitRange) renderHoverHighlight(hitRange);
+        if (hitRange) {
+          renderHoverHighlight(hitRange);
+          renderCommittedHighlight(hitRange);
+        }
       } else {
         scheduleHoverHighlight(e.clientX, e.clientY);
       }
@@ -2444,6 +2763,8 @@
   }
 
   function initOnboarding() {
+    /* New first-time tips (hw-onboard.js) own this now; old black-screen intro stands down. */
+    if (global.HwOnboard?.owns) return;
     if (overrideOptions?.skipOnboarding) return;
     if (!shellEl || !widgetEl) return;
     try {

@@ -1,0 +1,277 @@
+{
+  "_help": "last = last lesson number already done. total = lessons in their package (n/total). same_as_number = total always equals lesson number (Noah). schedule = usual JP-time slots [day, 'HH:MM'] (lessons can be pushed - if nothing matches, ask JD). who = people sharing one slot, found by name in the transcript. Next upload = last+1.",
+  "students": [
+    {
+      "key": "faye",
+      "display": "Faye",
+      "last": 113,
+      "total": 114,
+      "playlist": "Faye Lesson Playlist",
+      "schedule": [
+        [
+          "Mon",
+          "21:00"
+        ]
+      ],
+      "playlist_id": "PLWim1UU6-V6BbO_6NzbGFlhQnU6sdFY1n",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "fayeallen92@gmail.com",
+        "name": "Faye Allen",
+        "greet": "Faye"
+      },
+      "paypal_names": [
+        "fayeallen92@gmail.com"
+      ]
+    },
+    {
+      "key": "cj",
+      "display": "CJ",
+      "last": 8,
+      "total": 12,
+      "playlist": "CJ Lesson Playlist",
+      "schedule": [
+        [
+          "Mon",
+          "14:00"
+        ],
+        [
+          "Wed",
+          "14:00"
+        ],
+        [
+          "Fri",
+          "14:00"
+        ]
+      ],
+      "playlist_id": "PLNz4IuNYLyFo",
+      "invoice": {
+        "lessons": 12,
+        "amount": 91000,
+        "currency": "JPY",
+        "email": "thelarsons.jp@gmail.com",
+        "name": "Christian Larson",
+        "greet": "CJ"
+      },
+      "paypal_names": [
+        "thelarsons.jp@gmail.com"
+      ],
+      "hub": "christian"
+    },
+    {
+      "key": "matt",
+      "display": "Matt",
+      "last": 6,
+      "total": 8,
+      "playlist": "Matt Lesson Playlist",
+      "schedule": [
+        [
+          "Wed",
+          "11:30"
+        ]
+      ],
+      "playlist_id": "PLBbpXYqyNuVU",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "baranymatthewjr@gmail.com",
+        "name": "Matthew Barany",
+        "greet": "Matt"
+      },
+      "paypal_names": [
+        "baranymatthewjr@gmail.com"
+      ],
+      "hub": "baranymatthewjr"
+    },
+    {
+      "key": "jay",
+      "display": "Jay",
+      "last": 160,
+      "total": 164,
+      "playlist": "Jay Lesson Playlist",
+      "schedule": [
+        [
+          "Fri",
+          "12:00"
+        ]
+      ],
+      "playlist_id": "PLWim1UU6-V6CMQ4DZm8RwpBGoldQilsgZ",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "crotts.jay@gmail.com",
+        "name": "Jay Crotts",
+        "greet": "Jay"
+      },
+      "paypal_names": [
+        "crotts.jay@gmail.com"
+      ]
+    },
+    {
+      "key": "josh",
+      "display": "Josh",
+      "last": 53,
+      "total": 56,
+      "playlist": "Josh Lesson Playlist",
+      "schedule": [
+        [
+          "Wed",
+          "13:00"
+        ]
+      ],
+      "note": "every other week, next 2026-10-14",
+      "playlist_id": "PLWim1UU6-V6BS3IIj7z42egtdStDWeraO",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "jks13a@acu.edu",
+        "name": "Joshua Sanders",
+        "greet": "Josh"
+      },
+      "paypal_names": [
+        "jks13a@acu.edu"
+      ],
+      "hub": "joshs"
+    },
+    {
+      "key": "kaether",
+      "display": "Kaether",
+      "last": 108,
+      "total": 110,
+      "playlist": "Kaether Lesson Playlist",
+      "schedule": [
+        [
+          "Tue",
+          "10:00"
+        ]
+      ],
+      "who": [
+        {
+          "name": "Emily",
+          "jp": [
+            "エミリー"
+          ]
+        },
+        {
+          "name": "Jer",
+          "jp": [
+            "ジェレマイア"
+          ]
+        }
+      ],
+      "playlist_id": "PLWim1UU6-V6DSessOuPE75EKWeAFW5Cyq",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "secretsister5@msn.com",
+        "name": "Emily Kaether",
+        "greet": "Emily"
+      },
+      "paypal_names": [
+        "secretsister5@msn.com"
+      ]
+    },
+    {
+      "key": "benm",
+      "display": "Ben M",
+      "last": 38,
+      "total": 38,
+      "playlist": "Ben M Lesson Playlist",
+      "schedule": [
+        [
+          "Fri",
+          "10:00"
+        ]
+      ],
+      "playlist_id": "PLWim1UU6-V6Cw_PgE9Krk2LTzV_JLOm8X",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "benmurphy4115@gmail.com",
+        "name": "Benjamin Murphy",
+        "greet": "Ben"
+      },
+      "paypal_names": [
+        "benmurphy4115@gmail.com"
+      ]
+    },
+    {
+      "key": "benjamin",
+      "display": "Benjamin",
+      "last": 1,
+      "total": 4,
+      "playlist": "Benjamin Lesson Playlist",
+      "schedule": [
+        [
+          "Thu",
+          "22:00"
+        ],
+        [
+          "Tue",
+          "22:00"
+        ]
+      ],
+      "note": "Lesson 1 this Thu 10pm only; weekly Tue 10pm from Nov 3.",
+      "playlist_id": "PLYl473mQyjWw",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "",
+        "name": "Benjamin",
+        "greet": "Benjamin"
+      }
+    },
+    {
+      "key": "noah",
+      "display": "Noah",
+      "last": 6,
+      "total": 6,
+      "playlist": "Noah Lesson Playlist",
+      "same_as_number": true,
+      "schedule": [],
+      "playlist_id": "PLWim1UU6-V6BM6DaRY2DI4wPchbhnwB6g"
+    },
+    {
+      "key": "isome",
+      "display": "Isome",
+      "last": 51,
+      "total": 54,
+      "playlist": "Isome Lesson Playlist",
+      "schedule": [],
+      "who": [
+        {
+          "name": "Regina",
+          "jp": [
+            "レジーナ"
+          ]
+        },
+        {
+          "name": "Michael",
+          "jp": [
+            "マイケル"
+          ]
+        }
+      ],
+      "playlist_id": "PLWim1UU6-V6AwpsJytuZfAYXM3g2jn6QZ",
+      "invoice": {
+        "lessons": 4,
+        "amount": 196,
+        "currency": "USD",
+        "email": "truevinenine326@gmail.com",
+        "name": "Michael Isome",
+        "greet": "Michael"
+      },
+      "paypal_names": [
+        "truevinenine326@gmail.com"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,306 @@
+{
+ "active": true,
+ "title": "Glass test run",
+ "items": [
+  {
+   "surface": "いけ",
+   "example": "～ないといけない",
+   "reading": "いける",
+   "definition": "to arrange (flowers), to plant"
+  },
+  {
+   "surface": "い",
+   "example": "Conjugating いendings",
+   "reading": "いる",
+   "definition": "to be, to exist"
+  },
+  {
+   "surface": "行か",
+   "example": "行かないといけない",
+   "reading": "いく",
+   "definition": "to go"
+  },
+  {
+   "surface": "伝えよ",
+   "example": "福音を伝えよう Part 1 (Ben M)",
+   "reading": "つたえる",
+   "definition": "to convey, to report"
+  },
+  {
+   "surface": "帰ら",
+   "example": "帰らないといけない",
+   "reading": "かえる",
+   "definition": "to return, to come home"
+  },
+  {
+   "surface": "飲ま",
+   "example": "飲まないといけない",
+   "reading": "のむ",
+   "definition": "to drink, to swallow"
+  },
+  {
+   "surface": "教え",
+   "example": "詳しく教えてください",
+   "reading": "おしえる",
+   "definition": "to teach, to instruct"
+  },
+  {
+   "surface": "帰っ",
+   "example": "いや、まだ 帰ってきてない",
+   "reading": "かえる",
+   "definition": "to return, to come home"
+  },
+  {
+   "surface": "生き",
+   "example": "とりあえずまあまだ 生きてる",
+   "reading": "いきる",
+   "definition": "to live, to exist"
+  },
+  {
+   "surface": "癒さ",
+   "example": "癒される場所はどこですか",
+   "reading": "いやす",
+   "definition": "to heal, to cure"
+  },
+  {
+   "surface": "待っ",
+   "example": "愛子ちゃんがあなたの返事を待ってるのよ",
+   "reading": "まつ",
+   "definition": "to wait"
+  },
+  {
+   "surface": "あげ",
+   "example": "早く手紙書いてあげて～",
+   "reading": "あげる",
+   "definition": "to raise, to elevate"
+  },
+  {
+   "surface": "住ん",
+   "example": "どこに住んでますか",
+   "reading": "すむ",
+   "definition": "to live, to reside"
+  },
+  {
+   "surface": "ほ",
+   "example": "Sing sheet for IRL practice. 栄光 尊厳 力は 主のもの 栄光 ほまれ 賛美は 主のもの",
+   "reading": "ほる",
+   "definition": "to dig, to excavate"
+  },
+  {
+   "surface": "痛く",
+   "example": "痛くなかった",
+   "reading": "いたい",
+   "definition": "painful, sore"
+  },
+  {
+   "surface": "寒く",
+   "example": "今寒くない",
+   "reading": "さむい",
+   "definition": "cold"
+  },
+  {
+   "surface": "早く",
+   "example": "早く手紙書いてあげて～",
+   "reading": "はやい",
+   "definition": "fast, quick"
+  },
+  {
+   "surface": "こく",
+   "example": "こくはくする",
+   "reading": "こい",
+   "definition": "deep (colour), dark"
+  },
+  {
+   "surface": "する",
+   "example": "告白する",
+   "reading": "する",
+   "definition": "to do, to carry out"
+  },
+  {
+   "surface": "てる",
+   "example": "愛子ちゃんがあなたの返事を待ってるのよ",
+   "reading": "てる",
+   "definition": "to shine"
+  },
+  {
+   "surface": "いい",
+   "example": "今日はいいけど、昨日はよくなかった",
+   "reading": "いい",
+   "definition": "having fun, rejoicing"
+  },
+  {
+   "surface": "いる",
+   "example": "よむ＋いる",
+   "reading": "いる",
+   "definition": "to be, to exist"
+  },
+  {
+   "surface": "れる",
+   "example": "Passive Form ～される",
+   "reading": "れる",
+   "definition": "indicates passive voice (incl. the \"suffering passive\")"
+  },
+  {
+   "surface": "行く",
+   "example": "日本人は海外に行く時、お土産を買いますか",
+   "reading": "いく",
+   "definition": "to go"
+  },
+  {
+   "surface": "出かける",
+   "example": "出かける",
+   "reading": "でかける",
+   "definition": "to go out, to leave"
+  },
+  {
+   "surface": "早い",
+   "example": "おっ 今日は 早いね",
+   "reading": "はやい",
+   "definition": "fast, quick"
+  },
+  {
+   "surface": "前",
+   "example": "前・前に",
+   "reading": "ぜん",
+   "definition": "last (i.e. immediately preceding), previous"
+  },
+  {
+   "surface": "栄光",
+   "example": "栄光・尊厳",
+   "reading": "えいこう",
+   "definition": "glory"
+  },
+  {
+   "surface": "これ",
+   "example": "これならどう",
+   "reading": "これ",
+   "definition": "this, this one"
+  },
+  {
+   "surface": "なん",
+   "example": "なんや まだ 生きてて― 今にも わいらのこと からかいに 来るような 気いするわ",
+   "reading": "なん",
+   "definition": "difficulty, trouble"
+  },
+  {
+   "surface": "だれ",
+   "example": "だれ",
+   "reading": "だれ",
+   "definition": "who"
+  },
+  {
+   "surface": "昨日",
+   "example": "今日はいいけど、昨日はよくなかった",
+   "reading": "きのう",
+   "definition": "yesterday"
+  },
+  {
+   "surface": "愛子",
+   "example": "愛子の返事（15年後）",
+   "reading": "いとしご",
+   "definition": "beloved child, dear child"
+  },
+  {
+   "surface": "以降",
+   "example": "以（以降・以外・以上・以内・以下）＋未満",
+   "reading": "いこう",
+   "definition": "on and after, from ... onward"
+  },
+  {
+   "surface": "なに",
+   "example": "なに・なん",
+   "reading": "なに",
+   "definition": "what"
+  },
+  {
+   "surface": "福音",
+   "example": "福音を伝えよう Part 1 (Ben M)",
+   "reading": "ふくいん",
+   "definition": "good news, glad tidings"
+  },
+  {
+   "surface": "返事",
+   "example": "愛子の返事（15年後）",
+   "reading": "へんじ",
+   "definition": "reply, answer"
+  },
+  {
+   "surface": "尊厳",
+   "example": "栄光・尊厳",
+   "reading": "そんげん",
+   "definition": "dignity, majesty"
+  },
+  {
+   "surface": "主",
+   "example": "Sing sheet for IRL practice. 栄光 尊厳 力は 主のもの 栄光 ほまれ 賛美は 主のもの",
+   "reading": "あるじ",
+   "definition": "head, proprietor"
+  },
+  {
+   "surface": "学校",
+   "example": "学校（がっこう）",
+   "reading": "がっこう",
+   "definition": "school"
+  },
+  {
+   "surface": "好き",
+   "example": "一番好きな人はだれですか",
+   "reading": "すき",
+   "definition": "liking, being fond of"
+  },
+  {
+   "surface": "手紙",
+   "example": "早く手紙書いてあげて～",
+   "reading": "てがみ",
+   "definition": "letter, note"
+  },
+  {
+   "surface": "まだ",
+   "example": "もう・まだ",
+   "reading": "まだ",
+   "definition": "still, as yet"
+  },
+  {
+   "surface": "どう",
+   "example": "どう",
+   "reading": "どう",
+   "definition": "how, in what way"
+  },
+  {
+   "surface": "どうして",
+   "example": "どうしてですか",
+   "reading": "どうして",
+   "definition": "how, in what way"
+  },
+  {
+   "surface": "ああ",
+   "example": "ああ まだ 来てないのよ",
+   "reading": "ああ",
+   "definition": "caw"
+  },
+  {
+   "surface": "なんで",
+   "example": "なんで・どうして",
+   "reading": "なんで",
+   "definition": "why?, what for?"
+  },
+  {
+   "surface": "この",
+   "example": "この映画",
+   "reading": "この",
+   "definition": "this"
+  },
+  {
+   "surface": "あまり",
+   "example": "よく・あまり",
+   "reading": "あまり",
+   "definition": "remainder, remnant"
+  },
+  {
+   "surface": "いや",
+   "example": "いや〜 すごかったわ",
+   "reading": "いや",
+   "definition": "oh, oh my"
+  }
+ ]
+}

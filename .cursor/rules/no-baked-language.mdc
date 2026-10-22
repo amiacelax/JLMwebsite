@@ -1,0 +1,23 @@
+---
+description: Baked language (garbled Japanese) - how it happens and how to never cause it
+alwaysApply: true
+---
+# Baked language = garbled text saved to the site
+
+"Baked language" is Japanese or punctuation saved wrong, e.g. `πüèσÉìσëìπü»` or `â€”` instead of `お名前は？` or `—`.
+It happens when UTF-8 text goes through a **Windows PowerShell pipe or `Out-File`/`Set-Content`** (code page 437/1252).
+
+**Never** do this when touching homework/KV/JSON data:
+- `npx wrangler kv key get ... | Out-File` / `> file` / `| Set-Content` (garbles the file, then it gets published)
+- Writing Japanese into a file with `Set-Content`/`Out-File` from a PowerShell here-string.
+
+**Do this instead:**
+- Read live data with `curl.exe -o file` (raw bytes) or `node`/`python` `fetch` - they keep UTF-8.
+- Write files with the Write/StrReplace tools, or node/python with explicit `utf-8`.
+- Publish/save from a node or python script that reads the file as UTF-8 (`JSON.stringify` + `Content-Type: application/json; charset=utf-8`).
+
+**Safety nets (already built):**
+- The Worker repairs garbled text before anything is saved to KV (`guardEnv` in `src/homework-encoding.ts`).
+- `npm run deploy` first runs `scripts/baked-check.mjs --local` and stops if any file in `public/` or `src/` has baked language.
+- `npm run baked-check` scans files **and** all live saved data (assignments, catalog, notebooks, drafts...);
+  `npm run baked-fix` repairs the live data. After editing any worksheet/sheet data, run `npm run baked-check`.

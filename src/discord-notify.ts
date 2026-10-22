@@ -9,6 +9,8 @@ export interface DiscordNotifyEnv {
 
 export type DiscordNotifyMode =
   | "student_dm"
+  | "student_dm_failed"
+  | "no_discord"
   | "teacher_dm"
   | "teacher_dm_after_student_fail"
   | "webhook"
@@ -208,7 +210,7 @@ async function postWebhookFallback(
   }
 }
 
-async function notifyTeacher(
+export async function notifyTeacher(
   env: DiscordNotifyEnv,
   content: string
 ): Promise<DiscordNotifyResult> {
@@ -238,6 +240,8 @@ export async function notifyStudentWithTeacherFallback(
     /** When student DM succeeds, also DM teacher this (or a prefixed student copy). */
     copyTeacherOnStudentDm?: boolean;
     teacherCopyContent?: string;
+    /** Caller posts the teacher copy itself (HW channel). Do not DM JD. */
+    skipTeacherNotify?: boolean;
   }
 ): Promise<DiscordNotifyResult> {
   try {
@@ -245,6 +249,7 @@ export async function notifyStudentWithTeacherFallback(
     if (studentId) {
       const dm = await dmDiscordUser(env, studentId, opts.studentContent);
       if (dm.ok) {
+        if (opts.skipTeacherNotify) return { ok: true, mode: "student_dm" };
         if (opts.copyTeacherOnStudentDm) {
           const teacherId = sanitizeSnowflake(env.DISCORD_TEACHER_USER_ID);
           if (teacherId && sanitizeBotToken(env.DISCORD_BOT_TOKEN)) {
@@ -269,6 +274,9 @@ export async function notifyStudentWithTeacherFallback(
         dm.status,
         dm.detail
       );
+      if (opts.skipTeacherNotify) {
+        return { ok: false, mode: "student_dm_failed", detail: dm.detail };
+      }
       const fallback = await notifyTeacher(
         env,
         opts.teacherContent +
@@ -283,6 +291,7 @@ export async function notifyStudentWithTeacherFallback(
       };
     }
 
+    if (opts.skipTeacherNotify) return { ok: false, mode: "no_discord" };
     return await notifyTeacher(env, opts.teacherContent);
   } catch (err) {
     const detail = err instanceof Error ? err.message : "notify failed";
