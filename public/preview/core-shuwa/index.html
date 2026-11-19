@@ -118,6 +118,11 @@
       padding: 0.35rem 0.5rem;
     }
     .jump button.is-on { background: color-mix(in srgb, var(--day) 28%, var(--bg-2)); border-color: var(--day); }
+    .memo { width: 100%; margin-top: 0.75rem; background: var(--bg-2); }
+    .memo.is-done { background: var(--sun); color: #140c28; border-color: transparent; }
+    .all-words { margin-top: 0.9rem; }
+    .all-words summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 0.35rem 0; }
+    .all-words .jump { margin-top: 0.5rem; }
     .foot { margin: 1rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
     .foot a { color: var(--day); }
   </style>
@@ -132,6 +137,7 @@
       <select id="topic" aria-label="Topic"></select>
       <button type="button" class="tool" id="hide-en">Hide English</button>
       <button type="button" class="tool" id="show-blank">No video too</button>
+      <button type="button" class="tool" id="show-done">Memorized (0)</button>
     </div>
     <div class="stage">
       <p class="count" id="count"></p>
@@ -142,12 +148,17 @@
         <div class="empty" id="empty" hidden>No video for this word.</div>
       </div>
       <p class="clip-title" id="clip-title"></p>
+      <button type="button" class="navbtn memo" id="memo">I’ve memorized this</button>
       <div class="nav">
         <button type="button" class="navbtn" id="prev">Back</button>
         <button type="button" class="navbtn primary" id="next">Next</button>
       </div>
     </div>
-    <ul class="jump" id="jump"></ul>
+    <details class="all-words" id="all-words">
+      <summary>All words</summary>
+      <ul class="jump" id="jump"></ul>
+    </details>
+    <p class="foot">Your “Memorized” list is saved in this browser only, so a friend who opens the page gets their own fresh list.</p>
     <p class="foot">His clips stay on YouTube. A title like “X months ago” or “xx minute” is the pattern sign — the number changes, the sign is the same shape.</p>
   </div>
   <script>
@@ -160,6 +171,15 @@
     var ytReady = false;
     var currentId = "";
     var currentStart = 0;
+    var showDone = false;
+    var done = {};
+    try { (JSON.parse(localStorage.getItem("core-shuwa-done") || "[]") || []).forEach(function (k) { done[k] = true; }); } catch (e) {}
+
+    function saveDone() {
+      try { localStorage.setItem("core-shuwa-done", JSON.stringify(Object.keys(done))); } catch (e) {}
+    }
+
+    function doneCount() { return Object.keys(done).length; }
     var SKIP_INTRO = 9;
 
     function hasVideo(w) { return !!pick(w); }
@@ -218,6 +238,7 @@
       var q = document.getElementById("q").value.trim().toLowerCase();
       var topic = document.getElementById("topic").value;
       var hits = words.filter(function (w) {
+        if (!!done[w.jp] !== showDone) return false;
         if (!showBlank && !hasVideo(w)) return false;
         if (topic && w.topic !== topic) return false;
         if (!q) return true;
@@ -237,7 +258,9 @@
       var title = document.getElementById("clip-title");
       if (!w) {
         count.textContent = "0";
-        jp.textContent = "Nothing in this filter";
+        document.getElementById("memo").hidden = true;
+        document.getElementById("show-done").textContent = (showDone ? "Back to deck" : "Memorized (" + doneCount() + ")");
+        jp.textContent = showDone ? "Nothing memorized yet" : "Nothing left in this filter";
         en.textContent = "";
         empty.hidden = false;
         empty.textContent = "Try another topic or search.";
@@ -246,7 +269,12 @@
         document.getElementById("jump").innerHTML = "";
         return;
       }
-      count.textContent = (index + 1) + " / " + view.length;
+      count.textContent = (index + 1) + " / " + view.length + (showDone ? " memorized" : "");
+      var memo = document.getElementById("memo");
+      memo.hidden = false;
+      memo.textContent = done[w.jp] ? "Put back in my deck" : "I’ve memorized this";
+      memo.classList.toggle("is-done", !done[w.jp]);
+      document.getElementById("show-done").textContent = (showDone ? "Back to deck" : "Memorized (" + doneCount() + ")");
       jp.textContent = w.jp;
       en.textContent = w.en;
       en.classList.toggle("is-hidden", hideEn);
@@ -304,6 +332,21 @@
       hideEn = !hideEn;
       this.classList.toggle("is-on", hideEn);
       show();
+    });
+    document.getElementById("memo").addEventListener("click", function () {
+      var w = view[index];
+      if (!w) return;
+      if (done[w.jp]) delete done[w.jp]; else done[w.jp] = true;
+      saveDone();
+      var keep = Math.min(index, Math.max(view.length - 2, 0));
+      view = filtered();
+      index = Math.min(keep, Math.max(view.length - 1, 0));
+      show();
+    });
+    document.getElementById("show-done").addEventListener("click", function () {
+      showDone = !showDone;
+      this.classList.toggle("is-on", showDone);
+      refresh(false);
     });
     document.getElementById("show-blank").addEventListener("click", function () {
       showBlank = !showBlank;
