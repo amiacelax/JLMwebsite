@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#0b162a">
+  <title>Core Japanese 手話 — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg-2: #121f36;
+      --ink: #e8edf5;
+      --muted: #9aa8bd;
+      --line: rgba(232, 237, 245, 0.14);
+      --heart: #e85545;
+      --day: #67c4eb;
+      --sun: #f0b429;
+      --violet: #a78bfa;
+      --color-green: #4ade80;
+      --font: Inter, "Noto Sans JP", system-ui, sans-serif;
+      --brand: "Josefin Sans", Inter, sans-serif;
+      --jp: "Noto Sans JP", Inter, sans-serif;
+      --pad: clamp(1rem, 4vw, 1.5rem);
+    }
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 90% 55% at 100% -5%, rgba(103, 196, 235, 0.22), transparent 55%),
+        radial-gradient(ellipse 70% 40% at -10% 20%, rgba(167, 139, 250, 0.16), transparent 50%),
+        var(--bg);
+    }
+    .shell { max-width: 46rem; margin: 0 auto; padding: 1rem var(--pad) 2.5rem; }
+    .brand { margin: 0; font-family: var(--brand); letter-spacing: 0.04em; color: var(--day); font-size: 0.85rem; }
+    .brand a { color: inherit; text-decoration: none; }
+    h1 { margin: 0.25rem 0 0.35rem; font-family: var(--brand); font-size: clamp(1.5rem, 5vw, 2rem); font-weight: 600; }
+    .lede { margin: 0 0 0.85rem; color: var(--muted); line-height: 1.45; }
+    .lede a { color: var(--day); }
+    .row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+    input[type="search"], select, button.tool, .navbtn {
+      font: inherit;
+      color: var(--ink);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 0.7rem;
+      padding: 0.55rem 0.7rem;
+    }
+    input[type="search"] { flex: 1; min-width: 8rem; }
+    input:focus, select:focus, button:focus-visible { outline: 2px solid color-mix(in srgb, var(--day) 70%, transparent); }
+    button.tool.is-on { background: var(--violet); color: #140c28; border-color: transparent; font-weight: 700; }
+    .stage {
+      margin-top: 0.9rem;
+      background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      padding: 0.85rem;
+    }
+    .count { margin: 0 0 0.35rem; color: var(--muted); font-size: 0.85rem; }
+    .jp {
+      margin: 0;
+      font-family: var(--jp);
+      font-weight: 700;
+      font-size: clamp(1.7rem, 6vw, 2.3rem);
+      line-height: 1.25;
+    }
+    .en { margin: 0.2rem 0 0.7rem; color: var(--muted); line-height: 1.4; }
+    .en.is-hidden { visibility: hidden; }
+    .frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    .frame iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0; }
+    .empty {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      padding: 1rem; text-align: center; color: var(--muted);
+      background: #000;
+    }
+    .empty[hidden] { display: none; }
+    .clips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+    .clips button, .navbtn {
+      font: inherit; font-weight: 650;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--bg-2);
+      color: var(--ink);
+      padding: 0.4rem 0.75rem;
+    }
+    .clips button.is-on { background: var(--sun); color: #140c28; border-color: transparent; }
+    .clip-title { margin: 0.45rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    .nav { display: flex; gap: 0.45rem; margin-top: 0.75rem; }
+    .navbtn { flex: 1; font-weight: 700; padding: 0.7rem; }
+    .navbtn.primary { background: var(--heart); color: white; border-color: transparent; }
+    .jump {
+      margin: 0.9rem 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      max-height: 16rem; overflow: auto;
+    }
+    .jump button {
+      font-family: var(--jp);
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 0.55rem;
+      padding: 0.35rem 0.5rem;
+    }
+    .jump button.is-on { background: color-mix(in srgb, var(--day) 28%, var(--bg-2)); border-color: var(--day); }
+    .memo { width: 100%; margin-top: 0.75rem; background: var(--bg-2); }
+    .memo.is-done { background: var(--color-green); color: #052e16; border-color: transparent; }
+    .all-words { margin-top: 0.9rem; }
+    .all-words summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 0.35rem 0; }
+    .all-words .jump { margin-top: 0.5rem; }
+    .foot { margin: 1rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+    .foot a { color: var(--day); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <p class="brand"><a href="/preview/you-need-this-japanese/index.html">Japanese Language Mentor</a></p>
+    <h1>Core Japanese 手話</h1>
+    <div class="row">
+      <input id="q" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search">
+      <select id="topic" aria-label="Topic"></select>
+      <button type="button" class="tool" id="hide-en">Hide English</button>
+      <button type="button" class="tool" id="show-blank">No video too</button>
+      <button type="button" class="tool" id="show-done">Memorized (0)</button>
+    </div>
+    <div class="stage">
+      <p class="count" id="count"></p>
+      <p class="jp" id="jp" lang="ja"></p>
+      <p class="en" id="en"></p>
+      <div class="frame">
+        <div id="yt"></div>
+        <div class="empty" id="empty" hidden>No video for this word.</div>
+      </div>
+      <p class="clip-title" id="clip-title" hidden></p>
+      <button type="button" class="navbtn memo" id="memo">Memorized</button>
+      <div class="nav">
+        <button type="button" class="navbtn" id="prev">Back</button>
+        <button type="button" class="navbtn primary" id="next">Next</button>
+      </div>
+    </div>
+    <details class="all-words" id="all-words">
+      <summary>All words</summary>
+      <ul class="jump" id="jump"></ul>
+    </details>
+  </div>
+  <script>
+    var words = [];
+    var view = [];
+    var index = 0;
+    var hideEn = false;
+    var showBlank = false;
+    var yt = null;
+    var ytReady = false;
+    var currentId = "";
+    var currentStart = 0;
+    var showDone = false;
+    var done = {};
+    try { (JSON.parse(localStorage.getItem("core-shuwa-done") || "[]") || []).forEach(function (k) { done[k] = true; }); } catch (e) {}
+
+    function saveDone() {
+      try { localStorage.setItem("core-shuwa-done", JSON.stringify(Object.keys(done))); } catch (e) {}
+    }
+
+    function doneCount() { return Object.keys(done).length; }
+    var SKIP_INTRO = 9;
+
+    function hasVideo(w) { return !!pick(w); }
+
+    function pick(w) {
+      var vids = (w && w.videos) || [];
+      for (var i = 0; i < vids.length; i++) if (vids[i].who === "shuwa-chan") return vids[i];
+      for (var j = 0; j < vids.length; j++) if (vids[j].who === "short") return vids[j];
+      return null;
+    }
+
+    function play(id, start) {
+      currentId = id || "";
+      currentStart = start || 0;
+      if (!currentId) {
+        if (ytReady && yt && yt.stopVideo) yt.stopVideo();
+        return;
+      }
+      if (ytReady && yt && yt.loadVideoById) yt.loadVideoById({ videoId: currentId, startSeconds: currentStart });
+    }
+
+    window.onYouTubeIframeAPIReady = function () {
+      yt = new YT.Player("yt", {
+        width: "640",
+        height: "360",
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          controls: 1,
+          origin: location.origin
+        },
+        events: {
+          onReady: function (e) {
+            ytReady = true;
+            e.target.mute();
+            if (currentId) e.target.loadVideoById({ videoId: currentId, startSeconds: currentStart });
+          },
+          onStateChange: function (e) {
+            if (e.data === YT.PlayerState.ENDED && currentId) {
+              e.target.seekTo(currentStart);
+              e.target.playVideo();
+            }
+          }
+        }
+      });
+    };
+
+    function head(jp) {
+      return jp.split(/[（(]/)[0].trim().toLowerCase();
+    }
+
+    function filtered() {
+      var q = document.getElementById("q").value.trim().toLowerCase();
+      var topic = document.getElementById("topic").value;
+      var hits = words.filter(function (w) {
+        if (!!done[w.jp] !== showDone) return false;
+        if (!showBlank && !hasVideo(w)) return false;
+        if (topic && w.topic !== topic) return false;
+        if (!q) return true;
+        return (w.jp + " " + w.en + " " + w.topic).toLowerCase().indexOf(q) !== -1;
+      });
+      if (!q) return hits;
+      var tight = hits.filter(function (w) { return head(w.jp) === q || head(w.jp).indexOf(q) === 0; });
+      return tight.length ? tight : hits;
+    }
+
+    function show() {
+      var w = view[index];
+      var count = document.getElementById("count");
+      var jp = document.getElementById("jp");
+      var en = document.getElementById("en");
+      var empty = document.getElementById("empty");
+      var title = document.getElementById("clip-title");
+      if (!w) {
+        count.textContent = "0";
+        document.getElementById("memo").hidden = true;
+        document.getElementById("show-done").textContent = (showDone ? "Back to deck" : "Memorized (" + doneCount() + ")");
+        jp.textContent = showDone ? "Nothing memorized yet" : "Nothing left in this filter";
+        en.textContent = "";
+        empty.hidden = false;
+        empty.textContent = "Try another topic or search.";
+        title.textContent = "";
+        play("");
+        document.getElementById("jump").innerHTML = "";
+        return;
+      }
+      count.textContent = (index + 1) + " / " + view.length + (showDone ? " memorized" : "");
+      var memo = document.getElementById("memo");
+      memo.hidden = false;
+      memo.textContent = done[w.jp] ? "Put back in my deck" : "Memorized";
+      memo.classList.toggle("is-done", !done[w.jp]);
+      document.getElementById("show-done").textContent = (showDone ? "Back to deck" : "Memorized (" + doneCount() + ")");
+      jp.textContent = w.jp;
+      en.textContent = w.en;
+      en.classList.toggle("is-hidden", hideEn);
+      var v = pick(w);
+      if (!v) {
+        empty.hidden = false;
+        empty.textContent = "No video for this word.";
+        title.textContent = "";
+        play("");
+      } else {
+        empty.hidden = true;
+        play(v.id, v.who === "shuwa-chan" ? SKIP_INTRO : 0);
+        if (hideEn) title.textContent = "";
+        else title.textContent = v.who === "short" ? "Short clip — he doesn’t have this one. " + v.title : v.title;
+      }
+      var jump = document.getElementById("jump");
+      jump.innerHTML = "";
+      view.forEach(function (item, i) {
+        var li = document.createElement("li");
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = item.jp;
+        b.lang = "ja";
+        if (i === index) b.className = "is-on";
+        b.addEventListener("click", function () { index = i; show(); });
+        li.appendChild(b);
+        jump.appendChild(li);
+      });
+      try { localStorage.setItem("core-shuwa-jp", w.jp); } catch (e) {}
+    }
+
+    function refresh(keep) {
+      var current = keep && view[index] ? view[index].jp : "";
+      view = filtered();
+      index = 0;
+      if (current) {
+        for (var i = 0; i < view.length; i++) {
+          if (view[i].jp === current) { index = i; break; }
+        }
+      }
+      show();
+    }
+
+    function step(d) {
+      if (!view.length) return;
+      index = (index + d + view.length) % view.length;
+      show();
+    }
+
+    document.getElementById("prev").addEventListener("click", function () { step(-1); });
+    document.getElementById("next").addEventListener("click", function () { step(1); });
+    document.getElementById("q").addEventListener("input", function () { refresh(false); });
+    document.getElementById("topic").addEventListener("change", function () { refresh(false); });
+    document.getElementById("hide-en").addEventListener("click", function () {
+      hideEn = !hideEn;
+      this.classList.toggle("is-on", hideEn);
+      show();
+    });
+    document.getElementById("memo").addEventListener("click", function () {
+      var w = view[index];
+      if (!w) return;
+      if (done[w.jp]) delete done[w.jp]; else done[w.jp] = true;
+      saveDone();
+      var keep = Math.min(index, Math.max(view.length - 2, 0));
+      view = filtered();
+      index = Math.min(keep, Math.max(view.length - 1, 0));
+      show();
+    });
+    document.getElementById("show-done").addEventListener("click", function () {
+      showDone = !showDone;
+      this.classList.toggle("is-on", showDone);
+      refresh(false);
+    });
+    document.getElementById("show-blank").addEventListener("click", function () {
+      showBlank = !showBlank;
+      this.classList.toggle("is-on", showBlank);
+      refresh(true);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.target && (e.target.id === "q" || e.target.tagName === "SELECT")) return;
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
+    });
+
+    fetch("signs.json")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        words = data.words || [];
+        var topics = [];
+        words.forEach(function (w) {
+          if (topics.indexOf(w.topic) === -1) topics.push(w.topic);
+        });
+        var sel = document.getElementById("topic");
+        var all = document.createElement("option");
+        all.value = "";
+        all.textContent = "All topics";
+        sel.appendChild(all);
+        topics.forEach(function (t) {
+          var o = document.createElement("option");
+          o.value = t;
+          var n = words.filter(function (w) { return w.topic === t && hasVideo(w); }).length;
+          o.textContent = t + " (" + n + ")";
+          sel.appendChild(o);
+        });
+        var saved = "";
+        try { saved = localStorage.getItem("core-shuwa-jp") || ""; } catch (e) {}
+        view = filtered();
+        if (saved) {
+          for (var i = 0; i < view.length; i++) {
+            if (view[i].jp === saved) { index = i; break; }
+          }
+        }
+        show();
+      })
+      .catch(function () {
+        document.getElementById("jp").textContent = "Could not load the word list.";
+      });
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
