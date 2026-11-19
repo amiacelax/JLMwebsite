@@ -159,6 +159,8 @@
     var yt = null;
     var ytReady = false;
     var currentId = "";
+    var currentStart = 0;
+    var SKIP_INTRO = 9;
 
     function hasVideo(w) { return !!pick(w); }
 
@@ -169,13 +171,14 @@
       return null;
     }
 
-    function play(id) {
+    function play(id, start) {
       currentId = id || "";
+      currentStart = start || 0;
       if (!currentId) {
         if (ytReady && yt && yt.stopVideo) yt.stopVideo();
         return;
       }
-      if (ytReady && yt && yt.loadVideoById) yt.loadVideoById({ videoId: currentId, startSeconds: 0 });
+      if (ytReady && yt && yt.loadVideoById) yt.loadVideoById({ videoId: currentId, startSeconds: currentStart });
     }
 
     window.onYouTubeIframeAPIReady = function () {
@@ -195,11 +198,11 @@
           onReady: function (e) {
             ytReady = true;
             e.target.mute();
-            if (currentId) e.target.loadVideoById({ videoId: currentId, startSeconds: 0 });
+            if (currentId) e.target.loadVideoById({ videoId: currentId, startSeconds: currentStart });
           },
           onStateChange: function (e) {
             if (e.data === YT.PlayerState.ENDED && currentId) {
-              e.target.seekTo(0);
+              e.target.seekTo(currentStart);
               e.target.playVideo();
             }
           }
@@ -255,7 +258,7 @@
         play("");
       } else {
         empty.hidden = true;
-        play(v.id);
+        play(v.id, v.who === "shuwa-chan" ? SKIP_INTRO : 0);
         if (hideEn) title.textContent = "";
         else title.textContent = v.who === "short" ? "Short clip — he doesn’t have this one. " + v.title : v.title;
       }
