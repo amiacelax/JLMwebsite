@@ -20,6 +20,7 @@
       --day: #67c4eb;
       --sun: #f0b429;
       --violet: #a78bfa;
+      --color-green: #4ade80;
       --font: Inter, "Noto Sans JP", system-ui, sans-serif;
       --brand: "Josefin Sans", Inter, sans-serif;
       --jp: "Noto Sans JP", Inter, sans-serif;
@@ -119,7 +120,7 @@
     }
     .jump button.is-on { background: color-mix(in srgb, var(--day) 28%, var(--bg-2)); border-color: var(--day); }
     .memo { width: 100%; margin-top: 0.75rem; background: var(--bg-2); }
-    .memo.is-done { background: var(--sun); color: #140c28; border-color: transparent; }
+    .memo.is-done { background: var(--color-green); color: #052e16; border-color: transparent; }
     .all-words { margin-top: 0.9rem; }
     .all-words summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 0.35rem 0; }
     .all-words .jump { margin-top: 0.5rem; }
@@ -131,7 +132,6 @@
   <div class="shell">
     <p class="brand"><a href="/preview/you-need-this-japanese/index.html">Japanese Language Mentor</a></p>
     <h1>Core Japanese 手話</h1>
-    <p class="lede">Mask guy only — <a href="https://www.youtube.com/channel/UCVyymlldh49H7ySDqc0lXIQ" target="_blank" rel="noopener noreferrer">手話ちゃんねる</a>. A short clip plays only when he doesn’t have that word. The player stays open, so Next doesn’t boot YouTube again.</p>
     <div class="row">
       <input id="q" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search">
       <select id="topic" aria-label="Topic"></select>
@@ -147,8 +147,8 @@
         <div id="yt"></div>
         <div class="empty" id="empty" hidden>No video for this word.</div>
       </div>
-      <p class="clip-title" id="clip-title"></p>
-      <button type="button" class="navbtn memo" id="memo">I’ve memorized this</button>
+      <p class="clip-title" id="clip-title" hidden></p>
+      <button type="button" class="navbtn memo" id="memo">Memorized</button>
       <div class="nav">
         <button type="button" class="navbtn" id="prev">Back</button>
         <button type="button" class="navbtn primary" id="next">Next</button>
@@ -158,8 +158,6 @@
       <summary>All words</summary>
       <ul class="jump" id="jump"></ul>
     </details>
-    <p class="foot">Your “Memorized” list is saved in this browser only, so a friend who opens the page gets their own fresh list.</p>
-    <p class="foot">His clips stay on YouTube. A title like “X months ago” or “xx minute” is the pattern sign — the number changes, the sign is the same shape.</p>
   </div>
   <script>
     var words = [];
@@ -272,7 +270,7 @@
       count.textContent = (index + 1) + " / " + view.length + (showDone ? " memorized" : "");
       var memo = document.getElementById("memo");
       memo.hidden = false;
-      memo.textContent = done[w.jp] ? "Put back in my deck" : "I’ve memorized this";
+      memo.textContent = done[w.jp] ? "Put back in my deck" : "Memorized";
       memo.classList.toggle("is-done", !done[w.jp]);
       document.getElementById("show-done").textContent = (showDone ? "Back to deck" : "Memorized (" + doneCount() + ")");
       jp.textContent = w.jp;
