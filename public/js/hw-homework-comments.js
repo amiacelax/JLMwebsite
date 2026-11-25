@@ -188,6 +188,8 @@
   let reviewTeacherMinimizedIds = new Set();
   /** Saved recordings he skipped or deleted on this note, so they are not put back. */
   let dismissedSavedRecordingKeys = new Set();
+  /** Slides where he deleted the auto-suggested question note. */
+  let dismissedBankSlots = new Set();
   let reviewResizeObserver = null;
   let draftSaveTimer = null;
   let draftSaveInFlight = null;
@@ -1763,6 +1765,22 @@
     renderAll();
   }
 
+  let cloudToastEl = null;
+  let cloudToastTimer = 0;
+
+  function showCloudToast(text) {
+    if (!cloudToastEl) {
+      cloudToastEl = document.createElement("div");
+      cloudToastEl.className = "hw-mg-toast";
+      cloudToastEl.setAttribute("aria-live", "polite");
+      document.body.appendChild(cloudToastEl);
+    }
+    cloudToastEl.textContent = text;
+    cloudToastEl.classList.add("is-visible");
+    clearTimeout(cloudToastTimer);
+    cloudToastTimer = setTimeout(() => cloudToastEl.classList.remove("is-visible"), 2200);
+  }
+
   function setArmed(next) {
     armed = !!next;
     hostEl?.classList.toggle("hw-hc-armed", armed);
@@ -1772,6 +1790,7 @@
       global.HwMagnifyingGlass?.setArmed?.(false);
       void global.HwMgLexicon?.ensureLoaded?.()?.catch?.(() => {});
       bindWordPreview();
+      showCloudToast("Touch the screen to leave a memo or ask a question.");
     } else {
       cancelTouchSelect();
       hideSelectionMenu();
@@ -1843,25 +1862,70 @@
     renderAll();
   }
 
-  function expandComment(id) {
+  function focusOpenMemo(id) {
+    if (config?.readOnly && !config?.teacherReview) return;
+    const focusEl =
+      layersEl?.querySelector(
+        '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__remark'
+      ) ||
+      layersEl?.querySelector(
+        '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__input:not([readonly])'
+      );
+    if (!focusEl) return;
+    focusEl.focus();
+    try {
+      const end = String(focusEl.value || "").length;
+      focusEl.setSelectionRange(end, end);
+    } catch (_) {
+      /* remark fields are not always textareas */
+    }
+  }
+
+  function expandComment(id, options) {
     if (armed) setArmed(false);
     reviewTeacherMinimizedIds.delete(id);
     activeCommentId = id;
     renderAll();
+    if (options?.syncFocus) focusOpenMemo(id);
     requestAnimationFrame(() => {
       fitExpandedMemo(id);
-      if (config?.readOnly && !config?.teacherReview) return;
-      const focusEl =
-        layersEl?.querySelector(
-          '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__remark'
-        ) ||
-        layersEl?.querySelector(
-          '.hw-hc-memo[data-id="' + id + '"] .hw-hc-memo__input:not([readonly])'
-        );
-      focusEl?.focus();
+      focusOpenMemo(id);
       const memoEl = layersEl?.querySelector('.hw-hc-memo[data-id="' + id + '"]');
       resolveToolLayout(memoEl);
     });
+  }
+
+  /** Phone: a tap while Cloud is armed drops a note at that spot, caret ready. */
+  function createCommentAtPoint(clientX, clientY) {
+    if (!hostEl) return "";
+    const hostRect = hostEl.getBoundingClientRect();
+    if (!hostRect.width || !hostRect.height) return "";
+    const x = pctClamp(((clientX - hostRect.left) / hostRect.width) * 100);
+    const y = pctClamp(((clientY - hostRect.top) / hostRect.height) * 100);
+    const anchorRect = hostRectToPct(
+      {
+        left: clientX - 6,
+        top: clientY - 6,
+        right: clientX + 6,
+        bottom: clientY + 6,
+        width: 12,
+        height: 12,
+      },
+      { exact: true }
+    );
+    const id = uid();
+    comments.push({
+      id,
+      text: "",
+      author: "student",
+      anchor: "",
+      anchorRect,
+      x,
+      y,
+      slideIndex: getSlideIndex(),
+      createdAt: new Date().toISOString(),
+    });
+    return id;
   }
 
   /** Deep-link helper for flashcard → full sheet (memo pair or teacher note). */
@@ -2307,14 +2371,11 @@
   function appendTeacherRemarkRecorder(body, comment) {
     const mediaBlock = document.createElement("div");
     mediaBlock.className = "hw-hc-memo__remark-media";
-    const mediaLabel = document.createElement("p");
-    mediaLabel.className = "hw-hc-memo__remark-label";
-    mediaLabel.textContent = "Audio or video reply (optional)";
     const offerMount = document.createElement("div");
     offerMount.className = "hw-saved-recording-mount";
     const mediaMount = document.createElement("div");
     mediaMount.className = "hw-hc-memo__remark-media-mount";
-    mediaBlock.append(mediaLabel, offerMount, mediaMount);
+    mediaBlock.append(offerMount, mediaMount);
     body.appendChild(mediaBlock);
     renderSavedRecordingOffer(offerMount, comment);
     global.HwReviewMedia?.mountRemarkRecorder?.(mediaMount, {
@@ -2345,7 +2406,19 @@
     notifyTeacherReviewChange();
   }
 
+  function rememberDismissedBankSlot(slideIndex) {
+    const n = Number(slideIndex);
+    if (!Number.isInteger(n) || n < 0) return;
+    dismissedBankSlots.add(n);
+  }
+
+  function getDismissedBankSlots() {
+    return [...dismissedBankSlots];
+  }
+
   function removeComment(id) {
+    const gone = comments.find((c) => c.id === id);
+    if (gone?.author === "teacher") rememberDismissedBankSlot(gone.slideIndex ?? 0);
     comments = comments.filter((c) => c.id !== id);
     if (activeCommentId === id) activeCommentId = null;
     teacherReplyOpenIds.delete(id);
@@ -3193,16 +3266,15 @@
     } else if (armed && !config?.readOnly) {
       const start = touchSelect;
       cancelTouchSelect();
-      /* Tap / light release: take the soft-previewed lexicon word (not a long drag). */
-      if (
-        !pointerMovedBeyond(start, ev.clientX, ev.clientY, PREVIEW_DRAG_PX) &&
-        (adoptWordPreviewSelection(ev.clientX, ev.clientY) || offerStarUnitSelection(ev.target))
-      ) {
-        const picked = getHostSelection();
-        clearWordPreview();
-        if (picked) showSelectionMenu(picked.range.getBoundingClientRect());
-      } else {
-        clearWordPreview();
+      clearWordPreview();
+      if (!pointerMovedBeyond(start, ev.clientX, ev.clientY, PREVIEW_DRAG_PX)) {
+        const id = createCommentAtPoint(ev.clientX, ev.clientY);
+        if (id) {
+          expandComment(id, { syncFocus: true });
+          saveLocal();
+          queueDraftSave();
+          ev.preventDefault();
+        }
       }
     } else {
       cancelTouchSelect();
@@ -4350,12 +4422,88 @@
     return wrap;
   }
 
+  function visibleMemoFrame() {
+    const pad = 10;
+    const chrome = document.querySelector(
+      "body.hw-teacher-review-open .hw-teacher-review-overlay:not([hidden]) .hw-teacher-review-overlay__chrome"
+    );
+    const chromeBottom = chrome ? chrome.getBoundingClientRect().bottom : 0;
+    return {
+      left: pad,
+      top: Math.max(pad, chromeBottom + pad),
+      right: window.innerWidth - pad,
+      bottom: window.innerHeight - pad,
+    };
+  }
+
+  function memoPaintBox(el) {
+    const nodes = el.querySelectorAll(".hw-hc-memo__body");
+    const list = nodes.length ? nodes : [el];
+    let box = null;
+    list.forEach((node) => {
+      const r = node.getBoundingClientRect();
+      if (r.width < 2 && r.height < 2) return;
+      if (!box) {
+        box = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+        return;
+      }
+      box.left = Math.min(box.left, r.left);
+      box.top = Math.min(box.top, r.top);
+      box.right = Math.max(box.right, r.right);
+      box.bottom = Math.max(box.bottom, r.bottom);
+    });
+    return box;
+  }
+
+  function keepOpenMemosVisible() {
+    if (!layersEl || !hostEl) return;
+    const frame = visibleMemoFrame();
+    const frameH = frame.bottom - frame.top;
+    const host = hostEl.getBoundingClientRect();
+    if (!host.width || !host.height) return;
+    layersEl.querySelectorAll(".hw-hc-memo--expanded, .hw-hc-review-pair").forEach((el) => {
+      if (el.classList.contains("is-dragging") || el.hidden) return;
+      el.querySelectorAll(".hw-hc-memo__body").forEach((body) => {
+        body.style.maxHeight = "";
+        body.style.overflow = "";
+      });
+      let box = memoPaintBox(el);
+      if (!box) return;
+      if (box.bottom - box.top > frameH - 8) {
+        const cap = Math.max(160, frameH - 24);
+        el.querySelectorAll(".hw-hc-memo__body").forEach((body) => {
+          body.style.maxHeight = cap + "px";
+          body.style.overflow = "auto";
+        });
+        box = memoPaintBox(el);
+        if (!box) return;
+      }
+      let dx = 0;
+      let dy = 0;
+      if (box.left < frame.left) dx = frame.left - box.left;
+      else if (box.right > frame.right) dx = frame.right - box.right;
+      if (box.top < frame.top) dy = frame.top - box.top;
+      else if (box.bottom > frame.bottom) dy = frame.bottom - box.bottom;
+      if (!dx && !dy) return;
+      const curLeft = parseFloat(el.style.left);
+      const curTop = parseFloat(el.style.top);
+      if (!Number.isFinite(curLeft) || !Number.isFinite(curTop)) return;
+      el.style.left = curLeft + (dx / host.width) * 100 + "%";
+      el.style.top = curTop + (dy / host.height) * 100 + "%";
+    });
+  }
+
+  function onMemoFitResize() {
+    keepOpenMemosVisible();
+  }
+
   function scheduleCloudLayout(pinEl) {
     if (layoutScheduleRaf) cancelAnimationFrame(layoutScheduleRaf);
     layoutScheduleRaf = requestAnimationFrame(() => {
       layoutScheduleRaf = null;
       resolveToolLayout(pinEl || null);
       clearNotesFromSlideNav();
+      keepOpenMemosVisible();
     });
   }
 
@@ -4476,6 +4624,7 @@
     if (launcherEl) hostEl.appendChild(launcherEl);
 
     hostEl.addEventListener("mouseup", onHostMouseUp);
+    window.addEventListener("resize", onMemoFitResize);
     bindTouchSelection();
     bindDocPointer();
     bindKeyDown();
@@ -4493,6 +4642,7 @@
     launcherDrag = null;
     launcherResizeObserver?.disconnect();
     launcherResizeObserver = null;
+    window.removeEventListener("resize", onMemoFitResize);
     reviewResizeObserver?.disconnect();
     reviewResizeObserver = null;
     dismissOnboarding({ persist: false });
@@ -4572,6 +4722,11 @@
       answerBank:
         options.answerBank && typeof options.answerBank === "object" ? options.answerBank : null,
     };
+    dismissedBankSlots = new Set(
+      (Array.isArray(options.dismissedBankSlots) ? options.dismissedBankSlots : [])
+        .map((n) => Number(n))
+        .filter((n) => Number.isInteger(n) && n >= 0)
+    );
 
     if (options.initialComments?.length) {
       comments = normalizeComments(options.initialComments);
@@ -4872,6 +5027,7 @@
     teardown();
     config = null;
     comments = [];
+    dismissedBankSlots = new Set();
   }
 
   function getStorageKey() {
@@ -4894,10 +5050,12 @@
     refresh,
     destroy,
     attachTo,
+    keepOpenMemosVisible,
     setArmed,
     disarm,
     getCommentsForSubmit,
     getCommentsForReview,
+    getDismissedBankSlots,
     getQuestionMarks,
     markedTextToHtml,
     focusComment,

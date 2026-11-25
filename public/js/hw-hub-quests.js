@@ -94,8 +94,8 @@
   ];
 
   const CORE_COUNT = CORE.length; // 59
-  /** Full Quest UI — Demo2 (demoprem) and students moved onto the Demo2 hub (nekobi). */
-  const QUEST_PREVIEW_USERNAMES = new Set(["demoprem", "premdemo", "nekobi"]);
+  /** Full Quest UI — Demo 2 (demoprem) and students on that hub (nekobi). */
+  const QUEST_PREVIEW_USERNAMES = new Set(["demoprem", "premdemo", "nekobi", "sgtjamjar", "faye"]);
 
   function questAtDay(day) {
     const n = Math.max(1, Math.min(TOTAL, Number(day) || 1));

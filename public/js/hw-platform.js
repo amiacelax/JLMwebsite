@@ -14,6 +14,102 @@
     return teacherSession || HwAuth.getTeacherSession();
   }
 
+  /* Pinch zoom on the phone, including Focus and the home-screen app.
+     Focus locks the page (overflow hidden), so Safari's own pinch does nothing
+     there. Two-finger touch applies the page zoom instead. */
+  (function enablePinchZoom() {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover"
+      );
+    }
+    const root = document.documentElement;
+    let base = 1;
+    let origin = 1;
+    let pinch = null;
+
+    function focusZoom() {
+      return (
+        document.body.classList.contains("hw-hw-focus-mode") ||
+        document.body.classList.contains("hw-prayer-focus")
+      );
+    }
+
+    function apply(scale) {
+      const next = Math.max(1, Math.min(4, scale));
+      base = next;
+      root.style.zoom = next === 1 ? "" : String(Math.round(next * 100) / 100);
+    }
+
+    function fingerDist(touches) {
+      const a = touches[0];
+      const b = touches[1];
+      return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    }
+
+    document.addEventListener(
+      "gesturestart",
+      (ev) => {
+        if (focusZoom()) return;
+        ev.preventDefault();
+        origin = base;
+      },
+      { passive: false }
+    );
+    document.addEventListener(
+      "gesturechange",
+      (ev) => {
+        if (focusZoom()) return;
+        ev.preventDefault();
+        apply(origin * (Number(ev.scale) || 1));
+      },
+      { passive: false }
+    );
+    document.addEventListener("gestureend", (ev) => {
+      if (focusZoom()) return;
+      apply(origin * (Number(ev.scale) || 1));
+    });
+
+    document.addEventListener(
+      "touchstart",
+      (ev) => {
+        if (!focusZoom() || ev.touches.length !== 2) return;
+        const dist = fingerDist(ev.touches);
+        if (dist < 8) return;
+        pinch = { dist: dist, zoom: base };
+      },
+      { passive: true }
+    );
+    document.addEventListener(
+      "touchmove",
+      (ev) => {
+        if (!pinch || !focusZoom() || ev.touches.length !== 2) return;
+        if (ev.cancelable) ev.preventDefault();
+        const dist = fingerDist(ev.touches);
+        if (dist < 8 || pinch.dist < 8) return;
+        apply(pinch.zoom * (dist / pinch.dist));
+      },
+      { passive: false }
+    );
+    document.addEventListener(
+      "touchend",
+      (ev) => {
+        if (ev.touches.length < 2) pinch = null;
+      },
+      { passive: true }
+    );
+    document.addEventListener("touchcancel", () => {
+      pinch = null;
+    });
+
+    document.addEventListener("hw-focus-zoom-reset", () => {
+      pinch = null;
+      apply(1);
+    });
+  })();
+
   const greet = document.getElementById("hw-platform-greet");
   if (greet) {
     if (isViewingAsStudent) {
@@ -430,7 +526,7 @@
   function studentTakesLessons() {
     const user = String(session?.username || "").trim().toLowerCase();
     if (user === "christian") return true;
-    /* Demo3 stands in for a current student so JD can see the student view. */
+    /* Demo 3 stands in for a Christian student so JD can see that view. */
     if (user === "demo2") return true;
     if (global.HwAuth?.isNoahCurriculumOpen?.(session)) return true;
     if (global.HwAuth?.isCurriculumTrialActive?.(session)) return true;
@@ -498,6 +594,11 @@
 
     const lessonPlaylist = document.getElementById("hw-lesson-playlist");
     if (lessonPlaylist && lessonPlaylist.hidden) {
+      const tabs = document.getElementById("hw-v5-lesson-tabs");
+      if (tabs) {
+        tabs.hidden = false;
+        tabs.classList.add("is-review-fallback");
+      }
       lessonPlaylist.href = playlistUrl;
       lessonPlaylist.textContent = "HW review playlist (video feedback)";
       lessonPlaylist.hidden = false;
@@ -1583,13 +1684,20 @@
 
     let submission;
     try {
-      const res = await fetch(
-        "/api/homework-submissions?id=" +
+      const teacherName =
+        isViewingAsStudent && getTeacherSessionForApi()?.username
+          ? getTeacherSessionForApi().username
+          : "";
+      const submissionUrl = teacherName
+        ? "/api/homework-submissions?id=" +
+          encodeURIComponent(submissionId) +
+          "&teacherUsername=" +
+          encodeURIComponent(teacherName)
+        : "/api/homework-submissions?id=" +
           encodeURIComponent(submissionId) +
           "&username=" +
-          encodeURIComponent(session.username),
-        { cache: "no-store" }
-      );
+          encodeURIComponent(session.username);
+      const res = await fetch(submissionUrl, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not load submission.");
       submission = data.submission;
@@ -2319,48 +2427,158 @@
 
   let lessonListFor = "";
   let lessonListVideos = null;
+  let lessonPickUrl = "";
+  let lessonPickFor = "";
+  let lessonQuery = "";
+  let lessonChaptersFor = "";
+  let lessonChaptersReady = false;
 
-  function paintLatestLessonTitle() {
-    document.getElementById("hw-v5-lessons-latest")?.remove();
-    const body = lessonPaneRoot();
+  function lessonRowsFrom(videos) {
+    const rows = [];
+    (videos || []).forEach((video) => {
+      const title = String(video.title || "").trim();
+      const url = String(video.url || "").trim();
+      const chapters = Array.isArray(video.chapters) ? video.chapters : [];
+      if (title && url) rows.push({ title, url, chapters });
+    });
+    if (rows.length) return rows;
     const btn = document.getElementById("hw-latest-lesson");
-    if (!body || !btn) return;
-    const url = btn.dataset.lessonUrl || "";
-    const title = btn.dataset.lessonTitle || "";
-    if (!url) {
-      body.replaceChildren();
-      return;
-    }
-    const link = document.createElement("a");
-    link.className = "hw-lesson-title-link";
-    link.href = url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = title || "Latest lesson";
-    body.replaceChildren(link);
+    const url = String(btn?.dataset.lessonUrl || "").trim();
+    const title = String(btn?.dataset.lessonTitle || "").trim();
+    if (url) rows.push({ title: title || "Latest lesson", url, chapters: [] });
+    return rows;
+  }
+
+  function lessonSearchQuery() {
+    return String(lessonQuery || "").trim().toLowerCase();
+  }
+
+  function lessonMatches(row, query) {
+    if (!query) return { ok: true, hits: [] };
+    const hits = (row.chapters || []).filter((chapter) => {
+      const label = String(chapter.label || "");
+      const stamp = String(chapter.t || "");
+      return (label + " " + stamp).toLowerCase().includes(query);
+    });
+    const titleHit = String(row.title || "").toLowerCase().includes(query);
+    return { ok: titleHit || hits.length > 0, hits: hits };
+  }
+
+  function ensureLessonSearch(body) {
+    let search = body.querySelector(".hw-lesson-search");
+    if (search) return search;
+    search = document.createElement("label");
+    search.className = "hw-lesson-search";
+    const input = document.createElement("input");
+    input.type = "search";
+    input.placeholder = "Search lessons";
+    input.autocomplete = "off";
+    input.enterKeyHint = "search";
+    input.setAttribute("aria-label", "Search lessons");
+    input.addEventListener("input", () => {
+      lessonQuery = input.value;
+      if (lessonListVideos) renderLessonList(body, lessonListVideos);
+    });
+    search.appendChild(input);
+    return search;
   }
 
   function renderLessonList(body, videos) {
-    if (!videos.length) {
-      body.textContent = "No lessons in the playlist yet.";
+    const user = String(session?.username || "").trim().toLowerCase();
+    if (lessonPickFor !== user) {
+      lessonPickUrl = "";
+      lessonPickFor = user;
+    }
+    const search = ensureLessonSearch(body);
+    const query = lessonSearchQuery();
+    const rows = lessonRowsFrom(videos);
+    if (!rows.length) {
+      const empty = document.createElement("p");
+      empty.className = "hw-lesson-empty";
+      empty.textContent = "No lessons in the playlist yet.";
+      body.replaceChildren(search, empty);
       return;
     }
+    const shown = rows
+      .map((row) => ({ row, match: lessonMatches(row, query) }))
+      .filter((item) => item.match.ok);
+    if (!shown.length) {
+      const empty = document.createElement("p");
+      empty.className = "hw-lesson-empty";
+      empty.textContent = query && !lessonChaptersReady ? "Checking timestamps…" : "No lessons match.";
+      body.replaceChildren(search, empty);
+      return;
+    }
+    if (!shown.some((item) => item.row.url === lessonPickUrl)) lessonPickUrl = shown[0].row.url;
     const list = document.createElement("ul");
     list.className = "hw-lesson-list";
-    videos.forEach((video) => {
-      const title = String(video.title || "").trim();
-      const url = String(video.url || "").trim();
-      if (!title || !url) return;
+    const bar = document.createElement("span");
+    bar.className = "hw-lesson-list__bar";
+    bar.setAttribute("aria-hidden", "true");
+    list.appendChild(bar);
+    shown.forEach((item) => {
+      const row = item.row;
       const li = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = title;
-      li.appendChild(link);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hw-lesson-list__item";
+      btn.dataset.lessonUrl = row.url;
+      const selected = row.url === lessonPickUrl;
+      btn.classList.toggle("is-selected", selected);
+      btn.setAttribute("aria-pressed", selected ? "true" : "false");
+      btn.textContent = row.title;
+      btn.addEventListener("click", () => {
+        if (lessonPickUrl === row.url) {
+          window.open(row.url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        lessonPickUrl = row.url;
+        list.querySelectorAll(".hw-lesson-list__item").forEach((el) => {
+          const on = el.dataset.lessonUrl === row.url;
+          el.classList.toggle("is-selected", on);
+          el.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        syncLessonPickBar(list);
+      });
+      li.appendChild(btn);
+      if (query && item.match.hits.length) {
+        const hits = document.createElement("div");
+        hits.className = "hw-lesson-hits";
+        item.match.hits.forEach((chapter) => {
+          const link = document.createElement("a");
+          const sec = Number(chapter.sec);
+          link.href = row.url + (Number.isFinite(sec) ? "?t=" + sec : "");
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = String(chapter.t || "") + " " + String(chapter.label || "");
+          hits.appendChild(link);
+        });
+        li.appendChild(hits);
+      }
       list.appendChild(li);
     });
-    body.replaceChildren(list);
+    body.replaceChildren(search, list);
+    syncLessonPickBar(list);
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => syncLessonPickBar(list));
+      ro.observe(list);
+    }
+  }
+
+  function syncLessonPickBar(list) {
+    if (!list) return;
+    const bar = list.querySelector(".hw-lesson-list__bar");
+    const active = list.querySelector(".hw-lesson-list__item.is-selected");
+    if (!bar || !active) return;
+    const bw = active.offsetWidth;
+    const bh = active.offsetHeight;
+    if (bw < 1 || bh < 1) return;
+    bar.style.width = bw + "px";
+    bar.style.height = bh + "px";
+    bar.style.transform = "translate(" + active.offsetLeft + "px, " + active.offsetTop + "px)";
+    if (!list.classList.contains("is-slider-ready")) {
+      requestAnimationFrame(() => list.classList.add("is-slider-ready"));
+    }
   }
 
   async function paintLessonPlaylist() {
@@ -2368,8 +2586,13 @@
     const body = lessonPaneRoot();
     if (!body) return;
     const user = String(session?.username || "").trim().toLowerCase();
+    if (lessonChaptersFor && lessonChaptersFor !== user) {
+      lessonChaptersFor = "";
+      lessonChaptersReady = false;
+    }
     if (lessonListVideos && lessonListFor === user) {
       renderLessonList(body, lessonListVideos);
+      void loadLessonChapters(user);
       return;
     }
     body.textContent = "Loading…";
@@ -2381,29 +2604,36 @@
       const videos = Array.isArray(data.videos) ? data.videos : [];
       lessonListFor = user;
       lessonListVideos = videos;
-      if (document.getElementById("hw-lesson-playlist")?.classList.contains("is-on")) {
-        renderLessonList(body, videos);
-      }
+      renderLessonList(body, videos);
+      void loadLessonChapters(user);
     } catch {
-      if (document.getElementById("hw-lesson-playlist")?.classList.contains("is-on")) {
-        body.textContent = "Couldn't load the playlist.";
-      }
+      body.textContent = "Couldn't load the playlist.";
     }
   }
 
-  function selectLessonPane(which) {
-    const latest = document.getElementById("hw-latest-lesson");
-    const playlist = document.getElementById("hw-lesson-playlist");
-    if (latest) {
-      latest.classList.toggle("is-on", which === "latest");
-      latest.setAttribute("aria-pressed", which === "latest" ? "true" : "false");
+  async function loadLessonChapters(user) {
+    if (!user || lessonChaptersFor === user) return;
+    lessonChaptersFor = user;
+    lessonChaptersReady = false;
+    try {
+      const res = await fetch(
+        "/api/lesson-playlist?student=" + encodeURIComponent(user) + "&chapters=1",
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => ({}));
+      const videos = Array.isArray(data.videos) ? data.videos : [];
+      if (lessonChaptersFor !== user) return;
+      lessonChaptersReady = true;
+      if (lessonListFor !== user || !videos.length) return;
+      lessonListVideos = videos;
+      const body = lessonPaneRoot();
+      if (body && !body.hidden) renderLessonList(body, videos);
+    } catch {
+      if (lessonChaptersFor === user) {
+        lessonChaptersFor = "";
+        lessonChaptersReady = false;
+      }
     }
-    if (playlist) {
-      playlist.classList.toggle("is-on", which === "playlist");
-      playlist.setAttribute("aria-pressed", which === "playlist" ? "true" : "false");
-    }
-    if (which === "playlist") void paintLessonPlaylist();
-    else paintLatestLessonTitle();
   }
 
   function setLessonLinks(assignment, catalog) {
@@ -2426,44 +2656,36 @@
     const showPromo = !hasPlaylist && !studentTakesLessons();
     const lessonTitle = String(media.latestLessonTitle || "").trim();
 
-    if (lessonTabs) lessonTabs.hidden = showPromo;
-    if (promo) promo.hidden = !showPromo;
+    const curriculumOpen = document
+      .getElementById("hw-v5-panel-lessons")
+      ?.classList.contains("is-curriculum-open");
+    if (
+      lessonTabs &&
+      !lessonTabs.classList.contains("is-review-fallback") &&
+      !lessonTabs.classList.contains("is-curriculum-switch")
+    ) {
+      lessonTabs.hidden = true;
+    }
+    if (promo) promo.hidden = curriculumOpen ? true : !showPromo;
     const body = lessonPaneRoot();
-    if (body) body.hidden = showPromo;
+    if (body) {
+      body.dataset.promoHidden = showPromo ? "1" : "";
+      body.hidden = showPromo || !!curriculumOpen;
+    }
 
     if (lessonBtn) {
-      lessonBtn.hidden = showPromo;
-      lessonBtn.className = "hw-hub-v5-lesson-tabs__btn";
-      lessonBtn.textContent = "Latest lesson";
-      lessonBtn.removeAttribute("href");
-      lessonBtn.removeAttribute("target");
+      lessonBtn.hidden = true;
+      lessonBtn.onclick = null;
       lessonBtn.dataset.lessonUrl = hasLatest ? lessonUrl : "";
       lessonBtn.dataset.lessonTitle = lessonTitle;
-      if (hasLatest) {
-        lessonBtn.removeAttribute("aria-disabled");
-        lessonBtn.onclick = () => selectLessonPane("latest");
-      } else {
-        lessonBtn.setAttribute("aria-disabled", "true");
-        lessonBtn.onclick = null;
-      }
     }
 
-    if (lessonPlaylist) {
-      lessonPlaylist.hidden = showPromo;
-      lessonPlaylist.className = "hw-hub-v5-lesson-tabs__btn hw-lesson-playlist";
-      lessonPlaylist.textContent = "Lesson playlist";
-      lessonPlaylist.removeAttribute("href");
-      lessonPlaylist.removeAttribute("target");
-      if (hasPlaylist) {
-        lessonPlaylist.removeAttribute("aria-disabled");
-        lessonPlaylist.onclick = () => selectLessonPane("playlist");
-      } else {
-        lessonPlaylist.setAttribute("aria-disabled", "true");
-        lessonPlaylist.onclick = null;
-      }
+    if (lessonPlaylist && !lessonTabs?.classList.contains("is-review-fallback")) {
+      lessonPlaylist.hidden = true;
+      lessonPlaylist.onclick = null;
     }
 
-    if (!showPromo && hasLatest) selectLessonPane("latest");
+    if (!showPromo) void paintLessonPlaylist();
     else if (body) body.replaceChildren();
   }
 
@@ -3809,6 +4031,7 @@
           submissionId: teacherReviewSubmission.id,
           comments,
           questionMarks: global.HwHomeworkComments?.getQuestionMarks?.() || {},
+          dismissedBankSlots: global.HwHomeworkComments?.getDismissedBankSlots?.() || [],
           markReviewed: false,
         }),
       });
@@ -3853,6 +4076,17 @@
     const hadHistory = teacherReviewHistoryPushed;
     teacherReviewHistoryPushed = false;
     if (hadHistory && !fromPopstate) {
+      const url = new URL(window.location.href);
+      /* Back must not restore view-as. A pushed review entry whose previous
+         page is ?as= would dump the teacher onto the student hub. */
+      if (url.searchParams.has("as") || HwAuth.recentlyLeftViewAs?.()) {
+        url.searchParams.delete("as");
+        url.searchParams.delete("tr");
+        url.hash = "";
+        const qs = url.searchParams.toString();
+        history.replaceState(null, "", url.pathname + (qs ? "?" + qs : ""));
+        return;
+      }
       /* Drop the review history entry without leaving Teacher Hub. */
       history.back();
       return;
@@ -3879,8 +4113,11 @@
   }
 
   /** Start each question from the reply JD gave last time, unless a note is already there. */
-  function withBankPrefilledNotes(comments, slides) {
+  function withBankPrefilledNotes(comments, slides, dismissedSlots) {
     const notes = Array.isArray(comments) ? [...comments] : [];
+    const skipped = new Set(
+      (Array.isArray(dismissedSlots) ? dismissedSlots : []).map((n) => String(Number(n)))
+    );
     const taken = new Set(
       notes
         .filter((c) => c?.author === "teacher")
@@ -3889,7 +4126,7 @@
     const now = new Date().toISOString();
     Object.keys(slides || {}).forEach((slot) => {
       const replies = slides[slot];
-      if (!Array.isArray(replies) || !replies.length || taken.has(slot)) return;
+      if (!Array.isArray(replies) || !replies.length || taken.has(slot) || skipped.has(String(slot))) return;
       const text = String(replies[0]?.text || "").trim();
       const hasSavedRecording = Boolean(replies[0]?.media?.id);
       if (!text && !hasSavedRecording) return;
@@ -3981,9 +4218,15 @@
         ? {}
         : await fetchAnswerBankSlides(entry.assignmentId, session.username);
 
+    const dismissedBankSlots = [
+      ...(Array.isArray(entry.dismissedBankSlots) ? entry.dismissedBankSlots : []),
+      ...(Array.isArray(reviewOptions?.dismissedBankSlots) ? reviewOptions.dismissedBankSlots : []),
+    ];
+
     const initialComments = withBankPrefilledNotes(
       reviewOptions?.initialComments || entry.comments || [],
-      bankSlides
+      bankSlides,
+      dismissedBankSlots
     );
 
     if (global.HwFeatureFlags?.homeworkComments?.() && global.HwHomeworkComments?.attachTo) {
@@ -3997,6 +4240,7 @@
         skipOnboarding: true,
         initialComments,
         answerBank: bankSlides,
+        dismissedBankSlots,
         initialQuestionMarks: entry.questionMarks || {},
       });
     }
@@ -4067,6 +4311,7 @@
           submissionId: teacherReviewSubmission.id,
           comments,
           questionMarks: global.HwHomeworkComments?.getQuestionMarks?.() || {},
+          dismissedBankSlots: global.HwHomeworkComments?.getDismissedBankSlots?.() || [],
           markReviewed: true,
         }),
       });
@@ -4148,8 +4393,24 @@
       document.body.dataset.teacherReviewPopBound = "true";
       window.addEventListener("popstate", () => {
         const open = document.getElementById("hw-teacher-review-overlay");
-        if (!open || open.hidden) return;
-        void closeTeacherWorksheetReview({ fromPopstate: true });
+        if (open && !open.hidden) {
+          void closeTeacherWorksheetReview({ fromPopstate: true });
+          return;
+        }
+        if (!HwAuth.recentlyLeftViewAs?.()) return;
+        let params;
+        try {
+          params = new URLSearchParams(window.location.search);
+        } catch {
+          return;
+        }
+        if (!String(params.get("as") || "").trim()) return;
+        if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+        else HwAuth.clearViewAsStudent?.();
+        params.delete("as");
+        params.delete("tr");
+        const qs = params.toString();
+        window.location.replace(window.location.pathname + (qs ? "?" + qs : ""));
       });
     }
   }
@@ -4406,7 +4667,43 @@
     await consumeTeacherGo();
   }
 
-  /** `?tr=` opens that sheet in review. `?as=` views the hub as that student. */
+  /** Teacher hub URL with view-as and submission-review params removed. */
+  function teacherHubPathWithoutViewAs() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("as");
+    url.searchParams.delete("tr");
+    url.hash = "";
+    const qs = url.searchParams.toString();
+    return url.pathname + (qs ? "?" + qs : "");
+  }
+
+  /** Open the hub as that student. Discord "open their hub" uses `?as=`. */
+  async function openTeacherStudentPage(username) {
+    const key = String(username || "").trim().toLowerCase();
+    if (!key) return false;
+    if (HwAuth.recentlyLeftViewAs?.()) return false;
+    const current = String(HwAuth.getViewAsStudent?.() || "").trim().toLowerCase();
+    if (isViewingAsStudent && current === key) return false;
+    let result = null;
+    if (HwAuth.setViewAsStudentAsync) result = await HwAuth.setViewAsStudentAsync(key);
+    if (!result?.ok && HwAuth.openStudentFromLink) result = HwAuth.openStudentFromLink(key);
+    if (!result?.ok) return false;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tr");
+    url.searchParams.set("as", key);
+    clearStaleSubmissionHash();
+    const next = url.pathname + "?" + url.searchParams.toString();
+    const here = window.location.pathname + window.location.search;
+    if (here === next) window.location.reload();
+    else window.location.replace(next);
+    return true;
+  }
+
+  /**
+   * `?as=` views the hub as that student.
+   * `?tr=` opens that homework submission in the teacher review. It must not
+   * redirect to the student hub.
+   */
   async function consumeTeacherGo() {
     let params;
     try {
@@ -4429,20 +4726,31 @@
             encodeURIComponent(session.username)
         );
         const data = await res.json().catch(() => ({}));
-        if (data.submission) await openTeacherWorksheetReview(data.submission);
+        if (data.submission) {
+          if (as) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("as");
+            history.replaceState(
+              history.state,
+              "",
+              url.pathname + url.search + url.hash
+            );
+          }
+          await openTeacherWorksheetReview(data.submission);
+          return;
+        }
+        showToast("Could not open that submission.");
       } catch {
         showToast("Could not open that review.");
       }
+      stripTeacherReviewQuery();
       return;
     }
-    if (as && !isViewingAsStudent) {
-      const apply = HwAuth.setViewAsStudentAsync || HwAuth.setViewAsStudent;
-      const result = await apply(as);
-      if (result?.ok) {
-        clearStaleSubmissionHash();
-        window.location.reload();
-      }
+    if (as && HwAuth.recentlyLeftViewAs?.()) {
+      window.location.replace(teacherHubPathWithoutViewAs());
+      return;
     }
+    if (as && (await openTeacherStudentPage(as))) return;
   }
 
   function assignmentRecencyKey(entry) {
@@ -4480,6 +4788,11 @@
     return true;
   }
 
+  function isTrialPracticeSheet(id) {
+    const key = String(id || "").trim().toLowerCase();
+    return key.startsWith("trial-") || key === "sheet-secret-hiragana";
+  }
+
   function guessedAssignmentId() {
     const hashParts = parseStudentHash();
     if (!isTeacher && hashParts.kind === "assignment") return null;
@@ -4492,17 +4805,11 @@
       const trialId = String(cached?.data?.curriculumTrial?.homeworkId || "");
       const endsMs = Date.parse(String(cached?.data?.curriculumTrial?.endsAt || ""));
       const trialEnded = Number.isFinite(endsMs) && Date.now() >= endsMs;
-      if (cachedId && !(trialEnded && trialId && cachedId === trialId)) return cachedId || null;
+      if (cachedId && !isTrialPracticeSheet(cachedId) && !(trialEnded && trialId && cachedId === trialId)) return cachedId || null;
     }
     const mem = catalogCache?.studentProfiles?.[user]?.currentHomeworkId;
     const fromCatalog = String(mem || "").trim();
-    if (fromCatalog) return fromCatalog;
-    const who = String(user || "").toLowerCase();
-    const trialHw = global.HwAuth?.curriculumTrialHomeworkId?.(session);
-    if (trialHw) return trialHw;
-    if (global.HwAuth?.isNoahCurriculumOpen?.(session)) return "sheet-secret-hiragana";
-    if (who === "christian") return "sheet-secret-hiragana";
-    if (who === "demo2" || who === "curriculum") return "trial-advanced-notoki";
+    if (fromCatalog && !isTrialPracticeSheet(fromCatalog)) return fromCatalog;
     return null;
   }
 
@@ -4698,9 +5005,11 @@
           }
         : null) ||
       (hashParts.kind === "assignment" && hashId && mine.find((a) => a.id === hashId)) ||
-      (currentId && mine.find((a) => a.id === currentId)) ||
-      mine[0] ||
-      (currentId ? { id: currentId, title: currentId, students: [user] } : null);
+      (currentId && !isTrialPracticeSheet(currentId) && mine.find((a) => a.id === currentId)) ||
+      mine.find((a) => !isTrialPracticeSheet(a.id)) ||
+      (currentId && !isTrialPracticeSheet(currentId)
+        ? { id: currentId, title: currentId, students: [user] }
+        : null);
 
     renderCurrentAssignmentCard(mine, active?.id);
     setLessonLinks(active, catalog);
@@ -5024,9 +5333,12 @@
   function returnToTeacherHub() {
     invalidateCatalogCaches();
     clearStaleSubmissionHash();
+    teacherReviewHistoryPushed = false;
     if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
     else HwAuth.clearViewAsStudent();
-    window.location.reload();
+    /* Reload used to keep ?as=, and the next load walked straight back into
+       that student's hub. Replace onto the teacher hub and drop the param. */
+    window.location.replace(teacherHubPathWithoutViewAs());
   }
 
   function syncTeacherAdminChrome() {
@@ -5115,21 +5427,28 @@
       const profile = data?.profile;
       if (!profile) return s;
 
-      if (profile.accountLabel) {
-        s.accountLabel = profile.accountLabel;
-        s.accountLabelDisplay =
-          HwAuth.ACCOUNT_LABELS[profile.accountLabel] || profile.accountLabel;
-      }
-      if (profile.tier) {
-        s.tier = profile.tier;
-        s.tierDisplay = HwAuth.TIERS[profile.tier]?.name || profile.tier;
-        s.videoResponseUnlock = profile.tier === "tier3" || Boolean(s.videoResponseUnlock);
-      }
+      /* No saved plan yet — keep the login (Demo 3 / local Christian stay on their hub). */
+      const emptyDefault =
+        profile.hasKvAccount === false &&
+        (profile.accountLabel || "homework_only") === "homework_only" &&
+        (profile.tier || "pending") === "pending";
+      if (!emptyDefault) {
+        if (profile.accountLabel) {
+          s.accountLabel = profile.accountLabel;
+          s.accountLabelDisplay =
+            HwAuth.ACCOUNT_LABELS[profile.accountLabel] || profile.accountLabel;
+        }
+        if (profile.tier) {
+          s.tier = profile.tier;
+          s.tierDisplay = HwAuth.TIERS[profile.tier]?.name || profile.tier;
+          s.videoResponseUnlock = profile.tier === "tier3" || Boolean(s.videoResponseUnlock);
+        }
 
-      HwAuth.setAccountOverride?.(s.username, {
-        accountLabel: s.accountLabel,
-        tier: s.tier,
-      });
+        HwAuth.setAccountOverride?.(s.username, {
+          accountLabel: s.accountLabel,
+          tier: s.tier,
+        });
+      }
 
       if (!isViewingAsStudent && !s.viewAs) {
         try {
@@ -5172,11 +5491,23 @@
         const as = String(go.get("as") || "")
           .trim()
           .toLowerCase();
-        if (as && !go.get("tr") && !isViewingAsStudent) {
+        const tr = String(go.get("tr") || "").trim();
+        /* ?tr= is a submission review. Only a bare ?as= opens the student hub. */
+        if (as && !tr && !isViewingAsStudent) {
           void (async () => {
-            const apply = HwAuth.setViewAsStudentAsync || HwAuth.setViewAsStudent;
-            const result = await apply(as);
-            if (result?.ok) window.location.reload();
+            if (HwAuth.recentlyLeftViewAs?.()) {
+              window.location.replace(teacherHubPathWithoutViewAs());
+              return;
+            }
+            if (await openTeacherStudentPage(as)) return;
+            initTeacherViewAsControls();
+            showTeacherHubAndBindTabs();
+            bindTeacherReviewChrome();
+            requestAnimationFrame(() => {
+              initTeacherEditor();
+              ensureTeacherEditorMounted();
+              void loadTeacherHub();
+            });
           })();
           return;
         }
@@ -5197,17 +5528,42 @@
         const as = String(go.get("as") || "")
           .trim()
           .toLowerCase();
+        const tr = String(go.get("tr") || "").trim();
         const current = String(HwAuth.getViewAsStudent?.() || session?.username || "")
           .trim()
           .toLowerCase();
+        /* Submission link while view-as is still on: leave his hub and open the review. */
+        if (tr) {
+          if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+          else HwAuth.clearViewAsStudent?.();
+          const url = new URL(window.location.href);
+          url.searchParams.delete("as");
+          const qs = url.searchParams.toString();
+          window.location.replace(url.pathname + (qs ? "?" + qs : "") + url.hash);
+          return;
+        }
         if (as && as !== current) {
           void (async () => {
-            const apply = HwAuth.setViewAsStudentAsync || HwAuth.setViewAsStudent;
-            const result = await apply(as);
-            if (result?.ok) window.location.reload();
+            if (HwAuth.recentlyLeftViewAs?.()) {
+              if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+              window.location.replace(teacherHubPathWithoutViewAs());
+              return;
+            }
+            if (await openTeacherStudentPage(as)) return;
+            const url = new URL(window.location.href);
+            url.searchParams.delete("as");
+            url.searchParams.delete("tr");
+            const qs = url.searchParams.toString();
+            window.location.replace(url.pathname + (qs ? "?" + qs : ""));
           })();
           return;
         }
+        window.addEventListener("pageshow", () => {
+          if (!HwAuth.recentlyLeftViewAs?.()) return;
+          if (String(new URLSearchParams(window.location.search).get("tr") || "").trim()) return;
+          if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+          window.location.replace(teacherHubPathWithoutViewAs());
+        });
       } catch {
         /* ignore */
       }

@@ -12843,6 +12843,43 @@ a.hw-breakdown-card--link:focus-visible {
   margin-bottom: 0.65rem;
 }
 
+/* CJ-only: confirm pill above the toolbar, as wide as the homework box. */
+.hw-answer-next-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  max-height: 0;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: max-height 0.22s ease, opacity 0.22s ease, transform 0.22s ease, margin 0.22s ease;
+}
+
+.hw-answer-next-wrap.is-up {
+  max-height: 3.6rem;
+  margin: 0.35rem 0 0.15rem;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.hw-answer-next {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.72rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-green, #4ade80);
+  color: #0b162a;
+  font: inherit;
+  font-weight: 750;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
 .hw-worksheet__slide-nav-row .hw-worksheet__slide-nav {
   grid-column: 1;
   grid-row: 1;

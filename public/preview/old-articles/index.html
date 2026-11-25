@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="theme-color" content="#0b162a">
+  <title>Old articles — Japanese Language Mentor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b162a;
+      --bg-2: #121f36;
+      --ink: #e8edf5;
+      --muted: #9aa8bd;
+      --line: rgba(232, 237, 245, 0.14);
+      --day: #67c4eb;
+      --font: Inter, "Noto Sans JP", system-ui, sans-serif;
+      --brand: "Josefin Sans", Inter, sans-serif;
+      --jp: "Noto Sans JP", Inter, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 90% 55% at 100% -5%, rgba(103, 196, 235, 0.22), transparent 55%),
+        var(--bg);
+    }
+    .page {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.35rem 1rem;
+      padding: 0.75rem 1rem 0.55rem;
+    }
+    .brand {
+      margin: 0;
+      font-family: var(--brand);
+      letter-spacing: 0.04em;
+      color: var(--day);
+      font-size: 0.85rem;
+    }
+    .brand a { color: inherit; text-decoration: none; }
+    h1 {
+      margin: 0;
+      font-family: var(--brand);
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+    .pick { display: none; padding: 0 1rem 0.7rem; }
+    .pick select {
+      width: 100%;
+      font: inherit;
+      color: var(--ink);
+      background: var(--bg-2);
+      border: 1px solid var(--line);
+      border-radius: 0.7rem;
+      padding: 0.6rem 0.7rem;
+    }
+    .layout {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      gap: 0.75rem;
+      padding: 0 1rem 1rem;
+    }
+    nav {
+      flex: 0 0 16.5rem;
+      overflow: auto;
+      padding-right: 0.15rem;
+    }
+    h2 {
+      margin: 0.85rem 0 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--day);
+    }
+    h2:first-child { margin-top: 0; }
+    button.item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 0.65rem;
+      padding: 0.45rem 0.55rem;
+      cursor: pointer;
+    }
+    button.item small {
+      display: block;
+      margin-top: 0.1rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    button.item.is-on,
+    button.item:hover {
+      background: var(--bg-2);
+      border-color: var(--line);
+    }
+    .read {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+    .read__bar {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.35rem 0.55rem;
+      background: var(--bg-2);
+    }
+    .read__bar a { color: var(--day); font-size: 0.85rem; }
+    iframe {
+      flex: 1;
+      width: 100%;
+      border: 0;
+      background: #111;
+      min-height: 70vh;
+    }
+    @media (max-width: 760px) {
+      .pick { display: block; }
+      nav { display: none; }
+      .layout { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="brand"><a href="/preview/you-need-this-japanese/index.html">Japanese Language Mentor</a></p>
+      <h1>Old articles</h1>
+    </header>
+    <label class="pick">
+      <select id="jump" aria-label="Old articles"></select>
+    </label>
+    <div class="layout">
+      <nav id="list"></nav>
+      <div class="read">
+        <div class="read__bar"><a id="out" href="" target="_blank" rel="noopener noreferrer">Open on Archive.org</a></div>
+        <iframe id="frame" title="Article" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+  <script>
+    var groups = [
+      ["", [
+        ["ポケットモンスター百科", "5 April 1996", "pocket-monsters-encyclopedia-96"],
+        ["ポケットモンスター 4コマギャグバトル", "10 November 1996", "pokemon-4komagagbattle"],
+        ["公式ファンブック", "1997", "pocket-monsters-official-fanbook-1997"],
+        ["Nintendoスタジアム", "December 1999", "nintendo-stadium-december-1999-12-600dpi-ozidual"]
+      ]],
+      ["Shorter ones", [
+        ["Red manual", "27 February 1996", "pocket-monsters-aka-dmg-apaj-gb-jp-manual-600-dpi"],
+        ["Green manual", "27 February 1996", "pocket-monsters-midori-dmg-apbj-gb-jp-manual-600-dpi"],
+        ["Trainer's Guide Book", "10 June 1997", "pocket-monsters-trainers-guide-book-june-10-1997"],
+        ["赤・緑・青 全百科", "10 January 1998", "KorotanBunko-156-Pokemon"],
+        ["Game Boy Magazine", "5 January 1998", "game-boy-magazine-january-05-1998"]
+      ]]
+    ];
+    var list = document.getElementById("list");
+    var jump = document.getElementById("jump");
+    var frame = document.getElementById("frame");
+    var out = document.getElementById("out");
+    var buttons = [];
+    groups.forEach(function (group) {
+      if (group[0]) {
+        var h = document.createElement("h2");
+        h.textContent = group[0];
+        list.appendChild(h);
+        var optg = document.createElement("optgroup");
+        optg.label = group[0];
+        jump.appendChild(optg);
+      }
+      var parent = group[0] ? jump.querySelector("optgroup:last-of-type") : jump;
+      group[1].forEach(function (item) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "item";
+        btn.innerHTML = item[0] + "<small>" + item[1] + "</small>";
+        btn.addEventListener("click", function () { openItem(item, btn); });
+        list.appendChild(btn);
+        buttons.push([item, btn]);
+        var opt = document.createElement("option");
+        opt.value = item[2];
+        opt.textContent = item[0];
+        parent.appendChild(opt);
+      });
+    });
+    function openItem(item, btn) {
+      buttons.forEach(function (pair) { pair[1].classList.toggle("is-on", pair[1] === btn); });
+      jump.value = item[2];
+      out.href = "https://archive.org/details/" + item[2];
+      frame.src = "https://archive.org/details/" + item[2] + "?view=theater&ui=embed&wrapper=false";
+    }
+    jump.addEventListener("change", function () {
+      var id = jump.value;
+      var hit = buttons.filter(function (pair) { return pair[0][2] === id; })[0];
+      if (hit) openItem(hit[0], hit[1]);
+    });
+    openItem(buttons[0][0], buttons[0][1]);
+  </script>
+</body>
+</html>

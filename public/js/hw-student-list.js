@@ -3,7 +3,7 @@
  * Keeps a localStorage copy so Student/ID dropdowns paint instantly on reopen.
  */
 (function (global) {
-  const LS_KEY = "jlm-hw-student-list-v2";
+  const LS_KEY = "jlm-hw-student-list-v5";
   let cachedStudents = null;
   let fetchPromise = null;
 
@@ -109,6 +109,23 @@
       if (local) cachedStudents = local;
     }
 
+    /* Saved copy paints first; fetch the real list once per page so new students show up. */
+    if (!opts.force && cachedStudents && !fetchStudents.revalidated) {
+      fetchStudents.revalidated = true;
+      const stale = cachedStudents;
+      fetchStudents({ force: true, teacherUsername: opts.teacherUsername })
+        .then(() => {
+          if (cachedStudents !== stale) {
+            try {
+              global.HwStudentList?.refreshTeacherFilterSelects?.();
+            } catch {
+              /* ignore */
+            }
+          }
+        })
+        .catch(() => {});
+      return cachedStudents;
+    }
     if (!opts.force && cachedStudents) return cachedStudents;
     if (!opts.force && fetchPromise) return fetchPromise;
 
@@ -158,34 +175,15 @@
 
   function appendGroupedStudentOptions(selectEl, students, labelFor) {
     const labelFn = labelFor || studentOptionLabel;
-    const subscribers = [];
-    const others = [];
-    (students || []).forEach((account) => {
-      if (account?.subscriber === true) subscribers.push(account);
-      else others.push(account);
+    const rows = (students || []).slice().sort((a, b) =>
+      labelFn(a).localeCompare(labelFn(b), undefined, { sensitivity: "base" })
+    );
+    rows.forEach((account) => {
+      const opt = document.createElement("option");
+      opt.value = account.username;
+      opt.textContent = labelFn(account);
+      selectEl.appendChild(opt);
     });
-
-    function byLabel(a, b) {
-      return labelFn(a).localeCompare(labelFn(b), undefined, { sensitivity: "base" });
-    }
-    subscribers.sort(byLabel);
-    others.sort(byLabel);
-
-    function addGroup(label, rows) {
-      if (!rows.length) return;
-      const group = document.createElement("optgroup");
-      group.label = label;
-      rows.forEach((account) => {
-        const opt = document.createElement("option");
-        opt.value = account.username;
-        opt.textContent = labelFn(account);
-        group.appendChild(opt);
-      });
-      selectEl.appendChild(group);
-    }
-
-    addGroup("Subscribers", subscribers);
-    addGroup("Not subscribed", others);
   }
 
   function studentOptionLabel(account) {

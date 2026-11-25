@@ -227,6 +227,36 @@
       }
     }
 
+    function askEraseClip(actions) {
+      actions.replaceChildren();
+      const ask = document.createElement("p");
+      ask.className = "hw-review-media__ask";
+      ask.textContent = "Erase it?";
+      const yes = document.createElement("button");
+      yes.type = "button";
+      yes.className = "btn btn--primary btn--sm";
+      yes.textContent = "Yes";
+      const no = document.createElement("button");
+      no.type = "button";
+      no.className = "btn btn--ghost btn--sm";
+      no.textContent = "No";
+      stopControlBubble(yes);
+      stopControlBubble(no);
+      yes.addEventListener("click", () => resetSavedClip());
+      no.addEventListener("click", () => renderSaved());
+      actions.append(ask, yes, no);
+    }
+
+    function syncStepChrome() {
+      if (options.compactToolbar) return;
+      const modeBar = mount.querySelector(".hw-review-media__mode");
+      if (modeBar) modeBar.hidden = state !== "idle";
+      if (idleEl) idleEl.hidden = true;
+      const label = mount.querySelector(".hw-review-media__live-label");
+      if (label?.firstChild) label.firstChild.textContent = "";
+      global.HwHomeworkComments?.keepOpenMemosVisible?.();
+    }
+
     function showIdle() {
       state = "idle";
       stopStream();
@@ -237,6 +267,7 @@
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = true;
       syncToolbarState();
+      syncStepChrome();
     }
 
     function showLive() {
@@ -247,6 +278,7 @@
       if (liveViewportEl) liveViewportEl.hidden = mode !== "video";
       mount.classList.toggle("hw-review-media--live-video", mode === "video");
       syncToolbarState();
+      syncStepChrome();
     }
 
     function showPreview() {
@@ -258,6 +290,7 @@
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
       syncToolbarState();
+      syncStepChrome();
     }
 
     function showSaved() {
@@ -269,6 +302,7 @@
       if (liveEl) liveEl.hidden = true;
       if (previewEl) previewEl.hidden = false;
       syncToolbarState();
+      syncStepChrome();
     }
 
     function stopPreviewPlayback() {
@@ -354,36 +388,20 @@
       if (!previewEl) return;
       previewEl.replaceChildren();
       if (!currentMedia?.id) {
-        previewEl.hidden = true;
-        if (idleEl) idleEl.hidden = false;
+        showIdle();
         return;
       }
       renderPlayback(previewEl, currentMedia);
-      /* Question-note recorder has no compact toolbar, so save used to hide
-         Record and leave no way to delete. Keep both after the clip is saved. */
       if (!options.compactToolbar) {
         const actions = document.createElement("div");
         actions.className = "hw-review-media__saved-actions";
-        const again = document.createElement("button");
-        again.type = "button";
-        again.className = "btn btn--ghost btn--sm hw-review-media__record-again";
-        again.textContent = "Record a new one";
-        stopControlBubble(again);
-        again.addEventListener("click", () => {
-          confirmEraseIfNeeded(again, () => {
-            resetSavedClip();
-            void startRecording({ skipConfirm: true });
-          });
-        });
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "btn btn--ghost btn--sm hw-review-media__remove";
-        remove.textContent = "Delete recording";
+        remove.textContent = "Delete";
         stopControlBubble(remove);
-        remove.addEventListener("click", () => {
-          confirmEraseIfNeeded(remove, () => resetSavedClip());
-        });
-        actions.append(again, remove);
+        remove.addEventListener("click", () => askEraseClip(actions));
+        actions.append(remove);
         previewEl.appendChild(actions);
       }
       showSaved();
@@ -449,6 +467,12 @@
         }
         previewEl.appendChild(player);
       }
+      showPreview();
+      if (!options.compactToolbar) {
+        setStatus("");
+        void uploadRecording(null);
+        return;
+      }
       const actions = document.createElement("div");
       actions.className = "hw-review-media__preview-actions";
       actions.innerHTML =
@@ -457,7 +481,6 @@
       actions.querySelector(".hw-review-media__upload")?.addEventListener("click", () => {
         void uploadRecording(actions.querySelector(".hw-review-media__upload"));
       });
-      showPreview();
       setStatus("Preview your clip, then save it.");
     }
 
@@ -493,10 +516,19 @@
         };
         clearRecording();
         renderSaved();
-        setStatus("Clip saved.");
+        setStatus(options.compactToolbar ? "Clip saved." : "");
         options.onChange?.(currentMedia);
       } catch (err) {
         setStatus((err && err.message) || "Could not save clip.");
+        if (!options.compactToolbar && previewEl && !previewEl.querySelector(".hw-review-media__upload")) {
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "btn btn--primary btn--sm hw-review-media__upload";
+          retry.textContent = "Save";
+          stopControlBubble(retry);
+          retry.addEventListener("click", () => void uploadRecording(retry));
+          previewEl.appendChild(retry);
+        }
       } finally {
         setBusy(false);
         if (uploadBtn) uploadBtn.disabled = false;
@@ -582,7 +614,9 @@
     mount.querySelectorAll(".hw-review-media__mode-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (state === "live") return;
-        setMode(btn.getAttribute("data-mode"));
+        const next = btn.getAttribute("data-mode");
+        setMode(next);
+        if (!options.compactToolbar) void startRecording({ skipConfirm: true });
       });
     });
 

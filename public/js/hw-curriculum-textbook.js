@@ -128,7 +128,7 @@
     } catch {
       user = "";
     }
-    if (!user || user === "demo2" || user === "curriculum") return LS;
+    if (!user || user === "curriculum") return LS;
     return LS + ":" + user;
   }
 
@@ -287,7 +287,7 @@
     const link = document.createElement("link");
     link.id = "hw-curriculum-textbook-css";
     link.rel = "stylesheet";
-    link.href = "/css/hw-curriculum-textbook.css?v=4";
+    link.href = "/css/hw-curriculum-textbook.css?v=5";
     document.head.appendChild(link);
   }
 
@@ -304,6 +304,7 @@
   /** Monday of week 1. Hub weeks already start Monday at 5:00 a.m. local. */
   const WEEK1_MONDAY = {
     christian: "2026-09-14",
+    demo2: "2026-09-14",
     alex: "2026-09-28",
     sykohpath: "2026-10-05",
     secretsister5: "2026-10-05",
@@ -311,6 +312,8 @@
     benm: "2026-10-05",
     noahjorton: "2026-10-05",
     baranymatthewjr: "2026-10-05",
+    michael: "2026-11-02",
+    regina: "2026-11-02",
   };
 
   function curriculumWeekNumber() {
@@ -421,7 +424,7 @@
           n +
           '" autocomplete="one-time-code" autocapitalize="sentences" spellcheck="true" ' +
           'data-1p-ignore="true" data-lpignore="true" data-form-type="other" maxlength="200" ' +
-          'placeholder="' +
+          'enterkeyhint="done" placeholder="' +
           (n === 1 ? "トイレに行きました" : "Example " + n) +
           '" aria-label="' +
           (n === 1 ? "トイレに行きました" : "Example " + n) +
@@ -481,8 +484,15 @@
     );
   }
 
+  function rescueToolbar(root) {
+    const bar = document.getElementById("hw-toolbar-bar");
+    if (!bar || !root || !root.contains(bar)) return;
+    if (root.parentElement) root.parentElement.insertBefore(bar, root);
+  }
+
   function fill(root, mode) {
     if (!root) return;
+    rescueToolbar(root);
     ensureCss();
     const key = viewKey(mode) + (mode === "all" ? "" : ":wordnote");
     root.classList.add("hw-curriculum-textbook");
@@ -517,7 +527,45 @@
       }
     });
     root.addEventListener("focusout", () => window.setTimeout(() => updateExampleOverflow(root), 0));
+    root.addEventListener("keydown", onExampleKeydown);
     window.addEventListener("resize", () => updateExampleOverflow(root));
+  }
+
+  /** Enter finishes this example and opens the next one. Empty text stays put. */
+  function onExampleKeydown(ev) {
+    if (ev.key !== "Enter" || ev.shiftKey || ev.isComposing || ev.keyCode === 229) return;
+    const input = ev.target.closest && ev.target.closest(".hw-ex-line input[data-name]");
+    if (!input) return;
+    ev.preventDefault();
+    if (!String(input.value || "").trim()) return;
+    const li = input.closest(".hw-ex-line");
+    const list = li && li.parentElement;
+    if (!list) {
+      input.blur();
+      return;
+    }
+    let next = null;
+    let sib = li.nextElementSibling;
+    while (sib) {
+      if (sib.matches && sib.matches(".hw-ex-line:not(.hw-ex-line--add)") && !sib.hidden) {
+        next = sib;
+        break;
+      }
+      sib = sib.nextElementSibling;
+    }
+    if (!next) {
+      const hidden = list.querySelector(".hw-ex-line:not(.hw-ex-line--add)[hidden]");
+      if (hidden) {
+        hidden.hidden = false;
+        const row = list.querySelector(".hw-ex-line--add");
+        const more = list.querySelector(".hw-ex-line:not(.hw-ex-line--add)[hidden]");
+        if (row && !more) row.hidden = true;
+        next = hidden;
+      }
+    }
+    const nextInput = next && next.querySelector("input[data-name]");
+    if (nextInput) nextInput.focus();
+    else input.blur();
   }
 
   function mount(root, mode) {
@@ -1340,14 +1388,15 @@
     }
     if (!panel) return;
     let root = document.getElementById("hw-curriculum-textbook");
-    if (root && root.getAttribute("data-rev") !== "14") {
+    if (root && root.getAttribute("data-rev") !== "15") {
+      rescueToolbar(root);
       root.remove();
       root = null;
     }
     if (!root) {
       root = document.createElement("section");
       root.id = "hw-curriculum-textbook";
-      root.setAttribute("data-rev", "14");
+      root.setAttribute("data-rev", "15");
       panel.insertBefore(root, panel.firstChild);
     }
     fill(root, "today");

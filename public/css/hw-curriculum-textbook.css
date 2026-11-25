@@ -139,7 +139,7 @@
   margin-top: 0.65rem;
 }
 
-.hw-curriculum-textbook button {
+.hw-curriculum-textbook button:not(.hw-toolbar-bar__btn) {
   font: inherit;
   font-weight: 650;
   border-radius: 999px;

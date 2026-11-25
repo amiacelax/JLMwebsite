@@ -1,3677 +1,4541 @@
 {
- "words": [
-  {
-   "jp": "一昨日（おととい）",
-   "en": "day before yesterday (two days ago)",
-   "topic": "Time",
-   "videos": [
+  "words": [
     {
-     "id": "PdHWVHpCil0",
-     "who": "shuwa-chan",
-     "title": "Day before yesterday"
-    }
-   ]
-  },
-  {
-   "jp": "昨日 (きのう)",
-   "en": "yesterday",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "7ltz6J0qsPg",
-     "who": "shuwa-chan",
-     "title": "Yesterday"
+      "jp": "一昨日（おととい）",
+      "en": "day before yesterday (two days ago)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "PdHWVHpCil0",
+          "who": "shuwa-chan",
+          "title": "Day before yesterday"
+        }
+      ]
     },
     {
-     "id": "ipSsgRtM9pk",
-     "who": "short",
-     "title": "昨日"
-    }
-   ]
-  },
-  {
-   "jp": "今日 (きょう)",
-   "en": "today",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "_aFd82T4yP8",
-     "who": "shuwa-chan",
-     "title": "Today"
+      "jp": "昨日 (きのう)",
+      "en": "yesterday",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "7ltz6J0qsPg",
+          "who": "shuwa-chan",
+          "title": "Yesterday"
+        },
+        {
+          "id": "ipSsgRtM9pk",
+          "who": "short",
+          "title": "昨日"
+        }
+      ]
     },
     {
-     "id": "QweN18Vds1E",
-     "who": "short",
-     "title": "今日"
-    }
-   ]
-  },
-  {
-   "jp": "明日 (あした)",
-   "en": "tomorrow",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "nXWrVYeyWuQ",
-     "who": "shuwa-chan",
-     "title": "Tomorrow"
+      "jp": "今日 (きょう)",
+      "en": "today",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "_aFd82T4yP8",
+          "who": "shuwa-chan",
+          "title": "Today"
+        },
+        {
+          "id": "QweN18Vds1E",
+          "who": "short",
+          "title": "今日"
+        }
+      ]
     },
     {
-     "id": "7P-QHBs_qcA",
-     "who": "short",
-     "title": "明日"
-    }
-   ]
-  },
-  {
-   "jp": "明後日（あさって）",
-   "en": "day after tomorrow (in two days)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "uauZGlLrwdI",
-     "who": "shuwa-chan",
-     "title": "Day after tomorrow"
-    }
-   ]
-  },
-  {
-   "jp": "先々週（せんせんしゅう）",
-   "en": "last last week (two weeks ago)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "ZATxXVo3gWQ",
-     "who": "shuwa-chan",
-     "title": "X weeks ago"
-    }
-   ]
-  },
-  {
-   "jp": "先週（せんしゅう）",
-   "en": "last week",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "UxPtbLO1DBU",
-     "who": "shuwa-chan",
-     "title": "Last week"
+      "jp": "明日 (あした)",
+      "en": "tomorrow",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "nXWrVYeyWuQ",
+          "who": "shuwa-chan",
+          "title": "Tomorrow"
+        },
+        {
+          "id": "7P-QHBs_qcA",
+          "who": "short",
+          "title": "明日"
+        }
+      ]
     },
     {
-     "id": "XYeQRyfHk_M",
-     "who": "short",
-     "title": "先週"
-    }
-   ]
-  },
-  {
-   "jp": "今週 (こんしゅう)",
-   "en": "this week",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "S4Idd0dEFa4",
-     "who": "shuwa-chan",
-     "title": "This week"
+      "jp": "明後日（あさって）",
+      "en": "day after tomorrow (in two days)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "uauZGlLrwdI",
+          "who": "shuwa-chan",
+          "title": "Day after tomorrow"
+        }
+      ]
     },
     {
-     "id": "N-TkBUtHswU",
-     "who": "short",
-     "title": "今週"
-    }
-   ]
-  },
-  {
-   "jp": "来週（らいしゅう）",
-   "en": "next week",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "RF1svp9ptEs",
-     "who": "shuwa-chan",
-     "title": "Next week"
+      "jp": "先々週（せんせんしゅう）",
+      "en": "last last week (two weeks ago)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "ZATxXVo3gWQ",
+          "who": "shuwa-chan",
+          "title": "X weeks ago"
+        }
+      ]
     },
     {
-     "id": "WQStJnS2YLY",
-     "who": "short",
-     "title": "来週"
-    }
-   ]
-  },
-  {
-   "jp": "再来週（さらいしゅう）",
-   "en": "next next week (in two weeks)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "wTIyPgbivgc",
-     "who": "shuwa-chan",
-     "title": "X weeks later"
-    }
-   ]
-  },
-  {
-   "jp": "先々月（せんせんげつ）",
-   "en": "last last month (two months ago)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "LFZAGI-SWPI",
-     "who": "shuwa-chan",
-     "title": "X months ago"
-    }
-   ]
-  },
-  {
-   "jp": "先月（せんげつ）",
-   "en": "last month",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "LFZAGI-SWPI",
-     "who": "shuwa-chan",
-     "title": "X months ago"
-    }
-   ]
-  },
-  {
-   "jp": "今月 (こんげつ)",
-   "en": "this month",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "6hkLoI2bRfo",
-     "who": "shuwa-chan",
-     "title": "This month"
-    }
-   ]
-  },
-  {
-   "jp": "来月（らいげつ）",
-   "en": "next month",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "lYiqBmPjZYk",
-     "who": "shuwa-chan",
-     "title": "X months later"
-    }
-   ]
-  },
-  {
-   "jp": "再来月（さらいげつ）",
-   "en": "next next month (in two months)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "lYiqBmPjZYk",
-     "who": "shuwa-chan",
-     "title": "X months later"
-    }
-   ]
-  },
-  {
-   "jp": "一昨年（おととし）",
-   "en": "year before last (two years ago)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "8ZuqERAVsiI",
-     "who": "shuwa-chan",
-     "title": "X years ago"
-    }
-   ]
-  },
-  {
-   "jp": "去年（きょねん）",
-   "en": "last year",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "5mhQPwLeIXk",
-     "who": "shuwa-chan",
-     "title": "Last year"
+      "jp": "先週（せんしゅう）",
+      "en": "last week",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "UxPtbLO1DBU",
+          "who": "shuwa-chan",
+          "title": "Last week"
+        },
+        {
+          "id": "XYeQRyfHk_M",
+          "who": "short",
+          "title": "先週"
+        }
+      ]
     },
     {
-     "id": "BOrzf38mZcs",
-     "who": "short",
-     "title": "去年"
-    }
-   ]
-  },
-  {
-   "jp": "今年 (ことし)",
-   "en": "this year",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "AYWHIXgaYPY",
-     "who": "shuwa-chan",
-     "title": "This year"
+      "jp": "今週 (こんしゅう)",
+      "en": "this week",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "S4Idd0dEFa4",
+          "who": "shuwa-chan",
+          "title": "This week"
+        },
+        {
+          "id": "N-TkBUtHswU",
+          "who": "short",
+          "title": "今週"
+        }
+      ]
     },
     {
-     "id": "TPXwFyEiVI0",
-     "who": "short",
-     "title": "今年"
-    }
-   ]
-  },
-  {
-   "jp": "来年 (らいねん)",
-   "en": "next year",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "SY0-O9UCbjA",
-     "who": "shuwa-chan",
-     "title": "Next year"
+      "jp": "来週（らいしゅう）",
+      "en": "next week",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "RF1svp9ptEs",
+          "who": "shuwa-chan",
+          "title": "Next week"
+        },
+        {
+          "id": "WQStJnS2YLY",
+          "who": "short",
+          "title": "来週"
+        }
+      ]
     },
     {
-     "id": "737tpDvJi_o",
-     "who": "short",
-     "title": "来年"
-    }
-   ]
-  },
-  {
-   "jp": "再来年（さらいねん）",
-   "en": "next next year (in two years)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "ZVEHmJ7HA-w",
-     "who": "shuwa-chan",
-     "title": "X years later"
-    }
-   ]
-  },
-  {
-   "jp": "平日（へいじつ）",
-   "en": "weekday(s)",
-   "topic": "Time",
-   "videos": []
-  },
-  {
-   "jp": "週末 (しゅうまつ)",
-   "en": "weekend",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "rdyOjF_nKd4",
-     "who": "shuwa-chan",
-     "title": "Weekend"
-    }
-   ]
-  },
-  {
-   "jp": "8ヶ月前（はちかげつまえ）",
-   "en": "8 months ago · (Amount of time) ＋ ～前（まえ）",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "LFZAGI-SWPI",
-     "who": "shuwa-chan",
-     "title": "X months ago"
-    }
-   ]
-  },
-  {
-   "jp": "2年前（にねんまえ）",
-   "en": "2 years ago · (Amount of time) ＋ ～前（まえ）",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "8ZuqERAVsiI",
-     "who": "shuwa-chan",
-     "title": "X years ago"
-    }
-   ]
-  },
-  {
-   "jp": "3週間前（さんしゅうかんまえ）",
-   "en": "3 weeks ago · (Amount of time) ＋ ～前（まえ）",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "ZATxXVo3gWQ",
-     "who": "shuwa-chan",
-     "title": "X weeks ago"
-    }
-   ]
-  },
-  {
-   "jp": "一週間（いっしゅうかん）",
-   "en": "one week (amount of time)",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "MBtbb8od3oM",
-     "who": "short",
-     "title": "一週間"
-    }
-   ]
-  },
-  {
-   "jp": "1分（いっぷん）",
-   "en": "1 minute · いっぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "2分",
-   "en": "2 minutes · にふん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "3分",
-   "en": "3 minutes · さんぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "4分",
-   "en": "4 minutes · よんふん or よんぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "5分",
-   "en": "5 minutes · ごふん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "6分",
-   "en": "6 minutes · ろっぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "7分",
-   "en": "7 minutes · ななふん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "8分",
-   "en": "8 minutes · はっぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "9分",
-   "en": "9 minutes · きゅうふん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "10分",
-   "en": "10 minutes · じゅっぷん",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "CkdGpx7-Sqg",
-     "who": "shuwa-chan",
-     "title": "xx minute"
-    }
-   ]
-  },
-  {
-   "jp": "5分後に （ごふんご）",
-   "en": "in 5 minutes · (Amount of time) ＋ ～後に（ご）",
-   "topic": "Time",
-   "videos": []
-  },
-  {
-   "jp": "毎日 (まいにち)",
-   "en": "every day",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "EMNl0CM9POM",
-     "who": "shuwa-chan",
-     "title": "Every day / Daily"
-    }
-   ]
-  },
-  {
-   "jp": "毎週 (まいしゅう)",
-   "en": "every week",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "ALqnN6PaSEU",
-     "who": "shuwa-chan",
-     "title": "Every week / Weekly"
-    }
-   ]
-  },
-  {
-   "jp": "毎月 (まいつき)",
-   "en": "every month",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "Pg299RWi1qY",
-     "who": "shuwa-chan",
-     "title": "Monthly / Every Month"
-    }
-   ]
-  },
-  {
-   "jp": "毎年 (まいとし)",
-   "en": "every year",
-   "topic": "Time",
-   "videos": [
-    {
-     "id": "sg11xqrwEx0",
-     "who": "shuwa-chan",
-     "title": "Every year / Annual"
-    }
-   ]
-  },
-  {
-   "jp": "今朝 (けさ)",
-   "en": "this morning",
-   "topic": "Time",
-   "videos": []
-  },
-  {
-   "jp": "1日",
-   "en": "ついたち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "2日",
-   "en": "ふつか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "3日",
-   "en": "みっか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "4日",
-   "en": "よっか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "5日",
-   "en": "いつか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "6日",
-   "en": "むいか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "7日",
-   "en": "なのか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "8日",
-   "en": "ようか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "9日",
-   "en": "ここのか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "10日",
-   "en": "とおか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "11日",
-   "en": "じゅういちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "12日",
-   "en": "じゅうににち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "13日",
-   "en": "じゅうさんにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "14日",
-   "en": "じゅうよっか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "15日",
-   "en": "じゅうごにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "16日",
-   "en": "じゅうろくにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "17日",
-   "en": "じゅうななにち · or · じゅうしちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "18日",
-   "en": "じゅうはちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "19日",
-   "en": "じゅうくにち · く not きゅう",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "20日",
-   "en": "はつか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "21日",
-   "en": "にじゅういちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "22日",
-   "en": "にじゅうににち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "23日",
-   "en": "にじゅうさんにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "24日",
-   "en": "にじゅうよっか",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "25日",
-   "en": "にじゅうごにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "26日",
-   "en": "にじゅうろくにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "27日",
-   "en": "にじゅうななにち · or · にじゅうしちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "28日",
-   "en": "にじゅうはちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "29日",
-   "en": "にじゅうくにち · not きゅうにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "30日",
-   "en": "さんじゅうにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "31日",
-   "en": "さんじゅういちにち",
-   "topic": "Month dates",
-   "videos": []
-  },
-  {
-   "jp": "今（いま）",
-   "en": "now, right now",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "ZQ2UfD-D0Nc",
-     "who": "shuwa-chan",
-     "title": "Now"
+      "jp": "再来週（さらいしゅう）",
+      "en": "next next week (in two weeks)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "wTIyPgbivgc",
+          "who": "shuwa-chan",
+          "title": "X weeks later"
+        }
+      ]
     },
     {
-     "id": "H65_pubNYzo",
-     "who": "short",
-     "title": "今"
-    }
-   ]
-  },
-  {
-   "jp": "さっき",
-   "en": "just now, a second/minute ago",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "先に （さき）",
-   "en": "Before (e.g. ahead of time), beforehand",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "あとで",
-   "en": "Later · (used at the beginning of a sentence)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "あとは",
-   "en": "After",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "～とき、～のとき ～時、～の時",
-   "en": "when (i.e. when I went to Japan) · [often followed by に]",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "SRt-FNrN5vI",
-     "who": "shuwa-chan",
-     "title": "When?"
-    }
-   ]
-  },
-  {
-   "jp": "まだ",
-   "en": "まだ = Not yet · まだ見てない = Haven't seen [it] yet. · まだいる？ = You still there? (at the cafe etc.)\"",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "ayQYkPfow38",
-     "who": "shuwa-chan",
-     "title": "Not yet"
+      "jp": "先々月（せんせんげつ）",
+      "en": "last last month (two months ago)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "LFZAGI-SWPI",
+          "who": "shuwa-chan",
+          "title": "X months ago"
+        }
+      ]
     },
     {
-     "id": "mS-nJ4cTLf0",
-     "who": "short",
-     "title": "まだ"
-    }
-   ]
-  },
-  {
-   "jp": "もう",
-   "en": "Already, anymore · もう見た = Already saw [it]. · もういない？ = You not there anymore? (at the cafe etc.)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "また",
-   "en": "Again · また話しましょう Let's talk again sometime.",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "UQ0wLBYfxo4",
-     "who": "shuwa-chan",
-     "title": "Again"
-    }
-   ]
-  },
-  {
-   "jp": "から まで",
-   "en": "from · [から/だから can also mean because] · until · [までに means \"by\"]",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "までに",
-   "en": "by (by 5:00PM)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "これから",
-   "en": "From now on · \"About to\" (used when you're about to start doing something)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "それから",
-   "en": "Since then, after that",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "もうすぐ",
-   "en": "Almost",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "C3ajaam-wbc",
-     "who": "shuwa-chan",
-     "title": "Almost"
-    }
-   ]
-  },
-  {
-   "jp": "～前（まえ）、～の前（まえ）",
-   "en": "Before · \"Before I went to Japan...\" · 日本に行く前...（にほんにいくまえ）\" · [Often followed by に]",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "～あと、～のあと",
-   "en": "After (i.e. After I said that, I left.) · [often followed by は or に]",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "次（つぎ）",
-   "en": "Next · [often followed by に or は]",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "WtvoFRmaiz8",
-     "who": "shuwa-chan",
-     "title": "Next"
-    }
-   ]
-  },
-  {
-   "jp": "今度(こんど)",
-   "en": "Next time, this time (yeah I know it doesn't make sense)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "一回・1回（いっかい）",
-   "en": "Once, one time",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "今回(こんかい)",
-   "en": "This time",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "前回（ぜんかい）",
-   "en": "Last time",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "最近 (さいきん)",
-   "en": "Recently, lately, as of late",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "VlyI_Gp9f8M",
-     "who": "shuwa-chan",
-     "title": "Recently"
-    }
-   ]
-  },
-  {
-   "jp": "最初（さいしょ）",
-   "en": "Beginning, first · 最初の漢字（さいしょのかんじ） · \"The first kanji\"",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "最後(さいご)",
-   "en": "End, last · 最後の言葉（さいごのことば） · \"The last word\"",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "58NMg3fCJNE",
-     "who": "shuwa-chan",
-     "title": "End"
-    }
-   ]
-  },
-  {
-   "jp": "初めて(はじめて)",
-   "en": "First time, first (experience) · 初めての時（はじめてのとき） · \"When it's your first time...\" · 初めて見た（はじめてみた） · \"First time I've ever seen it\"",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "qGdxrHYulcc",
-     "who": "shuwa-chan",
-     "title": "First time"
-    }
-   ]
-  },
-  {
-   "jp": "結局(けっきょく)",
-   "en": "Eventually, in the end, after all",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "l4iKadXh-90",
-     "who": "shuwa-chan",
-     "title": "After all / I knew it."
-    }
-   ]
-  },
-  {
-   "jp": "すぐに",
-   "en": "Immediately, right away",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "たまに",
-   "en": "Sometimes, ocassionally",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "-FRitcpz8u8",
-     "who": "shuwa-chan",
-     "title": "Sometimes"
-    }
-   ]
-  },
-  {
-   "jp": "最初らへん（さいしょらへん）",
-   "en": "Towards the beginning",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "最後らへん（さいごらへん）",
-   "en": "Towards the end",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "やっと",
-   "en": "Finally (i.e. I finally did it!)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "いつ",
-   "en": "when",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "SRt-FNrN5vI",
-     "who": "shuwa-chan",
-     "title": "When?"
+      "jp": "先月（せんげつ）",
+      "en": "last month",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "LFZAGI-SWPI",
+          "who": "shuwa-chan",
+          "title": "X months ago"
+        }
+      ]
     },
     {
-     "id": "LTngAHF7Svc",
-     "who": "short",
-     "title": "いつ"
-    }
-   ]
-  },
-  {
-   "jp": "いつか",
-   "en": "One day, someday, eventually (in the future)",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "9QbXOxnOn3s",
-     "who": "shuwa-chan",
-     "title": "Someday"
-    }
-   ]
-  },
-  {
-   "jp": "いつも",
-   "en": "Always",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "hRDCFbVBZ4k",
-     "who": "shuwa-chan",
-     "title": "Always"
-    }
-   ]
-  },
-  {
-   "jp": "将来（しょうらい）",
-   "en": "Future (in your lifetime)",
-   "topic": "When",
-   "videos": [
-    {
-     "id": "PdqBcRkwznE",
-     "who": "shuwa-chan",
-     "title": "Future"
-    }
-   ]
-  },
-  {
-   "jp": "何年（なんねん）？",
-   "en": "What year?",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "何月（なんがつ）？",
-   "en": "What month?",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "何曜日（なんようび）？",
-   "en": "What day? (of the week)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "何日（なんにち）？",
-   "en": "What day? (date)",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "とりあえず",
-   "en": "For now, meanwhile, in the mean time",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "とにかく",
-   "en": "at any rate, anyhow, anyway",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "たまたま",
-   "en": "by chance",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "よく",
-   "en": "often, well · よく歩いてた（あるいてた） · \"I walked often\" · よく食べるね！ · \"You eat a lot!\"",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "あまり",
-   "en": "not really, not much, not that much",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "昔は (むかし)",
-   "en": "long time ago, forever ago, way back when · 昔はよく行ってた(むかしはよくいってた) · \"I used to go there all the time\"",
-   "topic": "When",
-   "videos": []
-  },
-  {
-   "jp": "全部 (ぜんぶ)",
-   "en": "everything, all",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "ao9_Fc6Jax8",
-     "who": "shuwa-chan",
-     "title": "All / Everything"
+      "jp": "今月 (こんげつ)",
+      "en": "this month",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "6hkLoI2bRfo",
+          "who": "shuwa-chan",
+          "title": "This month"
+        }
+      ]
     },
     {
-     "id": "pBOk_j412cs",
-     "who": "short",
-     "title": "全部"
-    }
-   ]
-  },
-  {
-   "jp": "全然 (ぜんぜん)",
-   "en": "not at all, used with ～ない ending (全然いい, 全然大丈夫 exception)",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "ただ",
-   "en": "just, free (cost)",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "だけ",
-   "en": "only, just",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "eHI0h-l8iXs",
-     "who": "shuwa-chan",
-     "title": "Only"
-    }
-   ]
-  },
-  {
-   "jp": "もうちょっと",
-   "en": "a little more",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "もう一つ（ひとつ）",
-   "en": "one more (thing)",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "ちょっとだけ",
-   "en": "a little bit, some",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "一人で (ひとり)",
-   "en": "by yourself/myself/one's self",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "V-m8shJfqUk",
-     "who": "shuwa-chan",
-     "title": "Alone"
-    }
-   ]
-  },
-  {
-   "jp": "それだけ",
-   "en": "that's all/it",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "これだけ",
-   "en": "this is all/it",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "好きなだけ",
-   "en": "as much as you like/want",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "もっと",
-   "en": "more",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "aXjQS_imiXY",
-     "who": "shuwa-chan",
-     "title": "More"
-    }
-   ]
-  },
-  {
-   "jp": "一番 (いちばん)",
-   "en": "#1, most",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "一番好き (いちばん)(す) 一番好きな (いちばん)(す)",
-   "en": "favorite",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "たくさん",
-   "en": "a lot, many",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "269c8-iNy04",
-     "who": "shuwa-chan",
-     "title": "A lot / Many"
-    }
-   ]
-  },
-  {
-   "jp": "いっぱい",
-   "en": "a lot, many",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "269c8-iNy04",
-     "who": "shuwa-chan",
-     "title": "A lot / Many"
+      "jp": "来月（らいげつ）",
+      "en": "next month",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "lYiqBmPjZYk",
+          "who": "shuwa-chan",
+          "title": "X months later"
+        }
+      ]
     },
     {
-     "id": "7PmpB6VNQsE",
-     "who": "short",
-     "title": "いっぱい"
-    }
-   ]
-  },
-  {
-   "jp": "結構（けっこう）",
-   "en": "pretty, quite",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "だいたい",
-   "en": "usually, generally",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "d6qm-eCu3So",
-     "who": "shuwa-chan",
-     "title": "Normal / Usually / Common "
-    }
-   ]
-  },
-  {
-   "jp": "ほとんど",
-   "en": "majority, almost all",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "ほぼ",
-   "en": "majority, almost all",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "ぐらい・くらい",
-   "en": "about (i.e. about 4 weeks)",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "JJ6JBU6FjxY",
-     "who": "shuwa-chan",
-     "title": "About"
-    }
-   ]
-  },
-  {
-   "jp": "どれぐらい",
-   "en": "How much?",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "Ekd4OanAfRw",
-     "who": "shuwa-chan",
-     "title": "How much?"
-    }
-   ]
-  },
-  {
-   "jp": "どのぐらい",
-   "en": "How much?",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "Ekd4OanAfRw",
-     "who": "shuwa-chan",
-     "title": "How much?"
-    }
-   ]
-  },
-  {
-   "jp": "いくら",
-   "en": "How much? (price)",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "Ekd4OanAfRw",
-     "who": "shuwa-chan",
-     "title": "How much?"
+      "jp": "再来月（さらいげつ）",
+      "en": "next next month (in two months)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "lYiqBmPjZYk",
+          "who": "shuwa-chan",
+          "title": "X months later"
+        }
+      ]
     },
     {
-     "id": "H2i2F_oGfbY",
-     "who": "short",
-     "title": "いくら"
-    }
-   ]
-  },
-  {
-   "jp": "もっとも",
-   "en": "Most (absolute most)",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "全員（ぜんいん）",
-   "en": "Everyone",
-   "topic": "How much",
-   "videos": [
-    {
-     "id": "97llkRK7wgw",
-     "who": "shuwa-chan",
-     "title": "Everyone"
-    }
-   ]
-  },
-  {
-   "jp": "少しずつ",
-   "en": "bit by bit, gradually",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "部分",
-   "en": "part, piece, section",
-   "topic": "How much",
-   "videos": []
-  },
-  {
-   "jp": "同じ (おなじ)",
-   "en": "same (i.e. 同じ人 same person)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "Euu_946x5Wo",
-     "who": "shuwa-chan",
-     "title": "Same"
-    }
-   ]
-  },
-  {
-   "jp": "絶対(ぜったい)",
-   "en": "definitely (i.e. 絶対行く I'm DEFINITELY going)",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "是非 (ぜひ)",
-   "en": "please (i.e. ぜひ来てください please come)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "y0sMlZNgLug",
-     "who": "shuwa-chan",
-     "title": "Please"
-    }
-   ]
-  },
-  {
-   "jp": "まあまあ",
-   "en": "kind of, so-so",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "NLS2ZfpIC1g",
-     "who": "short",
-     "title": "まあまあ"
-    }
-   ]
-  },
-  {
-   "jp": "ずっと",
-   "en": "forever, long way, long time",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "AdOmXDVrXJo",
-     "who": "shuwa-chan",
-     "title": "Permanent / Forever"
-    }
-   ]
-  },
-  {
-   "jp": "でも",
-   "en": "But (beginning of sentence)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "bWSGz12aSu4",
-     "who": "shuwa-chan",
-     "title": "But"
-    }
-   ]
-  },
-  {
-   "jp": "けど",
-   "en": "but (middle of sentence)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "bWSGz12aSu4",
-     "who": "shuwa-chan",
-     "title": "But"
-    }
-   ]
-  },
-  {
-   "jp": "じゃあ",
-   "en": "So...Okay...Alright, so...",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "では",
-   "en": "So...Okay...Alright, so... (sometimes used like 好きではない \"I don't necessarily like it\"",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "あのー",
-   "en": "Uhh..",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "えっと",
-   "en": "Let's see, uhh",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "えー！",
-   "en": "Whaaa!",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "へえ",
-   "en": "Interesting...",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "～から、～だから",
-   "en": "because",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "dbXjJ3r8CzI",
-     "who": "shuwa-chan",
-     "title": "Because / Therefore / So"
-    }
-   ]
-  },
-  {
-   "jp": "そして・そんで",
-   "en": "Then,",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "そしたら",
-   "en": "And then, in that case,",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "それでも",
-   "en": "Even still, even then",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "ただで",
-   "en": "for free",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "もし",
-   "en": "if (needs follow up grammar ～れば、～たら、～なら)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "e2ovwR4g77c",
-     "who": "shuwa-chan",
-     "title": "If"
-    }
-   ]
-  },
-  {
-   "jp": "しかも、",
-   "en": "More than that,/On top of that, Plus",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "たぶん",
-   "en": "Probably",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "本当の・に (ほんとう)",
-   "en": "Real, true・Really",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "必ず（かなら）",
-   "en": "definitely, for sure",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "残念（ざんねん） 残念な",
-   "en": "Unfortunate, bummer",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "sqbydGhQYRE",
-     "who": "shuwa-chan",
-     "title": "Unfortunate / Regrettable / Frustrated / Upset"
-    }
-   ]
-  },
-  {
-   "jp": "大変（たいへん） 大変な",
-   "en": "Hard, tough, rough, (emotionally)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "oz0stGdcbYM",
-     "who": "shuwa-chan",
-     "title": "Hard / Tough / Awful"
-    }
-   ]
-  },
-  {
-   "jp": "正直（しょうじき） 正直な",
-   "en": "Honest, (i.e.",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "CnqSMGBIBFc",
-     "who": "shuwa-chan",
-     "title": "Honest / Genuine / Sincere"
-    }
-   ]
-  },
-  {
-   "jp": "別（べつ） 別の・別に",
-   "en": "Different/Other (i.e. 別の日にしましょう Let's do a different day)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "KPMEcCM1bG8",
-     "who": "shuwa-chan",
-     "title": "Different"
-    }
-   ]
-  },
-  {
-   "jp": "～かもしれない ～かも",
-   "en": "maybe (goes at end of sentence)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "A7-WdZDG4A8",
-     "who": "shuwa-chan",
-     "title": "Maybe"
-    }
-   ]
-  },
-  {
-   "jp": "だれ",
-   "en": "who",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "4PJguJVS564",
-     "who": "shuwa-chan",
-     "title": "Who"
-    }
-   ]
-  },
-  {
-   "jp": "なに・なんの",
-   "en": "want, which",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "GiZG1Rg_vZI",
-     "who": "shuwa-chan",
-     "title": "What?"
-    }
-   ]
-  },
-  {
-   "jp": "どれ",
-   "en": "which? (more than 2 subjects)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "u4uJQAojfRg",
-     "who": "shuwa-chan",
-     "title": "Which"
-    }
-   ]
-  },
-  {
-   "jp": "どっち",
-   "en": "which one? (two subjects)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "gBsrIwOsNPk",
-     "who": "shuwa-chan",
-     "title": "Which one?"
-    }
-   ]
-  },
-  {
-   "jp": "どこ",
-   "en": "where",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "dhheyCoNE88",
-     "who": "shuwa-chan",
-     "title": "Where?"
-    }
-   ]
-  },
-  {
-   "jp": "なんで・なぜ・どうして",
-   "en": "why",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "j59-4hZdWWk",
-     "who": "shuwa-chan",
-     "title": "Why?"
-    }
-   ]
-  },
-  {
-   "jp": "どう",
-   "en": "how (extremely wide range of uses)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "N4E20s1ISew",
-     "who": "shuwa-chan",
-     "title": "How"
+      "jp": "一昨年（おととし）　・　2年前（にねんまえ）",
+      "en": "year before last (two years ago)  /  2 years ago · (Amount of time) ＋ ～前（まえ）",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "8ZuqERAVsiI",
+          "who": "shuwa-chan",
+          "title": "X years ago"
+        }
+      ]
     },
     {
-     "id": "hn8K5X6BJhQ",
-     "who": "short",
-     "title": "どう"
-    }
-   ]
-  },
-  {
-   "jp": "どうやって",
-   "en": "how (i.e. how did you do that?)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "N4E20s1ISew",
-     "who": "shuwa-chan",
-     "title": "How"
+      "jp": "去年（きょねん）",
+      "en": "last year",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "5mhQPwLeIXk",
+          "who": "shuwa-chan",
+          "title": "Last year"
+        },
+        {
+          "id": "BOrzf38mZcs",
+          "who": "short",
+          "title": "去年"
+        }
+      ]
     },
     {
-     "id": "ZW0eMeIPAbU",
-     "who": "short",
-     "title": "どうやって"
-    }
-   ]
-  },
-  {
-   "jp": "この",
-   "en": "this (i.e. this person この人)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "lw5vz2WAkRQ",
-     "who": "shuwa-chan",
-     "title": "This / It"
-    }
-   ]
-  },
-  {
-   "jp": "その",
-   "en": "that",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "qgf4eE6qCYE",
-     "who": "shuwa-chan",
-     "title": "That / It"
-    }
-   ]
-  },
-  {
-   "jp": "あの",
-   "en": "that over there",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "これ",
-   "en": "this (i.e. eat this)",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "lw5vz2WAkRQ",
-     "who": "shuwa-chan",
-     "title": "This / It"
-    }
-   ]
-  },
-  {
-   "jp": "それ",
-   "en": "that",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "qgf4eE6qCYE",
-     "who": "shuwa-chan",
-     "title": "That / It"
-    }
-   ]
-  },
-  {
-   "jp": "あれ",
-   "en": "that over there",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "OihjXVhuu8s",
-     "who": "shuwa-chan",
-     "title": "That one / Over there"
-    }
-   ]
-  },
-  {
-   "jp": "倍（ばい）",
-   "en": "2倍だよ · \"It's double that\"",
-   "topic": "Connectors",
-   "videos": []
-  },
-  {
-   "jp": "他(ほか) 他に・他は・他の",
-   "en": "other, the other one(s)/stuff",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "gm2z-hd4Acs",
-     "who": "shuwa-chan",
-     "title": "Other"
-    }
-   ]
-  },
-  {
-   "jp": "全体的（ぜんたいてき） 全体的に",
-   "en": "overall, altogether",
-   "topic": "Connectors",
-   "videos": [
-    {
-     "id": "grNIYtvNK6o",
-     "who": "shuwa-chan",
-     "title": "All / Whole / Altogether"
-    }
-   ]
-  },
-  {
-   "jp": "いい (sometimes よい)",
-   "en": "Good, nice, well, \"I like that\" \"I'm glad\"",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "UIHth8M_AXs",
-     "who": "shuwa-chan",
-     "title": "Good"
-    }
-   ]
-  },
-  {
-   "jp": "大きい (おお)",
-   "en": "Big",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "4vf8bMZCjIA",
-     "who": "shuwa-chan",
-     "title": "Big / Large"
-    }
-   ]
-  },
-  {
-   "jp": "小さい （ちい）",
-   "en": "Small",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "EJ3fwVzc8Tc",
-     "who": "shuwa-chan",
-     "title": "Small"
-    }
-   ]
-  },
-  {
-   "jp": "でかい",
-   "en": "Huge",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "ちっちゃい",
-   "en": "Tiny",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "4L8rxi3mIJ4",
-     "who": "shuwa-chan",
-     "title": "Small / Little / Tiny"
-    }
-   ]
-  },
-  {
-   "jp": "おもしろい",
-   "en": "Interesting, fun, funny",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "HS--Y05mQyE",
-     "who": "shuwa-chan",
-     "title": "Fun"
-    }
-   ]
-  },
-  {
-   "jp": "嬉しい （うれ）",
-   "en": "Happy, glad",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "AsLFSh9Fx7c",
-     "who": "shuwa-chan",
-     "title": "Grad / Happy"
-    }
-   ]
-  },
-  {
-   "jp": "悲しい（かな）",
-   "en": "Sad",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "7wQbr6VClgw",
-     "who": "shuwa-chan",
-     "title": "Sad"
-    }
-   ]
-  },
-  {
-   "jp": "優しい（やさ）",
-   "en": "Kind, gentle",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "S2p_ARNbfuY",
-     "who": "shuwa-chan",
-     "title": "Gentle"
-    }
-   ]
-  },
-  {
-   "jp": "高い（たか）",
-   "en": "Expensive, tall",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "2eEOvQaq_kc",
-     "who": "shuwa-chan",
-     "title": "Expensive"
+      "jp": "今年 (ことし)",
+      "en": "this year",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "AYWHIXgaYPY",
+          "who": "shuwa-chan",
+          "title": "This year"
+        },
+        {
+          "id": "TPXwFyEiVI0",
+          "who": "short",
+          "title": "今年"
+        }
+      ]
     },
     {
-     "id": "pLk5SgGLxBc",
-     "who": "short",
-     "title": "高い"
-    }
-   ]
-  },
-  {
-   "jp": "低い（ひく）",
-   "en": "Low (height, amount)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "VTVpg2_pwOc",
-     "who": "shuwa-chan",
-     "title": "Low"
-    }
-   ]
-  },
-  {
-   "jp": "安い（やす）",
-   "en": "Cheap",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "6NTAo4RXgAY",
-     "who": "shuwa-chan",
-     "title": "Inexpensive / Cheap"
-    }
-   ]
-  },
-  {
-   "jp": "長い（なが）",
-   "en": "Long",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "7EKaYsxQfoE",
-     "who": "shuwa-chan",
-     "title": "Long"
-    }
-   ]
-  },
-  {
-   "jp": "短い（みじか）",
-   "en": "Short",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "aqRnO34uxwY",
-     "who": "shuwa-chan",
-     "title": "Short"
-    }
-   ]
-  },
-  {
-   "jp": "薄い（うす）",
-   "en": "Thin",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "24XZDoTrDxM",
-     "who": "shuwa-chan",
-     "title": "Thin"
-    }
-   ]
-  },
-  {
-   "jp": "近い（ちか）",
-   "en": "Close",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "6g9nzLJ98Wc",
-     "who": "shuwa-chan",
-     "title": "Close"
+      "jp": "来年 (らいねん)",
+      "en": "next year",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "SY0-O9UCbjA",
+          "who": "shuwa-chan",
+          "title": "Next year"
+        },
+        {
+          "id": "737tpDvJi_o",
+          "who": "short",
+          "title": "来年"
+        }
+      ]
     },
     {
-     "id": "LN-1wzuEe1E",
-     "who": "short",
-     "title": "近い"
-    }
-   ]
-  },
-  {
-   "jp": "親しい（した）",
-   "en": "Close (someone you know well)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "6g9nzLJ98Wc",
-     "who": "shuwa-chan",
-     "title": "Close"
-    }
-   ]
-  },
-  {
-   "jp": "遠い（とお）",
-   "en": "Far",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "7wV2adMYcWc",
-     "who": "shuwa-chan",
-     "title": "Far / Distant"
-    }
-   ]
-  },
-  {
-   "jp": "多い（おお）",
-   "en": "A lot, many",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "269c8-iNy04",
-     "who": "shuwa-chan",
-     "title": "A lot / Many"
-    }
-   ]
-  },
-  {
-   "jp": "少ない（すく）",
-   "en": "Not a lot, little (amount)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "CTaAstGkcjg",
-     "who": "shuwa-chan",
-     "title": "Few / Little"
-    }
-   ]
-  },
-  {
-   "jp": "早い/速い（はや）",
-   "en": "Early/Fast (speed)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "r0km2orwX6g",
-     "who": "shuwa-chan",
-     "title": "Fast"
-    }
-   ]
-  },
-  {
-   "jp": "遅い（おそ）",
-   "en": "Late, slow",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "c8mqpIUtXZs",
-     "who": "shuwa-chan",
-     "title": "Be late / Be delayed"
-    }
-   ]
-  },
-  {
-   "jp": "難しい（むずか）",
-   "en": "Hard, difficult, tough",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "oz0stGdcbYM",
-     "who": "shuwa-chan",
-     "title": "Hard / Tough / Awful"
-    }
-   ]
-  },
-  {
-   "jp": "新しい（あたら）",
-   "en": "New, different",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "6sDVXUxUAFA",
-     "who": "shuwa-chan",
-     "title": "New"
+      "jp": "再来年（さらいねん）",
+      "en": "next next year (in two years)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "ZVEHmJ7HA-w",
+          "who": "shuwa-chan",
+          "title": "X years later"
+        }
+      ]
     },
     {
-     "id": "YSd8gJ6gdBk",
-     "who": "short",
-     "title": "新しい"
-    }
-   ]
-  },
-  {
-   "jp": "古い（ふる）",
-   "en": "Old (not for people)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "vvejWF-Q8hI",
-     "who": "shuwa-chan",
-     "title": "Old"
+      "jp": "平日（へいじつ）",
+      "en": "weekday(s)",
+      "topic": "Time",
+      "videos": []
     },
     {
-     "id": "sihea8u_YzA",
-     "who": "short",
-     "title": "古い"
-    }
-   ]
-  },
-  {
-   "jp": "珍しい（めずら）",
-   "en": "Rare (used a lot)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "cRk49o2GrTE",
-     "who": "shuwa-chan",
-     "title": "Rare"
-    }
-   ]
-  },
-  {
-   "jp": "うまい",
-   "en": "Good (skill, food)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "YBR443y8ZpQ",
-     "who": "shuwa-chan",
-     "title": "Delicious"
-    }
-   ]
-  },
-  {
-   "jp": "おいしい",
-   "en": "Delicious (\"tastes good\")",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "KDKKh4-eUVg",
-     "who": "shuwa-chan",
-     "title": "Delicious"
-    }
-   ]
-  },
-  {
-   "jp": "強い（つよ）",
-   "en": "Strong",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "gdr4V4qbPEE",
-     "who": "shuwa-chan",
-     "title": "Strong"
-    }
-   ]
-  },
-  {
-   "jp": "弱い（よわ）",
-   "en": "Weak",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "XpU33yblPdE",
-     "who": "shuwa-chan",
-     "title": "Weak"
-    }
-   ]
-  },
-  {
-   "jp": "楽しい（たの）",
-   "en": "Fun",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "HS--Y05mQyE",
-     "who": "shuwa-chan",
-     "title": "Fun"
-    }
-   ]
-  },
-  {
-   "jp": "つまらない",
-   "en": "Boring",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "AioB5XT8hw8",
-     "who": "shuwa-chan",
-     "title": "Boring"
-    }
-   ]
-  },
-  {
-   "jp": "忙しい（いそが）",
-   "en": "Busy",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "MYed1iY4QQ0",
-     "who": "shuwa-chan",
-     "title": "Busy"
+      "jp": "週末 (しゅうまつ)",
+      "en": "weekend",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "rdyOjF_nKd4",
+          "who": "shuwa-chan",
+          "title": "Weekend"
+        }
+      ]
     },
     {
-     "id": "WW7pzYAxot0",
-     "who": "short",
-     "title": "忙しい"
-    }
-   ]
-  },
-  {
-   "jp": "めんどくさい",
-   "en": "\"Pain in the butt\" (troublesome/bothersome)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "On9GY9sX4hs",
-     "who": "shuwa-chan",
-     "title": "Tiresome / Troublesome"
-    }
-   ]
-  },
-  {
-   "jp": "懐かしい（なつ）",
-   "en": "Nostalgic (used a lot in Japanese)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "CHnEWDLS0hM",
-     "who": "shuwa-chan",
-     "title": "Nostalgic"
-    }
-   ]
-  },
-  {
-   "jp": "熱い（あつ） 暑い（あつ） 厚い（あつ）",
-   "en": "hot (temperature) · hot (weather) · thick",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "AzP1ZD3lZd0",
-     "who": "shuwa-chan",
-     "title": "Hot"
-    }
-   ]
-  },
-  {
-   "jp": "あたたかい",
-   "en": "Warm",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "b8sjNSbLT20",
-     "who": "shuwa-chan",
-     "title": "Warm"
-    }
-   ]
-  },
-  {
-   "jp": "寒い（さむ）",
-   "en": "Cold (how you feel/weather)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "krx2XmmKX0w",
-     "who": "shuwa-chan",
-     "title": "Cold"
-    }
-   ]
-  },
-  {
-   "jp": "冷たい（つめ）",
-   "en": "Cold (to the touch)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "krx2XmmKX0w",
-     "who": "shuwa-chan",
-     "title": "Cold"
-    }
-   ]
-  },
-  {
-   "jp": "涼しい（すず）",
-   "en": "Cool (temperature)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "5qYSYnqx4Lw",
-     "who": "shuwa-chan",
-     "title": "Cool"
-    }
-   ]
-  },
-  {
-   "jp": "正しい（ただ）",
-   "en": "Correct",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "BlTP6m65XR4",
-     "who": "shuwa-chan",
-     "title": "Correct / Right / Accurate"
-    }
-   ]
-  },
-  {
-   "jp": "丸い（まる）",
-   "en": "Round",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "-EAl9nmIIXc",
-     "who": "shuwa-chan",
-     "title": "Round"
-    }
-   ]
-  },
-  {
-   "jp": "汚い（きたな）",
-   "en": "Dirty",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "x06qIJaOKng",
-     "who": "shuwa-chan",
-     "title": "Dirty / Messy / Filthy"
-    }
-   ]
-  },
-  {
-   "jp": "かわいい",
-   "en": "Cute",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "P9bErN10VMg",
-     "who": "shuwa-chan",
-     "title": "Cute"
-    }
-   ]
-  },
-  {
-   "jp": "恥ずかしい（は）",
-   "en": "Embarrassed, shy",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "fb5Lia6jyRY",
-     "who": "shuwa-chan",
-     "title": "Be embarrassed / Be ashamed"
-    }
-   ]
-  },
-  {
-   "jp": "若い（わか）",
-   "en": "Young",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "adW0kugU88E",
-     "who": "shuwa-chan",
-     "title": "Young"
-    }
-   ]
-  },
-  {
-   "jp": "怖い（こわ）",
-   "en": "Scary",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "臭い（くさ）",
-   "en": "Stinky, smelly",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "痛い（いた）",
-   "en": "Painful, \"Ouch\"",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "cI8f6sdSvBI",
-     "who": "shuwa-chan",
-     "title": "Painful"
-    }
-   ]
-  },
-  {
-   "jp": "偉い（えら）",
-   "en": "Important (person), \"Good job\" (to kids)",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "WiNEjRR2Uuw",
-     "who": "shuwa-chan",
-     "title": "Important"
-    }
-   ]
-  },
-  {
-   "jp": "甘い（あま）",
-   "en": "sweet, naïve",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "CyXL_MROabs",
-     "who": "shuwa-chan",
-     "title": "Sweet"
-    }
-   ]
-  },
-  {
-   "jp": "辛い（から）",
-   "en": "spicy",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "YQTivevMfkU",
-     "who": "shuwa-chan",
-     "title": "Spicy / Hot"
-    }
-   ]
-  },
-  {
-   "jp": "すっぱい",
-   "en": "sour",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "492k1cdIQHg",
-     "who": "shuwa-chan",
-     "title": "Sour"
-    }
-   ]
-  },
-  {
-   "jp": "苦い（にが）",
-   "en": "bitter",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "SqIBO4g6Bt8",
-     "who": "shuwa-chan",
-     "title": "Bitter"
-    }
-   ]
-  },
-  {
-   "jp": "かたい",
-   "en": "Hard (hard object), overly polite",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "柔らかい（やわ）",
-   "en": "Soft",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "WCZfkWc5ZKo",
-     "who": "shuwa-chan",
-     "title": "Soft"
-    }
-   ]
-  },
-  {
-   "jp": "貧しい（まず）",
-   "en": "Poor",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "悪い（わる）",
-   "en": "bad, evil",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "GPdPDEb6jKc",
-     "who": "shuwa-chan",
-     "title": "Bad"
-    }
-   ]
-  },
-  {
-   "jp": "ひどい",
-   "en": "awful, mean",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "oz0stGdcbYM",
-     "who": "shuwa-chan",
-     "title": "Hard / Tough / Awful"
-    }
-   ]
-  },
-  {
-   "jp": "すばらしい",
-   "en": "wonderful, amazing",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "9_ypHZ9IXe8",
-     "who": "shuwa-chan",
-     "title": "Wonderful / Excellent / Amazing"
-    }
-   ]
-  },
-  {
-   "jp": "重い（おも）",
-   "en": "Heavy",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "8ma4r8G7yBk",
-     "who": "shuwa-chan",
-     "title": "Heavy"
-    }
-   ]
-  },
-  {
-   "jp": "軽い（かる）",
-   "en": "Light",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "4GvbVqXylM0",
-     "who": "shuwa-chan",
-     "title": "Light"
-    }
-   ]
-  },
-  {
-   "jp": "ずるい",
-   "en": "Not fair",
-   "topic": "Adjectives",
-   "videos": []
-  },
-  {
-   "jp": "危ない（あぶ）",
-   "en": "dangerous",
-   "topic": "Adjectives",
-   "videos": [
-    {
-     "id": "XUMC2l2KqV8",
-     "who": "shuwa-chan",
-     "title": "Danger"
-    }
-   ]
-  },
-  {
-   "jp": "ある (有る)",
-   "en": "be (inanimate objects), have, happen",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "T763HrUY8Pc",
-     "who": "shuwa-chan",
-     "title": "Be"
-    }
-   ]
-  },
-  {
-   "jp": "いる (居る)",
-   "en": "be (animate objects)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "T763HrUY8Pc",
-     "who": "shuwa-chan",
-     "title": "Be"
-    }
-   ]
-  },
-  {
-   "jp": "いる (要る)",
-   "en": "to need/want (\"Want some coffee?\")",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "F4b3_pMJ-ak",
-     "who": "shuwa-chan",
-     "title": "Require / Necessary / Need"
-    }
-   ]
-  },
-  {
-   "jp": "食べる （たべる）",
-   "en": "eat",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "TmRGzN8-se4",
-     "who": "shuwa-chan",
-     "title": "Eat"
-    }
-   ]
-  },
-  {
-   "jp": "飲む (のむ)",
-   "en": "drink",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "JvOGlbdfe9I",
-     "who": "shuwa-chan",
-     "title": "Drink"
-    }
-   ]
-  },
-  {
-   "jp": "送る (おくる)",
-   "en": "send",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "買う (かう)",
-   "en": "buy",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "r1PVgtXOQKU",
-     "who": "shuwa-chan",
-     "title": "Buy / Purchase"
+      "jp": "8ヶ月前（はちかげつまえ）",
+      "en": "8 months ago · (Amount of time) ＋ ～前（まえ）",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "LFZAGI-SWPI",
+          "who": "shuwa-chan",
+          "title": "X months ago"
+        }
+      ]
     },
     {
-     "id": "xBbEOCZhmhg",
-     "who": "short",
-     "title": "買う"
-    }
-   ]
-  },
-  {
-   "jp": "見る (みる)",
-   "en": "look, watch",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "1HRPfu9-kN4",
-     "who": "shuwa-chan",
-     "title": "Watch"
-    }
-   ]
-  },
-  {
-   "jp": "見せる (みせる)",
-   "en": "show",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "JdDBOXTp8jk",
-     "who": "shuwa-chan",
-     "title": "Show"
-    }
-   ]
-  },
-  {
-   "jp": "見える （みる）",
-   "en": "can see (visible/invisible)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "書く （かく）",
-   "en": "write",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "O6SvenuxQZw",
-     "who": "shuwa-chan",
-     "title": "Write"
-    }
-   ]
-  },
-  {
-   "jp": "作る （つくる）",
-   "en": "make",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "BKzGuk3wh6k",
-     "who": "shuwa-chan",
-     "title": "Make / Creat"
-    }
-   ]
-  },
-  {
-   "jp": "出る （でる）",
-   "en": "exit/come out, leave",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "A1yTBW4-u6w",
-     "who": "shuwa-chan",
-     "title": "Leave / Come out / Go out"
-    }
-   ]
-  },
-  {
-   "jp": "出す （だす）",
-   "en": "take out",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "使う （つかう）",
-   "en": "use",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "C0rkraT8ssk",
-     "who": "shuwa-chan",
-     "title": "Use"
+      "jp": "3週間前（さんしゅうかんまえ）",
+      "en": "3 weeks ago · (Amount of time) ＋ ～前（まえ）",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "ZATxXVo3gWQ",
+          "who": "shuwa-chan",
+          "title": "X weeks ago"
+        }
+      ]
     },
     {
-     "id": "XJwAMqSI5cA",
-     "who": "short",
-     "title": "使う"
-    }
-   ]
-  },
-  {
-   "jp": "合う （あう）",
-   "en": "\"line up\", match up, fit, be right (accurate)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "68Dh1FnsOOo",
-     "who": "shuwa-chan",
-     "title": "Fit"
-    }
-   ]
-  },
-  {
-   "jp": "違う （ちがう）",
-   "en": "be different, \"No\", \"Not right\"",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "KPMEcCM1bG8",
-     "who": "shuwa-chan",
-     "title": "Different"
-    }
-   ]
-  },
-  {
-   "jp": "会う （あう）",
-   "en": "meet",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "LcucCMbt248",
-     "who": "shuwa-chan",
-     "title": "Meet"
-    }
-   ]
-  },
-  {
-   "jp": "行く （いく）",
-   "en": "go",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "BklFU91iHxM",
-     "who": "shuwa-chan",
-     "title": "Go"
-    }
-   ]
-  },
-  {
-   "jp": "来る （くる）",
-   "en": "come",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "08X5Fuhv67I",
-     "who": "shuwa-chan",
-     "title": "Come"
-    }
-   ]
-  },
-  {
-   "jp": "帰る （かえる）",
-   "en": "go home",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "ZZZfIpUplMs",
-     "who": "shuwa-chan",
-     "title": "Go home"
+      "jp": "一週間（いっしゅうかん）",
+      "en": "one week (amount of time)",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "MBtbb8od3oM",
+          "who": "short",
+          "title": "一週間"
+        }
+      ]
     },
     {
-     "id": "tx57DimCBUQ",
-     "who": "short",
-     "title": "帰る"
-    }
-   ]
-  },
-  {
-   "jp": "楽しむ （たのしむ）",
-   "en": "have fun, enjoy",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "選ぶ （えらぶ）",
-   "en": "choose, select",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "qqqbc-uOQb4",
-     "who": "shuwa-chan",
-     "title": "Pick / Choose / Select"
-    }
-   ]
-  },
-  {
-   "jp": "変える （かえる）",
-   "en": "change",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "EDo2q0AlUYU",
-     "who": "shuwa-chan",
-     "title": "Change"
-    }
-   ]
-  },
-  {
-   "jp": "わかる",
-   "en": "to understand",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "DkhjXllrQVQ",
-     "who": "shuwa-chan",
-     "title": "I understand / I see"
-    }
-   ]
-  },
-  {
-   "jp": "知る （しる）",
-   "en": "to know",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "感じる （かんじる）",
-   "en": "feel",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "hMiJoWJvt9U",
-     "who": "shuwa-chan",
-     "title": "Feel / Sense"
-    }
-   ]
-  },
-  {
-   "jp": "持つ （もつ）",
-   "en": "hold, have",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "QXuFADhh1N0",
-     "who": "shuwa-chan",
-     "title": "Hold"
+      "jp": "1分（いっぷん）",
+      "en": "1 minute · いっぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
     },
     {
-     "id": "ZwJhkIEKv2g",
-     "who": "short",
-     "title": "持つ"
-    }
-   ]
-  },
-  {
-   "jp": "待つ （まつ）",
-   "en": "wait",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "yjyC6qn2Zac",
-     "who": "shuwa-chan",
-     "title": "Wait"
-    }
-   ]
-  },
-  {
-   "jp": "続ける （つづける）",
-   "en": "continue",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "UaUsLJBOpSU",
-     "who": "shuwa-chan",
-     "title": "Continue"
-    }
-   ]
-  },
-  {
-   "jp": "話す （はなす）",
-   "en": "speak, talk",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "2rjRTj8hLD8",
-     "who": "shuwa-chan",
-     "title": "Talk / Say / Speak"
-    }
-   ]
-  },
-  {
-   "jp": "寝る （ねる）",
-   "en": "sleep",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "KZPF20G5fc0",
-     "who": "shuwa-chan",
-     "title": "Sleep"
-    }
-   ]
-  },
-  {
-   "jp": "起きる （おきる）",
-   "en": "wake up, occur",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "B9D-y_IrMWM",
-     "who": "shuwa-chan",
-     "title": "Wake up"
-    }
-   ]
-  },
-  {
-   "jp": "壊れる （こわれる）",
-   "en": "something break",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "1BTl2Dbnn-8",
-     "who": "shuwa-chan",
-     "title": "Break"
-    }
-   ]
-  },
-  {
-   "jp": "直す （なおす）",
-   "en": "fix",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "yln7PeN7l_M",
-     "who": "shuwa-chan",
-     "title": "Fix / Cure / Heal"
-    }
-   ]
-  },
-  {
-   "jp": "あげる",
-   "en": "give",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "IA9HRIEBUOc",
-     "who": "shuwa-chan",
-     "title": "Give"
-    }
-   ]
-  },
-  {
-   "jp": "くれる",
-   "en": "receive as gift",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "もらう",
-   "en": "receive (inherited)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "上がる (あがる)",
-   "en": "go up",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "下がる (さがる)",
-   "en": "go down",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "上げる (あげる)",
-   "en": "raise, make go up",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "wd6XeBQSm8A",
-     "who": "shuwa-chan",
-     "title": "Nourish / Cultivate / Raise"
-    }
-   ]
-  },
-  {
-   "jp": "下げる (さげる)",
-   "en": "lower, make go down",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "05KLOchagoE",
-     "who": "shuwa-chan",
-     "title": "Lower / Bottom"
-    }
-   ]
-  },
-  {
-   "jp": "借りる (かりる)",
-   "en": "rent, borrow",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "JRtoeWPCQXc",
-     "who": "shuwa-chan",
-     "title": "Borrow"
-    }
-   ]
-  },
-  {
-   "jp": "習う (ならう)",
-   "en": "learn (skill)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "xN43FKTO2_Y",
-     "who": "shuwa-chan",
-     "title": "Learn"
-    }
-   ]
-  },
-  {
-   "jp": "学ぶ (まなぶ)",
-   "en": "learn (apprehend, study, a lesson, in life)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "xN43FKTO2_Y",
-     "who": "shuwa-chan",
-     "title": "Learn"
-    }
-   ]
-  },
-  {
-   "jp": "慣れる (なれる)",
-   "en": "get used to",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "思い出す (おもいだす)",
-   "en": "recall",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "覚える (おぼえる)",
-   "en": "remember, feel (rarely)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "dCWHi9mqKXM",
-     "who": "shuwa-chan",
-     "title": "Memorize"
-    }
-   ]
-  },
-  {
-   "jp": "教える (おしえる)",
-   "en": "teach, tell",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "KKNbHspWyu4",
-     "who": "shuwa-chan",
-     "title": "Teach"
-    }
-   ]
-  },
-  {
-   "jp": "調べる (しらべる)",
-   "en": "look up (Google)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "忘れる (わすれる)",
-   "en": "forget",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "1KMSvfBh-2c",
-     "who": "shuwa-chan",
-     "title": "Forget"
-    }
-   ]
-  },
-  {
-   "jp": "始まる (はじまる)",
-   "en": "something begins",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "fCd6yez51tI",
-     "who": "shuwa-chan",
-     "title": "Start"
-    }
-   ]
-  },
-  {
-   "jp": "終わる (おわる)",
-   "en": "something ends",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "-yY8wgDVSBY",
-     "who": "shuwa-chan",
-     "title": "End / Finish"
-    }
-   ]
-  },
-  {
-   "jp": "開ける (ひらける)",
-   "en": "open",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "2Mk-kqzWwzg",
-     "who": "shuwa-chan",
-     "title": "Open"
-    }
-   ]
-  },
-  {
-   "jp": "閉める (しめる)",
-   "en": "close",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "6g9nzLJ98Wc",
-     "who": "shuwa-chan",
-     "title": "Close"
-    }
-   ]
-  },
-  {
-   "jp": "入れる (いれる)",
-   "en": "put in",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "入る (はいる)",
-   "en": "go in/fit",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "IZZXuR4ZzvI",
-     "who": "shuwa-chan",
-     "title": "Enter"
-    }
-   ]
-  },
-  {
-   "jp": "勝つ (かつ)",
-   "en": "win (game)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "HxNvxLUrF4Q",
-     "who": "shuwa-chan",
-     "title": "Win"
-    }
-   ]
-  },
-  {
-   "jp": "負ける (まける)",
-   "en": "lose (game)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "IgLHf6kfP14",
-     "who": "shuwa-chan",
-     "title": "Lose"
-    }
-   ]
-  },
-  {
-   "jp": "止まる (とまる)",
-   "en": "(something) stops",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "6hQDzQGcvGQ",
-     "who": "shuwa-chan",
-     "title": "Stop"
-    }
-   ]
-  },
-  {
-   "jp": "止める (とめる)",
-   "en": "stop",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "1v5vYs2CDdQ",
-     "who": "shuwa-chan",
-     "title": "Stop"
-    }
-   ]
-  },
-  {
-   "jp": "泊める (とめる)",
-   "en": "stay over (person's house)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "やめる",
-   "en": "quit",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "gGbXbX8zFnQ",
-     "who": "shuwa-chan",
-     "title": "Quit"
-    }
-   ]
-  },
-  {
-   "jp": "乗る (のる)",
-   "en": "ride",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "vvvJC8T0Xjc",
-     "who": "shuwa-chan",
-     "title": "Ride / Board / Mount"
-    }
-   ]
-  },
-  {
-   "jp": "降りる (おりる)",
-   "en": "get off/down/out (vehicle, object, etc.)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "座る (すわる)",
-   "en": "sit",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "QKGLwd2gvUo",
-     "who": "shuwa-chan",
-     "title": "Sit"
+      "jp": "2分",
+      "en": "2 minutes · にふん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
     },
     {
-     "id": "G315ZWcOkFE",
-     "who": "short",
-     "title": "座る"
-    }
-   ]
-  },
-  {
-   "jp": "触る (さわる)",
-   "en": "touch",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "OEE0jC1NSNI",
-     "who": "shuwa-chan",
-     "title": "Move / Touch / Impres"
-    }
-   ]
-  },
-  {
-   "jp": "洗う (あらう)",
-   "en": "wash",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "cKCu2ArBFJg",
-     "who": "shuwa-chan",
-     "title": "Wash things"
+      "jp": "3分",
+      "en": "3 minutes · さんぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
     },
     {
-     "id": "ccgIDtwm3VU",
-     "who": "short",
-     "title": "洗う"
-    }
-   ]
-  },
-  {
-   "jp": "切る (きる)",
-   "en": "cut",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "Dl2fB_H8gsk",
-     "who": "shuwa-chan",
-     "title": "Cut"
-    }
-   ]
-  },
-  {
-   "jp": "着る (きる)",
-   "en": "wear (torso/dress/kimono)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "pg7_PWZHE6Q",
-     "who": "shuwa-chan",
-     "title": "Wear"
-    }
-   ]
-  },
-  {
-   "jp": "脱ぐ (ぬぐ)",
-   "en": "take off (clothes)",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "取る（とる）",
-   "en": "take",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "4mwMCLn_sqk",
-     "who": "shuwa-chan",
-     "title": "Pick up / Take / Hull"
-    }
-   ]
-  },
-  {
-   "jp": "やる",
-   "en": "do",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "PRYsK1uLc_o",
-     "who": "shuwa-chan",
-     "title": "Do"
-    }
-   ]
-  },
-  {
-   "jp": "思う (おもう)",
-   "en": "think",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "GE6vpBWugZU",
-     "who": "shuwa-chan",
-     "title": "Think"
-    }
-   ]
-  },
-  {
-   "jp": "考える (かんがえる)",
-   "en": "think about/consider",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "動く (うごく)",
-   "en": "something move",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "歩く (あるく)",
-   "en": "walk",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "SekRAOkZKGg",
-     "who": "shuwa-chan",
-     "title": "Walk"
-    }
-   ]
-  },
-  {
-   "jp": "信じる (しんじる)",
-   "en": "believe",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "W5pbfk-6afk",
-     "who": "shuwa-chan",
-     "title": "Believe / Trust / Confide"
-    }
-   ]
-  },
-  {
-   "jp": "泳ぐ (およぐ)",
-   "en": "swim",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "A3r6-oiccco",
-     "who": "shuwa-chan",
-     "title": "Swim"
-    }
-   ]
-  },
-  {
-   "jp": "言う (いう)",
-   "en": "say (pronounced ゆう)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "W6cVZClhUqw",
-     "who": "shuwa-chan",
-     "title": "Say"
-    }
-   ]
-  },
-  {
-   "jp": "伝える (つたえる）",
-   "en": "tell/communicate",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "PvJQMZ6bKg4",
-     "who": "shuwa-chan",
-     "title": "Say / Tell"
-    }
-   ]
-  },
-  {
-   "jp": "働く(はたらく）",
-   "en": "work (general)",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "GtLhNuo3CxM",
-     "who": "shuwa-chan",
-     "title": "Work"
-    }
-   ]
-  },
-  {
-   "jp": "休む(やすむ）",
-   "en": "rest",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "8tcDEUwSmkw",
-     "who": "shuwa-chan",
-     "title": "Rest"
-    }
-   ]
-  },
-  {
-   "jp": "気づく（きづく）",
-   "en": "realize, notice",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "mhaIp6fCjwg",
-     "who": "shuwa-chan",
-     "title": "Realize"
-    }
-   ]
-  },
-  {
-   "jp": "置く（おく）",
-   "en": "place, put down",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "l6L0-YYZrhY",
-     "who": "shuwa-chan",
-     "title": "Place"
-    }
-   ]
-  },
-  {
-   "jp": "答える（こたえる）",
-   "en": "answer",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "7qj2nBB-P48",
-     "who": "shuwa-chan",
-     "title": "Answer"
-    }
-   ]
-  },
-  {
-   "jp": "困る（こまる）",
-   "en": "be troubled (past tense can mean \"Uh-oh\" \"Shoot\")",
-   "topic": "Verbs",
-   "videos": [
-    {
-     "id": "ZNYNHUdlaAE",
-     "who": "shuwa-chan",
-     "title": "In trouble"
+      "jp": "4分",
+      "en": "4 minutes · よんふん or よんぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
     },
     {
-     "id": "8sdo-jgrQsw",
-     "who": "short",
-     "title": "困る"
-    }
-   ]
-  },
-  {
-   "jp": "連れていく（つれていく）",
-   "en": "take someone/pet along",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "歌う（うたう）",
-   "en": "sing (sometimes 歌を歌う)",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "5分",
+      "en": "5 minutes · ごふん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "HXcOcGop75U",
-     "who": "shuwa-chan",
-     "title": "Sing"
-    }
-   ]
-  },
-  {
-   "jp": "押す（おす）",
-   "en": "push",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "引く（ひく）",
-   "en": "pull",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "育てる（そだてる）",
-   "en": "take care of, bring up, grow (child, plants, etc.)",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "6分",
+      "en": "6 minutes · ろっぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "M3a2eOYQaoI",
-     "who": "shuwa-chan",
-     "title": "Grow"
-    }
-   ]
-  },
-  {
-   "jp": "戻す（もどす）",
-   "en": "put something back",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "片づける（かたづける）",
-   "en": "clean up, tidy up",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "付き合う（つきあう）",
-   "en": "spend time with someone, date someone",
-   "topic": "Verbs",
-   "videos": []
-  },
-  {
-   "jp": "生きる（いきる）",
-   "en": "live (alive, life, etc.)",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "7分",
+      "en": "7 minutes · ななふん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "FjBseEgLsWw",
-     "who": "shuwa-chan",
-     "title": "Live"
-    }
-   ]
-  },
-  {
-   "jp": "かかる",
-   "en": "cost, make up, take (time, money), other various uses",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "8分",
+      "en": "8 minutes · はっぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "tBqhI538vB0",
-     "who": "shuwa-chan",
-     "title": "Cost"
-    }
-   ]
-  },
-  {
-   "jp": "間違える（まちがえる）",
-   "en": "make a mistake, mess up (past tense = I messed up)",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "9分",
+      "en": "9 minutes · きゅうふん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "DrKT_yQnbXo",
-     "who": "shuwa-chan",
-     "title": "Mistake / Error / Fault"
-    }
-   ]
-  },
-  {
-   "jp": "返す（かえす）",
-   "en": "return something",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "10分",
+      "en": "10 minutes · じゅっぷん",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CkdGpx7-Sqg",
+          "who": "shuwa-chan",
+          "title": "xx minute"
+        }
+      ]
+    },
     {
-     "id": "3wKmje00XWQ",
-     "who": "shuwa-chan",
-     "title": "Return"
-    }
-   ]
-  },
-  {
-   "jp": "払う（はらう）",
-   "en": "to pay",
-   "topic": "Verbs",
-   "videos": [
+      "jp": "5分後に （ごふんご）",
+      "en": "in 5 minutes · (Amount of time) ＋ ～後に（ご）",
+      "topic": "Time",
+      "videos": []
+    },
     {
-     "id": "OJx-Rx32aMU",
-     "who": "shuwa-chan",
-     "title": "Pay"
-    }
-   ]
-  },
-  {
-   "jp": "つまり",
-   "en": "in other words",
-   "topic": "Also",
-   "videos": []
-  },
-  {
-   "jp": "例えば",
-   "en": "for example",
-   "topic": "Also",
-   "videos": [
+      "jp": "毎日 (まいにち)",
+      "en": "every day",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "EMNl0CM9POM",
+          "who": "shuwa-chan",
+          "title": "Every day / Daily"
+        }
+      ]
+    },
     {
-     "id": "O_vdp2W1kRo",
-     "who": "shuwa-chan",
-     "title": "For example"
-    }
-   ]
-  },
-  {
-   "jp": "わざと",
-   "en": "on purpose",
-   "topic": "Also",
-   "videos": [
+      "jp": "毎週 (まいしゅう)",
+      "en": "every week",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "ALqnN6PaSEU",
+          "who": "shuwa-chan",
+          "title": "Every week / Weekly"
+        }
+      ]
+    },
     {
-     "id": "VvpBfRvvnHo",
-     "who": "shuwa-chan",
-     "title": "On purpose / Intentionally"
+      "jp": "毎月 (まいつき)",
+      "en": "every month",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "Pg299RWi1qY",
+          "who": "shuwa-chan",
+          "title": "Monthly / Every Month"
+        }
+      ]
+    },
+    {
+      "jp": "毎年 (まいとし)",
+      "en": "every year",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "sg11xqrwEx0",
+          "who": "shuwa-chan",
+          "title": "Every year / Annual"
+        }
+      ]
+    },
+    {
+      "jp": "今朝 (けさ)",
+      "en": "this morning",
+      "topic": "Time",
+      "videos": []
+    },
+    {
+      "jp": "1日",
+      "en": "ついたち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "2日",
+      "en": "ふつか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "3日",
+      "en": "みっか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "4日",
+      "en": "よっか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "5日",
+      "en": "いつか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "6日",
+      "en": "むいか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "7日",
+      "en": "なのか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "8日",
+      "en": "ようか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "9日",
+      "en": "ここのか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "10日",
+      "en": "とおか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "11日",
+      "en": "じゅういちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "12日",
+      "en": "じゅうににち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "13日",
+      "en": "じゅうさんにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "14日",
+      "en": "じゅうよっか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "15日",
+      "en": "じゅうごにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "16日",
+      "en": "じゅうろくにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "17日",
+      "en": "じゅうななにち · or · じゅうしちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "18日",
+      "en": "じゅうはちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "19日",
+      "en": "じゅうくにち · く not きゅう",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "20日",
+      "en": "はつか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "21日",
+      "en": "にじゅういちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "22日",
+      "en": "にじゅうににち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "23日",
+      "en": "にじゅうさんにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "24日",
+      "en": "にじゅうよっか",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "25日",
+      "en": "にじゅうごにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "26日",
+      "en": "にじゅうろくにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "27日",
+      "en": "にじゅうななにち · or · にじゅうしちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "28日",
+      "en": "にじゅうはちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "29日",
+      "en": "にじゅうくにち · not きゅうにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "30日",
+      "en": "さんじゅうにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "31日",
+      "en": "さんじゅういちにち",
+      "topic": "Month dates",
+      "videos": []
+    },
+    {
+      "jp": "今（いま）",
+      "en": "now, right now",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "ZQ2UfD-D0Nc",
+          "who": "shuwa-chan",
+          "title": "Now"
+        },
+        {
+          "id": "H65_pubNYzo",
+          "who": "short",
+          "title": "今"
+        }
+      ]
+    },
+    {
+      "jp": "さっき",
+      "en": "just now, a second/minute ago",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "先に （さき）",
+      "en": "Before (e.g. ahead of time), beforehand",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "あとで",
+      "en": "Later · (used at the beginning of a sentence)",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "あとは",
+      "en": "After",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "～とき、～のとき ～時、～の時",
+      "en": "when (i.e. when I went to Japan) · [often followed by に]",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "SRt-FNrN5vI",
+          "who": "shuwa-chan",
+          "title": "When?"
+        }
+      ]
+    },
+    {
+      "jp": "まだ",
+      "en": "まだ = Not yet · まだ見てない = Haven't seen [it] yet. · まだいる？ = You still there? (at the cafe etc.)\"",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "ayQYkPfow38",
+          "who": "shuwa-chan",
+          "title": "Not yet"
+        },
+        {
+          "id": "mS-nJ4cTLf0",
+          "who": "short",
+          "title": "まだ"
+        }
+      ]
+    },
+    {
+      "jp": "もう",
+      "en": "Already, anymore · もう見た = Already saw [it]. · もういない？ = You not there anymore? (at the cafe etc.)",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "また",
+      "en": "Again · また話しましょう Let's talk again sometime.",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "UQ0wLBYfxo4",
+          "who": "shuwa-chan",
+          "title": "Again"
+        }
+      ]
+    },
+    {
+      "jp": "から まで",
+      "en": "from · [から/だから can also mean because] · until · [までに means \"by\"]",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "までに",
+      "en": "by (by 5:00PM)",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "これから",
+      "en": "From now on · \"About to\" (used when you're about to start doing something)",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "5DlyzfBuhbw",
+          "who": "shuwa-chan",
+          "title": "手話単語「これから」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "それから",
+      "en": "Since then, after that",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "もうすぐ",
+      "en": "Almost",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "C3ajaam-wbc",
+          "who": "shuwa-chan",
+          "title": "Almost"
+        }
+      ]
+    },
+    {
+      "jp": "～前（まえ）、～の前（まえ）",
+      "en": "Before · \"Before I went to Japan...\" · 日本に行く前...（にほんにいくまえ）\" · [Often followed by に]",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "OCmPzViEZDI",
+          "who": "shuwa-chan",
+          "title": "手話単語「前／まえ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "～あと、～のあと",
+      "en": "After (i.e. After I said that, I left.) · [often followed by は or に]",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "次（つぎ）",
+      "en": "Next · [often followed by に or は]",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "WtvoFRmaiz8",
+          "who": "shuwa-chan",
+          "title": "Next"
+        }
+      ]
+    },
+    {
+      "jp": "今度(こんど)",
+      "en": "Next time, this time (yeah I know it doesn't make sense)",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "g_qjwonHThA",
+          "who": "shuwa-chan",
+          "title": "手話単語「今度／こんど」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "一回・1回（いっかい）",
+      "en": "Once, one time",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "今回(こんかい)",
+      "en": "This time",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "前回（ぜんかい）",
+      "en": "Last time",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "最近 (さいきん)",
+      "en": "Recently, lately, as of late",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "VlyI_Gp9f8M",
+          "who": "shuwa-chan",
+          "title": "Recently"
+        }
+      ]
+    },
+    {
+      "jp": "最初（さいしょ）",
+      "en": "Beginning, first · 最初の漢字（さいしょのかんじ） · \"The first kanji\"",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "iuVlSP7Fous",
+          "who": "shuwa-chan",
+          "title": "手話単語「最初／さいしょ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "最後(さいご)",
+      "en": "End, last · 最後の言葉（さいごのことば） · \"The last word\"",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "58NMg3fCJNE",
+          "who": "shuwa-chan",
+          "title": "End"
+        }
+      ]
+    },
+    {
+      "jp": "初めて(はじめて)",
+      "en": "First time, first (experience) · 初めての時（はじめてのとき） · \"When it's your first time...\" · 初めて見た（はじめてみた） · \"First time I've ever seen it\"",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "qGdxrHYulcc",
+          "who": "shuwa-chan",
+          "title": "First time"
+        }
+      ]
+    },
+    {
+      "jp": "結局(けっきょく)",
+      "en": "Eventually, in the end, after all",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "l4iKadXh-90",
+          "who": "shuwa-chan",
+          "title": "After all / I knew it."
+        }
+      ]
+    },
+    {
+      "jp": "すぐに",
+      "en": "Immediately, right away",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "たまに",
+      "en": "Sometimes, ocassionally",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "-FRitcpz8u8",
+          "who": "shuwa-chan",
+          "title": "Sometimes"
+        }
+      ]
+    },
+    {
+      "jp": "最初らへん（さいしょらへん）",
+      "en": "Towards the beginning",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "最後らへん（さいごらへん）",
+      "en": "Towards the end",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "やっと",
+      "en": "Finally (i.e. I finally did it!)",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "x1mNpd74a-I",
+          "who": "shuwa-chan",
+          "title": "手話単語「やっと」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "いつ",
+      "en": "when",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "SRt-FNrN5vI",
+          "who": "shuwa-chan",
+          "title": "When?"
+        },
+        {
+          "id": "LTngAHF7Svc",
+          "who": "short",
+          "title": "いつ"
+        }
+      ]
+    },
+    {
+      "jp": "いつか",
+      "en": "One day, someday, eventually (in the future)",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "9QbXOxnOn3s",
+          "who": "shuwa-chan",
+          "title": "Someday"
+        }
+      ]
+    },
+    {
+      "jp": "いつも",
+      "en": "Always",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "hRDCFbVBZ4k",
+          "who": "shuwa-chan",
+          "title": "Always"
+        }
+      ]
+    },
+    {
+      "jp": "将来（しょうらい）",
+      "en": "Future (in your lifetime)",
+      "topic": "When",
+      "videos": [
+        {
+          "id": "PdqBcRkwznE",
+          "who": "shuwa-chan",
+          "title": "Future"
+        }
+      ]
+    },
+    {
+      "jp": "何年（なんねん）？",
+      "en": "What year?",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "何月（なんがつ）？",
+      "en": "What month?",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "何曜日（なんようび）？",
+      "en": "What day? (of the week)",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "何日（なんにち）？",
+      "en": "What day? (date)",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "とりあえず",
+      "en": "For now, meanwhile, in the mean time",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "とにかく",
+      "en": "at any rate, anyhow, anyway",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "たまたま",
+      "en": "by chance",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "よく",
+      "en": "often, well · よく歩いてた（あるいてた） · \"I walked often\" · よく食べるね！ · \"You eat a lot!\"",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "あまり",
+      "en": "not really, not much, not that much",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "昔は (むかし)",
+      "en": "long time ago, forever ago, way back when · 昔はよく行ってた(むかしはよくいってた) · \"I used to go there all the time\"",
+      "topic": "When",
+      "videos": []
+    },
+    {
+      "jp": "全部 (ぜんぶ)",
+      "en": "everything, all",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "ao9_Fc6Jax8",
+          "who": "shuwa-chan",
+          "title": "All / Everything"
+        },
+        {
+          "id": "pBOk_j412cs",
+          "who": "short",
+          "title": "全部"
+        }
+      ]
+    },
+    {
+      "jp": "全然 (ぜんぜん)",
+      "en": "not at all, used with ～ない ending (全然いい, 全然大丈夫 exception)",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "ただ",
+      "en": "just, free (cost)",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "だけ",
+      "en": "only, just",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "eHI0h-l8iXs",
+          "who": "shuwa-chan",
+          "title": "Only"
+        }
+      ]
+    },
+    {
+      "jp": "もうちょっと",
+      "en": "a little more",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "もう一つ（ひとつ）",
+      "en": "one more (thing)",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "ちょっとだけ",
+      "en": "a little bit, some",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "一人で (ひとり)",
+      "en": "by yourself/myself/one's self",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "V-m8shJfqUk",
+          "who": "shuwa-chan",
+          "title": "Alone"
+        }
+      ]
+    },
+    {
+      "jp": "それだけ",
+      "en": "that's all/it",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "これだけ",
+      "en": "this is all/it",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "好きなだけ",
+      "en": "as much as you like/want",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "もっと",
+      "en": "more",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "aXjQS_imiXY",
+          "who": "shuwa-chan",
+          "title": "More"
+        }
+      ]
+    },
+    {
+      "jp": "一番 (いちばん)",
+      "en": "#1, most",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "一番好き (いちばん)(す) 一番好きな (いちばん)(す)",
+      "en": "favorite",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "たくさん　・　いっぱい　・　多い（おお）",
+      "en": "a lot, many  /  A lot, many",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "269c8-iNy04",
+          "who": "shuwa-chan",
+          "title": "A lot / Many"
+        },
+        {
+          "id": "7PmpB6VNQsE",
+          "who": "short",
+          "title": "いっぱい"
+        }
+      ]
+    },
+    {
+      "jp": "結構（けっこう）",
+      "en": "pretty, quite",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "だいたい",
+      "en": "usually, generally",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "d6qm-eCu3So",
+          "who": "shuwa-chan",
+          "title": "Normal / Usually / Common "
+        }
+      ]
+    },
+    {
+      "jp": "ほとんど　・　ほぼ",
+      "en": "majority, almost all",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "ぐらい・くらい",
+      "en": "about (i.e. about 4 weeks)",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "JJ6JBU6FjxY",
+          "who": "shuwa-chan",
+          "title": "About"
+        }
+      ]
+    },
+    {
+      "jp": "どれぐらい　・　どのぐらい　・　いくら",
+      "en": "How much?  /  How much? (price)",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "Ekd4OanAfRw",
+          "who": "shuwa-chan",
+          "title": "How much?"
+        },
+        {
+          "id": "H2i2F_oGfbY",
+          "who": "short",
+          "title": "いくら"
+        }
+      ]
+    },
+    {
+      "jp": "もっとも",
+      "en": "Most (absolute most)",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "全員（ぜんいん）",
+      "en": "Everyone",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "97llkRK7wgw",
+          "who": "shuwa-chan",
+          "title": "Everyone"
+        }
+      ]
+    },
+    {
+      "jp": "少しずつ",
+      "en": "bit by bit, gradually",
+      "topic": "How much",
+      "videos": [
+        {
+          "id": "kld1eLIOzIw",
+          "who": "shuwa-chan",
+          "title": "手話単語「少しずつ／すこしずつ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "部分",
+      "en": "part, piece, section",
+      "topic": "How much",
+      "videos": []
+    },
+    {
+      "jp": "同じ (おなじ)",
+      "en": "same (i.e. 同じ人 same person)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "Euu_946x5Wo",
+          "who": "shuwa-chan",
+          "title": "Same"
+        }
+      ]
+    },
+    {
+      "jp": "絶対(ぜったい)",
+      "en": "definitely (i.e. 絶対行く I'm DEFINITELY going)",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "是非 (ぜひ)",
+      "en": "please (i.e. ぜひ来てください please come)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "y0sMlZNgLug",
+          "who": "shuwa-chan",
+          "title": "Please"
+        }
+      ]
+    },
+    {
+      "jp": "まあまあ",
+      "en": "kind of, so-so",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "NLS2ZfpIC1g",
+          "who": "short",
+          "title": "まあまあ"
+        }
+      ]
+    },
+    {
+      "jp": "ずっと",
+      "en": "forever, long way, long time",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "AdOmXDVrXJo",
+          "who": "shuwa-chan",
+          "title": "Permanent / Forever"
+        }
+      ]
+    },
+    {
+      "jp": "でも　・　けど",
+      "en": "But (beginning of sentence)  /  but (middle of sentence)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "bWSGz12aSu4",
+          "who": "shuwa-chan",
+          "title": "But"
+        }
+      ]
+    },
+    {
+      "jp": "じゃあ",
+      "en": "So...Okay...Alright, so...",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "では",
+      "en": "So...Okay...Alright, so... (sometimes used like 好きではない \"I don't necessarily like it\"",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "あのー",
+      "en": "Uhh..",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "えっと",
+      "en": "Let's see, uhh",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "えー！",
+      "en": "Whaaa!",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "へえ",
+      "en": "Interesting...",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "～から、～だから",
+      "en": "because",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "dbXjJ3r8CzI",
+          "who": "shuwa-chan",
+          "title": "Because / Therefore / So"
+        }
+      ]
+    },
+    {
+      "jp": "そして・そんで",
+      "en": "Then,",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "そしたら",
+      "en": "And then, in that case,",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "それでも",
+      "en": "Even still, even then",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "ただで",
+      "en": "for free",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "もし",
+      "en": "if (needs follow up grammar ～れば、～たら、～なら)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "e2ovwR4g77c",
+          "who": "shuwa-chan",
+          "title": "If"
+        }
+      ]
+    },
+    {
+      "jp": "しかも、",
+      "en": "More than that,/On top of that, Plus",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "たぶん",
+      "en": "Probably",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "本当の・に (ほんとう)",
+      "en": "Real, true・Really",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "必ず（かなら）",
+      "en": "definitely, for sure",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "F828ZFeJ-dY",
+          "who": "shuwa-chan",
+          "title": "手話単語「必ず／かならず」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "残念（ざんねん） 残念な",
+      "en": "Unfortunate, bummer",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "sqbydGhQYRE",
+          "who": "shuwa-chan",
+          "title": "Unfortunate / Regrettable / Frustrated / Upset"
+        }
+      ]
+    },
+    {
+      "jp": "大変（たいへん） 大変な",
+      "en": "Hard, tough, rough, (emotionally)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "oz0stGdcbYM",
+          "who": "shuwa-chan",
+          "title": "Hard / Tough / Awful"
+        }
+      ]
+    },
+    {
+      "jp": "正直（しょうじき） 正直な",
+      "en": "Honest, (i.e.",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "CnqSMGBIBFc",
+          "who": "shuwa-chan",
+          "title": "Honest / Genuine / Sincere"
+        }
+      ]
+    },
+    {
+      "jp": "別（べつ） 別の・別に",
+      "en": "Different/Other (i.e. 別の日にしましょう Let's do a different day)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "KPMEcCM1bG8",
+          "who": "shuwa-chan",
+          "title": "Different"
+        }
+      ]
+    },
+    {
+      "jp": "～かもしれない ～かも",
+      "en": "maybe (goes at end of sentence)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "A7-WdZDG4A8",
+          "who": "shuwa-chan",
+          "title": "Maybe"
+        }
+      ]
+    },
+    {
+      "jp": "だれ",
+      "en": "who",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "4PJguJVS564",
+          "who": "shuwa-chan",
+          "title": "Who"
+        }
+      ]
+    },
+    {
+      "jp": "なに・なんの",
+      "en": "want, which",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "GiZG1Rg_vZI",
+          "who": "shuwa-chan",
+          "title": "What?"
+        }
+      ]
+    },
+    {
+      "jp": "どれ",
+      "en": "which? (more than 2 subjects)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "u4uJQAojfRg",
+          "who": "shuwa-chan",
+          "title": "Which"
+        }
+      ]
+    },
+    {
+      "jp": "どっち",
+      "en": "which one? (two subjects)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "gBsrIwOsNPk",
+          "who": "shuwa-chan",
+          "title": "Which one?"
+        }
+      ]
+    },
+    {
+      "jp": "どこ",
+      "en": "where",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "dhheyCoNE88",
+          "who": "shuwa-chan",
+          "title": "Where?"
+        }
+      ]
+    },
+    {
+      "jp": "なんで・なぜ・どうして",
+      "en": "why",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "j59-4hZdWWk",
+          "who": "shuwa-chan",
+          "title": "Why?"
+        }
+      ]
+    },
+    {
+      "jp": "どう",
+      "en": "how (extremely wide range of uses)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "N4E20s1ISew",
+          "who": "shuwa-chan",
+          "title": "How"
+        },
+        {
+          "id": "hn8K5X6BJhQ",
+          "who": "short",
+          "title": "どう"
+        }
+      ]
+    },
+    {
+      "jp": "どうやって",
+      "en": "how (i.e. how did you do that?)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "N4E20s1ISew",
+          "who": "shuwa-chan",
+          "title": "How"
+        },
+        {
+          "id": "ZW0eMeIPAbU",
+          "who": "short",
+          "title": "どうやって"
+        }
+      ]
+    },
+    {
+      "jp": "この　・　これ",
+      "en": "this (i.e. this person この人)  /  this (i.e. eat this)",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "lw5vz2WAkRQ",
+          "who": "shuwa-chan",
+          "title": "This / It"
+        }
+      ]
+    },
+    {
+      "jp": "その　・　それ",
+      "en": "that",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "qgf4eE6qCYE",
+          "who": "shuwa-chan",
+          "title": "That / It"
+        }
+      ]
+    },
+    {
+      "jp": "あの　・　あれ",
+      "en": "that over there",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "OihjXVhuu8s",
+          "who": "shuwa-chan",
+          "title": "That one / Over there"
+        }
+      ]
+    },
+    {
+      "jp": "倍（ばい）",
+      "en": "2倍だよ · \"It's double that\"",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "1L9coqBbhgA",
+          "who": "shuwa-chan",
+          "title": "手話単語「倍／ばい」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "他(ほか) 他に・他は・他の",
+      "en": "other, the other one(s)/stuff",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "gm2z-hd4Acs",
+          "who": "shuwa-chan",
+          "title": "Other"
+        }
+      ]
+    },
+    {
+      "jp": "全体的（ぜんたいてき） 全体的に",
+      "en": "overall, altogether",
+      "topic": "Connectors",
+      "videos": [
+        {
+          "id": "grNIYtvNK6o",
+          "who": "shuwa-chan",
+          "title": "All / Whole / Altogether"
+        }
+      ]
+    },
+    {
+      "jp": "いい (sometimes よい)",
+      "en": "Good, nice, well, \"I like that\" \"I'm glad\"",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "UIHth8M_AXs",
+          "who": "shuwa-chan",
+          "title": "Good"
+        }
+      ]
+    },
+    {
+      "jp": "大きい (おお)",
+      "en": "Big",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "4vf8bMZCjIA",
+          "who": "shuwa-chan",
+          "title": "Big / Large"
+        }
+      ]
+    },
+    {
+      "jp": "小さい （ちい）",
+      "en": "Small",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "EJ3fwVzc8Tc",
+          "who": "shuwa-chan",
+          "title": "Small"
+        }
+      ]
+    },
+    {
+      "jp": "でかい",
+      "en": "Huge",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "ちっちゃい",
+      "en": "Tiny",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "4L8rxi3mIJ4",
+          "who": "shuwa-chan",
+          "title": "Small / Little / Tiny"
+        }
+      ]
+    },
+    {
+      "jp": "おもしろい　・　楽しい（たの）",
+      "en": "Interesting, fun, funny  /  Fun",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "HS--Y05mQyE",
+          "who": "shuwa-chan",
+          "title": "Fun"
+        }
+      ]
+    },
+    {
+      "jp": "嬉しい （うれ）",
+      "en": "Happy, glad",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "AsLFSh9Fx7c",
+          "who": "shuwa-chan",
+          "title": "Grad / Happy"
+        }
+      ]
+    },
+    {
+      "jp": "悲しい（かな）",
+      "en": "Sad",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "7wQbr6VClgw",
+          "who": "shuwa-chan",
+          "title": "Sad"
+        }
+      ]
+    },
+    {
+      "jp": "優しい（やさ）",
+      "en": "Kind, gentle",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "S2p_ARNbfuY",
+          "who": "shuwa-chan",
+          "title": "Gentle"
+        }
+      ]
+    },
+    {
+      "jp": "高い（たか）",
+      "en": "Expensive, tall",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "2eEOvQaq_kc",
+          "who": "shuwa-chan",
+          "title": "Expensive"
+        },
+        {
+          "id": "pLk5SgGLxBc",
+          "who": "short",
+          "title": "高い"
+        }
+      ]
+    },
+    {
+      "jp": "低い（ひく）",
+      "en": "Low (height, amount)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "VTVpg2_pwOc",
+          "who": "shuwa-chan",
+          "title": "Low"
+        }
+      ]
+    },
+    {
+      "jp": "安い（やす）",
+      "en": "Cheap",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "6NTAo4RXgAY",
+          "who": "shuwa-chan",
+          "title": "Inexpensive / Cheap"
+        }
+      ]
+    },
+    {
+      "jp": "長い（なが）",
+      "en": "Long",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "7EKaYsxQfoE",
+          "who": "shuwa-chan",
+          "title": "Long"
+        }
+      ]
+    },
+    {
+      "jp": "短い（みじか）",
+      "en": "Short",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "aqRnO34uxwY",
+          "who": "shuwa-chan",
+          "title": "Short"
+        }
+      ]
+    },
+    {
+      "jp": "薄い（うす）",
+      "en": "Thin",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "24XZDoTrDxM",
+          "who": "shuwa-chan",
+          "title": "Thin"
+        }
+      ]
+    },
+    {
+      "jp": "近い（ちか）",
+      "en": "Close",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "6g9nzLJ98Wc",
+          "who": "shuwa-chan",
+          "title": "Close"
+        },
+        {
+          "id": "LN-1wzuEe1E",
+          "who": "short",
+          "title": "近い"
+        }
+      ]
+    },
+    {
+      "jp": "親しい（した）",
+      "en": "Close (someone you know well)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "6g9nzLJ98Wc",
+          "who": "shuwa-chan",
+          "title": "Close"
+        }
+      ]
+    },
+    {
+      "jp": "遠い（とお）",
+      "en": "Far",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "7wV2adMYcWc",
+          "who": "shuwa-chan",
+          "title": "Far / Distant"
+        }
+      ]
+    },
+    {
+      "jp": "少ない（すく）",
+      "en": "Not a lot, little (amount)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "CTaAstGkcjg",
+          "who": "shuwa-chan",
+          "title": "Few / Little"
+        }
+      ]
+    },
+    {
+      "jp": "早い/速い（はや）",
+      "en": "Early/Fast (speed)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "r0km2orwX6g",
+          "who": "shuwa-chan",
+          "title": "Fast"
+        }
+      ]
+    },
+    {
+      "jp": "遅い（おそ）",
+      "en": "Late, slow",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "c8mqpIUtXZs",
+          "who": "shuwa-chan",
+          "title": "Be late / Be delayed"
+        }
+      ]
+    },
+    {
+      "jp": "難しい（むずか）",
+      "en": "Hard, difficult, tough",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "oz0stGdcbYM",
+          "who": "shuwa-chan",
+          "title": "Hard / Tough / Awful"
+        }
+      ]
+    },
+    {
+      "jp": "新しい（あたら）",
+      "en": "New, different",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "6sDVXUxUAFA",
+          "who": "shuwa-chan",
+          "title": "New"
+        },
+        {
+          "id": "YSd8gJ6gdBk",
+          "who": "short",
+          "title": "新しい"
+        }
+      ]
+    },
+    {
+      "jp": "古い（ふる）",
+      "en": "Old (not for people)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "vvejWF-Q8hI",
+          "who": "shuwa-chan",
+          "title": "Old"
+        },
+        {
+          "id": "sihea8u_YzA",
+          "who": "short",
+          "title": "古い"
+        }
+      ]
+    },
+    {
+      "jp": "珍しい（めずら）",
+      "en": "Rare (used a lot)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "cRk49o2GrTE",
+          "who": "shuwa-chan",
+          "title": "Rare"
+        }
+      ]
+    },
+    {
+      "jp": "うまい",
+      "en": "Good (skill, food)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "YBR443y8ZpQ",
+          "who": "shuwa-chan",
+          "title": "Delicious"
+        }
+      ]
+    },
+    {
+      "jp": "おいしい",
+      "en": "Delicious (\"tastes good\")",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "KDKKh4-eUVg",
+          "who": "shuwa-chan",
+          "title": "Delicious"
+        }
+      ]
+    },
+    {
+      "jp": "強い（つよ）",
+      "en": "Strong",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "gdr4V4qbPEE",
+          "who": "shuwa-chan",
+          "title": "Strong"
+        }
+      ]
+    },
+    {
+      "jp": "弱い（よわ）",
+      "en": "Weak",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "XpU33yblPdE",
+          "who": "shuwa-chan",
+          "title": "Weak"
+        }
+      ]
+    },
+    {
+      "jp": "つまらない",
+      "en": "Boring",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "AioB5XT8hw8",
+          "who": "shuwa-chan",
+          "title": "Boring"
+        }
+      ]
+    },
+    {
+      "jp": "忙しい（いそが）",
+      "en": "Busy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "MYed1iY4QQ0",
+          "who": "shuwa-chan",
+          "title": "Busy"
+        },
+        {
+          "id": "WW7pzYAxot0",
+          "who": "short",
+          "title": "忙しい"
+        }
+      ]
+    },
+    {
+      "jp": "めんどくさい",
+      "en": "\"Pain in the butt\" (troublesome/bothersome)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "On9GY9sX4hs",
+          "who": "shuwa-chan",
+          "title": "Tiresome / Troublesome"
+        }
+      ]
+    },
+    {
+      "jp": "懐かしい（なつ）",
+      "en": "Nostalgic (used a lot in Japanese)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "CHnEWDLS0hM",
+          "who": "shuwa-chan",
+          "title": "Nostalgic"
+        }
+      ]
+    },
+    {
+      "jp": "熱い（あつ） 暑い（あつ） 厚い（あつ）",
+      "en": "hot (temperature) · hot (weather) · thick",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "AzP1ZD3lZd0",
+          "who": "shuwa-chan",
+          "title": "Hot"
+        }
+      ]
+    },
+    {
+      "jp": "あたたかい",
+      "en": "Warm",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "b8sjNSbLT20",
+          "who": "shuwa-chan",
+          "title": "Warm"
+        }
+      ]
+    },
+    {
+      "jp": "寒い（さむ）",
+      "en": "Cold (how you feel/weather)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "krx2XmmKX0w",
+          "who": "shuwa-chan",
+          "title": "Cold"
+        }
+      ]
+    },
+    {
+      "jp": "冷たい（つめ）",
+      "en": "Cold (to the touch)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "krx2XmmKX0w",
+          "who": "shuwa-chan",
+          "title": "Cold"
+        }
+      ]
+    },
+    {
+      "jp": "涼しい（すず）",
+      "en": "Cool (temperature)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "5qYSYnqx4Lw",
+          "who": "shuwa-chan",
+          "title": "Cool"
+        }
+      ]
+    },
+    {
+      "jp": "正しい（ただ）",
+      "en": "Correct",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "BlTP6m65XR4",
+          "who": "shuwa-chan",
+          "title": "Correct / Right / Accurate"
+        }
+      ]
+    },
+    {
+      "jp": "丸い（まる）",
+      "en": "Round",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "-EAl9nmIIXc",
+          "who": "shuwa-chan",
+          "title": "Round"
+        }
+      ]
+    },
+    {
+      "jp": "汚い（きたな）",
+      "en": "Dirty",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "x06qIJaOKng",
+          "who": "shuwa-chan",
+          "title": "Dirty / Messy / Filthy"
+        }
+      ]
+    },
+    {
+      "jp": "かわいい",
+      "en": "Cute",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "P9bErN10VMg",
+          "who": "shuwa-chan",
+          "title": "Cute"
+        }
+      ]
+    },
+    {
+      "jp": "恥ずかしい（は）",
+      "en": "Embarrassed, shy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "fb5Lia6jyRY",
+          "who": "shuwa-chan",
+          "title": "Be embarrassed / Be ashamed"
+        }
+      ]
+    },
+    {
+      "jp": "若い（わか）",
+      "en": "Young",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "adW0kugU88E",
+          "who": "shuwa-chan",
+          "title": "Young"
+        }
+      ]
+    },
+    {
+      "jp": "怖い（こわ）",
+      "en": "Scary",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "臭い（くさ）",
+      "en": "Stinky, smelly",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "痛い（いた）",
+      "en": "Painful, \"Ouch\"",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "cI8f6sdSvBI",
+          "who": "shuwa-chan",
+          "title": "Painful"
+        }
+      ]
+    },
+    {
+      "jp": "偉い（えら）",
+      "en": "Important (person), \"Good job\" (to kids)",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "WiNEjRR2Uuw",
+          "who": "shuwa-chan",
+          "title": "Important"
+        }
+      ]
+    },
+    {
+      "jp": "甘い（あま）",
+      "en": "sweet, naïve",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "CyXL_MROabs",
+          "who": "shuwa-chan",
+          "title": "Sweet"
+        }
+      ]
+    },
+    {
+      "jp": "辛い（から）",
+      "en": "spicy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "YQTivevMfkU",
+          "who": "shuwa-chan",
+          "title": "Spicy / Hot"
+        }
+      ]
+    },
+    {
+      "jp": "すっぱい",
+      "en": "sour",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "492k1cdIQHg",
+          "who": "shuwa-chan",
+          "title": "Sour"
+        }
+      ]
+    },
+    {
+      "jp": "苦い（にが）",
+      "en": "bitter",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "SqIBO4g6Bt8",
+          "who": "shuwa-chan",
+          "title": "Bitter"
+        }
+      ]
+    },
+    {
+      "jp": "かたい",
+      "en": "Hard (hard object), overly polite",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "柔らかい（やわ）",
+      "en": "Soft",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "WCZfkWc5ZKo",
+          "who": "shuwa-chan",
+          "title": "Soft"
+        }
+      ]
+    },
+    {
+      "jp": "貧しい（まず）",
+      "en": "Poor",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "b71Aj6RlYis",
+          "who": "shuwa-chan",
+          "title": "手話単語「貧しい／まずしい」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "悪い（わる）",
+      "en": "bad, evil",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "GPdPDEb6jKc",
+          "who": "shuwa-chan",
+          "title": "Bad"
+        }
+      ]
+    },
+    {
+      "jp": "ひどい",
+      "en": "awful, mean",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "oz0stGdcbYM",
+          "who": "shuwa-chan",
+          "title": "Hard / Tough / Awful"
+        }
+      ]
+    },
+    {
+      "jp": "すばらしい",
+      "en": "wonderful, amazing",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "9_ypHZ9IXe8",
+          "who": "shuwa-chan",
+          "title": "Wonderful / Excellent / Amazing"
+        }
+      ]
+    },
+    {
+      "jp": "重い（おも）",
+      "en": "Heavy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "8ma4r8G7yBk",
+          "who": "shuwa-chan",
+          "title": "Heavy"
+        }
+      ]
+    },
+    {
+      "jp": "軽い（かる）",
+      "en": "Light",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "4GvbVqXylM0",
+          "who": "shuwa-chan",
+          "title": "Light"
+        }
+      ]
+    },
+    {
+      "jp": "ずるい",
+      "en": "Not fair",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "危ない（あぶ）",
+      "en": "dangerous",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "XUMC2l2KqV8",
+          "who": "shuwa-chan",
+          "title": "Danger"
+        }
+      ]
+    },
+    {
+      "jp": "ある (有る)",
+      "en": "be (inanimate objects), have, happen",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "T763HrUY8Pc",
+          "who": "shuwa-chan",
+          "title": "Be"
+        }
+      ]
+    },
+    {
+      "jp": "いる (居る)",
+      "en": "be (animate objects)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "T763HrUY8Pc",
+          "who": "shuwa-chan",
+          "title": "Be"
+        }
+      ]
+    },
+    {
+      "jp": "いる (要る)",
+      "en": "to need/want (\"Want some coffee?\")",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "F4b3_pMJ-ak",
+          "who": "shuwa-chan",
+          "title": "Require / Necessary / Need"
+        }
+      ]
+    },
+    {
+      "jp": "食べる （たべる）",
+      "en": "eat",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "TmRGzN8-se4",
+          "who": "shuwa-chan",
+          "title": "Eat"
+        }
+      ]
+    },
+    {
+      "jp": "飲む (のむ)",
+      "en": "drink",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "JvOGlbdfe9I",
+          "who": "shuwa-chan",
+          "title": "Drink"
+        }
+      ]
+    },
+    {
+      "jp": "送る (おくる)",
+      "en": "send",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "買う (かう)",
+      "en": "buy",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "r1PVgtXOQKU",
+          "who": "shuwa-chan",
+          "title": "Buy / Purchase"
+        },
+        {
+          "id": "xBbEOCZhmhg",
+          "who": "short",
+          "title": "買う"
+        }
+      ]
+    },
+    {
+      "jp": "見る (みる)",
+      "en": "look, watch",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "1HRPfu9-kN4",
+          "who": "shuwa-chan",
+          "title": "Watch"
+        }
+      ]
+    },
+    {
+      "jp": "見せる (みせる)",
+      "en": "show",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "JdDBOXTp8jk",
+          "who": "shuwa-chan",
+          "title": "Show"
+        }
+      ]
+    },
+    {
+      "jp": "見える （みる）",
+      "en": "can see (visible/invisible)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "書く （かく）",
+      "en": "write",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "O6SvenuxQZw",
+          "who": "shuwa-chan",
+          "title": "Write"
+        }
+      ]
+    },
+    {
+      "jp": "作る （つくる）",
+      "en": "make",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "BKzGuk3wh6k",
+          "who": "shuwa-chan",
+          "title": "Make / Creat"
+        }
+      ]
+    },
+    {
+      "jp": "出る （でる）",
+      "en": "exit/come out, leave",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "A1yTBW4-u6w",
+          "who": "shuwa-chan",
+          "title": "Leave / Come out / Go out"
+        }
+      ]
+    },
+    {
+      "jp": "出す （だす）",
+      "en": "take out",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "使う （つかう）",
+      "en": "use",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "C0rkraT8ssk",
+          "who": "shuwa-chan",
+          "title": "Use"
+        },
+        {
+          "id": "XJwAMqSI5cA",
+          "who": "short",
+          "title": "使う"
+        }
+      ]
+    },
+    {
+      "jp": "合う （あう）",
+      "en": "\"line up\", match up, fit, be right (accurate)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "68Dh1FnsOOo",
+          "who": "shuwa-chan",
+          "title": "Fit"
+        }
+      ]
+    },
+    {
+      "jp": "違う （ちがう）",
+      "en": "be different, \"No\", \"Not right\"",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "KPMEcCM1bG8",
+          "who": "shuwa-chan",
+          "title": "Different"
+        }
+      ]
+    },
+    {
+      "jp": "会う （あう）",
+      "en": "meet",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "LcucCMbt248",
+          "who": "shuwa-chan",
+          "title": "Meet"
+        }
+      ]
+    },
+    {
+      "jp": "行く （いく）",
+      "en": "go",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "BklFU91iHxM",
+          "who": "shuwa-chan",
+          "title": "Go"
+        }
+      ]
+    },
+    {
+      "jp": "来る （くる）",
+      "en": "come",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "08X5Fuhv67I",
+          "who": "shuwa-chan",
+          "title": "Come"
+        }
+      ]
+    },
+    {
+      "jp": "帰る （かえる）",
+      "en": "go home",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "ZZZfIpUplMs",
+          "who": "shuwa-chan",
+          "title": "Go home"
+        },
+        {
+          "id": "tx57DimCBUQ",
+          "who": "short",
+          "title": "帰る"
+        }
+      ]
+    },
+    {
+      "jp": "楽しむ （たのしむ）",
+      "en": "have fun, enjoy",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "選ぶ （えらぶ）",
+      "en": "choose, select",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "qqqbc-uOQb4",
+          "who": "shuwa-chan",
+          "title": "Pick / Choose / Select"
+        }
+      ]
+    },
+    {
+      "jp": "変える （かえる）",
+      "en": "change",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "EDo2q0AlUYU",
+          "who": "shuwa-chan",
+          "title": "Change"
+        }
+      ]
+    },
+    {
+      "jp": "わかる",
+      "en": "to understand",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "DkhjXllrQVQ",
+          "who": "shuwa-chan",
+          "title": "I understand / I see"
+        }
+      ]
+    },
+    {
+      "jp": "知る （しる）",
+      "en": "to know",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "感じる （かんじる）",
+      "en": "feel",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "hMiJoWJvt9U",
+          "who": "shuwa-chan",
+          "title": "Feel / Sense"
+        }
+      ]
+    },
+    {
+      "jp": "持つ （もつ）",
+      "en": "hold, have",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "QXuFADhh1N0",
+          "who": "shuwa-chan",
+          "title": "Hold"
+        },
+        {
+          "id": "ZwJhkIEKv2g",
+          "who": "short",
+          "title": "持つ"
+        }
+      ]
+    },
+    {
+      "jp": "待つ （まつ）",
+      "en": "wait",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "yjyC6qn2Zac",
+          "who": "shuwa-chan",
+          "title": "Wait"
+        }
+      ]
+    },
+    {
+      "jp": "続ける （つづける）",
+      "en": "continue",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "UaUsLJBOpSU",
+          "who": "shuwa-chan",
+          "title": "Continue"
+        }
+      ]
+    },
+    {
+      "jp": "話す （はなす）",
+      "en": "speak, talk",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "2rjRTj8hLD8",
+          "who": "shuwa-chan",
+          "title": "Talk / Say / Speak"
+        }
+      ]
+    },
+    {
+      "jp": "寝る （ねる）",
+      "en": "sleep",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "KZPF20G5fc0",
+          "who": "shuwa-chan",
+          "title": "Sleep"
+        }
+      ]
+    },
+    {
+      "jp": "起きる （おきる）",
+      "en": "wake up, occur",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "B9D-y_IrMWM",
+          "who": "shuwa-chan",
+          "title": "Wake up"
+        }
+      ]
+    },
+    {
+      "jp": "壊れる （こわれる）",
+      "en": "something break",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "1BTl2Dbnn-8",
+          "who": "shuwa-chan",
+          "title": "Break"
+        }
+      ]
+    },
+    {
+      "jp": "直す （なおす）",
+      "en": "fix",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "yln7PeN7l_M",
+          "who": "shuwa-chan",
+          "title": "Fix / Cure / Heal"
+        }
+      ]
+    },
+    {
+      "jp": "あげる",
+      "en": "give",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "IA9HRIEBUOc",
+          "who": "shuwa-chan",
+          "title": "Give"
+        }
+      ]
+    },
+    {
+      "jp": "くれる",
+      "en": "receive as gift",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "もらう",
+      "en": "receive (inherited)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "上がる (あがる)",
+      "en": "go up",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "yeqMX1dA2gI",
+          "who": "shuwa-chan",
+          "title": "手話単語「上がる／あがる」（お風呂）｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "下がる (さがる)",
+      "en": "go down",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "上げる (あげる)",
+      "en": "raise, make go up",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "wd6XeBQSm8A",
+          "who": "shuwa-chan",
+          "title": "Nourish / Cultivate / Raise"
+        }
+      ]
+    },
+    {
+      "jp": "下げる (さげる)",
+      "en": "lower, make go down",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "05KLOchagoE",
+          "who": "shuwa-chan",
+          "title": "Lower / Bottom"
+        }
+      ]
+    },
+    {
+      "jp": "借りる (かりる)",
+      "en": "rent, borrow",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "JRtoeWPCQXc",
+          "who": "shuwa-chan",
+          "title": "Borrow"
+        }
+      ]
+    },
+    {
+      "jp": "習う (ならう)　・　学ぶ (まなぶ)",
+      "en": "learn (skill)  /  learn (apprehend, study, a lesson, in life)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "xN43FKTO2_Y",
+          "who": "shuwa-chan",
+          "title": "Learn"
+        }
+      ]
+    },
+    {
+      "jp": "慣れる (なれる)",
+      "en": "get used to",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "xdWdtlPF8tk",
+          "who": "shuwa-chan",
+          "title": "手話単語「慣れる／なれる」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "思い出す (おもいだす)",
+      "en": "recall",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "覚える (おぼえる)",
+      "en": "remember, feel (rarely)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "dCWHi9mqKXM",
+          "who": "shuwa-chan",
+          "title": "Memorize"
+        }
+      ]
+    },
+    {
+      "jp": "教える (おしえる)",
+      "en": "teach, tell",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "KKNbHspWyu4",
+          "who": "shuwa-chan",
+          "title": "Teach"
+        }
+      ]
+    },
+    {
+      "jp": "調べる (しらべる)",
+      "en": "look up (Google)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "lZDHOcioago",
+          "who": "shuwa-chan",
+          "title": "手話単語「調べる／しらべる」②｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "忘れる (わすれる)",
+      "en": "forget",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "1KMSvfBh-2c",
+          "who": "shuwa-chan",
+          "title": "Forget"
+        }
+      ]
+    },
+    {
+      "jp": "始まる (はじまる)",
+      "en": "something begins",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "fCd6yez51tI",
+          "who": "shuwa-chan",
+          "title": "Start"
+        }
+      ]
+    },
+    {
+      "jp": "終わる (おわる)",
+      "en": "something ends",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "-yY8wgDVSBY",
+          "who": "shuwa-chan",
+          "title": "End / Finish"
+        }
+      ]
+    },
+    {
+      "jp": "開ける (ひらける)",
+      "en": "open",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "2Mk-kqzWwzg",
+          "who": "shuwa-chan",
+          "title": "Open"
+        }
+      ]
+    },
+    {
+      "jp": "閉める (しめる)",
+      "en": "close",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "6g9nzLJ98Wc",
+          "who": "shuwa-chan",
+          "title": "Close"
+        }
+      ]
+    },
+    {
+      "jp": "入れる (いれる)",
+      "en": "put in",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "入る (はいる)",
+      "en": "go in/fit",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "IZZXuR4ZzvI",
+          "who": "shuwa-chan",
+          "title": "Enter"
+        }
+      ]
+    },
+    {
+      "jp": "勝つ (かつ)",
+      "en": "win (game)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "HxNvxLUrF4Q",
+          "who": "shuwa-chan",
+          "title": "Win"
+        }
+      ]
+    },
+    {
+      "jp": "負ける (まける)",
+      "en": "lose (game)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "IgLHf6kfP14",
+          "who": "shuwa-chan",
+          "title": "Lose"
+        }
+      ]
+    },
+    {
+      "jp": "止まる (とまる)",
+      "en": "(something) stops",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "6hQDzQGcvGQ",
+          "who": "shuwa-chan",
+          "title": "Stop"
+        }
+      ]
+    },
+    {
+      "jp": "止める (とめる)",
+      "en": "stop",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "1v5vYs2CDdQ",
+          "who": "shuwa-chan",
+          "title": "Stop"
+        }
+      ]
+    },
+    {
+      "jp": "泊める (とめる)",
+      "en": "stay over (person's house)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "やめる",
+      "en": "quit",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "gGbXbX8zFnQ",
+          "who": "shuwa-chan",
+          "title": "Quit"
+        }
+      ]
+    },
+    {
+      "jp": "乗る (のる)",
+      "en": "ride",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "vvvJC8T0Xjc",
+          "who": "shuwa-chan",
+          "title": "Ride / Board / Mount"
+        }
+      ]
+    },
+    {
+      "jp": "降りる (おりる)",
+      "en": "get off/down/out (vehicle, object, etc.)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "EkwsTW-AkXw",
+          "who": "shuwa-chan",
+          "title": "手話単語「降りる／おりる」（台）｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "座る (すわる)",
+      "en": "sit",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "QKGLwd2gvUo",
+          "who": "shuwa-chan",
+          "title": "Sit"
+        },
+        {
+          "id": "G315ZWcOkFE",
+          "who": "short",
+          "title": "座る"
+        }
+      ]
+    },
+    {
+      "jp": "触る (さわる)",
+      "en": "touch",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "OEE0jC1NSNI",
+          "who": "shuwa-chan",
+          "title": "Move / Touch / Impres"
+        }
+      ]
+    },
+    {
+      "jp": "洗う (あらう)",
+      "en": "wash",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "cKCu2ArBFJg",
+          "who": "shuwa-chan",
+          "title": "Wash things"
+        },
+        {
+          "id": "ccgIDtwm3VU",
+          "who": "short",
+          "title": "洗う"
+        }
+      ]
+    },
+    {
+      "jp": "切る (きる)",
+      "en": "cut",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "Dl2fB_H8gsk",
+          "who": "shuwa-chan",
+          "title": "Cut"
+        }
+      ]
+    },
+    {
+      "jp": "着る (きる)",
+      "en": "wear (torso/dress/kimono)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "pg7_PWZHE6Q",
+          "who": "shuwa-chan",
+          "title": "Wear"
+        }
+      ]
+    },
+    {
+      "jp": "脱ぐ (ぬぐ)",
+      "en": "take off (clothes)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "9RaJizLo51M",
+          "who": "shuwa-chan",
+          "title": "手話単語「脱ぐ／ぬぐ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "取る（とる）",
+      "en": "take",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "4mwMCLn_sqk",
+          "who": "shuwa-chan",
+          "title": "Pick up / Take / Hull"
+        }
+      ]
+    },
+    {
+      "jp": "やる",
+      "en": "do",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "PRYsK1uLc_o",
+          "who": "shuwa-chan",
+          "title": "Do"
+        }
+      ]
+    },
+    {
+      "jp": "思う (おもう)",
+      "en": "think",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "GE6vpBWugZU",
+          "who": "shuwa-chan",
+          "title": "Think"
+        }
+      ]
+    },
+    {
+      "jp": "考える (かんがえる)",
+      "en": "think about/consider",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "GE6vpBWugZU",
+          "who": "shuwa-chan",
+          "title": "手話単語「考える／かんがえる」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "動く (うごく)",
+      "en": "something move",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "OKbOJV0pj4M",
+          "who": "shuwa-chan",
+          "title": "手話単語「動く／うごく」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "歩く (あるく)",
+      "en": "walk",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "SekRAOkZKGg",
+          "who": "shuwa-chan",
+          "title": "Walk"
+        }
+      ]
+    },
+    {
+      "jp": "信じる (しんじる)",
+      "en": "believe",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "W5pbfk-6afk",
+          "who": "shuwa-chan",
+          "title": "Believe / Trust / Confide"
+        }
+      ]
+    },
+    {
+      "jp": "泳ぐ (およぐ)",
+      "en": "swim",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "A3r6-oiccco",
+          "who": "shuwa-chan",
+          "title": "Swim"
+        }
+      ]
+    },
+    {
+      "jp": "言う (いう)",
+      "en": "say (pronounced ゆう)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "W6cVZClhUqw",
+          "who": "shuwa-chan",
+          "title": "Say"
+        }
+      ]
+    },
+    {
+      "jp": "伝える (つたえる）",
+      "en": "tell/communicate",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "PvJQMZ6bKg4",
+          "who": "shuwa-chan",
+          "title": "Say / Tell"
+        }
+      ]
+    },
+    {
+      "jp": "働く(はたらく）",
+      "en": "work (general)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "GtLhNuo3CxM",
+          "who": "shuwa-chan",
+          "title": "Work"
+        }
+      ]
+    },
+    {
+      "jp": "休む(やすむ）",
+      "en": "rest",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "8tcDEUwSmkw",
+          "who": "shuwa-chan",
+          "title": "Rest"
+        }
+      ]
+    },
+    {
+      "jp": "気づく（きづく）",
+      "en": "realize, notice",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "mhaIp6fCjwg",
+          "who": "shuwa-chan",
+          "title": "Realize"
+        }
+      ]
+    },
+    {
+      "jp": "置く（おく）",
+      "en": "place, put down",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "l6L0-YYZrhY",
+          "who": "shuwa-chan",
+          "title": "Place"
+        }
+      ]
+    },
+    {
+      "jp": "答える（こたえる）",
+      "en": "answer",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "7qj2nBB-P48",
+          "who": "shuwa-chan",
+          "title": "Answer"
+        }
+      ]
+    },
+    {
+      "jp": "困る（こまる）",
+      "en": "be troubled (past tense can mean \"Uh-oh\" \"Shoot\")",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "ZNYNHUdlaAE",
+          "who": "shuwa-chan",
+          "title": "In trouble"
+        },
+        {
+          "id": "8sdo-jgrQsw",
+          "who": "short",
+          "title": "困る"
+        }
+      ]
+    },
+    {
+      "jp": "連れていく（つれていく）",
+      "en": "take someone/pet along",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "歌う（うたう）",
+      "en": "sing (sometimes 歌を歌う)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "HXcOcGop75U",
+          "who": "shuwa-chan",
+          "title": "Sing"
+        }
+      ]
+    },
+    {
+      "jp": "押す（おす）",
+      "en": "push",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "引く（ひく）",
+      "en": "pull",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "Ok0wykWuglE",
+          "who": "shuwa-chan",
+          "title": "手話単語「引く／ひく」（四則演算）｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "育てる（そだてる）",
+      "en": "take care of, bring up, grow (child, plants, etc.)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "M3a2eOYQaoI",
+          "who": "shuwa-chan",
+          "title": "Grow"
+        }
+      ]
+    },
+    {
+      "jp": "戻す（もどす）",
+      "en": "put something back",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "片づける（かたづける）",
+      "en": "clean up, tidy up",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "付き合う（つきあう）",
+      "en": "spend time with someone, date someone",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "生きる（いきる）",
+      "en": "live (alive, life, etc.)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "FjBseEgLsWw",
+          "who": "shuwa-chan",
+          "title": "Live"
+        }
+      ]
+    },
+    {
+      "jp": "かかる",
+      "en": "cost, make up, take (time, money), other various uses",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "tBqhI538vB0",
+          "who": "shuwa-chan",
+          "title": "Cost"
+        }
+      ]
+    },
+    {
+      "jp": "間違える（まちがえる）",
+      "en": "make a mistake, mess up (past tense = I messed up)",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "DrKT_yQnbXo",
+          "who": "shuwa-chan",
+          "title": "Mistake / Error / Fault"
+        }
+      ]
+    },
+    {
+      "jp": "返す（かえす）",
+      "en": "return something",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "3wKmje00XWQ",
+          "who": "shuwa-chan",
+          "title": "Return"
+        }
+      ]
+    },
+    {
+      "jp": "払う（はらう）",
+      "en": "to pay",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "OJx-Rx32aMU",
+          "who": "shuwa-chan",
+          "title": "Pay"
+        }
+      ]
+    },
+    {
+      "jp": "つまり",
+      "en": "in other words",
+      "topic": "Also",
+      "videos": []
+    },
+    {
+      "jp": "例えば",
+      "en": "for example",
+      "topic": "Also",
+      "videos": [
+        {
+          "id": "O_vdp2W1kRo",
+          "who": "shuwa-chan",
+          "title": "For example"
+        }
+      ]
+    },
+    {
+      "jp": "わざと",
+      "en": "on purpose",
+      "topic": "Also",
+      "videos": [
+        {
+          "id": "VvpBfRvvnHo",
+          "who": "shuwa-chan",
+          "title": "On purpose / Intentionally"
+        }
+      ]
+    },
+    {
+      "jp": "簡単（かんたん）",
+      "en": "easy, simple",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "5yzf3tiFcFU",
+          "who": "shuwa-chan",
+          "title": "手話単語「簡単／かんたん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "静か（しず）",
+      "en": "quiet",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "元気（げんき）",
+      "en": "energetic, well, healthy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "s78VO6HcTQo",
+          "who": "shuwa-chan",
+          "title": "手話単語「元気／げんき」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "暇（ひま）",
+      "en": "free (time), not busy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "qRqYDfM_dbM",
+          "who": "shuwa-chan",
+          "title": "手話単語「暇／ひま」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "うれしい",
+      "en": "happy, glad",
+      "topic": "Adjectives",
+      "videos": []
+    },
+    {
+      "jp": "眠い（ねむ）",
+      "en": "sleepy",
+      "topic": "Adjectives",
+      "videos": [
+        {
+          "id": "v9TGOsmUkXs",
+          "who": "shuwa-chan",
+          "title": "手話単語「眠い／ねむい」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "する",
+      "en": "do",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "WM31Ur7Y2Vo",
+          "who": "shuwa-chan",
+          "title": "手話単語「する」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "読む (よむ)",
+      "en": "read",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "KTRoZTQtaG0",
+          "who": "shuwa-chan",
+          "title": "手話単語「読む／よむ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "遊ぶ (あそぶ)",
+      "en": "play, hang out",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "_scmCYOiato",
+          "who": "shuwa-chan",
+          "title": "手話単語「遊ぶ／あそぶ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "出かける (でかける)",
+      "en": "go out",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "聴く (きく)",
+      "en": "listen (to music, etc.)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "住む (すむ)",
+      "en": "live (in a place)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "弾く (ひく)",
+      "en": "play (piano, guitar)",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "できる",
+      "en": "can do, be able to",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "登る (のぼる)",
+      "en": "climb",
+      "topic": "Verbs",
+      "videos": []
+    },
+    {
+      "jp": "頼む (たのむ)",
+      "en": "order, ask for, request",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "msvHDXHz3FU",
+          "who": "shuwa-chan",
+          "title": "手話単語「頼む／たのむ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "届く (とどく)",
+      "en": "arrive, be delivered",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "gMWC4SOVMSg",
+          "who": "shuwa-chan",
+          "title": "手話七変化「届く／とどく」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "笑う (わらう)",
+      "en": "laugh, smile",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "Ft1C0zhIxrQ",
+          "who": "shuwa-chan",
+          "title": "手話単語「笑う／わらう」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "走る (はしる)",
+      "en": "run",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "LGeFxcLHMKE",
+          "who": "shuwa-chan",
+          "title": "手話単語「走る／はしる」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "泣く (なく)",
+      "en": "cry",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "mFUK-1cE6a4",
+          "who": "shuwa-chan",
+          "title": "手話単語「泣く／なく」②｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "遅れる (おくれる)",
+      "en": "be late",
+      "topic": "Verbs",
+      "videos": [
+        {
+          "id": "c8mqpIUtXZs",
+          "who": "shuwa-chan",
+          "title": "手話単語「遅れる／おくれる」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "どんな",
+      "en": "what kind of",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "～そう",
+      "en": "looks like ~, seems ~ (i.e. おいしそう)",
+      "topic": "Connectors",
+      "videos": []
+    },
+    {
+      "jp": "夜（よる）",
+      "en": "night, evening",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "bjHlGPUbKis",
+          "who": "shuwa-chan",
+          "title": "手話単語「夜／よる」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "今週末（こんしゅうまつ）",
+      "en": "this weekend",
+      "topic": "Time",
+      "videos": []
+    },
+    {
+      "jp": "日曜日（にちようび）",
+      "en": "Sunday",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "qwRlBhiJ7fU",
+          "who": "shuwa-chan",
+          "title": "手話単語「日曜日／にちようび」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "金曜日（きんようび）",
+      "en": "Friday",
+      "topic": "Time",
+      "videos": [
+        {
+          "id": "CLKMwG8MhCM",
+          "who": "shuwa-chan",
+          "title": "手話単語「金曜日／きんようび」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "何時（なんじ）",
+      "en": "what time",
+      "topic": "Time",
+      "videos": []
+    },
+    {
+      "jp": "先生（せんせい）",
+      "en": "teacher",
+      "topic": "People",
+      "videos": [
+        {
+          "id": "DEykxUgS9x4",
+          "who": "shuwa-chan",
+          "title": "手話単語「先生／せんせい」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "学生（がくせい）",
+      "en": "student",
+      "topic": "People",
+      "videos": [
+        {
+          "id": "f60Gy7hECMY",
+          "who": "shuwa-chan",
+          "title": "手話単語「学生／がくせい」②｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "友達（ともだち）",
+      "en": "friend",
+      "topic": "People",
+      "videos": [
+        {
+          "id": "FN4wzfnQ0hM",
+          "who": "shuwa-chan",
+          "title": "手話単語「友達／ともだち」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "子供（こども）",
+      "en": "child",
+      "topic": "People",
+      "videos": [
+        {
+          "id": "ttMkX24yZTs",
+          "who": "shuwa-chan",
+          "title": "手話単語「子供／こども」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "母（はは）",
+      "en": "mother (my mother)",
+      "topic": "People",
+      "videos": [
+        {
+          "id": "x9BsE1zFFH8",
+          "who": "shuwa-chan",
+          "title": "手話単語「母／はは」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "何人（なんにん）",
+      "en": "how many people",
+      "topic": "People",
+      "videos": []
+    },
+    {
+      "jp": "ラーメン",
+      "en": "ramen",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "j-bWYam-SB8",
+          "who": "shuwa-chan",
+          "title": "手話単語「ラーメン」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "カレー",
+      "en": "curry",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "MC_AGHYsniE",
+          "who": "shuwa-chan",
+          "title": "手話単語「カレー」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "ケーキ",
+      "en": "cake",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "PlSTpDFHd-0",
+          "who": "shuwa-chan",
+          "title": "手話単語「ケーキ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "ジュース",
+      "en": "juice",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "xGC4mDQwRGM",
+          "who": "shuwa-chan",
+          "title": "手話単語「ジュース」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "お酒（さけ）",
+      "en": "alcohol, sake",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "f40It7TaLps",
+          "who": "shuwa-chan",
+          "title": "手話単語「お酒／おさけ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "うどん",
+      "en": "udon",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "acNMGHyJJLI",
+          "who": "shuwa-chan",
+          "title": "手話単語「うどん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "お茶（ちゃ）",
+      "en": "tea",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "xXbsesSGeqY",
+          "who": "shuwa-chan",
+          "title": "手話単語「お茶／おちゃ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "ごはん",
+      "en": "rice, a meal",
+      "topic": "Food & drink",
+      "videos": []
+    },
+    {
+      "jp": "水（みず）",
+      "en": "water",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "ZYg9aDTAFx4",
+          "who": "shuwa-chan",
+          "title": "手話単語「水／みず」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "りんご",
+      "en": "apple",
+      "topic": "Food & drink",
+      "videos": []
+    },
+    {
+      "jp": "牛乳（ぎゅうにゅう）",
+      "en": "milk",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "s9zLpZNZj54",
+          "who": "shuwa-chan",
+          "title": "手話単語「牛乳／ぎゅうにゅう」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "餃子（ぎょうざ）",
+      "en": "gyoza",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "G0vYcJwQHEk",
+          "who": "shuwa-chan",
+          "title": "手話単語「餃子／ぎょうざ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "寿司（すし）",
+      "en": "sushi",
+      "topic": "Food & drink",
+      "videos": [
+        {
+          "id": "BveF9UpyaOs",
+          "who": "shuwa-chan",
+          "title": "手話単語「寿司／すし」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "卵焼き（たまごやき）",
+      "en": "rolled omelet",
+      "topic": "Food & drink",
+      "videos": []
+    },
+    {
+      "jp": "食事（しょくじ）",
+      "en": "meal",
+      "topic": "Food & drink",
+      "videos": []
+    },
+    {
+      "jp": "公園（こうえん）",
+      "en": "park",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "78zoIZ9TQH4",
+          "who": "shuwa-chan",
+          "title": "手話単語「公園／こうえん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "海（うみ）",
+      "en": "sea, beach",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "t4xLCx0FeSk",
+          "who": "shuwa-chan",
+          "title": "手話単語「海／うみ」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "店（みせ）",
+      "en": "shop, store",
+      "topic": "Places",
+      "videos": []
+    },
+    {
+      "jp": "ホテル",
+      "en": "hotel",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "gs8UTDPwbuM",
+          "who": "shuwa-chan",
+          "title": "手話単語「ホテル」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "東京（とうきょう）",
+      "en": "Tokyo",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "Pz_8KGEnTgI",
+          "who": "shuwa-chan",
+          "title": "手話単語「東京／とうきょう」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "日本（にほん）",
+      "en": "Japan",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "HUNfbdLsXJY",
+          "who": "shuwa-chan",
+          "title": "手話単語「日本／にほん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "富士山（ふじさん）",
+      "en": "Mt. Fuji",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "15fg1VV0QF8",
+          "who": "shuwa-chan",
+          "title": "手話単語「富士山／ふじさん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "家（いえ）",
+      "en": "house, home",
+      "topic": "Places",
+      "videos": [
+        {
+          "id": "gq0oDHsAI2g",
+          "who": "shuwa-chan",
+          "title": "手話単語「家／いえ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "かばん",
+      "en": "bag",
+      "topic": "Things",
+      "videos": []
+    },
+    {
+      "jp": "靴（くつ）",
+      "en": "shoes",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "f2KxGqKkcjE",
+          "who": "shuwa-chan",
+          "title": "手話単語「靴／くつ」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "本（ほん）",
+      "en": "book",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "29-CjCMJoj8",
+          "who": "shuwa-chan",
+          "title": "手話単語「本／ほん」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "傘（かさ）",
+      "en": "umbrella",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "n57WCGCW7Hk",
+          "who": "shuwa-chan",
+          "title": "手話単語「傘／かさ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "荷物（にもつ）",
+      "en": "luggage, package",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "uTFGgCMWj1Q",
+          "who": "shuwa-chan",
+          "title": "手話単語「荷物／にもつ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "車（くるま）",
+      "en": "car",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "wIruIaRDUf4",
+          "who": "shuwa-chan",
+          "title": "手話単語「車／くるま」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "自転車（じてんしゃ）",
+      "en": "bicycle",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "G3R0IwrB9UE",
+          "who": "shuwa-chan",
+          "title": "手話単語「自転車／じてんしゃ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "名前（なまえ）",
+      "en": "name",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "n5zV6Olhj4U",
+          "who": "shuwa-chan",
+          "title": "手話単語「名前／なまえ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "漢字（かんじ）",
+      "en": "kanji",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "Vo7Hy3d5fkM",
+          "who": "shuwa-chan",
+          "title": "手話単語「漢字／かんじ」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "新聞（しんぶん）",
+      "en": "newspaper",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "5Q9j9df0CUQ",
+          "who": "shuwa-chan",
+          "title": "手話単語「新聞／しんぶん」②｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "電話（でんわ）",
+      "en": "phone, phone call",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "gh_B8DILgfc",
+          "who": "shuwa-chan",
+          "title": "手話単語「電話／でんわ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "テレビ",
+      "en": "TV",
+      "topic": "Things",
+      "videos": []
+    },
+    {
+      "jp": "猫（ねこ）",
+      "en": "cat",
+      "topic": "Things",
+      "videos": [
+        {
+          "id": "CSoz8WkwDMU",
+          "who": "shuwa-chan",
+          "title": "手話単語「猫／ねこ／ネコ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "日本語（にほんご）",
+      "en": "Japanese (language)",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "映画（えいが）",
+      "en": "movie",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "CoOmotIFdVU",
+          "who": "shuwa-chan",
+          "title": "手話単語「映画／えいが」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "旅行（りょこう）",
+      "en": "trip, travel",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "RscGkwWECtg",
+          "who": "shuwa-chan",
+          "title": "手話単語「旅行／りょこう」（汽車）｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "テスト",
+      "en": "test",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "休み（やすみ）",
+      "en": "day off, rest, holiday",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "ojZo1wTKirI",
+          "who": "shuwa-chan",
+          "title": "手話単語「休み／やすみ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "雨（あめ）",
+      "en": "rain",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "V7Z9KTWdITo",
+          "who": "shuwa-chan",
+          "title": "手話単語「雨／あめ」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "仕事（しごと）",
+      "en": "work, job",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "JjebMLhckfE",
+          "who": "shuwa-chan",
+          "title": "手話単語「仕事／しごと」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "勉強（べんきょう）",
+      "en": "study",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "l3cPfbbB_Ww",
+          "who": "shuwa-chan",
+          "title": "手話単語「勉強／べんきょう」（する）｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "宿題（しゅくだい）",
+      "en": "homework",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "MbxoMernCVg",
+          "who": "shuwa-chan",
+          "title": "手話単語「宿題／しゅくだい」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "音楽（おんがく）",
+      "en": "music",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "wmSGiUPJuMQ",
+          "who": "shuwa-chan",
+          "title": "手話単語「音楽／おんがく」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "運転（うんてん）",
+      "en": "driving",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "パーティー",
+      "en": "party",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "風邪（かぜ）",
+      "en": "a cold (illness)",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "病気（びょうき）",
+      "en": "sickness, illness",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "HJ-UWkr_C4I",
+          "who": "shuwa-chan",
+          "title": "手話単語「病気／びょうき」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "サッカー",
+      "en": "soccer",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "kspe2Nj81e4",
+          "who": "shuwa-chan",
+          "title": "手話単語「サッカー」｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "バイト",
+      "en": "part-time job",
+      "topic": "Nouns",
+      "videos": []
+    },
+    {
+      "jp": "魔法（まほう）",
+      "en": "magic",
+      "topic": "Nouns",
+      "videos": [
+        {
+          "id": "ZfpNsYikQTs",
+          "who": "shuwa-chan",
+          "title": "手話単語「魔法／まほう」①｜手話べり！"
+        }
+      ]
+    },
+    {
+      "jp": "お腹（なか）",
+      "en": "stomach, belly",
+      "topic": "Nouns",
+      "videos": []
     }
-   ]
-  }
- ]
+  ]
 }

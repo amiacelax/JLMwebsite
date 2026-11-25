@@ -35,6 +35,12 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   overflow: visible;
 }
 
+/* Armed — JD notes and student clouds grow so they're easy to see, then shrink again. */
+.hw-hc-host.hw-hc-armed .hw-hc-memo,
+.hw-hc-host.hw-hc-armed .hw-hc-mini {
+  zoom: 1.7;
+}
+
 /* Armed — drag to select text on the worksheet */
 .hw-hc-host.hw-hc-armed .hw-worksheet,
 .hw-hc-host.hw-hc-armed .hw-worksheet * {
@@ -425,6 +431,10 @@ body.hw-hw-focus-mode .hw-hub-worksheet-card.hw-hc-host {
   justify-content: flex-start;
   margin-top: 0.35rem;
   padding-top: 0.2rem;
+}
+
+.hw-hc-memo--teacher .hw-hc-memo__actions {
+  justify-content: flex-end;
 }
 
 .hw-hc-memo__remove {
@@ -1529,6 +1539,13 @@ body.hw-hc-onboarding-active .hw-hc-onboard {
   gap: 0.45rem;
 }
 
+.hw-review-media__mode[hidden],
+.hw-review-media__idle[hidden],
+.hw-review-media__live[hidden],
+.hw-review-media__preview[hidden] {
+  display: none !important;
+}
+
 .hw-review-media__mode {
   display: inline-flex;
   gap: 0.25rem;
@@ -2072,6 +2089,36 @@ body.hw-teacher-review-open .hw-worksheet__line--star .hw-worksheet__content {
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__remark-label,
 .hw-hc-memo__body--student-reviewed .hw-hc-memo__remark-label {
   color: #f4f7fb;
+}
+
+.hw-hc-memo--teacher .hw-review-media__mode {
+  background: transparent;
+  padding: 0;
+  gap: 0.4rem;
+}
+
+.hw-hc-memo--teacher .hw-review-media__mode-btn,
+.hw-hc-memo--teacher .hw-review-media__mode-btn.is-active {
+  border: 1px solid color-mix(in srgb, var(--color-green, #4ade80) 70%, #fff);
+  background: transparent;
+  color: #f4f7fb;
+}
+
+.hw-hc-memo--teacher .hw-review-media__saved-actions .btn,
+.hw-hc-memo--teacher .hw-review-media__ask {
+  color: #f4f7fb;
+}
+
+.hw-review-media__ask {
+  margin: 0;
+  font-weight: 650;
+}
+
+.hw-review-media__saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .hw-hc-memo__body--teacher-reply .hw-hc-memo__remark-label {

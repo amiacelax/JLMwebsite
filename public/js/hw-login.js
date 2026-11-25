@@ -17,6 +17,17 @@
   const loggedInTier = document.getElementById("hw-logged-in-tier");
   const authTabs = document.querySelectorAll("[data-auth-tab]");
 
+  function teacherHubForUserParam() {
+    const user = String(new URLSearchParams(window.location.search).get("user") || "")
+      .trim()
+      .toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]{1,40}$/.test(user)) return "";
+    const teacher = HwAuth.getTeacherSession?.();
+    if (!teacher) return "";
+    if (String(teacher.username || "").trim().toLowerCase() === user) return "";
+    return "/homework/platform.html?as=" + encodeURIComponent(user);
+  }
+
   function redirectAfterAuth() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
@@ -33,6 +44,11 @@
     /* Same-tab PayPal (+ I’ve paid return) — don’t open a leftover new-tab link. */
     if (checkout && window.HwCheckout?.startCheckout) {
       HwCheckout.startCheckout(checkout);
+      return;
+    }
+    const hub = teacherHubForUserParam();
+    if (hub) {
+      window.location.href = hub;
       return;
     }
     const dest =
@@ -119,6 +135,11 @@
 
   const existing = HwAuth.getSession();
   if (existing && !resetToken) {
+    const hub = teacherHubForUserParam();
+    if (hub) {
+      window.location.replace(hub);
+      return;
+    }
     showLoggedIn(existing);
   }
 

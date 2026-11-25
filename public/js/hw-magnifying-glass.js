@@ -592,7 +592,7 @@
     const user = String(global.HwAuth?.getSession?.()?.username || "")
       .trim()
       .toLowerCase();
-    return user === "demo2" || user === "benm";
+    return user === "benm";
   }
 
   function glassEditorUsername() {

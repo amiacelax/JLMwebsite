@@ -245,7 +245,8 @@
       focusBtn.setAttribute(
         "aria-pressed",
         document.body.classList.contains("hw-hw-focus-mode") ||
-          document.body.classList.contains("hw-prayer-focus")
+          document.body.classList.contains("hw-prayer-focus") ||
+          document.body.classList.contains("hw-ex-focus")
           ? "true"
           : "false"
       );
@@ -422,6 +423,17 @@
           syncToolbarActionState();
           return;
         }
+        const tab = document.getElementById("hw-v5-app")?.dataset.v5ActiveTab;
+        if (tab === "notebook" || document.body.classList.contains("hw-ex-focus")) {
+          const on = !document.body.classList.contains("hw-ex-focus");
+          if (on && document.body.classList.contains("hw-hw-focus-mode")) {
+            global.HwWorksheet?.exitFocusMode?.();
+          }
+          document.body.classList.toggle("hw-ex-focus", on);
+          if (on) window.scrollTo(0, 0);
+          syncToolbarActionState();
+          return;
+        }
         if (document.body.classList.contains("hw-hw-focus-mode")) {
           global.HwWorksheet?.exitFocusMode?.();
         } else {
@@ -475,6 +487,11 @@
         closeLineMenu();
       });
       document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && document.body.classList.contains("hw-ex-focus")) {
+          document.body.classList.remove("hw-ex-focus");
+          syncToolbarActionState();
+          return;
+        }
         if (ev.key !== "Escape") return;
         const menu = lineMenuEl();
         if (!menu || menu.hidden) return;

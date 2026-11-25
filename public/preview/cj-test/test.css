@@ -1,0 +1,437 @@
+@page {
+  size: A4;
+  margin: 11mm 12mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #e9eaee;
+  color: #111;
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 11pt;
+  line-height: 1.35;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem;
+  background: #0f172a;
+  color: #fff;
+  font: 600 14px Inter, system-ui, sans-serif;
+}
+
+.bar button,
+.bar a {
+  padding: 0.45rem 0.9rem;
+  border: 0;
+  border-radius: 8px;
+  background: #67c4eb;
+  color: #0f172a;
+  font: 700 14px Inter, system-ui, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#paper {
+  width: 210mm;
+  margin: 1rem auto 3rem;
+  padding: 12mm;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+}
+
+.top {
+  margin-bottom: 4mm;
+  border-bottom: 2px solid #111;
+  padding-bottom: 3mm;
+}
+
+h1 {
+  margin: 0 0 3mm;
+  font-size: 22pt;
+  letter-spacing: 0.02em;
+}
+
+.meta {
+  display: flex;
+  gap: 8mm;
+  margin: 0;
+  font-weight: 600;
+}
+
+.meta span {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 2mm;
+}
+
+.meta i {
+  flex: 1;
+  height: 0;
+  border-bottom: 1px solid #111;
+}
+
+.meta i.short {
+  flex: 0 0 16mm;
+}
+
+.part {
+  margin-top: 6mm;
+}
+
+.part h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 2mm;
+  padding: 1.2mm 3mm;
+  background: #111;
+  color: #fff;
+  font-size: 12.5pt;
+  break-after: avoid;
+}
+
+.part h2 em {
+  font-size: 10pt;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.note {
+  margin: 0 0 3mm;
+  font-size: 9.5pt;
+  color: #333;
+  break-after: avoid;
+}
+
+.sub {
+  margin: 4mm 0 1mm;
+  font-weight: 700;
+  break-after: avoid;
+}
+
+/* Furigana sits smaller above the kanji. Do not stretch the base text to fit the reading. */
+ruby {
+  position: relative;
+  display: inline-block;
+  padding-top: 0.42em;
+  line-height: 1;
+  vertical-align: baseline;
+  letter-spacing: 0;
+}
+
+ruby rt {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.34em;
+  line-height: 1;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.q {
+  display: inline-block;
+  min-width: 6.5mm;
+  font: 700 8.5pt Inter, system-ui, sans-serif;
+  color: #555;
+}
+
+.verb {
+  display: grid;
+  grid-template-columns: 24mm 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 3mm;
+  margin-bottom: 3.5mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 1px dashed #aaa;
+  break-inside: avoid;
+}
+
+.verb.noPic {
+  grid-template-columns: 1fr;
+}
+
+.verb .pic {
+  grid-row: 1 / span 2;
+}
+
+.verb-head {
+  display: flex;
+  align-items: baseline;
+  gap: 3mm;
+  margin-bottom: 1mm;
+}
+
+.verb-head b {
+  font-size: 16pt;
+}
+
+.verb-head small {
+  color: #444;
+  font-size: 9.5pt;
+}
+
+.verb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5mm 4mm;
+}
+
+.verb-grid.five {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.cell {
+  position: relative;
+  padding-top: 0;
+}
+
+.cell .lab {
+  font-size: 8pt;
+  color: #444;
+}
+
+.line {
+  min-height: 8.5mm;
+  border-bottom: 1px solid #111;
+  font-size: 12.5pt;
+  display: flex;
+  align-items: flex-end;
+}
+
+.line.wide {
+  min-height: 10mm;
+}
+
+.ans {
+  color: #b01822;
+  font-weight: 600;
+}
+
+.pic {
+  position: relative;
+  width: 24mm;
+  height: 24mm;
+  border: 1px solid #bbb;
+  border-radius: 3mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pic img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.pic .cap {
+  position: absolute;
+  bottom: 1mm;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 7.5pt;
+  color: #555;
+}
+
+.row {
+  display: flex;
+  gap: 2mm;
+  margin-bottom: 2.5mm;
+  break-inside: avoid;
+}
+
+.row .grow {
+  flex: 1;
+}
+
+.row .en,
+.row .jp {
+  margin: 0 0 0.5mm;
+}
+
+.row .jp {
+  font-size: 13pt;
+}
+
+.pics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4mm;
+}
+
+.picq {
+  break-inside: avoid;
+}
+
+.picq .pic {
+  width: 100%;
+  height: 30mm;
+}
+
+.mcs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm 6mm;
+}
+
+.mc {
+  break-inside: avoid;
+}
+
+.mc .jp {
+  display: inline;
+  margin: 0;
+  font-size: 12pt;
+}
+
+.mc ol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5mm 3mm;
+  margin: 1mm 0 0 6.5mm;
+  padding: 0;
+  list-style: none;
+  font-size: 11pt;
+}
+
+.mc li.right {
+  color: #b01822;
+  font-weight: 700;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .bar {
+    display: none;
+  }
+
+  #paper {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .part h2 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* v2: one everyday question per picture */
+.item {
+  display: grid;
+  grid-template-columns: 7mm 26mm 1fr;
+  align-items: center;
+  column-gap: 3mm;
+  padding: 2.2mm 0;
+  border-bottom: 1px dashed #bbb;
+  break-inside: avoid;
+}
+
+.item .q {
+  align-self: start;
+  padding-top: 1mm;
+}
+
+.item .pic {
+  width: 26mm;
+  height: 24mm;
+  overflow: visible;
+}
+
+.item .pic img {
+  border-radius: 2mm;
+}
+
+.qmark {
+  position: absolute;
+  top: -3mm;
+  right: -2mm;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 7.5mm;
+  height: 7.5mm;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.2px solid #111;
+  font: 800 12pt Inter, system-ui, sans-serif;
+  line-height: 1;
+}
+
+.item .ask {
+  margin: 0;
+  font-size: 15pt;
+  font-weight: 700;
+}
+
+.item .cue {
+  margin: 0.6mm 0 0;
+  font-size: 9pt;
+  font-style: italic;
+  color: #333;
+}
+
+.item .line {
+  min-height: 9.5mm;
+  margin-top: 1mm;
+}
+
+.pics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4mm;
+  font-size: 10.5pt;
+}
+
+.pics-table th,
+.pics-table td {
+  padding: 1.5mm 2mm;
+  border-bottom: 1px solid #ccc;
+  text-align: left;
+}
+
+.item .cue {
+  display: none;
+}
+
+.xmark {
+  position: absolute;
+  left: -2mm;
+  bottom: -2mm;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 8mm;
+  height: 8mm;
+  border-radius: 50%;
+  background: #d62828;
+  color: #fff;
+  font: 800 12pt Inter, system-ui, sans-serif;
+  line-height: 1;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.part .note { margin: 1mm 0 2mm; font-size: 8.5pt; font-style: italic; color: #555; }

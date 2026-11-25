@@ -24,6 +24,8 @@
   let bankSlides = {};
   /** Saved recordings he skipped or deleted on this card, so they are not put back. */
   let dismissedNoteRecordings = new Set();
+  /** Slides where he cleared the auto-suggested note. */
+  let dismissedBankSlots = new Set();
 
   const DRAFT_MS = 1500;
 
@@ -107,6 +109,7 @@
           teacherUsername: session.username,
           submissionId: submission.id,
           comments: workingComments,
+          dismissedBankSlots: [...dismissedBankSlots],
           markReviewed: false,
         }),
       });
@@ -708,7 +711,7 @@
     if (noteInput) {
       const saved = bankRepliesForSlide(unit.slideIndex);
       /* Start from the reply JD gave last time; Done keeps it unless they edit. */
-      if (!String(teacherNote?.text || "").trim() && saved.length) {
+      if (!teacherNote && saved.length && !dismissedBankSlots.has(unit.slideIndex)) {
         const note = ensureTeacherNote(unit.slideIndex);
         note.text = saved[0].text;
         note.bankPrefill = true;
@@ -759,7 +762,18 @@
     if (!unit) return;
     flushActiveCardIntoComments();
 
-    /* Drop empty teacher notes created then abandoned */
+    /* Drop empty teacher notes created then abandoned.
+       A cleared suggestion must not be filled back in on the next open. */
+    const currentSlide = unit.slideIndex;
+    const currentNote = findTeacherNoteForSlide(currentSlide);
+    if (
+      currentNote &&
+      !String(currentNote.text || "").trim() &&
+      !currentNote.teacherRemarkMedia?.id &&
+      bankRepliesForSlide(currentSlide).length
+    ) {
+      dismissedBankSlots.add(currentSlide);
+    }
     workingComments = workingComments.filter((c) => {
       if (c.author !== "teacher") return true;
       return String(c.text || "").trim().length > 0 || c.teacherRemarkMedia?.id;
@@ -792,6 +806,7 @@
       focusSlideIndex: focus?.slideIndex,
       focusCommentId: focus?.commentId || null,
       initialComments: cloneComments(workingComments),
+      dismissedBankSlots: [...dismissedBankSlots],
     });
   }
 
@@ -816,6 +831,7 @@
           teacherUsername: session.username,
           submissionId: submission.id,
           comments: workingComments,
+          dismissedBankSlots: [...dismissedBankSlots],
           markReviewed: true,
         }),
       });
@@ -901,6 +917,7 @@
     queueIndex = 0;
     bankSlides = {};
     dismissedNoteRecordings = new Set();
+    dismissedBankSlots = new Set();
     setStatus("");
   }
 
@@ -983,6 +1000,11 @@
     }
 
     dismissedNoteRecordings = new Set();
+    dismissedBankSlots = new Set(
+      (Array.isArray(entry.dismissedBankSlots) ? entry.dismissedBankSlots : [])
+        .map((n) => Number(n))
+        .filter((n) => Number.isInteger(n) && n >= 0)
+    );
     bankSlides =
       entry.reviewStatus === "reviewed" ? {} : await loadAnswerBank(entry.assignmentId);
 

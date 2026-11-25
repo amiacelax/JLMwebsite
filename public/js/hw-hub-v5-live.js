@@ -114,7 +114,7 @@
     },
     curriculum: {
       username: "demo2",
-      displayName: "Demo3",
+      displayName: "Demo 3",
       role: "student",
       accountLabel: "curriculum",
       tier: "tier2",
@@ -201,17 +201,20 @@
       benm: 1,
       noahjorton: 1,
       baranymatthewjr: 1,
+      michael: 1,
+      regina: 1,
     };
     if (CHRISTIAN_CURRICULUM_USERS[user]) return true;
     return session.accountLabel === "curriculum";
   }
 
   /**
-   * Demo2 QuestTest (demoprem): same hub as Christian's current page,
-   * minus Prayer and Chapters. Other students only get it when listed here
-   * (Jen / nekobi moved over). Keep hw-hub-quests.js QUEST_PREVIEW_USERNAMES in step.
+   * Demo 2 hub: same pages as the Christian hub, no Prayer.
+   * Curriculum Overview stays inside Lessons. Jen stays on this hub without that.
+   * Keep hw-hub-quests.js QUEST_PREVIEW_USERNAMES in step.
    */
-  const STANDARD_HUB_USERS = new Set(["demoprem", "premdemo", "nekobi"]);
+  const DEMO2_HUB_USERS = new Set(["demoprem", "sgtjamjar", "faye"]);
+  const STANDARD_HUB_USERS = new Set(["demoprem", "premdemo", "nekobi", "sgtjamjar", "faye"]);
 
   function isDemo1StandardPreview() {
     if (isCurriculumAccount()) return false;
@@ -254,6 +257,8 @@
     const user = String(getActiveSession()?.username || "")
       .trim()
       .toLowerCase();
+    /* Demo 2 hub keeps Curriculum Overview inside Lessons. Jen stays without it. */
+    if (DEMO2_HUB_USERS.has(user)) return true;
     if (STANDARD_HUB_USERS.has(user)) return false;
     return isCurriculumAccount();
   }
@@ -268,8 +273,8 @@
     return "homework";
   }
 
-  /** Test accounts that get the Weekly Workouts tab next to Quest (demo1 = the 4-tab hub). */
-  const WORKOUT_TAB_USERS = new Set(["demo1", "demoprem"]);
+  /** Demo 1 (the 4-tab hub) gets the Weekly Workouts tab next to Quest. */
+  const WORKOUT_TAB_USERS = new Set(["demo1"]);
 
   function seesWorkoutsTab() {
     const user = String(getActiveSession()?.username || "")
@@ -286,7 +291,6 @@
       ids.push("notebook", "situations");
       if (seesPrayerTab()) ids.push("prayer");
       ids.push("core");
-      if (seesChaptersTab()) ids.push("chapters");
       ids.push("lessons");
       if (gamesAndCoursesEnabled()) ids.push("games");
       ids.push("week", "allcards");
@@ -496,7 +500,7 @@
 
   function curriculumUserKey(base) {
     const user = String(getActiveSession()?.username || "").toLowerCase();
-    if (!user || user === "demo2" || user === "curriculum") return base;
+    if (!user || user === "curriculum") return base;
     return base + ":" + user;
   }
 
@@ -586,27 +590,9 @@
   }
 
   function planWaitingCopy() {
-    const session = getActiveSession();
-    const tier = session?.tier || "";
-    const short =
-      tier === "tier1"
-        ? "Basic"
-        : tier === "tier2"
-          ? "Premium"
-          : tier === "tier3"
-            ? "Ultra"
-            : tier === "student_special"
-              ? "Student Special"
-              : String(global.HwAuth?.TIERS?.[tier]?.name || "Your").replace(
-                  /\s+Tier$/i,
-                  ""
-                ) || "Your";
     return {
-      title: short + " plan — waiting for JD",
-      desc:
-        "You\u2019re on the " +
-        short +
-        " plan. JD will send your homework here when it\u2019s ready — hang tight.",
+      title: "Waiting for homework",
+      desc: "JD will send it here when it\u2019s ready.",
     };
   }
 
@@ -621,6 +607,11 @@
     );
   }
 
+  function isTrialPracticeSheet(id) {
+    const key = String(id || "").trim().toLowerCase();
+    return key.startsWith("trial-") || key === "sheet-secret-hiragana";
+  }
+
   function readCatalogAssignmentId() {
     const session = getActiveSession();
     const user = String(session?.username || "").trim().toLowerCase();
@@ -631,9 +622,10 @@
       if (raw) {
         const cached = JSON.parse(raw);
         const id = cached?.data?.studentProfiles?.[user]?.currentHomeworkId;
-        if (id) return String(id).trim();
-        const mine = (cached?.data?.assignments || []).filter((entry) =>
-          (entry.students || []).includes(user)
+        if (id && !isTrialPracticeSheet(id)) return String(id).trim();
+        const mine = (cached?.data?.assignments || []).filter(
+          (entry) =>
+            (entry.students || []).includes(user) && !isTrialPracticeSheet(entry.id)
         );
         if (mine.length === 1) return String(mine[0].id || "").trim();
       }
@@ -651,11 +643,6 @@
       /* ignore */
     }
 
-    const trialHw = global.HwAuth?.curriculumTrialHomeworkId?.(session);
-    if (trialHw) return trialHw;
-    if (global.HwAuth?.isNoahCurriculumOpen?.(session)) return "sheet-secret-hiragana";
-    if (user === "christian") return "sheet-secret-hiragana";
-    if (user === "demo2" || user === "curriculum") return "trial-advanced-notoki";
     return "";
   }
 
@@ -974,6 +961,7 @@
       notifs: "notebook",
     };
     const mapped = aliases[key] || key;
+    if (mapped === "chapters") return "lessons";
     if (usesCurriculumHub() && mapped === "workouts") return "notebook";
     return hubTabIds().includes(mapped) ? mapped : defaultHubTab();
   }
@@ -1299,6 +1287,7 @@
 
     document.body.classList.toggle("hw-hub-v5-quest-only", questOnly);
 
+    if (activeTab !== "notebook") document.body.classList.remove("hw-ex-focus");
     const onHomework = !questOnly && activeTab === "homework";
     homeworkPanel?.classList.toggle("is-active", onHomework);
     if (questOnly || !onHomework) homeworkPanel?.setAttribute("hidden", "");
@@ -1372,7 +1361,18 @@
     });
     const bar = document.getElementById("hw-toolbar-bar");
     if (bar) {
-      host.appendChild(bar);
+      /* Daily Exercise CSS paints every button inside the textbook. Keep the
+         HW pill as a sibling so it stays the homework toolbar. */
+      if (host.id === "hw-curriculum-textbook") {
+        const panel = document.getElementById("hw-v5-panel-notebook");
+        const actions = document.getElementById("hw-ex-actions");
+        const anchor = actions && panel && panel.contains(actions) ? actions : host;
+        if (panel && anchor) anchor.after(bar);
+        else if (panel) panel.appendChild(bar);
+        else host.after(bar);
+      } else {
+        host.appendChild(bar);
+      }
       bar.hidden = false;
     }
     return bar;
@@ -1416,8 +1416,8 @@
       return;
     }
 
-    /* Demo Daily Exercise keeps the page itself. The glass / cloud / focus bar stays off it. */
-    if (tab === "notebook" && isHubDemoUser()) {
+    /* Chapters stays clear. To-do and Daily Exercise both keep the pill. */
+    if (tab === "chapters") {
       document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
       const bar = document.getElementById("hw-toolbar-bar");
       if (bar) bar.hidden = true;
@@ -1447,11 +1447,7 @@
           document.getElementById("hw-v5-panel-notebook"))) ||
       (tab === "core" &&
         (document.querySelector("#hw-v5-panel-core .hw-core-page") ||
-          document.getElementById("hw-v5-panel-core"))) ||
-      (tab === "chapters" &&
-        seesChaptersTab() &&
-        (document.querySelector("#hw-v5-panel-chapters .hw-chapters") ||
-          document.getElementById("hw-v5-panel-chapters")));
+          document.getElementById("hw-v5-panel-core")));
 
     if (!host) {
       document.body.classList.remove("hw-hub-content-toolbar", "hw-hub-content-toolbar--sheet");
@@ -1515,6 +1511,12 @@
       });
     }
     document.body.classList.add("hw-prayer-focus");
+    const phone =
+      window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
+    if (phone) {
+      global.HwStudentToolbar?.sync?.();
+      return;
+    }
     try {
       Promise.resolve(document.documentElement.requestFullscreen?.())
         .then(() => {
@@ -2178,23 +2180,34 @@
     document.addEventListener(
       "pointerdown",
       (ev) => {
+        if (ev.isPrimary === false) {
+          if (g && g.state === "drag" && g.ok) swipeCleanup(g);
+          g = null;
+          return;
+        }
         if (g || swipeBusy || accountMode || !phoneTabSlides()) return;
-        if (ev.pointerType === "mouse" || ev.isPrimary === false) return;
+        if (ev.pointerType === "mouse") return;
         if (ev.clientX < 28) return;
         if (document.body.classList.contains("is-modal-open")) return;
         const t = ev.target;
         if (!t || !t.closest) return;
-        const inTabs = !!t.closest(".hw-hub-v5-tabs-wrap");
+        const inTabs = !!t.closest(".hw-hub-v5-tabs");
         const inPage = !inTabs && !!t.closest(".hw-hub-v5-panels");
         if (!inTabs && !inPage) return;
-        if (inTabs && !document.body.classList.contains("hw-tab-slides")) return;
-        if (inPage && !document.body.classList.contains("hw-page-swipe")) return;
+        if (!document.body.classList.contains("hw-page-swipe")) return;
         if (t.closest(SWIPE_BLOCK)) return;
-        const stop = inTabs ? t.closest(".hw-hub-v5-tabs-wrap") : document.getElementById("hw-v5-app");
+        const stop = document.getElementById("hw-v5-app");
         if (swipeScrollsSideways(t, stop)) return;
+        if (inTabs) {
+          try {
+            t.closest(".hw-hub-v5-tabs")?.setPointerCapture?.(ev.pointerId);
+          } catch (_) {
+            /* buttons still get the move events */
+          }
+        }
         g = {
           id: ev.pointerId,
-          mode: inTabs ? "tabs" : "page",
+          mode: "page",
           sx: ev.clientX,
           sy: ev.clientY,
           lastX: ev.clientX,
@@ -2781,13 +2794,38 @@
     card.hidden = true;
     card.setAttribute("aria-labelledby", "hw-v5-plan-waiting-title");
     card.innerHTML =
+      '<div class="hw-games-pixel-scene hw-hub-v5-plan-waiting__invader" aria-hidden="true">' +
+      '<svg class="hw-games-pixel-art" viewBox="0 0 80 52" role="presentation" focusable="false">' +
+      '<g class="hw-games-pixel-stars">' +
+      '<rect x="6" y="4" width="2" height="2" rx="0.5"/>' +
+      '<rect x="58" y="8" width="2" height="2" rx="0.5"/>' +
+      '<rect x="72" y="18" width="2" height="2" rx="0.5"/>' +
+      '<rect x="12" y="22" width="2" height="2" rx="0.5"/>' +
+      '<rect x="68" y="34" width="2" height="2" rx="0.5"/>' +
+      "</g>" +
+      '<g class="hw-games-pixel-invader">' +
+      '<rect x="32" y="6" width="4" height="4"/><rect x="36" y="6" width="4" height="4"/><rect x="40" y="6" width="4" height="4"/><rect x="44" y="6" width="4" height="4"/><rect x="48" y="6" width="4" height="4"/>' +
+      '<rect x="28" y="10" width="4" height="4"/><rect x="32" y="10" width="4" height="4"/><rect x="36" y="10" width="4" height="4"/><rect x="40" y="10" width="4" height="4"/><rect x="44" y="10" width="4" height="4"/><rect x="48" y="10" width="4" height="4"/><rect x="52" y="10" width="4" height="4"/>' +
+      '<rect x="24" y="14" width="4" height="4"/><rect x="28" y="14" width="4" height="4"/><rect x="32" y="14" width="4" height="4"/><rect x="36" y="14" width="4" height="4"/><rect x="40" y="14" width="4" height="4"/><rect x="44" y="14" width="4" height="4"/><rect x="48" y="14" width="4" height="4"/><rect x="52" y="14" width="4" height="4"/><rect x="56" y="14" width="4" height="4"/>' +
+      '<rect x="24" y="18" width="4" height="4"/><rect x="28" y="18" width="4" height="4"/><rect x="32" y="18" width="4" height="4"/><rect x="36" y="18" width="4" height="4"/><rect x="40" y="18" width="4" height="4"/><rect x="44" y="18" width="4" height="4"/><rect x="48" y="18" width="4" height="4"/><rect x="52" y="18" width="4" height="4"/><rect x="56" y="18" width="4" height="4"/>' +
+      '<rect x="28" y="22" width="4" height="4"/><rect x="32" y="22" width="4" height="4"/><rect x="36" y="22" width="4" height="4"/><rect x="40" y="22" width="4" height="4"/><rect x="44" y="22" width="4" height="4"/><rect x="48" y="22" width="4" height="4"/><rect x="52" y="22" width="4" height="4"/>' +
+      '<rect x="28" y="26" width="4" height="4"/><rect x="52" y="26" width="4" height="4"/>' +
+      '<rect x="24" y="30" width="4" height="4"/><rect x="36" y="30" width="4" height="4"/><rect x="48" y="30" width="4" height="4"/><rect x="56" y="30" width="4" height="4"/>' +
+      "</g>" +
+      '<g class="hw-games-pixel-missiles">' +
+      '<rect class="hw-games-pixel-missile hw-games-pixel-missile--1" x="37" y="34" width="2" height="8"/>' +
+      '<rect class="hw-games-pixel-missile hw-games-pixel-missile--2" x="43" y="36" width="2" height="8"/>' +
+      '<rect class="hw-games-pixel-missile hw-games-pixel-missile--3" x="49" y="34" width="2" height="8"/>' +
+      "</g></svg></div>" +
       '<div class="hw-hub-v5-pending hw-hub-v5-pending--plan" id="hw-v5-plan-waiting-note">' +
       '<p class="hw-hub-v5-pending__line">' +
       '<span class="hw-hub-v5-pending__pulse" aria-hidden="true"></span>' +
-      '<strong id="hw-v5-plan-waiting-title">Waiting for JD</strong></p>' +
+      '<strong id="hw-v5-plan-waiting-title">Waiting for homework</strong></p>' +
       '<p class="hw-hub-v5-pending__sub" id="hw-v5-plan-waiting-desc">' +
-      "Your plan is active. JD will send your first homework here when it\u2019s ready." +
-      "</p></div>";
+      "JD will send it here when it\u2019s ready." +
+      "</p>" +
+      '<a class="btn btn--primary hw-hub-v5-plan-waiting__play" href="/game/lantern-hunt/">Play Lantern Kanji Hunt</a>' +
+      "</div>";
     return card;
   }
 
@@ -3251,7 +3289,7 @@
   }
 
   /* Full Quizlet core list. The word changes with the local 5:00 a.m. day. */
-  const CORE_LIST_URL = "/preview/you-need-this-japanese/core-list.json?v=20261021-1pun";
+  const CORE_LIST_URL = "/preview/you-need-this-japanese/core-list.json?v=20261105-furi";
   const CORE_SAYS_URL = "/preview/you-need-this-japanese/core-says.json";
   let coreCards = [];
   let coreSays = [];
@@ -3335,7 +3373,7 @@
         ["The Repeat Rule", "No need to think. Just repeat the question and make a minor change."],
         ["The Katakana Rule", "Don't know it in Japanese? Say it in English in your best Japanese accent."],
         ["Talk now, worry later", "Mistakes are good and help you learn faster."],
-        ["One way to say", "Sounding smart is nice, but being humble takes"],
+        ["Use the tools in your toolbox", "Sounding smart is nice, but being humble takes"],
       ],
     },
     {
@@ -3496,48 +3534,56 @@
     return "";
   }
 
-  /* The card reading is the whole word (乗る = のる). Kana already in the word is okurigana, so it is not furigana. 乗る / のる → 乗 + の, then る. Never のる on top of 乗る. */
+  /* The card reading is the whole word (乗る = のる). Kana already in the word is okurigana, so it is not furigana. 乗る / のる → 乗 + の, then る. Never のる on top of 乗る. 々 counts as kanji. A number+kanji word (2分, 1日) gets one reading over the whole word. */
   function furiganaPieces(word, reading) {
     const value = String(word || "");
     const yomi = String(reading || "").replace(/\s+/g, "");
-    if (!yomi || !/[\u4E00-\u9FFF]/.test(value) || /^[\u30A0-\u30FF\u30FC]+$/.test(yomi)) {
+    const kanji = /[\u4E00-\u9FFF\u3005]/;
+    if (!yomi || !kanji.test(value) || /^[\u30A0-\u30FF\u30FC]+$/.test(yomi)) {
       return [{ text: value, rt: "" }];
     }
-    const groups = value.match(/[\u4E00-\u9FFF]+|[^\u4E00-\u9FFF]+/g) || [value];
+    if (/^[0-9０-９]+[\u4E00-\u9FFF\u3005]+$/.test(value)) {
+      return [{ text: value, rt: yomi }];
+    }
+    const groups = value.match(/[\u4E00-\u9FFF\u3005]+|[^\u4E00-\u9FFF\u3005]+/g) || [value];
     let rest = yomi;
-    return groups.map((group, index) => {
-      if (!/[\u4E00-\u9FFF]/.test(group)) {
+    const pieces = groups.map((group, index) => {
+      if (!kanji.test(group)) {
         if (rest.startsWith(group)) rest = rest.slice(group.length);
         return { text: group, rt: "" };
       }
       let rt = rest;
       const nextKana = groups
         .slice(index + 1)
-        .find((part) => /^[\u3040-\u309F\u30A0-\u30FF]+$/.test(part));
+        .find((part) => /^[\u3040-\u309F\u30A0-\u30FF\u30FC]+$/.test(part));
       if (!nextKana) {
         rest = "";
       } else {
-        const at = rest.indexOf(nextKana);
+        let at = rest.indexOf(nextKana);
+        if (at === 0) {
+          const last = rest.lastIndexOf(nextKana);
+          at = last > 0 ? last : -1;
+        }
         if (at > 0) {
           rt = rest.slice(0, at);
           rest = rest.slice(at);
-        } else if (at === 0) {
-          rt = "";
         } else {
           rest = "";
         }
       }
       return { text: group, rt: rt };
     });
+    if (pieces.some((piece) => kanji.test(piece.text) && !piece.rt)) {
+      return [{ text: value, rt: yomi }];
+    }
+    return pieces;
   }
 
-  function furiMarkup(word, reading) {
+  function furiInner(word, reading) {
     const pieces = furiganaPieces(word, reading);
-    if (!pieces.some((piece) => piece.rt)) return "<b class=\"hw-word-write\">" + escapeHtml(word) + "</b>";
-    return (
-      '<b class="hw-word-write">' +
-      pieces
-        .map((piece) => {
+    if (!pieces.some((piece) => piece.rt)) return escapeHtml(word);
+    return pieces
+      .map((piece) => {
         if (!piece.rt) return escapeHtml(piece.text);
         return (
           '<span class="hw-furi">' +
@@ -3547,9 +3593,11 @@
           "</i></span>"
         );
       })
-      .join("") +
-    "</b>"
-    );
+      .join("");
+  }
+
+  function furiMarkup(word, reading) {
+    return '<b class="hw-word-write">' + furiInner(word, reading) + "</b>";
   }
 
   function kanjiRuby(text, reading) {
@@ -3834,18 +3882,26 @@
       .map((marked, index) => chipHtml(marked, index, part.giftPieces ? "verb" : "", false))
       .concat((part.giftPieces || []).map((marked, index) => chipHtml(marked, index, "gift", true)))
       .join("");
-    const before = part.before
-      ? '<span class="hw-prayer-part__fixed">' + escapeHtml(part.before) + "</span>"
+    const plainMarked = (marked) => String(marked || "").replace(/\{[^{}]+\}/g, "");
+    const beforePlain = plainMarked(part.before);
+    const afterPlain = plainMarked(part.after);
+    const before = beforePlain
+      ? '<span class="hw-prayer-part__fixed">' + sitRubyHtml(part.before) + "</span>"
       : "";
-    const after = part.after
-      ? '<span class="hw-prayer-part__fixed">' + escapeHtml(part.after) + "</span>"
+    const after = afterPlain
+      ? '<span class="hw-prayer-part__fixed">' + sitRubyHtml(part.after) + "</span>"
       : "";
-    const beforeAttr = part.before ? ' data-before="' + escapeHtml(part.before) + '"' : "";
-    const afterAttr = part.after ? ' data-after="' + escapeHtml(part.after) + '"' : "";
+    const beforeAttr = beforePlain ? ' data-before="' + escapeHtml(beforePlain) + '"' : "";
+    const afterAttr = afterPlain ? ' data-after="' + escapeHtml(afterPlain) + '"' : "";
+    const afterMarkAttr =
+      part.after && part.after !== afterPlain
+        ? ' data-after-mark="' + escapeHtml(part.after) + '"'
+        : "";
     return (
       '<section class="hw-prayer-part"' +
       beforeAttr +
       afterAttr +
+      afterMarkAttr +
       (part.role ? ' data-prayer-role="' + escapeHtml(part.role) + '"' : "") +
       (part.hidden ? " hidden" : "") +
       ">" +
@@ -3913,7 +3969,7 @@
           "家{か}族{ぞく}",
           "病{びょう}気{き}の人{ひと}",
         ],
-        after: "を助けてください。",
+        after: "を助{たす}けてください。",
       },
       {
         label: "Closing the prayer",
@@ -4096,7 +4152,10 @@
         if (part.getAttribute("data-prayer-role") === "thankful" && giving()) {
           shown = shownPiece(part, giftValue(part)) + "を" + shown;
         }
-        return escapeHtml(part.dataset.before || "") + shown + escapeHtml(part.dataset.after || "");
+        const afterHtml = part.dataset.afterMark
+          ? sitRubyHtml(part.dataset.afterMark)
+          : escapeHtml(part.dataset.after || "");
+        return escapeHtml(part.dataset.before || "") + shown + afterHtml;
       });
       lines.push("アーメン");
       linesHost.innerHTML = lines.map((line) => "<p>" + line + "</p>").join("");
@@ -4318,14 +4377,37 @@ function politeClause(raw) {
     const plain = (hit && hit.plain) || (word === "大変" ? "今日、本当に大変だった。" : "");
     const kind = (hit && hit.kind) || (word === "大変" ? "na" : "");
     if (!plain) return { kind: "", plain: "", polite: "" };
-    return { kind: kind, plain: plain, polite: politeFromPlain(plain) };
+    const written = hit && String(hit.polite || "").trim();
+    return { kind: kind, plain: plain, polite: written || politeFromPlain(plain) };
   }
 
   function coreWordTitleHtml(item) {
     const word = (item && item.word) || "";
     const reading = (item && item.reading) || "";
     if (!word) return "";
-    if (reading && /[\u4e00-\u9fff]/.test(word)) return furiMarkup(word, reading);
+    if (item.pieces && item.pieces.length) {
+      return (
+        '<b class="hw-word-write">' +
+        item.pieces
+          .map((piece) =>
+            piece.reading ? furiInner(piece.text, piece.reading) : escapeHtml(piece.text)
+          )
+          .join("") +
+        "</b>"
+      );
+    }
+    /* ～とき / ～時 is one card. The kanji 時 is the same word as the hiragana already on the line. */
+    if (!reading && word.includes("時") && word.includes("とき")) {
+      return (
+        '<b class="hw-word-write">' +
+        word
+          .split("時")
+          .map((part) => escapeHtml(part))
+          .join('<span class="hw-furi">時<i>とき</i></span>') +
+        "</b>"
+      );
+    }
+    if (reading && /[\u4e00-\u9fff\u3005]/.test(word)) return furiMarkup(word, reading);
     return word ? "<b>" + escapeHtml(word) + "</b>" : "";
   }
 
@@ -4393,8 +4475,6 @@ function politeClause(raw) {
     }).join("");
     return (
       '<section class="hw-chapters">' +
-      "<h2>Curriculum Overview</h2>" +
-      '<p class="hw-ch-note">Click a number. Only that chapter is shown.</p>' +
       '<div class="hw-ch-nums">' +
       nums +
       '</div><div data-chapter-body></div></section>'
@@ -4422,18 +4502,33 @@ function politeClause(raw) {
 
   function coreWordParts(card) {
     const raw = String((card && card.jp) || "").trim();
+    let en = String((card && card.en) || "").trim();
+    const short = en.split(" · ")[0].trim();
+    if (short) en = short;
+    if (raw.includes("一番好き")) {
+      return {
+        jp: raw,
+        word: "一番好き",
+        reading: "いちばん",
+        en: en,
+        pieces: [
+          { text: "一番", reading: "いちばん" },
+          { text: "好", reading: "す" },
+          { text: "き", reading: "" },
+        ],
+      };
+    }
     const matched = raw.match(/^([^（(]+)[（(]([^）)]+)[）)]/);
     let word = raw;
     let reading = "";
     if (matched) {
       word = matched[1].trim();
       reading = matched[2].trim();
+    } else if (raw.includes("時") && raw.includes("とき")) {
+      word = raw;
     } else {
       word = raw.split(/\s+/)[0] || raw;
     }
-    let en = String((card && card.en) || "").trim();
-    const short = en.split(" · ")[0].trim();
-    if (short) en = short;
     return { jp: raw || word, word: word, reading: reading, en: en };
   }
 
@@ -4447,9 +4542,7 @@ function politeClause(raw) {
   }
 
   function wordChipInner(item) {
-    const word = item.word || "";
-    const reading = item.reading || "";
-    const label = word ? furiMarkup(word, reading) : "";
+    const label = coreWordTitleHtml(item);
     return label + (item.en ? " <span>" + escapeHtml(item.en) + "</span>" : "");
   }
 
@@ -4489,7 +4582,7 @@ function politeClause(raw) {
     const row = document.querySelector('#hw-v5-panel-today [data-task="core"]');
     if (!row) return;
     const btn = row.querySelector(".hw-today__go");
-    if (btn) btn.innerHTML = "Word of the Day: " + kanjiRuby(item.word, item.reading);
+    if (btn) btn.innerHTML = "Word of the Day: " + coreWordTitleHtml(item);
     const box = row.querySelector("input");
     if (box) box.setAttribute("aria-label", "Done: Word of the Day: " + item.word);
   }
@@ -4659,20 +4752,7 @@ function politeClause(raw) {
       section.id = "hw-curriculum-week";
       below.appendChild(wrapBelowPanel("hw-v5-panel-week", "week", "hw-v5-tab-week", section));
     }
-    let chapters = document.getElementById("hw-v5-panel-chapters");
-    if (!seesChaptersTab()) {
-      chapters?.remove();
-    } else if (!chapters) {
-      const section = mountPanel("hw-v5-panel-chapters", "chapters", chaptersMarkup(), (root) => {
-        root.addEventListener("click", (ev) => {
-          const btn = ev.target.closest("[data-chapter]");
-          if (!btn || !root.contains(btn)) return;
-          writeStorage(curriculumUserKey("jlm-hw-curriculum-chapter"), btn.getAttribute("data-chapter") || "0");
-          paintCurriculumChapter(root);
-        });
-      });
-      paintCurriculumChapter(section);
-    }
+    mountLessonsChapters();
     paintWordPlay();
   }
 
@@ -4755,7 +4835,10 @@ function politeClause(raw) {
       '<span class="hw-sit-flip__face hw-sit-flip__face--jp">' +
       '<img src="' + escapeHtml(image) + '" alt="">' +
       sitReadingHtml(card[1], card[2]) +
-      "</span>" +
+      '<span class="hw-sit-under-en">' +
+      '<span class="hw-sit-flip__title">' + escapeHtml(card[3]) + "</span>" +
+      '<span class="hw-sit-flip__text">' + escapeHtml(card[4]) + "</span>" +
+      "</span></span>" +
       '<span class="hw-sit-flip__face hw-sit-flip__face--en">' +
       '<img src="' + escapeHtml(image) + '" alt="">' +
       '<span class="hw-sit-flip__title">' + escapeHtml(card[3]) + "</span>" +
@@ -4787,6 +4870,7 @@ function politeClause(raw) {
       }
       const card = ev.target.closest(".hw-sit-flip");
       if (!card || !section.contains(card)) return;
+      if (window.matchMedia("(max-width: 820px)").matches) return;
       if (
         document.querySelector(".hw-hc-armed") &&
         ev.target.closest(".hw-sit-flip__face--jp")
@@ -5198,6 +5282,75 @@ function politeClause(raw) {
     return panel;
   }
 
+  function setLessonCurriculumOpen(open) {
+    const stack = document.getElementById("hw-v5-lessons-stack");
+    const chapters = stack?.querySelector(":scope > .hw-chapters");
+    const btn = document.getElementById("hw-lesson-curriculum");
+    const body = document.getElementById("hw-v5-lesson-body");
+    const panel = document.getElementById("hw-v5-panel-lessons");
+    const promo = stack?.querySelector(".hw-hub-v5-lessons-promo");
+    const playlist = document.getElementById("hw-lesson-playlist");
+    if (btn) {
+      btn.textContent = open ? "Lessons" : "Curriculum Overview";
+      btn.setAttribute("aria-pressed", open ? "true" : "false");
+    }
+    if (chapters) chapters.hidden = !open;
+    if (body) body.hidden = open ? true : body.dataset.promoHidden === "1";
+    if (promo) {
+      if (open) {
+        if (!promo.hidden) promo.dataset.restore = "1";
+        promo.hidden = true;
+      } else if (promo.dataset.restore === "1") {
+        promo.hidden = false;
+        delete promo.dataset.restore;
+      }
+    }
+    panel?.classList.toggle("is-curriculum-open", !!open && !!chapters);
+    if (playlist) {
+      if (open) {
+        if (!playlist.hidden) playlist.dataset.restore = "1";
+        playlist.hidden = true;
+      } else if (playlist.dataset.restore === "1") {
+        playlist.hidden = false;
+        delete playlist.dataset.restore;
+      }
+    }
+  }
+
+  function mountLessonsChapters() {
+    document.getElementById("hw-v5-panel-chapters")?.remove();
+    const stack = document.getElementById("hw-v5-lessons-stack");
+    if (!stack || !seesChaptersTab()) {
+      stack?.querySelector(":scope > .hw-chapters")?.remove();
+      document.getElementById("hw-lesson-curriculum")?.remove();
+      document.getElementById("hw-v5-lesson-tabs")?.classList.remove("is-curriculum-switch");
+      setLessonCurriculumOpen(false);
+      return;
+    }
+    let section = stack.querySelector(":scope > .hw-chapters");
+    if (!section) {
+      const host = document.createElement("div");
+      host.innerHTML = chaptersMarkup();
+      section = host.firstElementChild;
+      section.hidden = true;
+      section.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-chapter]");
+        if (!btn || !section.contains(btn)) return;
+        writeStorage(curriculumUserKey("jlm-hw-curriculum-chapter"), btn.getAttribute("data-chapter") || "0");
+        paintCurriculumChapter(section);
+      });
+      stack.appendChild(section);
+      paintCurriculumChapter(section);
+    }
+    const saved = String(readStorage(hubTabStorageKey(), "") || "")
+      .trim()
+      .toLowerCase();
+    const panel = document.getElementById("hw-v5-panel-lessons");
+    if (saved === "chapters" || panel?.classList.contains("is-curriculum-open")) {
+      setLessonCurriculumOpen(true);
+    }
+  }
+
   function ensureLessonLinkPills(stack) {
     let tabs = document.getElementById("hw-v5-lesson-tabs");
     if (!tabs) {
@@ -5240,8 +5393,33 @@ function politeClause(raw) {
       "hw-lesson-playlist",
       "Lesson playlist"
     );
-    playlist.hidden = false;
-    tabs.replaceChildren(latest, playlist);
+    playlist.hidden = true;
+    latest.hidden = true;
+    const showCurriculum = seesChaptersTab();
+    let curriculum = null;
+    if (showCurriculum) {
+      const wasOpen = document.getElementById("hw-v5-panel-lessons")?.classList.contains("is-curriculum-open");
+      curriculum = makeLink(
+        "hw-lesson-curriculum",
+        "",
+        wasOpen ? "Lessons" : "Curriculum Overview"
+      );
+      curriculum.setAttribute("aria-pressed", wasOpen ? "true" : "false");
+    } else {
+      document.getElementById("hw-lesson-curriculum")?.remove();
+    }
+    tabs.classList.toggle("is-curriculum-switch", showCurriculum);
+    tabs.replaceChildren(...[curriculum, latest, playlist].filter(Boolean));
+    if (showCurriculum) tabs.hidden = false;
+    else if (!tabs.classList.contains("is-review-fallback")) tabs.hidden = true;
+    if (tabs.dataset.curriculumBound !== "1") {
+      tabs.dataset.curriculumBound = "1";
+      tabs.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("#hw-lesson-curriculum");
+        if (!btn || !tabs.contains(btn)) return;
+        setLessonCurriculumOpen(btn.getAttribute("aria-pressed") !== "true");
+      });
+    }
 
     /* Remove leftover nested lesson card UI. */
     stack.querySelectorAll(".hw-grid-lesson, .hw-hub-v5-lesson-pane, .hw-lesson-actions").forEach((el) => {

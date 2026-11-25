@@ -22,8 +22,6 @@
         {
           "id": "intro-onamae",
           "prompt": "お名前は？",
-          "typeIn": true,
-          "typeInLabel": "Type and record your answer",
           "recordLabel": "Record your answer",
           "audioUrl": "/api/hw-m/subvid-1789714021523-235sl5",
           "promptMediaId": "subvid-1789714021523-235sl5"
@@ -31,8 +29,6 @@
         {
           "id": "intro-nansai",
           "prompt": "何才ですか？",
-          "typeIn": true,
-          "typeInLabel": "Type and record your answer",
           "recordLabel": "Record your answer",
           "audioUrl": "/api/hw-m/subvid-1789714032825-aliwik",
           "promptMediaId": "subvid-1789714032825-aliwik"
@@ -40,8 +36,6 @@
         {
           "id": "intro-sumu",
           "prompt": "どこに住んでますか？",
-          "typeIn": true,
-          "typeInLabel": "Type and record your answer",
           "recordLabel": "Record your answer",
           "audioUrl": "/api/hw-m/subvid-1789714041715-s9zvqs",
           "promptMediaId": "subvid-1789714041715-s9zvqs"
@@ -49,8 +43,6 @@
         {
           "id": "intro-shigoto",
           "prompt": "お仕事は？",
-          "typeIn": true,
-          "typeInLabel": "Type and record your answer",
           "recordLabel": "Record your answer",
           "audioUrl": "/api/hw-m/subvid-1789714051931-wlgvwi",
           "promptMediaId": "subvid-1789714051931-wlgvwi"
@@ -58,8 +50,6 @@
         {
           "id": "intro-shumi",
           "prompt": "趣味はありますか？",
-          "typeIn": true,
-          "typeInLabel": "Type and record your answer",
           "recordLabel": "Record your answer",
           "audioUrl": "/api/hw-m/subvid-1789714058706-sleteu",
           "promptMediaId": "subvid-1789714058706-sleteu"

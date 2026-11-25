@@ -558,10 +558,93 @@
     if (host.querySelector(".hw-hub-v6-simple-links--websites")) return;
     const wrap = document.createElement("div");
     wrap.className = "hw-hub-v6-simple-links hw-hub-v6-simple-links--websites";
-    wrap.innerHTML =
-      '<a class="btn btn--ghost btn--sm" href="/preview/harris-notarization/" target="_blank" rel="noopener noreferrer">Harris Firm</a>' +
-      '<a class="btn btn--ghost btn--sm" href="/preview/jem-appraisals/" target="_blank" rel="noopener noreferrer">JEM Appraisals</a>' +
-      '<a class="btn btn--ghost btn--sm" href="/preview/jd-websites/" target="_blank" rel="noopener noreferrer">JD Website Builder</a>';
+    const siteGroups = [
+      ["Study", [
+        ["/preview/old-articles/index.html", "Old articles"],
+        ["/preview/core-shuwa/index.html", "手話"],
+        ["/preview/you-need-this-japanese/flashcards.html", "Flashcards"],
+        ["/preview/you-need-this-japanese/index.html", "Core Japanese"],
+        ["/preview/cj-test/look.html", "CJ test"],
+        ["/preview/hw-notes-deck/index.html", "HW notes deck"],
+        ["/preview/verse-parchment/index.html", "Verse parchment"],
+        ["/preview/music-eikou/index.html", "栄光 music"],
+      ]],
+      ["Situation cards", [
+        ["/preview/sit-cards-lesson.html", "Situation cards"],
+        ["/preview/sit-cards-deck/index.html", "Situation cards · deck"],
+        ["/preview/situation-card-blank.html", "Situation card blank"],
+        ["/preview/trial-cards/index.html", "Trial cards"],
+        ["/preview/sit-cards-lesson-ws.html", "Situation cards · English"],
+        ["/preview/sit-cards-lesson-jp.html", "Situation cards · 日本語"],
+      ]],
+      ["Courses", [
+        ["/preview/missionary-course/index.html", "Missionary course"],
+        ["/preview/missionary-curriculum/index.html", "Missionary curriculum"],
+        ["/preview/curriculum-week/index.html", "Curriculum textbook"],
+      ]],
+      ["Other", [
+        ["/business/index.html", "Sales / profit"],
+        ["/preview/onboarding-review/index.html", "Onboarding review"],
+        ["/preview/email-review/index.html", "Email review"],
+        ["/preview/article-crawl/index.html", "Article crawl"],
+        ["/preview/harris-notarization/index.html", "Harris Firm"],
+        ["/preview/jem-appraisals/index.html", "JEM Appraisals"],
+        ["/preview/jd-websites/index.html", "JD Website Builder"],
+      ]],
+    ];
+    function siteLink(pair) {
+      return (
+        '<a class="btn btn--ghost btn--sm" href="' +
+        pair[0] +
+        '" target="_blank" rel="noopener noreferrer">' +
+        pair[1] +
+        "</a>"
+      );
+    }
+    const pick =
+      '<label class="hw-site-pick"><span class="hw-site-pick__label">Open a site</span>' +
+      '<select aria-label="Open a site">' +
+      '<option value="">Choose…</option>' +
+      siteGroups
+        .map(function (group) {
+          return (
+            '<optgroup label="' +
+            group[0] +
+            '">' +
+            group[1]
+              .map(function (pair) {
+                return '<option value="' + pair[0] + '">' + pair[1] + "</option>";
+              })
+              .join("") +
+            "</optgroup>"
+          );
+        })
+        .join("") +
+      "</select></label>";
+    const cols =
+      '<div class="hw-site-cols">' +
+      siteGroups
+        .map(function (group) {
+          return (
+            '<section class="hw-site-col"><h3>' +
+            group[0] +
+            "</h3>" +
+            group[1].map(siteLink).join("") +
+            "</section>"
+          );
+        })
+        .join("") +
+      "</div>";
+    wrap.innerHTML = pick + cols;
+    const select = wrap.querySelector("select");
+    if (select) {
+      select.addEventListener("change", function () {
+        const url = select.value;
+        if (!url) return;
+        window.open(url, "_blank", "noopener");
+        select.value = "";
+      });
+    }
     host.appendChild(wrap);
   }
 
@@ -1605,7 +1688,7 @@
   function subscriberAccounts() {
     const list = global.HwStudentList?.getStudentsSync?.() || [];
     return list
-      .filter((row) => row?.subscriber === true && row.username)
+      .filter((row) => row?.username)
       .slice()
       .sort((a, b) => {
         const left = global.HwStudentList?.studentOptionLabel?.(a) || a.displayName || a.username;
@@ -1653,7 +1736,7 @@
     if (!students.length) {
       const empty = document.createElement("p");
       empty.className = "hw-hub-v6-finished__empty";
-      empty.textContent = "No subscribers yet.";
+      empty.textContent = "No students on the list.";
       panel.appendChild(empty);
       return;
     }

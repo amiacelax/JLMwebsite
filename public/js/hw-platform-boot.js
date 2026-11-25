@@ -7,6 +7,22 @@
 (function (global) {
   "use strict";
 
+  /* Role is chosen from the session. A submission link (?tr=) is the teacher
+     review, so drop view-as before that choice. Same for a leftover ?as=
+     in the few seconds after Back to teacher hub. */
+  try {
+    const bootQs = new URLSearchParams(global.location.search);
+    const bootTr = String(bootQs.get("tr") || "").trim();
+    const bootAs = String(bootQs.get("as") || "").trim();
+    if (bootTr && global.HwAuth?.exitViewAsStudent) {
+      global.HwAuth.exitViewAsStudent();
+    } else if (bootAs && global.HwAuth?.recentlyLeftViewAs?.()) {
+      global.HwAuth.exitViewAsStudent?.();
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
   const session = global.HwAuth?.getSession?.();
   if (!session) return;
 
@@ -22,11 +38,11 @@
     wsCategories: "6",
     builder: "20260918-typein-label",
     editor: "20261005-mru5",
-    studentList: "20260929-alpha",
+    studentList: "20261116-fresh",
     ideas: "20260610",
     mistakeFeed: "20260674",
     submissions: "20260914-review",
-    flashcards: "20260928-noteslist-rec",
+    flashcards: "20261030-dismiss-notes",
     teacherMistakes: "20260675",
     studentMistakes: "20261014-off",
     promo: "20261013b",
@@ -37,14 +53,14 @@
     missionary: "10",
     checkout: "20261009-close",
     sachiko: "20260694",
-    quests: "22",
+    quests: "23",
     questPuzzle: "5",
     workoutsData: "6",
-    workouts: "13",
+    workouts: "14",
     localPeriod: "1",
-    hubV5: "294",
-    platform: "20261014-list",
-    hubV6: "44",
+    hubV5: "315",
+    platform: "20261123-lesson-search",
+    hubV6: "49",
     feedback: "11",
     glassDeck: "2",
   };
@@ -91,7 +107,7 @@
     "/js/hw-quest-puzzle.js?v=" + V.questPuzzle,
     "/js/hw-weekly-workouts-data.js?v=" + V.workoutsData,
     "/js/hw-hub-workouts.js?v=" + V.workouts,
-    "/js/hw-curriculum-textbook.js?v=38",
+    "/js/hw-curriculum-textbook.js?v=41",
   ];
 
   /** View-as needs the student picker on the teacher chrome. */

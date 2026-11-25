@@ -15,7 +15,7 @@
     const user = String(global.HwAuth?.getSession?.()?.username || "")
       .trim()
       .toLowerCase();
-    return user === "demo1" || user === "demoprem";
+    return user === "demo1";
   }
 
   function username() {

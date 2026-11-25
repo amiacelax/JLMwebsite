@@ -12,6 +12,39 @@
   const ACCOUNT_OVERRIDES_KEY = "jlm-hw-account-overrides";
   const PLATFORM_PATH = "/homework/platform.html";
   const LOGIN_PATH = "/homework.html";
+  /** Set when the teacher leaves view-as, so a leftover ?as= or Back cannot re-enter. */
+  const LEFT_VIEW_AS_KEY = "jlm-hw-left-view-as";
+  const LEFT_VIEW_AS_MS = 8000;
+
+  function markLeftViewAs() {
+    try {
+      sessionStorage.setItem(LEFT_VIEW_AS_KEY, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearLeftViewAs() {
+    try {
+      sessionStorage.removeItem(LEFT_VIEW_AS_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function recentlyLeftViewAs() {
+    try {
+      const t = Number(sessionStorage.getItem(LEFT_VIEW_AS_KEY) || 0);
+      if (!t) return false;
+      if (Date.now() - t > LEFT_VIEW_AS_MS) {
+        clearLeftViewAs();
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   const ACCOUNT_LABELS = {
     current_student: "Current Student",
@@ -136,7 +169,7 @@
     },
     demo2: {
       password: "demo",
-      displayName: "Demo3",
+      displayName: "Demo 3",
       role: "student",
       accountLabel: "curriculum",
       tier: "tier2",
@@ -241,6 +274,8 @@
     "benm", // Ben M
     "noahjorton", // Noah
     "baranymatthewjr", // Matt
+    "michael", // Michael Isome
+    "regina", // Regina Isome
   ]);
 
   function isChristianCurriculumUser(sessionOrUsername) {
@@ -604,7 +639,7 @@
     }
   }
 
-  function buildStudentViewSession(username) {
+  function buildStudentViewSession(username, allowUnknown) {
     const key = normalizeUsername(username);
     if (!key || !getTeacherSession()) return null;
     const account = ACCOUNTS[key];
@@ -629,7 +664,7 @@
 
     const fromList = global.HwStudentList?.getStudentsSync?.()?.find((s) => s.username === key);
     const viewAsActive = getViewAsStudent() === key;
-    if (!fromList && !viewAsActive) return null;
+    if (!fromList && !viewAsActive && !allowUnknown) return null;
 
     return enrichSession({
       username: key,
@@ -644,8 +679,9 @@
     });
   }
 
-  function setViewAsStudent(username) {
+  function setViewAsStudent(username, opts) {
     const key = normalizeUsername(username);
+    const fromLink = Boolean(opts && opts.fromLink);
     if (!getTeacherSession() && !sessionStorage.getItem(TEACHER_BACKUP_KEY)) {
       return { ok: false, error: "Teacher login required." };
     }
@@ -657,15 +693,17 @@
     }
     if (!key) {
       sessionStorage.removeItem(VIEW_AS_KEY);
+      markLeftViewAs();
       restoreTeacherBackup();
       return { ok: true, session: getTeacherSession() };
     }
-    if (!isStudentAccount(key)) {
+    if (!fromLink && !isStudentAccount(key)) {
       return { ok: false, error: "Unknown student account." };
     }
+    clearLeftViewAs();
     backupTeacherSession();
     sessionStorage.setItem(VIEW_AS_KEY, key);
-    const student = buildStudentViewSession(key);
+    const student = buildStudentViewSession(key, fromLink);
     return student ? { ok: true, session: student } : { ok: false, error: "Unknown student account." };
   }
 
@@ -677,6 +715,7 @@
     if (!getTeacherSession()) return { ok: false, error: "Teacher login required." };
     if (!key) {
       sessionStorage.removeItem(VIEW_AS_KEY);
+      markLeftViewAs();
       restoreTeacherBackup();
       return { ok: true, session: getTeacherSession() };
     }
@@ -689,13 +728,21 @@
     return setViewAsStudent(key);
   }
 
+  function openStudentFromLink(username) {
+    return setViewAsStudent(username, { fromLink: true });
+  }
+
   function clearViewAsStudent() {
+    const was = getViewAsStudent();
     sessionStorage.removeItem(VIEW_AS_KEY);
+    if (was) markLeftViewAs();
     restoreTeacherBackup();
   }
 
   function exitViewAsStudent() {
+    const was = getViewAsStudent();
     sessionStorage.removeItem(VIEW_AS_KEY);
+    if (was) markLeftViewAs();
     const teacher = restoreTeacherBackup() || getTeacherSession();
     return teacher;
   }
@@ -710,7 +757,7 @@
       if (teacher) {
         const viewAs = getViewAsStudent();
         if (viewAs) {
-          const student = buildStudentViewSession(viewAs);
+          const student = buildStudentViewSession(viewAs, true);
           if (student) return student;
         }
         return teacher;
@@ -997,6 +1044,7 @@
 
   function logout() {
     sessionStorage.removeItem(VIEW_AS_KEY);
+    clearLeftViewAs();
     sessionStorage.removeItem(TEACHER_BACKUP_KEY);
     sessionStorage.removeItem(TEACHER_BACKUP_REMEMBER_KEY);
     sessionStorage.removeItem(SESSION_KEY);
@@ -1100,8 +1148,11 @@
     isViewingAsStudent,
     setViewAsStudent,
     setViewAsStudentAsync,
+    openStudentFromLink,
     clearViewAsStudent,
     exitViewAsStudent,
+    recentlyLeftViewAs,
+    clearLeftViewAs,
     buildStudentViewSession,
     persistSession,
     setAccountOverride,

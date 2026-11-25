@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#1a2744">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,18 +17,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Josefin+Sans:wght@300;400;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css?v=20261021-n5once">
+  <link rel="stylesheet" href="/css/styles.css?v=20261102-cj-next">
   <link rel="stylesheet" href="/css/hw-hub-v3.css?v=15">
   <link rel="stylesheet" href="/css/hw-hub-v4.css?v=8">
   <link rel="stylesheet" href="/css/hw-magnifying-glass.css?v=101">
   <link rel="stylesheet" href="/css/hw-onboard.css?v=2">
-  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20260928-savedrec" data-hw-comments-css="1">
+  <link rel="stylesheet" href="/css/hw-homework-comments.css?v=20261102-cloud" data-hw-comments-css="1">
   <link rel="stylesheet" href="/css/hw-review-flashcards.css?v=20260928-savedrec">
   <link rel="stylesheet" href="/css/hw-glass-deck.css?v=20260813-glass">
   <link rel="stylesheet" href="/css/hw-missionary.css?v=2">
   <link rel="stylesheet" href="/css/hw-hub-fonts.css?v=2" data-hw-fonts="1">
-  <script src="/js/hw-auth.js?v=20261008-demo3"></script>
-  <script src="/js/hw-feature-flags.js?v=26"></script>
+  <script src="/js/hw-auth.js?v=20261105-mr"></script>
+  <script src="/js/hw-feature-flags.js?v=28"></script>
   <script>
     (function () {
       function loadStudentHandwritingFont() {
@@ -52,6 +52,30 @@
       if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
       else document.documentElement.setAttribute('data-theme', 'dark');
       HwAuth.requireAuth('/homework.html');
+      /* ?tr= is a submission review — leave view-as before this page picks a role.
+         A leftover ?as= right after Back to teacher hub must not walk back in. */
+      var hwSkipRoleBoot = false;
+      try {
+        var entryQs = new URLSearchParams(location.search);
+        var trId = String(entryQs.get('tr') || '').trim();
+        var asUser = String(entryQs.get('as') || '').trim();
+        if (trId && HwAuth.exitViewAsStudent) {
+          HwAuth.exitViewAsStudent();
+          if (asUser) {
+            entryQs.delete('as');
+            var trQs = entryQs.toString();
+            history.replaceState(null, '', location.pathname + (trQs ? '?' + trQs : '') + location.hash);
+          }
+        } else if (asUser && HwAuth.recentlyLeftViewAs && HwAuth.recentlyLeftViewAs()) {
+          hwSkipRoleBoot = true;
+          if (HwAuth.exitViewAsStudent) HwAuth.exitViewAsStudent();
+          entryQs.delete('as');
+          entryQs.delete('tr');
+          var homeQs = entryQs.toString();
+          location.replace(location.pathname + (homeQs ? '?' + homeQs : ''));
+        }
+      } catch (e0) { /* ignore */ }
+      if (hwSkipRoleBoot) return;
       var s = HwAuth.getSession();
       var teacher = HwAuth.getTeacherSession && HwAuth.getTeacherSession();
       var viewAs = HwAuth.isViewingAsStudent && HwAuth.isViewingAsStudent();
@@ -66,14 +90,14 @@
         }
       } catch (e) { /* ignore */ }
       /* Role CSS while parsing (sync) — avoids FOUC and skips unused sheets. */
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=303">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v5.css?v=319">');
       if (!pureTeacher) {
         document.documentElement.classList.add('hw-boot-pending');
         if (document.readyState === 'complete') loadStudentHandwritingFont();
         else window.addEventListener('load', loadStudentHandwritingFont, { once: true });
       }
       if (pureTeacher && window.HwFeatureFlags && HwFeatureFlags.hubV6 && HwFeatureFlags.hubV6()) {
-        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=24">');
+        document.write('<link rel="stylesheet" href="/css/hw-hub-v6.css?v=25">');
       }
     })();
   </script>
@@ -1396,23 +1420,23 @@
   <script src="/js/hw-video-inline.js?v=20260930-keep" defer></script>
   <script src="/js/hw-audio-inline.js?v=20261021-mic" defer></script>
   <script src="/js/hw-submit-format.js?v=20260805" defer></script>
-  <script src="/js/hw-worksheet.js?v=20261021-n5once" defer></script>
+  <script src="/js/hw-worksheet.js?v=20261103-focus-next" defer></script>
   <script src="/js/hw-star-block.js?v=20261002-gift" defer></script>
   <script src="/js/hw-mc-block.js?v=20260805-mc-fit" defer></script>
   <script src="/js/hw-furigana-auto.js?v=20260687" defer></script>
   <script src="/js/hw-mg-lexicon.js?v=23" defer></script>
   <script src="/js/hw-mg-lexicon-suggest.js?v=5" defer></script>
   <script src="/js/hw-worksheet-tools-layout.js?v=66" defer></script>
-  <script src="/js/hw-magnifying-glass.js?v=99" defer></script>
-  <script src="/js/hw-review-media.js?v=20260930-keep" defer></script>
-  <script src="/js/hw-homework-comments.js?v=118" defer></script>
+  <script src="/js/hw-magnifying-glass.js?v=100" defer></script>
+  <script src="/js/hw-review-media.js?v=20261030-reply" defer></script>
+  <script src="/js/hw-homework-comments.js?v=122" defer></script>
   <script src="/js/hw-toolbar-q-icons.js?v=5" defer></script>
-  <script src="/js/hw-student-toolbar.js?v=22" defer></script>
+  <script src="/js/hw-student-toolbar.js?v=23" defer></script>
   <script src="/js/hw-onboard.js?v=4" defer></script>
   <script src="/js/hw-next-update.js?v=6" defer></script>
   <script src="/js/hw-encoding.js?v=3" defer></script>
-  <script src="/js/hw-account.js?v=15" defer></script>
-  <script src="/js/hw-platform-boot.js?v=218" defer></script>
+  <script src="/js/hw-account.js?v=16" defer></script>
+  <script src="/js/hw-platform-boot.js?v=251" defer></script>
   <script>
     /* Back-forward cache can revive a half-old hub — force a clean load. */
     window.addEventListener("pageshow", function (e) {

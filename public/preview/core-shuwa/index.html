@@ -126,20 +126,106 @@
     .all-words .jump { margin-top: 0.5rem; }
     .foot { margin: 1rem 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
     .foot a { color: var(--day); }
+    .pillbar {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.35rem;
+      border: 1px solid var(--line); border-radius: 0.85rem;
+      background: color-mix(in srgb, #0e1524 70%, transparent);
+    }
+    .pillbar button {
+      flex: 1 1 auto; appearance: none; font: inherit; font-size: 0.82rem; font-weight: 600; line-height: 1.2;
+      color: var(--muted); background: transparent; cursor: pointer; text-align: center;
+      border: 1px solid transparent; border-radius: 0.55rem; padding: 0.5rem 0.7rem;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+    .pillbar button:hover, .pillbar button:focus-visible { color: var(--ink); border-color: rgba(255,255,255,0.14); outline: none; }
+    .pillbar button.is-on, .pillbar button[aria-selected="true"] {
+      color: #0b1220; background: var(--color-green); box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+    }
+    .tabs { margin: 0.4rem 0 0.9rem; }
+    .tabs button { font-size: 0.9rem; font-weight: 700; }
+    .tools { margin-top: 0.9rem; }
+    .tools__pop { display: none; margin-bottom: 0.5rem; }
+    .tools__pop.is-open { display: block; }
+    .tools__pop input[type="search"], .tools__pop select { width: 100%; }    .panel[hidden] { display: none; }
+    .s-pic {
+      display: grid; place-items: center;
+      min-height: 13rem; background: #fff; border-radius: 0.9rem; padding: 0.6rem;
+    }
+    .s-pic img { max-width: 100%; max-height: 16rem; object-fit: contain; }
+    .s-pic.is-empty { background: var(--bg-2); color: var(--muted); }
+    .s-jp { margin: 0.3rem 0 0.8rem; text-align: center; font-family: var(--jp); font-weight: 700; font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.7; -webkit-user-select: text; user-select: text; }
+    .s-q { margin: 0.8rem 0 0; text-align: center; color: var(--muted); font-family: var(--jp); font-size: 1.1rem; min-height: 1.6em; }
+    .s-frame { margin-top: 0; }
+    .s-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .s-q.is-hidden { visibility: hidden; }
+    .s-sec { margin: 0.2rem 0 0; text-align: center; color: var(--muted); font-size: 0.8rem; }
+    .s-note { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.85rem; }
+    .s-jp.is-hidden { visibility: hidden; }
+    .s-jp ruby rt { font-size: 0.45em; font-weight: 500; }
+    .s-word { cursor: pointer; border-radius: 0.35rem; padding: 0 0.12em; margin: 0 -0.12em; transition: background 0.15s ease, color 0.15s ease; }
+    .s-word:hover, .s-word:focus-visible { background: color-mix(in srgb, var(--day) 30%, transparent); outline: none; }
+    .s-word.is-on { background: var(--sun); color: #140c28; }
+    .s-jp.no-furi rt, .s-short.no-furi rt { visibility: hidden; }
+    .s-short { margin: -0.4rem 0 0.8rem; text-align: center; color: var(--muted); font-family: var(--jp); font-size: 1.15rem; line-height: 1.8; }
+    .s-short[hidden] { display: none; }
+    .s-need { background: color-mix(in srgb, var(--heart) 38%, transparent); border-radius: 0.28rem; box-shadow: inset 0 -0.12em 0 var(--heart); }
+    .s-add { width: 100%; margin-top: 0.15rem; background: var(--heart); color: #fff; border-color: transparent; }
+    .s-add[hidden] { display: none; }
+    .need-list { margin-top: 0.85rem; }
+    .need-list summary { cursor: pointer; color: var(--muted); font-weight: 650; }
+    .need-list .hint { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+    .need-words { list-style: none; margin: 0.45rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .need-words button {
+      font-family: var(--jp); font-weight: 700; color: var(--ink);
+      background: color-mix(in srgb, var(--heart) 28%, var(--bg-2));
+      border: 1px solid color-mix(in srgb, var(--heart) 55%, var(--line));
+      border-radius: 0.55rem; padding: 0.35rem 0.55rem;
+    }
+    .need-copy { margin-top: 0.55rem; }
+    .need-copy[hidden] { display: none; }
   </style>
 </head>
 <body>
   <div class="shell">
     <p class="brand"><a href="/preview/you-need-this-japanese/index.html">Japanese Language Mentor</a></p>
     <h1>Core Japanese 手話</h1>
-    <div class="row">
-      <input id="q" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search">
-      <select id="topic" aria-label="Topic"></select>
-      <button type="button" class="tool" id="hide-en">Hide English</button>
-      <button type="button" class="tool" id="show-blank">No video too</button>
-      <button type="button" class="tool" id="show-done">Memorized (0)</button>
+    <div class="pillbar tabs" role="tablist">
+      <button type="button" role="tab" id="tab-signs" aria-selected="true" data-tab="signs">手話</button>
+      <button type="button" role="tab" id="tab-sentences" aria-selected="false" data-tab="sentences">Sentences</button>
     </div>
+    <section class="panel" id="panel-sentences" hidden>
+      <div class="stage">
+        <p class="count" id="s-count"></p>
+        <div class="s-pic" id="s-pic"></div>
+        <div class="frame s-frame" id="s-frame" hidden></div>
+        <p class="s-q" id="s-q" lang="ja"></p>
+        <p class="s-jp" id="s-jp" lang="ja"></p>
+        <p class="s-short" id="s-short" lang="ja" hidden></p>
+        <button type="button" class="navbtn s-add" id="s-add" hidden>Add to the list</button>
+        <div class="nav">
+          <button type="button" class="navbtn" id="s-prev">Back</button>
+          <button type="button" class="navbtn primary" id="s-next">Next</button>
+        </div>
+      </div>
+      <div class="tools">
+        <div class="tools__pop" id="pop-chapter"><select id="s-chapter" aria-label="Chapter"></select></div>
+        <div class="tools__pop" id="pop-section"><select id="s-section" aria-label="Section"></select></div>
+        <div class="pillbar" role="toolbar" aria-label="Sentence options">
+          <button type="button" id="t-chapter">Chapter</button>
+          <button type="button" id="t-section">Section</button>
+          <button type="button" id="s-furi">Hide furigana</button>
+        </div>
+      </div>
+      <details class="need-list" id="need-list">
+        <summary id="need-sum">Need a video (0)</summary>
+        <p class="hint">Highlight a word that has no video, then tap Add. Tap a word here to take it off. Saved on this phone.</p>
+        <ul class="need-words" id="need-ul"></ul>
+        <button type="button" class="navbtn need-copy" id="need-copy" hidden>Copy list</button>
+      </details>
+    </section>
+    <section class="panel" id="panel-signs">
     <div class="stage">
+
       <p class="count" id="count"></p>
       <p class="jp" id="jp" lang="ja"></p>
       <p class="en" id="en"></p>
@@ -154,10 +240,17 @@
         <button type="button" class="navbtn primary" id="next">Next</button>
       </div>
     </div>
-    <details class="all-words" id="all-words">
-      <summary>All words</summary>
-      <ul class="jump" id="jump"></ul>
-    </details>
+    <div class="tools">
+      <div class="tools__pop" id="pop-search"><input id="q" type="search" placeholder="Search words" autocomplete="off" enterkeyhint="search"></div>
+      <div class="tools__pop" id="pop-topic"><select id="topic" aria-label="Topic"></select></div>
+      <div class="pillbar" role="toolbar" aria-label="Filters">
+        <button type="button" id="t-search">Search</button>
+        <button type="button" id="t-topic">Topics</button>
+        <button type="button" class="tool" id="hide-en">Hide English</button>
+        <button type="button" class="tool" id="show-blank">No video too</button>
+        <button type="button" class="tool" id="show-done">Memorized (0)</button>
+      </div>
+    </div>    </section>
   </div>
   <script>
     var words = [];
@@ -264,7 +357,6 @@
         empty.textContent = "Try another topic or search.";
         title.textContent = "";
         play("");
-        document.getElementById("jump").innerHTML = "";
         return;
       }
       count.textContent = (index + 1) + " / " + view.length + (showDone ? " memorized" : "");
@@ -288,19 +380,6 @@
         if (hideEn) title.textContent = "";
         else title.textContent = v.who === "short" ? "Short clip — he doesn’t have this one. " + v.title : v.title;
       }
-      var jump = document.getElementById("jump");
-      jump.innerHTML = "";
-      view.forEach(function (item, i) {
-        var li = document.createElement("li");
-        var b = document.createElement("button");
-        b.type = "button";
-        b.textContent = item.jp;
-        b.lang = "ja";
-        if (i === index) b.className = "is-on";
-        b.addEventListener("click", function () { index = i; show(); });
-        li.appendChild(b);
-        jump.appendChild(li);
-      });
       try { localStorage.setItem("core-shuwa-jp", w.jp); } catch (e) {}
     }
 
@@ -390,6 +469,400 @@
       .catch(function () {
         document.getElementById("jp").textContent = "Could not load the word list.";
       });
+    (function () {
+      function pop(btn, id, focusSel) {
+        document.getElementById(btn).addEventListener("click", function () {
+          var el = document.getElementById(id), open = !el.classList.contains("is-open");
+          el.classList.toggle("is-open", open);
+          this.classList.toggle("is-on", open);
+          if (open && focusSel) document.getElementById(focusSel).focus();
+        });
+      }
+      pop("t-search", "pop-search", "q");
+      pop("t-topic", "pop-topic", "topic");
+    })();
+  </script>
+  <script>
+    (function () {
+      var chapters = [], deck = [], pos = -1, furi = true, loaded = false, showVideo = false, curVid = null;
+      var $ = function (id) { return document.getElementById(id); };
+      var NEED_KEY = "core-shuwa-need";
+      var gaps = [];
+      var pendingText = "";
+      var adding = false;
+      try { gaps = JSON.parse(localStorage.getItem(NEED_KEY) || "[]") || []; } catch (e) {}
+      if (!Array.isArray(gaps)) gaps = [];
+      gaps = gaps.map(function (x) {
+        if (typeof x === "string") return { text: x, sentence: "" };
+        return x && x.text ? { text: String(x.text), sentence: String(x.sentence || "") } : null;
+      }).filter(Boolean);
+      function ruby(s) {
+        var esc = String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return esc.replace(/([\u4e00-\u9fff\u3005]+)\{([^}]+)\}/g, "<ruby>$1<rt>$2</rt></ruby>");
+      }
+      function plain(s) { return String(s).replace(/\{[^}]*\}/g, ""); }
+      function chapter() { return chapters[+$("s-chapter").value] || chapters[0]; }
+      function pool() {
+        var ch = chapter(), sec = $("s-section").value;
+        return ch ? ch.items.filter(function (it) { return !sec || it.section === sec; }) : [];
+      }
+      function reshuffle() {
+        deck = pool().slice();
+        for (var i = deck.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1)), t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+        }
+        pos = -1;
+      }
+      /* sentence words that have a sign video become clickable */
+      function keysOf(w) {
+        var keys = [];
+        String(w.jp).split(/[\u3000 ]*・[\u3000 ]*/).forEach(function (part) {
+          var h = part.split(/[（(]/)[0].replace(/[～〜\s]/g, "").trim();
+          if (!h) return;
+          if (w.topic === "Verbs" && h.length >= 2 && /[るうくぐすつぬぶむ]$/.test(h)) {
+            var stem = h.slice(0, -1);
+            if (stem.length >= 2 || /[\u4e00-\u9fff]/.test(stem)) keys.push(stem);
+          }
+          if (w.topic === "Adjectives" && h.length >= 3 && /い$/.test(h)) keys.push(h.slice(0, -1));
+          if (h.length >= 2 || /[\u4e00-\u9fff]/.test(h)) keys.push(h);
+        });
+        return keys;
+      }
+      function tokenize(s) {
+        var toks = [], re = /([\u4e00-\u9fff\u3005]+)\{([^}]+)\}|([\s\S])/g, m, pos2 = 0;
+        while ((m = re.exec(s))) {
+          var text = m[1] || m[3];
+          toks.push({ text: text, rt: m[2] || "", start: pos2, end: pos2 + text.length });
+          pos2 += text.length;
+        }
+        return toks;
+      }
+      function sentenceHtml(markup) {
+        var toks = tokenize(markup), plainText = toks.map(function (k) { return k.text; }).join("");
+        var cands = [];
+        (window.words || []).forEach(function (w) {
+          var v = typeof pick === "function" ? pick(w) : null;
+          if (!v) return;
+          keysOf(w).forEach(function (k) {
+            var from = 0, at;
+            while ((at = plainText.indexOf(k, from)) !== -1) {
+              from = at + 1;
+              var st = null, en = null;
+              toks.forEach(function (tk, i) { if (tk.start === at) st = i; if (tk.end >= at + k.length && en === null && tk.start < at + k.length) en = i; });
+              if (st === null || en === null) continue;
+              var last = toks[en];
+              if (last.rt && last.end !== at + k.length) continue;
+              cands.push({ st: st, en: en, len: k.length, w: w, v: v });
+            }
+          });
+        });
+        cands.sort(function (a, b) { return b.len - a.len || a.st - b.st; });
+        var used = {}, picked = [];
+        cands.forEach(function (c) {
+          for (var i = c.st; i <= c.en; i++) if (used[i]) return;
+          for (var j = c.st; j <= c.en; j++) used[j] = true;
+          picked.push(c);
+        });
+        picked.sort(function (a, b) { return a.st - b.st; });
+        var gapCands = [];
+        gaps.forEach(function (item) {
+          var k = item.text;
+          if (!k) return;
+          var from = 0, at;
+          while ((at = plainText.indexOf(k, from)) !== -1) {
+            from = at + 1;
+            var st = null, en = null;
+            toks.forEach(function (tk, i) { if (tk.start === at) st = i; if (tk.end >= at + k.length && en === null && tk.start < at + k.length) en = i; });
+            if (st === null || en === null) continue;
+            var last = toks[en];
+            if (last.rt && last.end !== at + k.length) continue;
+            gapCands.push({ st: st, en: en, len: k.length, text: k });
+          }
+        });
+        gapCands.sort(function (a, b) { return b.len - a.len || a.st - b.st; });
+        var gapsPicked = [];
+        gapCands.forEach(function (c) {
+          for (var i = c.st; i <= c.en; i++) if (used[i]) return;
+          for (var j = c.st; j <= c.en; j++) used[j] = true;
+          gapsPicked.push(c);
+        });
+        function tokHtml(tk) {
+          var e = tk.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          return tk.rt ? "<ruby>" + e + "<rt>" + tk.rt + "</rt></ruby>" : e;
+        }
+        var html = "", i = 0, n = 0;
+        picks = picked;
+        while (i < toks.length) {
+          var c = null;
+          for (var k2 = 0; k2 < picked.length; k2++) if (picked[k2].st === i) { c = picked[k2]; c.idx = k2; break; }
+          if (c) {
+            html += '<span class="s-word" role="button" tabindex="0" data-i="' + c.idx + '">';
+            for (var q = c.st; q <= c.en; q++) html += tokHtml(toks[q]);
+            html += "</span>";
+            i = c.en + 1;
+            continue;
+          }
+          var g = null;
+          for (var g2 = 0; g2 < gapsPicked.length; g2++) if (gapsPicked[g2].st === i) { g = gapsPicked[g2]; break; }
+          if (g) {
+            html += '<span class="s-need" data-text="' + g.text.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '">';
+            for (var q2 = g.st; q2 <= g.en; q2++) html += tokHtml(toks[q2]);
+            html += "</span>";
+            i = g.en + 1;
+          } else { html += tokHtml(toks[i]); i++; }
+        }
+        return html;
+      }
+      var picks = [];
+      function showWordVideo(c, el) {
+        var on = $("s-jp").querySelector(".s-word.is-on");
+        if (on) on.classList.remove("is-on");
+        if (!c || (curVid && curVid.id === c.v.id && showVideo)) { setMode(false); return; }
+        curVid = { id: c.v.id, start: c.v.who === "shuwa-chan" ? 9 : 0, jp: c.w.jp };
+        if (el) el.classList.add("is-on");
+        setMode(true);
+      }
+      function setMode(video) {
+        showVideo = !!video && !!curVid;
+        $("s-pic").hidden = showVideo;
+        $("s-frame").hidden = !showVideo;
+        var fr = $("s-frame");
+        if (showVideo) {
+          fr.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + curVid.id + "?autoplay=1&mute=1&rel=0&playsinline=1&loop=1&playlist=" + curVid.id + "&start=" + curVid.start + '" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
+        } else {
+          fr.innerHTML = "";
+          var on = $("s-jp").querySelector(".s-word.is-on");
+          if (on) on.classList.remove("is-on");
+        }
+      }
+      function gapIndex(text) {
+        for (var i = 0; i < gaps.length; i++) if (gaps[i].text === text) return i;
+        return -1;
+      }
+      function paintGaps() {
+        $("need-sum").textContent = "Need a video (" + gaps.length + ")";
+        var ul = $("need-ul");
+        ul.innerHTML = "";
+        $("need-copy").hidden = !gaps.length;
+        gaps.forEach(function (item) {
+          var li = document.createElement("li");
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = item.text;
+          if (item.sentence) b.title = item.sentence;
+          b.addEventListener("click", function () {
+            var at = gapIndex(item.text);
+            if (at >= 0) gaps.splice(at, 1);
+            saveGaps();
+            if (deck[pos]) render();
+          });
+          li.appendChild(b);
+          ul.appendChild(li);
+        });
+      }
+      function saveGaps() {
+        try { localStorage.setItem(NEED_KEY, JSON.stringify(gaps)); } catch (e) {}
+        paintGaps();
+      }
+      function currentSentence() {
+        var it = deck[pos];
+        return it ? plain(it.jp) : "";
+      }
+      function selectedPlain() {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.rangeCount) return "";
+        var range = sel.getRangeAt(0);
+        var root = $("s-jp");
+        if (!root || !root.contains(range.commonAncestorContainer)) return "";
+        var a = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+        var b = range.endContainer.nodeType === 1 ? range.endContainer : range.endContainer.parentElement;
+        if (a && b && a.closest && a.closest(".s-word") && a.closest(".s-word") === b.closest(".s-word")) return "";
+        var frag = range.cloneContents();
+        frag.querySelectorAll("rt, rp").forEach(function (n) { n.remove(); });
+        return (frag.textContent || "").replace(/\s+/g, "");
+      }
+      function refreshAdd() {
+        if (adding) return;
+        var btn = $("s-add");
+        if (!btn || $("panel-sentences").hidden) return;
+        var text = selectedPlain();
+        if (!text || !/[\u3040-\u30ff\u4e00-\u9fff]/.test(text)) {
+          pendingText = "";
+          btn.hidden = true;
+          btn.disabled = false;
+          return;
+        }
+        if (text.length > 24) {
+          pendingText = "";
+          btn.hidden = false;
+          btn.disabled = true;
+          btn.textContent = "Highlight just the word";
+          return;
+        }
+        pendingText = text;
+        btn.disabled = false;
+        btn.hidden = false;
+        btn.textContent = (gapIndex(text) >= 0 ? "Remove “" : "Add “") + text + "”";
+      }
+      function toggleGap(text) {
+        if (!text) return;
+        var at = gapIndex(text);
+        if (at >= 0) gaps.splice(at, 1);
+        else gaps.unshift({ text: text, sentence: currentSentence() });
+        saveGaps();
+        $("need-list").open = true;
+        pendingText = "";
+        $("s-add").hidden = true;
+        var sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
+        if (deck[pos]) render();
+      }
+      function render() {
+        var it = deck[pos];
+        pendingText = "";
+        if ($("s-add")) { $("s-add").hidden = true; $("s-add").disabled = false; }
+        if (!it) { $("s-jp").textContent = "Nothing here yet."; $("s-pic").innerHTML = ""; return; }
+        $("s-count").textContent = (pos + 1) + " / " + deck.length;
+        var pic = $("s-pic");
+        pic.className = "s-pic";
+        pic.innerHTML = "";
+        var img = new Image();
+        img.alt = "";
+        img.onerror = function () { pic.className = "s-pic is-empty"; pic.textContent = "(picture missing)"; };
+        img.src = "/preview/cj-test/img/" + it.pic;
+        pic.appendChild(img);
+        $("s-q").textContent = plain(it.q);
+        $("s-q").hidden = !it.q;
+        curVid = null;
+        setMode(false);
+        $("s-jp").innerHTML = sentenceHtml(it.jp);
+        $("s-jp").classList.toggle("no-furi", !furi);
+        var sh = $("s-short");
+        sh.hidden = !it.short;
+        sh.innerHTML = it.short ? "（" + ruby(it.short) + "）" : "";
+        sh.classList.toggle("no-furi", !furi);
+      }
+      function next() {
+        if (!deck.length || pos + 1 >= deck.length) reshuffle();
+        pos += 1;
+        render();
+      }
+      function back() {
+        if (pos > 0) { pos -= 1; render(); }
+      }
+      function fillSections() {
+        var ch = chapter(), sel = $("s-section"), seen = [];
+        sel.innerHTML = "";
+        var all = document.createElement("option");
+        all.value = ""; all.textContent = "All sections"; sel.appendChild(all);
+        ch.items.forEach(function (it) {
+          if (seen.indexOf(it.section) === -1) {
+            seen.push(it.section);
+            var o = document.createElement("option");
+            o.value = it.section; o.textContent = it.section; sel.appendChild(o);
+          }
+        });
+      }
+      function load() {
+        if (loaded) return;
+        loaded = true;
+        var need = (!window.words || !window.words.length)
+          ? fetch("signs.json").then(function (r) { return r.json(); }).then(function (d) { window.words = d.words || []; })
+          : Promise.resolve();
+        need.then(function () { return fetch("sentences.json"); }).then(function (r) { return r.json(); }).then(function (d) {
+          chapters = d.chapters || [];
+          var sel = $("s-chapter");
+          chapters.forEach(function (c, i) {
+            var o = document.createElement("option");
+            o.value = i; o.textContent = c.title; sel.appendChild(o);
+          });
+          fillSections();
+          next();
+        }).catch(function () { $("s-jp").textContent = "Could not load sentences."; });
+      }
+      function tab(name) {
+        var s = name === "sentences";
+        $("panel-sentences").hidden = !s;
+        $("panel-signs").hidden = s;
+        $("tab-signs").setAttribute("aria-selected", String(!s));
+        $("tab-sentences").setAttribute("aria-selected", String(s));
+        try { localStorage.setItem("core-shuwa-tab", name); } catch (e) {}
+        if (s) { load(); if (window.yt && yt.pauseVideo && ytReady) yt.pauseVideo(); }
+        else { setMode(false); if (window.yt && yt.playVideo && ytReady) yt.playVideo(); }
+      }
+      function pop(btn, id) {
+        $(btn).addEventListener("click", function () {
+          var el = $(id), open = !el.classList.contains("is-open");
+          el.classList.toggle("is-open", open);
+          this.classList.toggle("is-on", open);
+        });
+      }
+      pop("t-chapter", "pop-chapter");
+      pop("t-section", "pop-section");
+      $("tab-signs").addEventListener("click", function () { tab("signs"); });
+      $("tab-sentences").addEventListener("click", function () { tab("sentences"); });
+      $("s-jp").addEventListener("click", function (e) {
+        var gapEl = e.target.closest ? e.target.closest(".s-need") : null;
+        var sel = window.getSelection();
+        if (gapEl && (!sel || sel.isCollapsed)) {
+          toggleGap(gapEl.getAttribute("data-text") || "");
+          return;
+        }
+        var el = e.target.closest ? e.target.closest(".s-word") : null;
+        if (el) showWordVideo(picks[+el.getAttribute("data-i")], el);
+      });
+      $("s-jp").addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        var el = e.target.closest ? e.target.closest(".s-word") : null;
+        if (el) { e.preventDefault(); showWordVideo(picks[+el.getAttribute("data-i")], el); }
+      });
+      $("s-next").addEventListener("click", next);
+      $("s-prev").addEventListener("click", back);
+      $("s-chapter").addEventListener("change", function () { fillSections(); reshuffle(); next(); });
+      $("s-section").addEventListener("change", function () { reshuffle(); next(); });
+      $("s-furi").addEventListener("click", function () {
+        furi = !furi;
+        this.textContent = furi ? "Hide furigana" : "Show furigana";
+        this.classList.toggle("is-on", !furi);
+        $("s-jp").classList.toggle("no-furi", !furi);
+        $("s-short").classList.toggle("no-furi", !furi);
+      });
+      $("s-add").addEventListener("pointerdown", function () {
+        this.dataset.keep = pendingText;
+        adding = true;
+      });
+      $("s-add").addEventListener("pointerup", function () {
+        var self = this;
+        setTimeout(function () { adding = false; refreshAdd(); }, 0);
+      });
+      $("s-add").addEventListener("click", function () {
+        var text = this.dataset.keep || pendingText;
+        adding = false;
+        toggleGap(text);
+      });
+      document.addEventListener("selectionchange", refreshAdd);
+      $("need-copy").addEventListener("click", function () {
+        var lines = gaps.map(function (x) { return x.text; }).join("\n");
+        var btn = this, old = btn.textContent;
+        function done(ok) {
+          btn.textContent = ok ? "Copied" : "Could not copy";
+          setTimeout(function () { btn.textContent = old; }, 1200);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lines).then(function () { done(true); }, function () { done(false); });
+        else done(false);
+      });
+      paintGaps();
+      document.addEventListener("keydown", function (e) {
+        if ($("panel-sentences").hidden || (e.target && (e.target.tagName === "SELECT" || e.target.tagName === "INPUT"))) return;
+        var sel = window.getSelection();
+        if (sel && !sel.isCollapsed) return;
+        if (e.key === "ArrowRight") next();
+        if (e.key === "ArrowLeft") back();
+      });
+      var saved = "";
+      try { saved = localStorage.getItem("core-shuwa-tab") || ""; } catch (e) {}
+      if (saved === "sentences") tab("sentences");
+    })();
   </script>
   <script src="https://www.youtube.com/iframe_api"></script>
 </body>

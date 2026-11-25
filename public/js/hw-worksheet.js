@@ -3820,6 +3820,15 @@
     const lines = Array.from(form.querySelectorAll(".hw-worksheet__line"));
     if (lines.length <= 1) {
       syncTopicBriefOpen(form.querySelector(".hw-worksheet__topic-brief"), true, form);
+      if (global.HwFeatureFlags?.answerNextBar?.() === true && form.dataset.hwReviewRender !== "1") {
+        form.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+          const field = e.target.closest?.("input.hw-blank, textarea.hw-blank");
+          if (!field || !form.contains(field)) return;
+          e.preventDefault();
+          field.blur();
+        });
+      }
       return;
     }
 
@@ -3883,6 +3892,7 @@
           line.hidden = false;
         });
         placeSubmitTrackerInCard(form, null);
+        syncAnswerNext();
         return;
       }
 
@@ -3904,6 +3914,7 @@
       });
       placeSubmitTrackerInCard(form, lines[current]);
       syncTopicBriefOpen(brief, current === 0, form);
+      syncAnswerNext();
     }
 
     function notifySlideChange() {
@@ -3926,7 +3937,130 @@
     prevBtn.addEventListener("click", () => goTo(current - 1));
     nextBtn.addEventListener("click", () => goTo(current + 1));
 
+    const answerNextOn = global.HwFeatureFlags?.answerNextBar?.() === true && form.dataset.hwReviewRender !== "1";
+    let answerNextWrap = null;
+    let answerNextBtn = null;
+
+    function answerFields(line) {
+      if (!line) return [];
+      return Array.from(line.querySelectorAll("input.hw-blank, textarea.hw-blank")).filter((el) => {
+        if (el.disabled || el.readOnly) return false;
+        if (el.dataset.itemEnglish || el.dataset.itemEnglishAnswer) return false;
+        if (el.dataset.audioPrompt || el.dataset.videoPrompt) return false;
+        if (el.dataset.itemAudioUrl || el.dataset.itemImageUrl) return false;
+        return true;
+      });
+    }
+
+    function lineHasAnswerText(line) {
+      return answerFields(line).some((el) => String(el.value || "").length > 0);
+    }
+
+    function placeAnswerNext() {
+      if (!answerNextWrap) return;
+      const bar = document.getElementById("hw-toolbar-bar");
+      if (bar && answerNextWrap.nextElementSibling !== bar) {
+        bar.parentElement.insertBefore(answerNextWrap, bar);
+        return;
+      }
+      if (!bar && !answerNextWrap.parentElement) {
+        const card = form.closest(".hw-hub-worksheet-card") || form.parentElement || form;
+        card.appendChild(answerNextWrap);
+      }
+    }
+
+    function dockAnswerNext() {
+      if (!answerNextWrap) return;
+      const focus = document.body.classList.contains("hw-hw-focus-mode");
+      const show = answerNextWrap.classList.contains("is-up");
+      if (!focus || !show) {
+        answerNextWrap.classList.remove("is-focus-dock");
+        answerNextWrap.style.bottom = "";
+        return;
+      }
+      answerNextWrap.classList.add("is-focus-dock");
+      const vv = window.visualViewport;
+      const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      let bottom = Math.max(12, window.innerHeight - viewBottom + 12);
+      const toolbar = document.getElementById("hw-toolbar-bar");
+      if (toolbar && !toolbar.hidden) {
+        const rect = toolbar.getBoundingClientRect();
+        if (rect.height > 0 && rect.top < viewBottom) {
+          bottom = Math.max(bottom, window.innerHeight - rect.top + 10);
+        }
+      }
+      answerNextWrap.style.bottom = Math.round(bottom) + "px";
+    }
+
+    function syncAnswerNext() {
+      if (!answerNextWrap) return;
+      placeAnswerNext();
+      const show = !seeAll && lineHasAnswerText(lines[current]);
+      answerNextWrap.classList.toggle("is-up", show);
+      if (answerNextBtn) {
+        answerNextBtn.textContent = current >= lines.length - 1 ? "Done" : "Next";
+      }
+      dockAnswerNext();
+    }
+
+    if (!form._hwAnswerNextDockBound) {
+      form._hwAnswerNextDockBound = "1";
+      const onView = () => dockAnswerNext();
+      window.visualViewport?.addEventListener("resize", onView);
+      window.visualViewport?.addEventListener("scroll", onView);
+      document.addEventListener("hw-focus-mode", onView);
+      document.addEventListener("hw-focus-zoom-reset", onView);
+    }
+
+    if (answerNextOn) {
+      form._hwAnswerNextObserver?.disconnect();
+      form._hwAnswerNextWrap?.remove();
+      answerNextWrap = document.createElement("div");
+      answerNextWrap.className = "hw-answer-next-wrap";
+      answerNextBtn = document.createElement("button");
+      answerNextBtn.type = "button";
+      answerNextBtn.className = "hw-answer-next";
+      answerNextBtn.textContent = "Next";
+      answerNextWrap.appendChild(answerNextBtn);
+      form._hwAnswerNextWrap = answerNextWrap;
+      lines.forEach((line) => {
+        answerFields(line).forEach((el) => {
+          el.enterKeyHint = "done";
+        });
+      });
+      answerNextBtn.addEventListener("click", () => {
+        const active = document.activeElement;
+        if (active && lines[current]?.contains(active)) active.blur();
+        if (current >= lines.length - 1) {
+          answerNextWrap.classList.remove("is-up");
+          dockAnswerNext();
+          return;
+        }
+        goTo(current + 1);
+        const nextField = answerFields(lines[current])[0];
+        nextField?.focus();
+        syncAnswerNext();
+      });
+      form.addEventListener("input", (e) => {
+        if (!e.target.closest?.("input.hw-blank, textarea.hw-blank")) return;
+        syncAnswerNext();
+      });
+      const mo = new MutationObserver(() => placeAnswerNext());
+      mo.observe(document.body, { childList: true, subtree: true });
+      form._hwAnswerNextObserver = mo;
+      placeAnswerNext();
+    }
+
     form.addEventListener("keydown", (e) => {
+      if (answerNextOn && e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+        const field = e.target.closest?.("input.hw-blank, textarea.hw-blank");
+        if (field && lines[current]?.contains(field) && answerFields(lines[current]).includes(field)) {
+          e.preventDefault();
+          field.blur();
+          syncAnswerNext();
+          return;
+        }
+      }
       if (seeAll || e.target.closest("input, textarea, select")) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
@@ -3959,6 +4093,35 @@
   }
 
   /**
+   * Phone Focus: pull Browse all worksheets + Feature request out of the sheet
+   * and stick them to the bottom of the screen. Ancestors with overflow/zoom
+   * trap position:fixed, so the wrap has to live on document.body.
+   */
+  function dockFocusPills(on) {
+    const wrap = document.getElementById("hw-hub-feedback-pill-wrap");
+    if (!wrap) return;
+    const phone = window.matchMedia("(max-width: 900px)").matches;
+    if (on && phone) {
+      if (!wrap._hwPillParent) {
+        wrap._hwPillParent = wrap.parentElement;
+        wrap._hwPillNext = wrap.nextSibling;
+      }
+      document.body.appendChild(wrap);
+      wrap.classList.add("is-focus-dock");
+      return;
+    }
+    wrap.classList.remove("is-focus-dock");
+    const parent = wrap._hwPillParent;
+    if (parent && wrap.parentElement !== parent) {
+      if (wrap._hwPillNext && wrap._hwPillNext.parentNode === parent) {
+        parent.insertBefore(wrap, wrap._hwPillNext);
+      } else {
+        parent.appendChild(wrap);
+      }
+    }
+  }
+
+  /**
    * @returns {void}
    */
   function exitHomeworkFocusMode() {
@@ -3969,6 +4132,8 @@
       document.querySelector(".hw-hub-v4-homework");
     global.HwWorksheetToolLayout?.beginFocusToolSwitch?.();
     document.body.classList.remove("hw-hw-focus-mode");
+    dockFocusPills(false);
+    document.dispatchEvent(new CustomEvent("hw-focus-zoom-reset"));
     document.querySelectorAll(".hw-focus-bar").forEach((bar) => {
       bar.hidden = true;
       bar.setAttribute("hidden", "");
@@ -4029,6 +4194,7 @@
       updateTitle();
       global.HwWorksheetToolLayout?.beginFocusToolSwitch?.();
       document.body.classList.add("hw-hw-focus-mode");
+      document.dispatchEvent(new CustomEvent("hw-focus-mode"));
       /* No Exit focus pill — leave Focus via the toolbar Focus button. */
       focusBar.hidden = true;
       focusBar.setAttribute("hidden", "");
@@ -4041,7 +4207,9 @@
        * (same Focus look/scale, no browser fullscreen takeover).
        */
       const skipFs = global.HwFeatureFlags?.designFocus?.() === true;
-      if (!skipFs) {
+      const phone =
+        window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
+      if (!skipFs && !phone) {
         const reqFs =
           global.HwCompat?.requestFullscreen ||
           ((el) => el.requestFullscreen?.() || document.documentElement.requestFullscreen());
@@ -4052,6 +4220,7 @@
         }
       }
       global.HwWorksheetToolLayout?.onFocusModeChange?.();
+      dockFocusPills(true);
     }
 
     focusBtn.addEventListener("click", () => enterFocus());

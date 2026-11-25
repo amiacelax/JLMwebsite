@@ -520,7 +520,7 @@
   async function loadSelfExtras() {
     const s = session();
     if (!s?.username || s.role === "teacher") return;
-    if (s.viewAs || global.HwAuth?.isViewingAsStudent?.()) return;
+    const viewing = !!(s.viewAs || global.HwAuth?.isViewingAsStudent?.());
     try {
       const res = await fetch("/api/auth/self-extras", {
         method: "POST",
@@ -530,8 +530,16 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return;
       const discordEl = document.getElementById("hw-account-discord-id");
-      if (discordEl && data.discordUserId) discordEl.value = String(data.discordUserId);
+      const editing = !!document.getElementById("hw-account-panel")?.classList.contains("is-editing");
+      if (discordEl && data.discordUserId && !editing) discordEl.value = String(data.discordUserId);
+      const emailEl = document.getElementById("hw-account-email-input");
+      const savedEmail = String(data.email || "").trim();
+      if (emailEl && savedEmail && !editing) emailEl.value = savedEmail;
+      const loginEl = document.getElementById("hw-account-login-id");
+      if (loginEl && savedEmail && !String(s.email || "").includes("@")) loginEl.value = savedEmail;
+      if (viewing) return;
       if (data.discordUserId) s.discordUserId = data.discordUserId;
+      if (savedEmail && !s.email) s.email = savedEmail;
       if (data.notifyPrefs) {
         s.notifyPrefs = data.notifyPrefs;
         writeLocalNotifyPrefs(data.notifyPrefs);

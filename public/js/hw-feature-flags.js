@@ -194,6 +194,22 @@
    * Backburner — off everywhere. Re-enable: localStorage hw-games-courses=1
    * (or ?gamesCourses=1).
    */
+  /**
+   * Green Next pill above the toolbar.
+   * CJ and Demo 2 (demoprem) only, including View as.
+   */
+  function answerNextBar() {
+    try {
+      const sessionName = global.HwAuth?.getSession?.()?.username;
+      const name = String(sessionName || loggedInUsername() || "")
+        .trim()
+        .toLowerCase();
+      return name === "christian" || name === "demoprem";
+    } catch {
+      return false;
+    }
+  }
+
   function gamesAndCourses() {
     try {
       if (localStorage.getItem("hw-games-courses") === "0") return false;
@@ -220,6 +236,7 @@
     hubV6,
     designFocus,
     questSnake,
+    answerNextBar,
     gamesAndCourses,
   };
 })(window);

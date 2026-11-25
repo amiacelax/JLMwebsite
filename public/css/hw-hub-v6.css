@@ -477,6 +477,75 @@ body.hw-hub-v6-enabled:has(#hw-hub-v6-panel:not([hidden])) .subpage-back {
   margin: 0;
 }
 
+.hw-hub-v6-simple-links--websites {
+  display: block;
+}
+
+.hw-site-pick {
+  display: block;
+}
+
+.hw-site-pick__label {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hw-v6-accent);
+}
+
+.hw-site-pick select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--hw-v6-line);
+  background: color-mix(in srgb, #0e1524 70%, transparent);
+  color: var(--hw-v6-ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.hw-site-cols {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .hw-site-pick {
+    display: none;
+  }
+
+  .hw-site-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.5rem;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1100px) {
+  .hw-site-cols {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.hw-site-col h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hw-v6-accent);
+}
+
+.hw-site-col .btn {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  margin: 0 0 0.35rem;
+}
+
 /* Home — birthday news ticker (right → left) */
 .hw-hub-v6-bday-ticker {
   --hw-v6-ticker: #f0d5a8;
